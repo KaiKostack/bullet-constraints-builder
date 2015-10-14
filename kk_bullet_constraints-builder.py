@@ -1,5 +1,5 @@
 ###################################################
-# Bullet Constraints Builder v1.51 by Kai Kostack #
+# Bullet Constraints Builder v1.52 by Kai Kostack #
 ###################################################
 
 ### Vars for constraint distribution
@@ -12,7 +12,7 @@ reqVertexPairsToPillars = 2  # 2     | How many vertex connections between an ob
 
 ### Vars for constraint settings
 realWorldBreakingThresholdCompressive = 60  # 60      | Real world material compressive breaking threshold in N/mm^2
-realWorldBreakingThresholdTensile     = 20  # 20      | Real world material tensile breaking threshold in N/mm^2
+realWorldBreakingThresholdTensile     = 10  # 20      | Real world material tensile breaking threshold in N/mm^2
 constraintUseBreaking = 1                   # 1       | Enables breaking
 constraintType = 'FIXED'                    # 'FIXED' | Available: FIXED, POINT, HINGE, SLIDER, PISTON, GENERIC, GENERIC_SPRING, MOTOR
 pillarGroup = "Pillars"                     #         | Name of group which contains only pillars (optional, overrides autodetection)  
@@ -27,8 +27,8 @@ materialDensity = 0              # 0          | Custom density value (kg/m^3) to
 
 import bpy, sys, mathutils, time
 from mathutils import Vector
-import os
-os.system("cls")
+#import os
+#os.system("cls")
 
 ##################################################  
 
@@ -39,10 +39,10 @@ def calculateThreshold(obj, objConst):
     
     ### Find smallest cross section area
     dim = obj.dimensions
-    if dim.x > dim.y and dim.x > dim.z:   crossArea = dim.y *dim.z
-    elif dim.y > dim.x and dim.y > dim.z: crossArea = dim.x *dim.z
-    else:                                 crossArea = dim.x *dim.y
-         
+    dimSorted = [dim.x, dim.y, dim.z]
+    dimSorted.sort()
+    crossArea = dimSorted[0] *dimSorted[1]
+    
     ### Check if pillar or girder and apply respective settings
     ### In case of a pillar use rather compressive threshold and in case of a girder the tensile one
     if grpPillarGroup and obj.name in bpy.data.groups[pillarGroup].objects:
