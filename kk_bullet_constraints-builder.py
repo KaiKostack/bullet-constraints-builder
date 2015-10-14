@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.72 #
+# Bullet Constraints Builder v1.73 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -28,7 +28,7 @@
 # ##### END GPL LICENSE BLOCK #####
    
 ### Vars for constraint distribution
-withGUI = 1    # Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
+withGUI = 1                  # 1     | Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
 
 stepsPerSecond = 200         # 200   | Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable)
 distanceTolerance = 0.05     # 0.05  | Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
@@ -38,10 +38,10 @@ searchDistance = 0.02        # 0.02  | Search distance to neighbor geometry
 clusterRadius = 0.4          # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
 alignVertical = 0.9          # 0.9   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
                              #       | Internally X and Y components of the directional vector will be reduced by this factor, should always be < 1 to make horizontal connections still possible.
-useAccurateArea = 0          # 1     | Enables accurate contact area calculation using booleans (only works correct with solid i.e. manifold objects, recommended for truss structures or steel constructions in general)
+useAccurateArea = 0          # 1     | Enables accurate contact area calculation using booleans for the cost of an up to 20x slower building process (only works correct with solids i.e. watertight and manifold objects, recommended for truss structures or steel constructions in general)
                              #       | If disabled a simpler boundary box intersection approach is used (only recommended for concrete constructions without diagonal elements)
-nonManifoldThickness = 0.1   # 0.01  | Use this thickness for non-manifold elements when using accurate contact area calculation
-minimumElementSize = 0       # 0.2   | Delete connections whose elements are too small and make them parents instead (this can be helpful to increase performance on models with unrelevant detail such as screws)
+nonManifoldThickness = 0.1   # 0.01  | Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.
+minimumElementSize = 0       # 0.2   | Delete connections whose elements are below this diameter and make them parents instead (this can be helpful to increase performance on models with unrelevant geometric detail such as screwheads)
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [ \
@@ -65,8 +65,8 @@ elemGrps = [ \
 # Connection Type       | Connection type ID for the constraint presets defined by this script, see list below.
 # Break.Thresh.Compres. | Real world material compressive breaking threshold in N/mm^2.
 # Break.Thresh.Tensile  | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
-# Bevel                 | Use beveling for elements to avoid `JengaÃ‚Ã‚Ã‚Ã‚ÂÂ´´ effect (uses hidden collision meshes)
-# Scale                 | Apply scaling factor on elements to avoid `JengaÃ‚Ã‚Ã‚Ã‚ÂÂ´´ effect (uses hidden collision meshes)
+# Bevel                 | Use beveling for elements to avoid `JengaÃ‚ÂÂ´´´ effect (uses hidden collision meshes)
+# Scale                 | Apply scaling factor on elements to avoid `JengaÃ‚ÂÂ´´´ effect (uses hidden collision meshes)
 # Facing                | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
 
 # Connection types:
@@ -78,13 +78,15 @@ elemGrps = [ \
 # 5 = 3x 'GENERIC' constraint per connection, one to evaluate the compressive, another one for the tensile / lateral and the last one for bending / buckling breaking threshold
 
 ### Developer
-debug = 1                         # Enables verbose console output for debugging purposes
-logPath = r"/tmp"               # Path to log file
-maxMenuElementGroupItems = 100    # Maximum allowed element group entries in menu 
-emptyDrawSize = 0.25              # Display size of constraint empty objects as radius in meters
+debug = 0                         # 0     | Enables verbose console output for debugging purposes
+logPath = r"/tmp"                 #       | Path to log files if debugging is enabled
+automaticMode = 0                 # 0     | Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore
+                                  #       | After clicking Execute this is being done: Building of constraints, baking simulation, clearing constraint and BCB data from scene, saving Blend file (overwriting old!)
+maxMenuElementGroupItems = 100    # 100   | Maximum allowed element group entries in menu 
+emptyDrawSize = 0.25              # 0.25  | Display size of constraint empty objects as radius in meters
                 
 # For monitor event handler:
-qRenderAnimation = 0     # Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
+qRenderAnimation = 0              # 0     | Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
 
 ########################################
 
@@ -95,7 +97,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 7, 2),
+    "version": (1, 7, 3),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -153,6 +155,9 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_searchDistance"] = searchDistance
     scene["bcb_prop_clusterRadius"] = clusterRadius
     scene["bcb_prop_alignVertical"] = alignVertical
+    scene["bcb_prop_useAccurateArea"] = useAccurateArea 
+    scene["bcb_prop_nonManifoldThickness"] = nonManifoldThickness 
+    scene["bcb_prop_minimumElementSize"] = minimumElementSize 
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     #scene["bcb_prop_elemGrps"] = elemGrps
@@ -199,6 +204,18 @@ def getConfigDataFromScene(scene):
     if "bcb_prop_alignVertical" in scene.keys():
         global alignVertical
         try: alignVertical = props.prop_alignVertical = scene["bcb_prop_alignVertical"]
+        except: pass
+    if "bcb_prop_useAccurateArea" in scene.keys():
+        global useAccurateArea
+        try: useAccurateArea = props.prop_useAccurateArea = scene["bcb_prop_useAccurateArea"]
+        except: pass
+    if "bcb_prop_nonManifoldThickness" in scene.keys():
+        global nonManifoldThickness
+        try: nonManifoldThickness = props.prop_nonManifoldThickness = scene["bcb_prop_nonManifoldThickness"]
+        except: pass
+    if "bcb_prop_minimumElementSize" in scene.keys():
+        global minimumElementSize
+        try: minimumElementSize = props.prop_minimumElementSize = scene["bcb_prop_minimumElementSize"]
         except: pass
             
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
@@ -256,28 +273,47 @@ def getBuildDataFromScene(scene):
         if obj.type == 'MESH':    scnObjs[obj.name] = obj
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
 
-    ### Get data from scene
+    ###### Get data from scene
+
     #try: objsEGrp = scene["bcb_objsEGrp"]    # Not required for building only for clearAllDataFromScene(), index will be renewed on update
     #except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, rebuilding constraints is required.")
+
     try: names = scene["bcb_objs"]
     except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
-    objs = [scnObjs[name] for name in names]
+    objs = []
+    for name in names:
+        try: objs.append(scnObjs[name])
+        except: print("Error: Object %s missing, rebuilding constraints is required." %name)
+
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
-    emptyObjs = [scnEmptyObjs[name] for name in names]
+    emptyObjs = []
+    for name in names:
+        try: emptyObjs.append(scnEmptyObjs[name])
+        except: print("Error: Object %s missing, rebuilding constraints is required." %name)
+
     try: names = scene["bcb_childObjs"]
     except: names = []; print("Error: bcb_childObjs property not found, rebuilding constraints is required.")
-    childObjs = [scnObjs[name] for name in names]
+    childObjs = []
+    for name in names:
+        try: childObjs.append(scnObjs[name])
+        except: print("Error: Object %s missing, rebuilding constraints is required." %name)
+
     try: connectsPair = scene["bcb_connectsPair"]
     except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
+
     try: connectsPairParent = scene["bcb_connectsPairParent"]
     except: connectsPairParent = []; print("Error: bcb_connectsPairParent property not found, rebuilding constraints is required.")
+
     try: connectsLoc = scene["bcb_connectsLoc"]
     except: connectsLoc = []; print("Error: bcb_connectsLoc property not found, rebuilding constraints is required.")
+
     try: connectsArea = scene["bcb_connectsArea"]
     except: connectsArea = []; print("Error: bcb_connectsArea property not found, rebuilding constraints is required.")
+
     try: connectsConsts = scene["bcb_connectsConsts"]
     except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
+
     try: constsConnect = scene["bcb_constsConnect"]
     except: constsConnect = []; print("Error: bcb_constsConnect property not found, rebuilding constraints is required.")
     
@@ -314,18 +350,32 @@ def clearAllDataFromScene(scene):
         if obj.type == 'MESH':    scnObjs[obj.name] = obj
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
 
-    ### Get data from scene
+    ###### Get data from scene
+
     try: objsEGrp = scene["bcb_objsEGrp"]
     except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
-    try: objsNames = scene["bcb_objs"]
-    except: objsNames = []; print("Error: bcb_objs property not found, cleanup may be incomplete.")
-    objs = [scnObjs[name] for name in objsNames]
+
+    try: names = scene["bcb_objs"]
+    except: names = []; print("Error: bcb_objs property not found, cleanup may be incomplete.")
+    objs = []
+    for name in names:
+        try: objs.append(scnObjs[name])
+        except: print("Error: Object %s missing, cleanup may be incomplete." %name)
+
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Error: bcb_emptyObjs property not found, cleanup may be incomplete.")
-    emptyObjs = [scnEmptyObjs[name] for name in names]
+    emptyObjs = []
+    for name in names:
+        try: emptyObjs.append(scnEmptyObjs[name])
+        except: print("Error: Object %s missing, cleanup may be incomplete." %name)
+
     try: names = scene["bcb_childObjs"]
     except: names = []; print("Error: bcb_childObjs property not found, cleanup may be incomplete.")
-    childObjs = [scnObjs[name] for name in names]
+    childObjs = []
+    for name in names:
+        try: childObjs.append(scnObjs[name])
+        except: print("Error: Object %s missing, cleanup may be incomplete." %name)
+
     try: connectsPairParent = scene["bcb_connectsPairParent"]
     except: connectsPairParent = []; print("Error: bcb_connectsPairParent property not found, cleanup may be incomplete.")
     
@@ -381,14 +431,22 @@ def clearAllDataFromScene(scene):
         if obj.type == 'MESH':    scnObjs[obj.name] = obj
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
 
-    ### Get data again from scene after we changed obj names
-    try: objsNames = scene["bcb_objs"]
-    except: objsNames = []; print("Error: bcb_objs property not found, cleanup may be incomplete.")
-    objs = [scnObjs[name] for name in objsNames]
+    ###### Get data again from scene after we changed obj names
+        
+    try: names = scene["bcb_objs"]
+    except: names = []; print("Error: bcb_objs property not found, cleanup may be incomplete.")
+    objs = []
+    for name in names:
+        try: objs.append(scnObjs[name])
+        except: pass #print("Error: Object %s missing, cleanup may be incomplete." %name)
+
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Error: bcb_emptyObjs property not found, cleanup may be incomplete.")
-    emptyObjs = [scnEmptyObjs[name] for name in names]
-        
+    emptyObjs = []
+    for name in names:
+        try: emptyObjs.append(scnEmptyObjs[name])
+        except: pass #print("Error: Object %s missing, cleanup may be incomplete." %name)
+
     ### Revert element scaling
     for k in range(len(objs)):
         obj = objs[k]
@@ -595,6 +653,9 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_searchDistance = float(name="Search Distance", default=searchDistance, min=0.0, max=1000, description="Search distance to neighbor geometry.")
     prop_clusterRadius = float(name="Cluster Radius", default=clusterRadius, min=0.0, max=1000, description="Radius for bundling close constraints into clusters (0 = clusters disabled).")
     prop_alignVertical = float(name="Vertical Alignment", default=alignVertical, min=0.0, max=1.0, description="Enables a vertical alignment multiplier for connection type 4 or above instead of using unweighted center to center orientation (0 = disabled, 1 = fully vertical).")
+    prop_useAccurateArea = bool(name="Accur. Contact Area Calculation", default=useAccurateArea , description="Enables accurate contact area calculation using booleans for the cost of an up to 20x slower building process (only works correct with solids i.e. watertight and manifold objects, recommended for truss structures or steel constructions in general).")
+    prop_nonManifoldThickness = float(name="Non-solid Thickness", default=nonManifoldThickness, min=0.0, max=10, description="Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.")
+    prop_minimumElementSize = float(name="Min.Element Size", default=minimumElementSize, min=0.0, max=10, description="Delete connections whose elements are below this diameter and make them parents instead (this can be helpful to increase performance on models with unrelevant geometric detail such as screwheads).")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
@@ -633,6 +694,9 @@ class bcb_props(bpy.types.PropertyGroup):
         global searchDistance; searchDistance = self.prop_searchDistance
         global clusterRadius; clusterRadius = self.prop_clusterRadius
         global alignVertical; alignVertical = self.prop_alignVertical
+        global useAccurateArea; useAccurateArea = self.prop_useAccurateArea
+        global nonManifoldThickness; nonManifoldThickness = self.prop_nonManifoldThickness
+        global minimumElementSize; minimumElementSize = self.prop_minimumElementSize
         global elemGrps
         for i in range(len(elemGrps)):
             elemGrpNew = []
@@ -669,17 +733,27 @@ class bcb_panel(bpy.types.Panel):
             split.operator("bcb.update", icon="FILE_REFRESH")
             split.operator("bcb.clear", icon="CANCEL")
             row = layout.row() # for baking buttons
-        split = row.split(percentage=.50, align=False)
+        split = row.split(percentage=.50, align=False);
         split.operator("bcb.bake", icon="REC")
-        split2 = split.row()
-        split2.prop(props, "prop_distanceTolerance")
-        
+        split = split.row()
+        split.prop(props, "prop_distanceTolerance")
         row = layout.row(); row.prop(props, "prop_stepsPerSecond")
+        
+        layout.separator()
         row = layout.row(); row.prop(props, "prop_constraintUseBreaking")
         #row = layout.row(); row.prop(props, "prop_connectionCountLimit")
         row = layout.row(); row.prop(props, "prop_searchDistance")
         row = layout.row(); row.prop(props, "prop_clusterRadius")
         row = layout.row(); row.prop(props, "prop_alignVertical")
+
+        layout.separator()
+        row = layout.row(); row.prop(props, "prop_useAccurateArea")
+        row = layout.row()
+        if not props.prop_useAccurateArea: row.enabled = 0
+        row.prop(props, "prop_nonManifoldThickness")
+        
+        layout.separator()
+        row = layout.row(); row.prop(props, "prop_minimumElementSize")
         
         layout.separator()
         row = layout.row(); row.label(text="Element Groups", icon="MOD_BUILD")
@@ -747,7 +821,7 @@ class bcb_panel(bpy.types.Panel):
          
 class OBJECT_OT_bcb_set_config(bpy.types.Operator):
     bl_idname = "bcb.set_config"
-    bl_label = "Set Config"
+    bl_label = " Set Config"
     bl_description = "Stores actual config data in current scene."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -760,7 +834,7 @@ class OBJECT_OT_bcb_set_config(bpy.types.Operator):
 
 class OBJECT_OT_bcb_get_config(bpy.types.Operator):
     bl_idname = "bcb.get_config"
-    bl_label = "Get Config"
+    bl_label = " Get Config"
     bl_description = "Loads previous config data from current scene."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -775,6 +849,18 @@ class OBJECT_OT_bcb_get_config(bpy.types.Operator):
             ###### Get menu config data from scene
             getBuildDataFromScene(scene)
             props.prop_menu_gotData = 1
+        return{'FINISHED'} 
+
+class OBJECT_OT_bcb_clear(bpy.types.Operator):
+    bl_idname = "bcb.clear"
+    bl_label = " Clear"
+    bl_description = "Clears constraints from scene and revert back to original state (required to rebuild constraints from scratch)."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        ###### Clear all data from scene and delete also constraint empty objects
+        if "bcb_objs" in scene.keys(): clearAllDataFromScene(scene)
+        props.prop_menu_gotData = 0
         return{'FINISHED'} 
         
 class OBJECT_OT_bcb_execute(bpy.types.Operator):
@@ -834,18 +920,6 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         for i in range( len( bpy.app.handlers.frame_change_pre ) ):
              bpy.app.handlers.frame_change_pre.pop()
         monitor_freeBuffers()
-        return{'FINISHED'} 
-
-class OBJECT_OT_bcb_clear(bpy.types.Operator):
-    bl_idname = "bcb.clear"
-    bl_label = "Clear"
-    bl_description = "Clears constraints from scene and revert back to original state (required to rebuild constraints from scratch)."
-    def execute(self, context):
-        props = context.window_manager.bcb
-        scene = bpy.context.scene
-        ###### Clear all data from scene and delete also constraint empty objects
-        if "bcb_objs" in scene.keys(): clearAllDataFromScene(scene)
-        props.prop_menu_gotData = 0
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_add(bpy.types.Operator):
@@ -962,10 +1036,10 @@ classes = [ \
     bcb_panel,
     OBJECT_OT_bcb_set_config,
     OBJECT_OT_bcb_get_config,
+    OBJECT_OT_bcb_clear,
     OBJECT_OT_bcb_execute,
     OBJECT_OT_bcb_update,
     OBJECT_OT_bcb_bake,
-    OBJECT_OT_bcb_clear,
     OBJECT_OT_bcb_add,
     OBJECT_OT_bcb_del,
     OBJECT_OT_bcb_move_up,
@@ -1328,7 +1402,52 @@ def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair):
         
 ################################################################################   
 
-def calculateContactAreaBasedOnBoundaryBoxes(objs, connectsPair):
+def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=0):
+
+    ###### Calculate contact area for a single pair of objects
+    
+    ### Calculate boundary box corners
+    bbAMin, bbAMax, bbACenter = boundaryBox(objA, 1)
+    bbBMin, bbBMax, bbBCenter = boundaryBox(objB, 1)
+    
+    ### Calculate contact surface area from boundary box projection
+    ### Project along all axis'
+    overlapX = max(0, min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]))
+    overlapY = max(0, min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]))
+    overlapZ = max(0, min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
+    
+    ### Calculate area based on either the sum of all axis surfaces...
+    if customThickness == 0:
+        overlapAreaX = overlapY *overlapZ
+        overlapAreaY = overlapX *overlapZ
+        overlapAreaZ = overlapX *overlapY
+        # Add up all contact areas
+        contactArea = overlapAreaX +overlapAreaY +overlapAreaZ
+    
+    ### Or calculate contact area based on predefined custom thickness
+    else:
+        contactArea = (overlapX +overlapY +overlapZ)
+        # This should actually be:
+        # contactArea = (overlapX +overlapY +overlapZ) *customThickness
+        # For updating possibility this last operation is postponed to setConstraintSettings()
+            
+    ### Find out element thickness to be used for bending threshold calculation 
+    bendingThickness = [overlapX, overlapY, overlapZ]
+    bendingThickness.sort()
+    bendingThickness = bendingThickness[1]   # First item = mostly 0, second item = thickness, third item = width 
+    
+    ### Use center of contact area boundary box as constraints location
+    centerX = max(bbAMin[0],bbBMin[0]) +(overlapX /2)
+    centerY = max(bbAMin[1],bbBMin[1]) +(overlapY /2)
+    centerZ = max(bbAMin[2],bbBMin[2]) +(overlapZ /2)
+    center = Vector((centerX, centerY, centerZ))
+    #center = (bbACenter +bbBCenter) /2     # Debug: Place constraints at the center of both elements like in bashi's addon
+
+    return contactArea, bendingThickness, center 
+
+########################################
+
+def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair):
     
     ### Calculate contact area for all connections
     print("Calculating contact area for connections...")
@@ -1339,39 +1458,17 @@ def calculateContactAreaBasedOnBoundaryBoxes(objs, connectsPair):
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
         
-        ###### Calculate boundary box corners
-        bbAMin, bbAMax, bbACenter = boundaryBox(objA, 1)
-        bbBMin, bbBMax, bbBCenter = boundaryBox(objB, 1)
+        ###### Calculate contact area for a single pair of objects
+        contactArea, bendingThickness, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
         
-        ### Calculate contact surface area from boundary box projection
-        ### Project along all axis'
-        overlapX = max(0, min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]))
-        overlapY = max(0, min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]))
-        overlapZ = max(0, min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
-        overlapAreaX = overlapY *overlapZ
-        overlapAreaY = overlapX *overlapZ
-        overlapAreaZ = overlapX *overlapY
-        # Add up all contact areas
-        contactArea = overlapAreaX +overlapAreaY +overlapAreaZ
-        # Find out element thickness to be used for bending threshold calculation 
-        thickness = [overlapX, overlapY, overlapZ]
-        thickness.sort()
-        thickness = thickness[1]   # First item = mostly 0, second item = thickness, third item = width 
-        connectsArea.append([contactArea, thickness])
-        
-        ### Use center of contact area boundary box as constraints location
-        centerX = max(bbAMin[0],bbBMin[0]) +(overlapX /2)
-        centerY = max(bbAMin[1],bbBMin[1]) +(overlapY /2)
-        centerZ = max(bbAMin[2],bbBMin[2]) +(overlapZ /2)
-        center = Vector((centerX, centerY, centerZ))
-        #center = (bbACenter +bbBCenter) /2     # Debug: Place constraints at the center of both elements like in bashi's addon
+        connectsArea.append([contactArea, bendingThickness])
         connectsLoc.append(center)
         
     return connectsArea, connectsLoc
 
 ################################################################################   
 
-def calculateContactAreaBasedOnBooleans(objs, connectsPair):
+def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
     
     ### Calculate contact area for all connections
     print("Calculating contact area for connections...", len(connectsPair))
@@ -1395,7 +1492,7 @@ def calculateContactAreaBasedOnBooleans(objs, connectsPair):
     connectsLoc = []
     connectsPair_len = len(connectsPair)
     for k in range(connectsPair_len):
-        sys.stdout.write('\r' +"%d" %k)
+        sys.stdout.write('\r' +"%d " %k)
         # Update progress bar
         bpy.context.window_manager.progress_update(k /connectsPair_len)
 
@@ -1410,151 +1507,163 @@ def calculateContactAreaBasedOnBooleans(objs, connectsPair):
         try: sceneTemp.objects.link(objB)
         except: pass
         
-#        ### Check if meshes are water tight (non-manifold), if not, issue a warning
-#        for obj in [objA, objB]:
-#            bpy.context.scene.objects.active = obj
-#            me = obj.data
-#            # Enter edit mode              
-#            try: bpy.ops.object.mode_set(mode='EDIT')
-#            except: pass 
-#            # Deselect all elements
-#            try: bpy.ops.mesh.select_all(action='DESELECT')
-#            except: pass 
-#            # Select non-manifold elements
-#            bpy.ops.mesh.select_non_manifold()
-#            # Leave edit mode
-#            try: bpy.ops.object.mode_set(mode='OBJECT')
-#            except: pass 
-#            # check mesh if there are selected elements found
-#            qNonManifolds = 0
-#            for edge in me.edges:
-#                if edge.select: qNonManifolds = 1; break
-#            if qNonManifolds:
-#                print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
-        
-        ### Add displacement modifier to objects to take search distance into account
-        objA.modifiers.new(name="Displace_BCB", type='DISPLACE')
-        modA_disp = objA.modifiers["Displace_BCB"]
-        modA_disp.mid_level = 0
-        modA_disp.strength = searchDistance
-        objB.modifiers.new(name="Displace_BCB", type='DISPLACE')
-        modB_disp = objB.modifiers["Displace_BCB"]
-        modB_disp.mid_level = 0
-        modB_disp.strength = searchDistance
-        meA_disp = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-        meB_disp = objB.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
+        ### Check if meshes are water tight (non-manifold)
+        qNonManifolds = 0
+        for obj in [objA, objB]:
+            bpy.context.scene.objects.active = obj
+            me = obj.data
+            # Enter edit mode              
+            try: bpy.ops.object.mode_set(mode='EDIT')
+            except: pass 
+            # Deselect all elements
+            try: bpy.ops.mesh.select_all(action='DESELECT')
+            except: pass 
+            # Select non-manifold elements
+            bpy.ops.mesh.select_non_manifold()
+            # Leave edit mode
+            try: bpy.ops.object.mode_set(mode='OBJECT')
+            except: pass 
+            # check mesh if there are selected elements found
+            for edge in me.edges:
+                if edge.select: qNonManifolds = 1; break
+
+        ###### If non-manifold then calculate a contact area estimation based on boundary boxes intersection and a user defined thickness
+        if qNonManifolds:
+
+            #print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
+
+            ###### Calculate contact area for a single pair of objects
+            contactArea, bendingThickness, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=nonManifoldThickness)
             
-        ### Add boolean modifier to object
-        objA.modifiers.new(name="Boolean_BCB", type='BOOLEAN')
-        modA_bool = objA.modifiers["Boolean_BCB"]
-        ### Create a boolean intersection mesh (for center point calculation)
-        modA_bool.operation = 'INTERSECT'
-        modA_bool.object = objB
-        ### Perform boolean operation and in case result is corrupt try again with small changes in displacement size
-        searchDistanceMinimum = searchDistance *0.9   # Lowest limit for retrying until we accept that no solution can be found
-        qNoSolution = 0
-        while 1:
-            me_intersect = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-            qBadResult = me_intersect.validate(verbose=False, clean_customdata=False)
-            if qBadResult == 0: break
-            modA_disp.strength *= 0.99
-            sceneTemp.update()
-            if modA_disp.strength < searchDistanceMinimum: qNoSolution = 1; break
-        if qNoSolution: print('Error on boolean operation, mesh problems detected:', objA.name, objB.name); halt
-        
-        # If intersection mesh has geometry then continue calculation
-        if len(me_intersect.vertices) > 0:
-            
-#            ### Create a boolean union mesh (for contact area calculation)
-#            modA_bool.operation = 'UNION'
-#            me_union = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-#            # Clean boolean result in case it is corrupted, because otherwise Blender sometimes crashes with "Error: EXCEPTION_ACCESS_VIOLATION"
-#            qBadResult = me_union.validate(verbose=False, clean_customdata=False)
-#            if qBadResult: print('Error on boolean operation, mesh problems detected:', objA.name, objB.name)
-            
-            ### Calculate center point for the intersection mesh
-            # Create a new object for the mesh
-            objIntersect = bpy.data.objects.new("BCB Temp Object", me_intersect)
-            bpy.context.scene.objects.link(objIntersect)
-            objIntersect.matrix_world = objA.matrix_world
-            
-            ### Calculate center of intersection mesh based on its boundary box (throws ugly "group # is unclassified!" warnings)
-#            objIntersect.select = 1
-#            #bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS')
-#            center = objIntersect.matrix_world.to_translation()
-            ### Calculate center of intersection mesh based on its boundary box (alternative code, slower but no warnings)
-            bbMin, bbMax, center = boundaryBox(objIntersect, 1)
-            
-            ### Find out element thickness to be used for bending threshold calculation (the diameter of the intersection mesh should be sufficient for now)
-            thickness = list(objIntersect.dimensions)
-            thickness.sort()
-            thickness = thickness[1]   # First item = mostly 0, second item = thickness, third item = width 
-            
-            ### Add displacement modifier to intersection mesh
-            objIntersect.modifiers.new(name="Displace_BCB", type='DISPLACE')
-            modIntersect_disp = objIntersect.modifiers["Displace_BCB"]
-            modIntersect_disp.mid_level = 0
-            modIntersect_disp.strength = -searchDistance /2
-            me_intersect_remDisp = objIntersect.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-            
-            ### Calculate surface area for both original elements
-            surface = 0
-            meA = objA.data
-            meB = objB.data
-            for poly in meA.polygons: surface += poly.area
-            for poly in meB.polygons: surface += poly.area
-            ### Calculate surface area for displaced versions of both original elements
-            surfaceDisp = 0
-            for poly in meA_disp.polygons: surfaceDisp += poly.area
-            for poly in meB_disp.polygons: surfaceDisp += poly.area
-            # Calculate ratio of original to displaced surface area for later contact area correction
-            correction = surface /surfaceDisp
-#            ### Calculate surface area for the unified mesh
-#            surfaceBoolUnion = 0
-#            for poly in me_union.polygons: surfaceBoolUnion += poly.area
-            ### Calculate surface area for the intersection mesh
-            surfaceBoolIntersect = 0
-            for poly in me_intersect.polygons: surfaceBoolIntersect += poly.area
-            ### Calculate surface area for the intersection mesh with removed displacement
-            surfaceBoolIntersectRemDisp = 0
-            for poly in me_intersect_remDisp.polygons: surfaceBoolIntersectRemDisp += poly.area
-#            ### The contact area is half the difference of both surface areas
-#            contactArea = (surfaceDisp -surfaceBoolUnion) /2
-            ### The contact area is half the surface area of the intersection mesh without displacement
-            contactArea = surfaceBoolIntersectRemDisp /2
-            contactArea *= correction
-            if contactArea < 0: print('Error on boolean operation, contact area negative:', objA.name, objB.name)
-            
-            # Unlink new object from second scene
-            sceneTemp.objects.unlink(objIntersect)
-            
-        # If intersection mesh has no geometry then invalidate connection
+            connectsArea.append([contactArea, bendingThickness])
+            connectsLoc.append(center)
+
+        ###### If both meshes are manifold continue with regular boolean based approach
         else:
-            contactArea = 0
-            thickness = 0
-            center = Vector((0, 0, 0))
-        
-        # Remove modifiers from original object again
-        objA.modifiers.remove(modA_bool)
-        objA.modifiers.remove(modA_disp)
-        objB.modifiers.remove(modB_disp)
-        
-#        # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
-#        sceneTemp.objects.unlink(objA)
-#        sceneTemp.objects.unlink(objB)
-        # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
-        if k %500 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
-            bpy.data.scenes.remove(sceneTemp)
-            sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
-            # Link cameras because in second scene is none and when coming back camera view will losing focus
-            for obj in objCameras:
-                sceneTemp.objects.link(obj)
-            # Switch to new scene
-            bpy.context.screen.scene = sceneTemp
-    
-        connectsArea.append([contactArea, thickness])
-        connectsLoc.append(center)
+
+            ### Add displacement modifier to objects to take search distance into account
+            objA.modifiers.new(name="Displace_BCB", type='DISPLACE')
+            modA_disp = objA.modifiers["Displace_BCB"]
+            modA_disp.mid_level = 0
+            modA_disp.strength = searchDistance
+            objB.modifiers.new(name="Displace_BCB", type='DISPLACE')
+            modB_disp = objB.modifiers["Displace_BCB"]
+            modB_disp.mid_level = 0
+            modB_disp.strength = searchDistance
+            meA_disp = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
+            meB_disp = objB.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
+                
+            ### Add boolean modifier to object
+            objA.modifiers.new(name="Boolean_BCB", type='BOOLEAN')
+            modA_bool = objA.modifiers["Boolean_BCB"]
+            ### Create a boolean intersection mesh (for center point calculation)
+            modA_bool.operation = 'INTERSECT'
+            modA_bool.object = objB
+            ### Perform boolean operation and in case result is corrupt try again with small changes in displacement size
+            searchDistanceMinimum = searchDistance *0.9   # Lowest limit for retrying until we accept that no solution can be found
+            qNoSolution = 0
+            while 1:
+                me_intersect = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
+                qBadResult = me_intersect.validate(verbose=False, clean_customdata=False)
+                if qBadResult == 0: break
+                modA_disp.strength *= 0.99
+                sceneTemp.update()
+                if modA_disp.strength < searchDistanceMinimum: qNoSolution = 1; break
+            if qNoSolution: print('Error on boolean operation, mesh problems detected:', objA.name, objB.name); halt
             
+            # If intersection mesh has geometry then continue calculation
+            if len(me_intersect.vertices) > 0:
+                
+#                ### Create a boolean union mesh (for contact area calculation)
+#                modA_bool.operation = 'UNION'
+#                me_union = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
+#                # Clean boolean result in case it is corrupted, because otherwise Blender sometimes crashes with "Error: EXCEPTION_ACCESS_VIOLATION"
+#                qBadResult = me_union.validate(verbose=False, clean_customdata=False)
+#                if qBadResult: print('Error on boolean operation, mesh problems detected:', objA.name, objB.name)
+                
+                ### Calculate center point for the intersection mesh
+                # Create a new object for the mesh
+                objIntersect = bpy.data.objects.new("BCB Temp Object", me_intersect)
+                bpy.context.scene.objects.link(objIntersect)
+                objIntersect.matrix_world = objA.matrix_world
+                
+                ### Calculate center of intersection mesh based on its boundary box (throws ugly "group # is unclassified!" warnings)
+#                objIntersect.select = 1
+#                #bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS')
+#                center = objIntersect.matrix_world.to_translation()
+                ### Calculate center of intersection mesh based on its boundary box (alternative code, slower but no warnings)
+                bbMin, bbMax, center = boundaryBox(objIntersect, 1)
+                
+                ### Find out element thickness to be used for bending threshold calculation (the diameter of the intersection mesh should be sufficient for now)
+                bendingThickness = list(objIntersect.dimensions)
+                bendingThickness.sort()
+                bendingThickness = bendingThickness[1]   # First item = mostly 0, second item = thickness, third item = width 
+                
+                ### Add displacement modifier to intersection mesh
+                objIntersect.modifiers.new(name="Displace_BCB", type='DISPLACE')
+                modIntersect_disp = objIntersect.modifiers["Displace_BCB"]
+                modIntersect_disp.mid_level = 0
+                modIntersect_disp.strength = -searchDistance /2
+                me_intersect_remDisp = objIntersect.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
+                
+                ### Calculate surface area for both original elements
+                surface = 0
+                meA = objA.data
+                meB = objB.data
+                for poly in meA.polygons: surface += poly.area
+                for poly in meB.polygons: surface += poly.area
+                ### Calculate surface area for displaced versions of both original elements
+                surfaceDisp = 0
+                for poly in meA_disp.polygons: surfaceDisp += poly.area
+                for poly in meB_disp.polygons: surfaceDisp += poly.area
+                # Calculate ratio of original to displaced surface area for later contact area correction
+                correction = surface /surfaceDisp
+#                ### Calculate surface area for the unified mesh
+#                surfaceBoolUnion = 0
+#                for poly in me_union.polygons: surfaceBoolUnion += poly.area
+                ### Calculate surface area for the intersection mesh
+                surfaceBoolIntersect = 0
+                for poly in me_intersect.polygons: surfaceBoolIntersect += poly.area
+                ### Calculate surface area for the intersection mesh with removed displacement
+                surfaceBoolIntersectRemDisp = 0
+                for poly in me_intersect_remDisp.polygons: surfaceBoolIntersectRemDisp += poly.area
+#                ### The contact area is half the difference of both surface areas
+#                contactArea = (surfaceDisp -surfaceBoolUnion) /2
+                ### The contact area is half the surface area of the intersection mesh without displacement
+                contactArea = surfaceBoolIntersectRemDisp /2
+                contactArea *= correction
+                if contactArea < 0: print('Error on boolean operation, contact area negative:', objA.name, objB.name)
+                
+                # Unlink new object from second scene
+                sceneTemp.objects.unlink(objIntersect)
+                
+            # If intersection mesh has no geometry then invalidate connection
+            else:
+                contactArea = 0
+                bendingThickness = 0
+                center = Vector((0, 0, 0))
+            
+            # Remove modifiers from original object again
+            objA.modifiers.remove(modA_bool)
+            objA.modifiers.remove(modA_disp)
+            objB.modifiers.remove(modB_disp)
+            
+#            # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
+#            sceneTemp.objects.unlink(objA)
+#            sceneTemp.objects.unlink(objB)
+            # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
+            if k %500 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
+                bpy.data.scenes.remove(sceneTemp)
+                sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+                # Link cameras because in second scene is none and when coming back camera view will losing focus
+                for obj in objCameras:
+                    sceneTemp.objects.link(obj)
+                # Switch to new scene
+                bpy.context.screen.scene = sceneTemp
+        
+            connectsArea.append([contactArea, bendingThickness])
+            connectsLoc.append(center)
+                
     # Switch back to original scene
     bpy.context.screen.scene = scene
     # Delete second scene
@@ -1767,8 +1876,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         
         consts = connectsConsts[k]
         contactArea = connectsArea[k][0]
-        thickness = connectsArea[k][1]
+        bendingThickness = connectsArea[k][1]
         for idx in consts: emptyObjs[idx]['ContactArea'] = contactArea   # Store value as ID property for debug purposes
+        
+        # Postponed contactArea calculation step from calculateContactAreaBasedOnBoundaryBoxesForPair() is being done now (update hack, could be better organized)
+        if useAccurateArea and nonManifoldThickness > 0:
+            contactArea *= nonManifoldThickness
         
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
@@ -1856,7 +1969,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             # Correction multiplier for breaking thresholds
             # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
             # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
-            correction = 2
+            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             ### First constraint
             objConst1 = emptyObjs[consts[0]]
             # Check if full update is necessary (optimization)
@@ -1927,7 +2040,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             # Correction multiplier for breaking thresholds
             # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
             # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
-            correction = 2
+            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             ### First constraint
             objConst1 = emptyObjs[consts[0]]
             # Check if full update is necessary (optimization)
@@ -1984,7 +2097,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             objConst2.rotation_quaternion = dirVec.to_track_quat('X','Z')
             ### Third constraint
             objConst3 = emptyObjs[consts[2]]
-            objConst3.rigid_body_constraint.breaking_threshold = (( (contactArea *thickness *0.33) *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst3.rigid_body_constraint.breaking_threshold = (( (contactArea *bendingThickness *0.33) *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
             objConst3['BrkThreshold3'] = breakingThreshold2   # Store value as ID property for debug purposes
             objConst3.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
@@ -2271,9 +2384,9 @@ def execute():
                 #connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
                 ###### Calculate contact area for all connections
                 if useAccurateArea:
-                    connectsArea, connectsLoc = calculateContactAreaBasedOnBooleans(objs, connectsPair)
+                    connectsArea, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
                 else:
-                    connectsArea, connectsLoc = calculateContactAreaBasedOnBoundaryBoxes(objs, connectsPair)
+                    connectsArea, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair)
                 ###### Delete connections with zero contact area
                 connectsPair, connectsArea, connectsLoc = deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsArea, connectsLoc)
                 ###### Create connection data
