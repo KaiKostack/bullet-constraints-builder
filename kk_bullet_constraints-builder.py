@@ -1,29 +1,30 @@
 ###################################################
-# Bullet Constraints Builder v1.60 by Kai Kostack #
+# Bullet Constraints Builder v1.61 by Kai Kostack #
 ###################################################
    
 ### Vars for constraint distribution
-withGUI = 1    # Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
+withGUI = 0    # Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
 
 constraintUseBreaking = 1    # 1     | Enables breaking for all constraints
 connectionCountLimit = 150   # 150   | Maximum count of connections per object pair (0 = disabled)
 searchDistance = 0.13        # 0.15  | Search distance to neighbor geometry
-clusterRadius = 0.4         # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
+clusterRadius = 0.4          # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
 
+# Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [ \
 # 0          1    2           3        4   5    6    7
 # Name       RVP  Mat.preset  Density  CT  BTC  BTT  Bevel
-[ "",        2,   'Concrete', 0,       1,  60,  20,  1 ],   # Defaults to be used when element is not part of any element group
-[ "Pillars", 3,   'Concrete', 0,       1,  60,  20,  1 ],
-[ "Girder",  3,   'Concrete', 0,       1,  60,  20,  1 ],
-[ "Walls",   2,   'Concrete', 0,       1,  30,  10,  1 ],
-[ "Slabs",   2,   'Concrete', 0,       1,  30,  10,  1 ]
+[ "",        1,   'Concrete', 0,       3,  5,  5,  1  ],   # Defaults to be used when element is not part of any element group
+[ "Slabs",   1,   'Concrete', 0,       3,  5,  5,  1  ],
+[ "Walls",   1,   'Concrete', 0,       3,  5,  5,  1  ],
+[ "Girders", 1,   'Concrete', 0,       3,  5,  5,  1  ],
+[ "Columns", 1,   'Concrete', 0,       3,  5,  5,  1  ]
 ]
 
 # Column descriptions (in order from left to right):
 #
 # Required Vertex Pairs | How many vertex pairs between two elements are required to generate a constraint.
-#                       | This can help to ensure there is an actual surface to surface connection between both elements (for at least 3 verts you can expect a shared surface).
+# (Depreciated)         | This can help to ensure there is an actual surface to surface connection between both elements (for at least 3 verts you can expect a shared surface).
 #                       | For two elements from different groups with different RVPs the lower number is decisive.
 # Material Preset       | Preset name of the physical material to be used from Blender's internal database.
 #                       | See Blender's Rigid Body Tools for a list of available presets.
@@ -37,8 +38,8 @@ elemGrps = [ \
 #
 # 1 = 1x 'FIXED' constraint per connection, only compressive breaking threshold is used (tensile limit is the same, angular forces limit as well)
 # 2 = 1x 'POINT' constraint per connection, only compressive breaking threshold is used (tensile limit is the same)
-# 3 = 2x 'GENERIC' constraint per connection, one to evaluate the compressive and the other the tensile breaking threshold
-# 4 = 1x 'FIXED' & 1x 'POINT' constraint per connection, compressive breaking threshold is used for the first one and tensile for the second
+# 3 = 1x 'FIXED' & 1x 'POINT' constraint per connection, compressive breaking threshold is used for the first one and tensile for the second
+# 4 = 2x 'GENERIC' constraint per connection, one to evaluate the compressive and the other the tensile breaking threshold
 
 ### Constants
 maxMenuElementGroupItems = len(elemGrps) +100    # Maximum allowed element group entries in menu 
@@ -52,7 +53,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 6, 0),
+    "version": (1, 6, 1),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -86,7 +87,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("prop_elemGrp_%d_4" %i +" = int(name='Connect.Type', default=elemGrps[j][4], min=0, max=3, description='Connection type ID for the constraint presets defined by this script, see list in code.')")
         exec("prop_elemGrp_%d_5" %i +" = float(name='Brk.Trs.Compressive', default=elemGrps[j][5], min=0.0, max=10000, description='Real world material compressive breaking threshold in N/mm^2.')")
         exec("prop_elemGrp_%d_6" %i +" = float(name='Brk.Trs.Tensile', default=elemGrps[j][6], min=0.0, max=10000, description='Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).')")
-        exec("prop_elemGrp_%d_1" %i +" = int(name='Req.Vert.Pairs', default=elemGrps[j][1], min=0, max=100, description='How many vertex pairs between two elements are required to generate a constraint.')")
+        #exec("prop_elemGrp_%d_1" %i +" = int(name='Req.Vert.Pairs', default=elemGrps[j][1], min=0, max=100, description='How many vertex pairs between two elements are required to generate a constraint.')")
         exec("prop_elemGrp_%d_2" %i +" = string(name='Mat.Preset', default=elemGrps[j][2], description='Preset name of the physical material to be used from Blender´s internal database. See Blender´s Rigid Body Tools for a list of available presets.')")
         exec("prop_elemGrp_%d_3" %i +" = float(name='Mat.Density', default=elemGrps[j][3], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
         exec("prop_elemGrp_%d_7" %i +" = bool(name='Bevel', default=elemGrps[j][7], description='Use beveling for elements to avoid `Jenga effect´.')")
@@ -98,7 +99,7 @@ class bcb_props(bpy.types.PropertyGroup):
             exec("self.prop_elemGrp_%d_4" %i +" = elemGrps[i][4]")
             exec("self.prop_elemGrp_%d_5" %i +" = elemGrps[i][5]")
             exec("self.prop_elemGrp_%d_6" %i +" = elemGrps[i][6]")
-            exec("self.prop_elemGrp_%d_1" %i +" = elemGrps[i][1]")
+            #exec("self.prop_elemGrp_%d_1" %i +" = elemGrps[i][1]")
             exec("self.prop_elemGrp_%d_2" %i +" = elemGrps[i][2]")
             exec("self.prop_elemGrp_%d_3" %i +" = elemGrps[i][3]")
             exec("self.prop_elemGrp_%d_7" %i +" = elemGrps[i][7]")
@@ -161,7 +162,7 @@ class bcb_panel(bpy.types.Panel):
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_4" %i)
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_5" %i)
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_6" %i)
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_1" %i)
+        #row = layout.row(); row.prop(props, "prop_elemGrp_%d_1" %i)
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_2" %i)
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_3" %i)
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_7" %i)
@@ -315,6 +316,8 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
     count = 0
     for k in range(len(objs)):
         sys.stdout.write('\r' +"%d" %k)
+        # Update progress bar
+        bpy.context.window_manager.progress_update(k /len(objs))
         
         qNextObj = 0
         obj = objs[k]
@@ -337,7 +340,7 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
             vert = me.vertices[m]
             co_find = mat *vert.co     # Multiply matrix by vertex coordinates to get global coordinates
                         
-            # Loops for comparison object
+            # Loop through comparison object found
             for j in range(len(aIndex)):
                 l = aIndex[j]
                 
@@ -502,21 +505,21 @@ def createConnectionData(objsEGrp, connectsPair, connectsLoc):
         connectionType = elemGrps[elemGrp][4]
         if connectionType == 1:
             connectsConsts.append([constCnt])
-            constsConnect.append(constCnt)
+            constsConnect.append(i)
             constCnt += 1
         elif connectionType == 2:
             connectsConsts.append([constCnt])
-            constsConnect.append(constCnt)
+            constsConnect.append(i)
             constCnt += 1
         elif connectionType == 3:
             connectsConsts.append([constCnt, constCnt +1])
-            constsConnect.append(constCnt)
-            constsConnect.append(constCnt +1)
+            constsConnect.append(i)
+            constsConnect.append(i)
             constCnt += 2
         elif connectionType == 4:
             connectsConsts.append([constCnt, constCnt +1])
-            constsConnect.append(constCnt)
-            constsConnect.append(constCnt +1)
+            constsConnect.append(i)
+            constsConnect.append(i)
             constCnt += 2
     
     return connectsPair, connectsLoc, connectsConsts, constsConnect
@@ -536,6 +539,8 @@ def createEmptyObjs(scene, constCnt):
     ### Duplicate them as long as we got the desired count   
     while len(emptyObjs) < constCnt:
         sys.stdout.write("%d\n" %len(emptyObjs))
+        # Update progress bar
+        bpy.context.window_manager.progress_update(len(emptyObjs) /constCnt)
         
         # Deselect all objects
         bpy.ops.object.select_all(action='DESELECT')
@@ -558,54 +563,60 @@ def createEmptyObjs(scene, constCnt):
 
 ################################################################################   
 
-def bundlingEmptyObjsToClusters(emptyObjs, connectsLoc, connectsConsts):
+def bundlingEmptyObjsToClusters(connectsLoc, connectsConsts):
     
     ### Bundling close empties into clusters, merge locations and count connections per cluster
     if clusterRadius > 0:
         print("\nBundling close empties into clusters...")
         
-        ### Build kd-tree for constraint locations
-        kdObjs = mathutils.kdtree.KDTree(len(connectsLoc))
-        for i, loc in enumerate(connectsLoc):
-            kdObjs.insert(loc, i)
-        kdObjs.balance()
-        
-        clustersConnects = []  # Stores all constraints indices per cluster
-        clustersLoc = []     # Stores the location of each cluster
-        connectsIdx = []     # Stores the location of each connection
-        for i in range(len(connectsLoc)):
-            connectsIdx.append(i)
+        m = 1
+        qChanged = 1
+        while qChanged:   # Repeat until no more constraints are moved
+            qChanged = 0
             
-        while len(connectsIdx) > 0:
-            ### Find closest connection location via kd-tree (zero distance start item included)
-            co_find = connectsLoc[connectsIdx[0]]
-            aIndex = []; aCo = []#; aDist = [];
-            for (co, index, dist) in kdObjs.find_range(co_find, clusterRadius):
-                aIndex.append(index); aCo.append(co)#; aDist.append(dist)
+            sys.stdout.write('\r' +"Pass %d" %m)
+            # Update progress bar
+            bpy.context.window_manager.progress_update(1 -(1 /m))
+            m += 1
             
-            ### Calculate average location of all constraints found in cluster radius
-            ### (Cluster locations can be fuzzy because of "first come, first served" method if constraints are scattered all over the place.
-            ### This however could be improved by more clever averaging, like only merge two constraints at a time and doing multiple loops.)
-            clustersConnects.append([])
-            loc = Vector((0,0,0))
-            for l in range(len(aIndex)):
-                if aIndex[l] in connectsIdx:
-                    clustersConnects[-1:][0].append(aIndex[l])
-                    connectsIdx.remove(aIndex[l])
-                    loc += aCo[l]
-            loc /= len(clustersConnects[-1:][0])
-            clustersLoc.append(loc)
+            ### Build kd-tree for constraint locations
+            kdObjs = mathutils.kdtree.KDTree(len(connectsLoc))
+            for i, loc in enumerate(connectsLoc):
+                kdObjs.insert(loc, i)
+            kdObjs.balance()
             
-        ### Apply cluster locations to constraints
-        for l in range(len(clustersConnects)):
-            for k in clustersConnects[l]:
-                connectsLoc[k] = clustersLoc[l]
-                for idx in connectsConsts[k]:
-                    emptyObjs[idx]['ClusterConnectCnt'] = len(clustersConnects[l])   # Store value as ID property for debug purposes
-    else:
-        for emptyObj in emptyObjs:
-            emptyObj['ClusterConnectCnt'] = 1   # Store value as ID property for debug purposes
-    
+            clustersConnects = []  # Stores all constraints indices per cluster
+            clustersLoc = []       # Stores the location of each cluster
+            for i in range(len(connectsLoc)):
+                
+                ### Find closest connection location via kd-tree (zero distance start item included)
+                co_find = connectsLoc[i]
+                aIndex = []; aCo = []#; aDist = [];
+                j = 0
+                for (co, index, dist) in kdObjs.find_range(co_find, clusterRadius):   # Find constraint object within search range
+                    if j == 0 or co != lastCo:   # Skip constraints that already share the same location (caused by earlier loops)
+                        aIndex.append(index); aCo.append(co)#; aDist.append(dist)
+                        lastCo = co
+                        # Stop after second different constraint is found
+                        j += 1
+                        if j == 2: qChanged = 1; break
+                            
+                ### Calculate average location of the two constraints found within cluster radius
+                ### We merge them pairwise instead of all at once for improved and more even distribution
+                if len(aCo) == 2:
+                    loc = (aCo[0] +aCo[1]) /2
+                    clustersLoc.append(loc)
+                    clustersConnects.append([aIndex[0], aIndex[1]])
+                    ### Also move all other constraints with the same locations because we can assume they already have been merged earlier
+                    for i in range(len(connectsLoc)):
+                        if aCo[0] == connectsLoc[i] or aCo[1] == connectsLoc[i]:
+                            clustersConnects[-1:][0].append(i)
+                      
+            ### Apply cluster locations to constraints
+            for l in range(len(clustersConnects)):
+                for k in clustersConnects[l]:
+                    connectsLoc[k] = clustersLoc[l]
+            
 ################################################################################   
 
 def addConstraintBaseSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect):
@@ -614,7 +625,9 @@ def addConstraintBaseSettings(objs, emptyObjs, connectsPair, connectsLoc, consts
     print("\nAdd constraint settings to empties...")
     for k in range(len(emptyObjs)):
         sys.stdout.write('\r' +"%d" %k)
-            
+        # Update progress bar
+        bpy.context.window_manager.progress_update(k /len(emptyObjs))
+                
         objConst = emptyObjs[k]
         l = constsConnect[k]
         objConst.location = connectsLoc[l]
@@ -642,8 +655,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     ### Set constraint settings
     count = 0
     for k in range(len(connectsPair)):
-        sys.stdout.write('\r' +"%d" %count)
-        count += 1
+        sys.stdout.write('\r' +"%d" %k)
+        # Update progress bar
+        bpy.context.window_manager.progress_update(k /len(connectsPair))
         
         consts = connectsConsts[k]
         crossArea = connectsArea[k]
@@ -663,41 +677,97 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
+        
         if   connectionType == 1:
             objConst1 = emptyObjs[consts[0]]
             objConst1.rigid_body_constraint.type = 'FIXED'
             objConst1.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
             objConst1['BrkThreshold'] = breakingThreshold1   # Store value as ID property for debug purposes
             objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
+        
         elif connectionType == 2:
             objConst1 = emptyObjs[consts[0]]
             objConst1.rigid_body_constraint.type = 'POINT'
             objConst1.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
             objConst1['BrkThreshold'] = breakingThreshold1   # Store value as ID property for debug purposes
             objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
+        
         elif connectionType == 3:
-            objConst1 = emptyObjs[consts[0]]
-            objConst1.rigid_body_constraint.type = 'GENERIC'
-            objConst1.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
-            objConst1['BrkThreshold'] = breakingThreshold1   # Store value as ID property for debug purposes
-            objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
-            objConst2 = emptyObjs[consts[1]]
-            objConst2.rigid_body_constraint.type = 'GENERIC'
-            objConst2.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second
-            objConst2['BrkThreshold'] = breakingThreshold2   # Store value as ID property for debug purposes
-            objConst2.rigid_body_constraint.use_breaking = constraintUseBreaking
-        elif connectionType == 4:
+            ### First constraint
             objConst1 = emptyObjs[consts[0]]
             objConst1.rigid_body_constraint.type = 'FIXED'
             objConst1.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
             objConst1['BrkThreshold'] = breakingThreshold1   # Store value as ID property for debug purposes
             objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
+            ### Second constraint
             objConst2 = emptyObjs[consts[1]]
             objConst2.rigid_body_constraint.type = 'POINT'
             objConst2.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second
             objConst2['BrkThreshold'] = breakingThreshold2   # Store value as ID property for debug purposes
             objConst2.rigid_body_constraint.use_breaking = constraintUseBreaking
         
+        elif connectionType == 4:
+            ### First constraint
+            objConst1 = emptyObjs[consts[0]]
+            # Calculate orientation between the two elements, imagine a line from center to center
+            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
+            # Align constraint rotation to that line
+            objConst1.rotation_mode = 'QUATERNION'
+            objConst1.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            objConst1.rigid_body_constraint.type = 'GENERIC'
+            objConst1.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
+            objConst1['BrkThreshold'] = breakingThreshold1   # Store value as ID property for debug purposes
+            objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
+            ### Lock all directions but the tensile one (compressive is used for breaking theshold)
+            ### I left Y and Z unlocked because as long as we have no separate breaking threshold for shearing force, the tensile constraint and its breaking threshold should apply for now
+            ### Also rotational forces should only be carried by the tensile constraint
+            objConst1.rigid_body_constraint.use_limit_lin_x = 1
+            #objConst1.rigid_body_constraint.use_limit_lin_y = 1
+            #objConst1.rigid_body_constraint.use_limit_lin_z = 1
+            objConst1.rigid_body_constraint.limit_lin_x_lower = 0
+            objConst1.rigid_body_constraint.limit_lin_x_upper = 99999
+            #objConst1.rigid_body_constraint.limit_lin_y_lower = 0
+            #objConst1.rigid_body_constraint.limit_lin_y_upper = 0
+            #objConst1.rigid_body_constraint.limit_lin_z_lower = 0
+            #objConst1.rigid_body_constraint.limit_lin_z_upper = 0
+            #objConst1.rigid_body_constraint.use_limit_ang_x = 1
+            #objConst1.rigid_body_constraint.use_limit_ang_y = 1
+            #objConst1.rigid_body_constraint.use_limit_ang_z = 1
+            #objConst1.rigid_body_constraint.limit_ang_x_lower = 0
+            #objConst1.rigid_body_constraint.limit_ang_x_upper = 0
+            #objConst1.rigid_body_constraint.limit_ang_y_lower = 0
+            #objConst1.rigid_body_constraint.limit_ang_y_upper = 0
+            #objConst1.rigid_body_constraint.limit_ang_z_lower = 0
+            #objConst1.rigid_body_constraint.limit_ang_z_upper = 0
+            ### Second constraint
+            objConst2 = emptyObjs[consts[1]]
+            # Align constraint rotation like above
+            objConst2.rotation_mode = 'QUATERNION'
+            objConst2.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            objConst2.rigid_body_constraint.type = 'GENERIC'
+            objConst2.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second
+            objConst2['BrkThreshold'] = breakingThreshold2   # Store value as ID property for debug purposes
+            objConst2.rigid_body_constraint.use_breaking = constraintUseBreaking
+            ### Lock all directions but the compressive one (tensile is used for breaking theshold)
+            objConst2.rigid_body_constraint.use_limit_lin_x = 1
+            objConst2.rigid_body_constraint.use_limit_lin_y = 1
+            objConst2.rigid_body_constraint.use_limit_lin_z = 1
+            objConst2.rigid_body_constraint.limit_lin_x_lower = -99999
+            objConst2.rigid_body_constraint.limit_lin_x_upper = 0
+            objConst2.rigid_body_constraint.limit_lin_y_lower = 0
+            objConst2.rigid_body_constraint.limit_lin_y_upper = 0
+            objConst2.rigid_body_constraint.limit_lin_z_lower = 0
+            objConst2.rigid_body_constraint.limit_lin_z_upper = 0
+            objConst2.rigid_body_constraint.use_limit_ang_x = 1
+            objConst2.rigid_body_constraint.use_limit_ang_y = 1
+            objConst2.rigid_body_constraint.use_limit_ang_z = 1
+            objConst2.rigid_body_constraint.limit_ang_x_lower = 0
+            objConst2.rigid_body_constraint.limit_ang_x_upper = 0
+            objConst2.rigid_body_constraint.limit_ang_y_lower = 0
+            objConst2.rigid_body_constraint.limit_ang_y_upper = 0
+            objConst2.rigid_body_constraint.limit_ang_z_lower = 0
+            objConst2.rigid_body_constraint.limit_ang_z_upper = 0
+            
         # Add to Bullet group in case someone removed it in the mean time
         try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst)
         except: pass
@@ -743,14 +813,16 @@ def addBevel(objs, objsEGrp):
     
 def execute():
     
+    print("\nStarting...")
+    time_start = time.time()
+    
     pi = 3.1415927
     bpy.context.tool_settings.mesh_select_mode = True, False, False
     scene = bpy.context.scene
+         
+    # Display progress bar
+    bpy.context.window_manager.progress_begin(0, 100)
     
-    time_start = time.time()
-    
-    print("\nStarting...")
-        
     # Leave edit mode
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
@@ -795,7 +867,7 @@ def execute():
             ###### Create empty objects (without any data)
             emptyObjs = createEmptyObjs(scene, len(constsConnect))
             ###### Bundling close empties into clusters, merge locations and count connections per cluster
-            bundlingEmptyObjsToClusters(emptyObjs, connectsLoc, connectsConsts)
+            bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
             ###### Add constraint base settings to empties
             addConstraintBaseSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect)
             
@@ -812,7 +884,7 @@ def execute():
         print("\nUpdating %d selected constraints..." %len(emptyObjs))
         
         ###### Create element list
-        if len(objs) == 0: objs = createElementList(emptyObjs)
+        #if len(objs) == 0: objs = createElementList(emptyObjs)
         ###### Set constraint settings
         setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect)
         ###### Calculate mass for all mesh objects
@@ -834,6 +906,9 @@ def execute():
         print('\nNeither mesh objects to connect nor constraint empties for updating selected.')       
         print('Nothing done.')       
 
+    # Terminate progress bar
+    bpy.context.window_manager.progress_end()
+           
 ################################################################################   
 ################################################################################   
 
