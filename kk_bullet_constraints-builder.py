@@ -1,5 +1,5 @@
 ###################################################
-# Bullet Constraints Builder v1.65 by Kai Kostack #
+# Bullet Constraints Builder v1.66 by Kai Kostack #
 ###################################################
    
 ### Vars for constraint distribution
@@ -10,6 +10,8 @@ constraintUseBreaking = 1    # 1     | Enables breaking for all constraints
 connectionCountLimit = 0     # 0     | Maximum count of connections per object pair (0 = disabled)
 searchDistance = 0.13        # 0.15  | Search distance to neighbor geometry
 clusterRadius = 0.4          # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
+alignVertical = 0.9          # 0.9   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
+                             #       | Internally X and Y components of the directional vector will be reduced by this factor, should always be < 1 to make horizontal connections still possible.
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [ \
@@ -47,8 +49,6 @@ elemGrps = [ \
 ### Developer
 debug = 0                         # Enables verbose console output for debugging purposes
 maxMenuElementGroupItems = 100    # Maximum allowed element group entries in menu 
-alignVertical = 0.9       # 0.9   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
-                          #       | Internally X and Y components of the directional vector will be reduced by this factor, should always be < 1 to make horizontal connections still possible.
                 
 # For monitor event handler:
 qRenderAnimation = 0     # Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
@@ -84,10 +84,12 @@ def storeConfigDataInScene(scene):
     ### Store menu config data in scene
     if debug: print("Storing menu config data in scene...")
     
+    scene["bcb_prop_distanceTolerance"] = distanceTolerance
     scene["bcb_prop_constraintUseBreaking"] = constraintUseBreaking
     scene["bcb_prop_connectionCountLimit"] = connectionCountLimit
     scene["bcb_prop_searchDistance"] = searchDistance
     scene["bcb_prop_clusterRadius"] = clusterRadius
+    scene["bcb_prop_alignVertical"] = alignVertical
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     #scene["bcb_prop_elemGrps"] = elemGrps
@@ -107,6 +109,8 @@ def getConfigDataFromScene(scene):
     if debug: print("Getting menu config data from scene...")
     
     props = bpy.context.window_manager.bcb
+    if "bcb_prop_distanceTolerance" in scene.keys():
+        global distanceTolerance; distanceTolerance = props.prop_distanceTolerance = scene["bcb_prop_distanceTolerance"]
     if "bcb_prop_constraintUseBreaking" in scene.keys():
         global constraintUseBreaking; constraintUseBreaking = props.prop_constraintUseBreaking = scene["bcb_prop_constraintUseBreaking"]
     if "bcb_prop_connectionCountLimit" in scene.keys():
@@ -115,6 +119,8 @@ def getConfigDataFromScene(scene):
         global searchDistance; searchDistance = props.prop_searchDistance = scene["bcb_prop_searchDistance"]
     if "bcb_prop_clusterRadius" in scene.keys():
         global clusterRadius; clusterRadius = props.prop_clusterRadius = scene["bcb_prop_clusterRadius"]
+    if "bcb_prop_alignVertical" in scene.keys():
+        global alignVertical; alignVertical = props.prop_alignVertical = scene["bcb_prop_alignVertical"]
             
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     if "bcb_prop_elemGrps" in scene.keys():
@@ -400,6 +406,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_connectionCountLimit = int(name="Con.Count Limit", default=connectionCountLimit, min=0, max=10000, description="Maximum count of connections per object pair (0 = disabled).")
     prop_searchDistance = float(name="Search Distance", default=searchDistance, min=0.0, max=1000, description="Search distance to neighbor geometry.")
     prop_clusterRadius = float(name="Cluster Radius", default=clusterRadius, min=0.0, max=1000, description="Radius for bundling close constraints into clusters (0 = clusters disabled).")
+    prop_alignVertical = float(name="Vertical Alignment", default=alignVertical, min=0.0, max=1.0, description="Enables a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled, 1 = fully vertical).")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
@@ -436,6 +443,7 @@ class bcb_props(bpy.types.PropertyGroup):
         global connectionCountLimit; connectionCountLimit = self.prop_connectionCountLimit
         global searchDistance; searchDistance = self.prop_searchDistance
         global clusterRadius; clusterRadius = self.prop_clusterRadius
+        global alignVertical; alignVertical = self.prop_alignVertical
         global elemGrps
         for i in range(len(elemGrps)):
             elemGrpNew = []
@@ -481,6 +489,7 @@ class bcb_panel(bpy.types.Panel):
         row = layout.row(); row.prop(props, "prop_connectionCountLimit")
         row = layout.row(); row.prop(props, "prop_searchDistance")
         row = layout.row(); row.prop(props, "prop_clusterRadius")
+        row = layout.row(); row.prop(props, "prop_alignVertical")
         
         layout.separator()
         row = layout.row(); row.label(text="Element Groups", icon="MOD_BUILD")
@@ -831,7 +840,6 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                         
     ### Find connections by vertex pairs
     connectsPair = []          # Stores both connected objects indices per connection
-    connectsLocs = []          # Stores locations of the connections
     count = 0
     for k in range(len(objs)):
         sys.stdout.write('\r' +"%d" %k)
@@ -879,49 +887,40 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                         pair.sort()
                         if pair not in connectsPair:
                             connectsPair.append(pair)
-                            if clusterRadius > 0: connectsLocs.append([co])
-                            else:                 connectsLocs.append([(objs[k].location +objs[l].location) /2])
                             connectCnt += 1
                             count += 1
                             if connectCnt == connectionCountLimit:
                                 if elemGrps[objsEGrp[k]][1] <= 1:
                                     qNextObj = 1
                                     break
-                        else:
-                            if clusterRadius > 0: connectsLocs[connectsPair.index(pair)].append(co)
-                            else:                 connectsLocs[connectsPair.index(pair)].append((objs[k].location +objs[l].location) /2)   # Not really necessary only needed for counting vertex pairs (items will be averaged later on)
                             
             if qNextObj: break
         
     print()
-    return connectsPair, connectsLocs
+    return connectsPair
 
 ################################################################################   
 
-def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair, connectsLocs):
+def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair):
     
     ### Delete connections with too few connected vertices
     if debug: print("Deleting connections with too few connected vertices...")
     
     connectsPairTmp = []
-    connectsLocsTmp = []
     connectCntOld = len(connectsPair)
     connectCnt = 0
     for i in range(len(connectsPair)):
         pair = connectsPair[i]
-        locs = connectsLocs[i]
-        vertPairCnt = len(connectsLocs[i]) /2
+        vertPairCnt = len(connectsPair[i]) /2
         reqVertexPairsObjA = elemGrps[objsEGrp[objs.index(objs[pair[0]])]][1]
         reqVertexPairsObjB = elemGrps[objsEGrp[objs.index(objs[pair[1]])]][1]
         if vertPairCnt >= reqVertexPairsObjA and vertPairCnt >= reqVertexPairsObjB:
             connectsPairTmp.append(pair)
-            connectsLocsTmp.append(locs)
             connectCnt += 1
     connectsPair = connectsPairTmp
-    connectsLocs = connectsLocsTmp
     
     print("%d connections skipped due to too few connecting vertices." %(connectCntOld -connectCnt))
-    return connectsPair, connectsLocs
+    return connectsPair
         
 ################################################################################   
 
@@ -959,6 +958,7 @@ def calculateContactAreaForConnections(objs, connectsPair):
     if debug: print("Calculating cross area for connections...")
     
     connectsArea = []
+    connectsLoc = []
     for k in range(len(connectsPair)):
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
@@ -979,66 +979,44 @@ def calculateContactAreaForConnections(objs, connectsPair):
         crossArea = overlapAreaX +overlapAreaY +overlapAreaZ
         connectsArea.append(crossArea)
         
-    return connectsArea
+        ### Use center of contact area boundary box as constraints location
+        centerX = max(bbAMin[0],bbBMin[0]) +(overlapX /2)
+        centerY = max(bbAMin[1],bbBMin[1]) +(overlapY /2)
+        centerZ = max(bbAMin[2],bbBMin[2]) +(overlapZ /2)
+        center = Vector((centerX, centerY, centerZ))
+        #center = (bbACenter +bbBCenter) /2     # Debug: Place constraints at the center of both elements like in bashi's addon
+        connectsLoc.append(center)
+        
+    return connectsArea, connectsLoc
 
 ################################################################################   
 
-def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsLocs, connectsArea):
+def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsArea, connectsLoc):
     
     ### Delete connections with zero contact area
     if debug: print("Deleting connections with zero contact area...")
     
     connectsPairTmp = []
-    connectsLocsTmp = []
     connectsAreaTmp = []
+    connectsLocTmp = []
     connectCntOld = len(connectsPair)
     connectCnt = 0
     for i in range(len(connectsPair)):
-        pair = connectsPair[i]
-        locs = connectsLocs[i]
-        crossArea = connectsArea[i]
-        if crossArea > 0.0001:
-            connectsPairTmp.append(pair)
-            connectsLocsTmp.append(locs)
-            connectsAreaTmp.append(crossArea)
+        if connectsArea[i] > 0.0001:
+            connectsPairTmp.append(connectsPair[i])
+            connectsAreaTmp.append(connectsArea[i])
+            connectsLocTmp.append(connectsLoc[i])
             connectCnt += 1
     connectsPair = connectsPairTmp
-    connectsLocs = connectsLocsTmp
     connectsArea = connectsAreaTmp
+    connectsLoc = connectsLocTmp
     
     print("%d connections skipped due to zero contact area." %(connectCntOld -connectCnt))
-    return connectsPair, connectsLocs, connectsArea
+    return connectsPair, connectsArea, connectsLoc
 
 ################################################################################   
 
-def calculateBoundaryBoxOfVertexPairs(connectsLocs):
-    
-    ### Calculate boundary box centers of valid vertex pairs per connection
-    if debug: print("Calculate boundary box centers of vertex pairs...")
-    
-    connectsLoc = []
-    for connectLocs in connectsLocs:
-        if len(connectLocs) > 1:
-            bbMin = connectLocs[0].copy()
-            bbMax = connectLocs[0].copy()
-            for connectLoc in connectLocs:
-                loc = connectLoc.copy()
-                if bbMax[0] < loc[0]: bbMax[0] = loc[0]
-                if bbMin[0] > loc[0]: bbMin[0] = loc[0]
-                if bbMax[1] < loc[1]: bbMax[1] = loc[1]
-                if bbMin[1] > loc[1]: bbMin[1] = loc[1]
-                if bbMax[2] < loc[2]: bbMax[2] = loc[2]
-                if bbMin[2] > loc[2]: bbMin[2] = loc[2]
-            bbCenter = (bbMin +bbMax) /2
-            connectsLoc.append(bbCenter)
-        else:
-            connectsLoc.append(connectLocs[0])
-        
-    return connectsLoc
-
-################################################################################   
-
-def createConnectionData(objsEGrp, connectsPair, connectsLoc):
+def createConnectionData(objsEGrp, connectsPair):
     
     ### Create connection data
     if debug: print("Creating connection data...")
@@ -1048,7 +1026,6 @@ def createConnectionData(objsEGrp, connectsPair, connectsLoc):
     constCnt = 0
     for i in range(len(connectsPair)):
         pair = connectsPair[i]
-        co = connectsLoc[i]
         ### Count constraints by connection type preset
         elemGrpA = objsEGrp[pair[0]]
         elemGrpB = objsEGrp[pair[1]]
@@ -1075,7 +1052,7 @@ def createConnectionData(objsEGrp, connectsPair, connectsLoc):
             constsConnect.append(i)
             constCnt += 2
     
-    return connectsPair, connectsLoc, connectsConsts, constsConnect
+    return connectsPair, connectsConsts, constsConnect
 
 ################################################################################   
 
@@ -1198,7 +1175,7 @@ def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, consts
                 
 ################################################################################   
     
-def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect):
+def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect):
     
     ### Set constraint settings
     print("Adding main constraint settings... (%d)" %len(connectsPair))
@@ -1590,17 +1567,15 @@ def execute():
             time_start_connections = time.time()
             
             ###### Find connections by vertex pairs
-            connectsPair, connectsLocs = findConnectionsByVertexPairs(objs, objsEGrp)
+            connectsPair = findConnectionsByVertexPairs(objs, objsEGrp)
             ###### Delete connections with too few connected vertices
-            connectsPair, connectsLocs = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair, connectsLocs)
+            connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
             ###### Calculate contact area for all connections
-            connectsArea = calculateContactAreaForConnections(objs, connectsPair)
+            connectsArea, connectsLoc = calculateContactAreaForConnections(objs, connectsPair)
             ###### Delete connections with zero contact area
-            connectsPair, connectsLocs, connectsArea = deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsLocs, connectsArea)
-            ###### Calculate boundary box center of valid vertex pairs per connection
-            connectsLoc = calculateBoundaryBoxOfVertexPairs(connectsLocs)
+            connectsPair, connectsArea, connectsLoc = deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsArea, connectsLoc)
             ###### Create connection data
-            connectsPair, connectsLoc, connectsConsts, constsConnect = createConnectionData(objsEGrp, connectsPair, connectsLoc)
+            connectsPair, connectsConsts, constsConnect = createConnectionData(objsEGrp, connectsPair)
             
             print('-- Time: %0.2f s\n' %(time.time()-time_start_connections))
             
@@ -1650,7 +1625,7 @@ def execute():
                         
         if len(emptyObjs) > 0:
             ###### Set constraint settings
-            setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect)
+            setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect)
             ###### Calculate mass for all mesh objects
             calculateMass(scene, objs, objsEGrp, childObjs)
             
