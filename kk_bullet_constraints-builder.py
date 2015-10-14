@@ -1,16 +1,19 @@
 ##################################################
-# Bullet Constraints Builder v1.3 by Kai Kostack #
+# Bullet Constraints Builder v1.4 by Kai Kostack #
 ##################################################
 
 ### Vars for constraint distribution
-searchDistance = 0.5            # 0.15    | Search distance to neighbor geometry
-constraintCountLimit = 1000       # 0       | Maximum count of constraints per object (0 = disabled)
+searchDistance = 0.5            # 0.15        | Search distance to neighbor geometry
+constraintCountLimit = 1000       # 100       | Maximum count of constraints per object (0 = disabled)
 
 ### Vars for constraint settings
 realWorldBreakingThresholdCompressive = 60  # 60      | Real world material compressive breaking threshold in N/mm^2
-realWorldBreakingThresholdTensile     = 20  # 20      | Real world material tensile breaking threshold in N/mm^2
-constraintType = 'FIXED'                    # 'FIXED' | Available: FIXED, POINT, HINGE, SLIDER, PISTON, GENERIC, GENERIC_SPRING, MOTOR
+realWorldBreakingThresholdTensile     = 10  # 20      | Real world material tensile breaking threshold in N/mm^2
 constraintUseBreaking = 1                   # 1       | Enables breaking
+constraintType = 'FIXED'                    # 'FIXED' | Available: FIXED, POINT, HINGE, SLIDER, PISTON, GENERIC, GENERIC_SPRING, MOTOR
+pillarGroup = "Pillars"                     #         | Name of group which contains only pillars (optional, overrides autodetection)  
+pillarGroupConstraintTypeTop = 'FIXED'      # 'FIXED' | Available: FIXED, POINT, HINGE, SLIDER, PISTON, GENERIC, GENERIC_SPRING, MOTOR
+pillarGroupConstraintTypeBottom = 'FIXED'   # 'FIXED' | Available: FIXED, POINT, HINGE, SLIDER, PISTON, GENERIC, GENERIC_SPRING, MOTOR
 
 ### Vars for volume calculation
 materialPreset = 'Concrete'      # 'Concrete' | See Blender rigid body tools for a list of available presets
@@ -23,56 +26,97 @@ from mathutils import Vector
 
 ##################################################  
 
+def calculateThreshold(obj, objConst):
+    """"""
+    ### Autodetect if pillar or girder and calculate breaking threshold from cross area
+    ### In case of a pillar use rather compressive threshold and in case of a girder the tensile one
+    try: grpPillarGroup = bpy.data.groups[pillarGroup]
+    except: grpPillarGroup = None
+    dim = obj.dimensions
+    # If X axis is the greatest (Girder detected)
+    if dim.x > dim.y and dim.x > dim.z:    
+        crossArea = dim.y *dim.z
+        breakingThreshold = crossArea *1000000 *realWorldBreakingThresholdTensile
+    # If Y axis is the greatest (Girder detected)
+    elif dim.y > dim.x and dim.y > dim.z:
+        crossArea = dim.x *dim.z
+        breakingThreshold = crossArea *1000000 *realWorldBreakingThresholdTensile
+    # If Z axis is the greatest (Pillar detected) also check if there is an extra group for pillars
+    else:
+        crossArea = dim.x *dim.y
+        breakingThreshold = crossArea *1000000 *realWorldBreakingThresholdCompressive
+    ### Now check if there is an extra group for pillars and deal with special cases
+    qPillar = 0
+    if grpPillarGroup and obj.name in bpy.data.groups[pillarGroup].objects:
+        qPillar = 1
+    elif (dim.z > dim.x and dim.z > dim.y):
+        qPillar = 2
+        # If the pillar is less then 1.5x as high as its width then it's considered to be no pillar
+        if dim.z < dim.x *1.5 or dim.z < dim.y *1.5: qPillar = 3
+    if qPillar:
+        if qPillar == 1: # group pillar
+            if objConst.location.z > obj.location.z: objConst.rigid_body_constraint.type = pillarGroupConstraintTypeTop
+            else: objConst.rigid_body_constraint.type = pillarGroupConstraintTypeBottom
+            elementType = 1
+        elif qPillar == 2: # autodetected pillar
+            elementType = 1
+        elif qPillar == 3: # no pillar
+            elementType = 2
+    else: elementType = 2
+        
+    return breakingThreshold, elementType
+    
+#######################
+
 def setConstraintSettings(objConst, empties):
     """"""
-    ### Calculate constraint threshold from real world thresholds for compressive or tensile force limits per mm^2
-    ### While calculating the area of the smallest possible cross section also interpret if it's a column or a girder
-    ### In case of a column use rather compressive threshold and in case of a girder the tensile one
-    dim1 = objConst.rigid_body_constraint.object1.dimensions
-    connectionCount = objConst.rigid_body_constraint.object1['conCount'] +objConst.rigid_body_constraint.object2['conCount']
-    if dim1.x > dim1.y and dim1.x > dim1.z:    # If X axis is the greatest (Girder)
-        crossArea1 = dim1.y *dim1.z
-        breakingThreshold1 = crossArea1 *1000000 *realWorldBreakingThresholdTensile
-        # Divide threshold by connection count to neighbor constraints to respect shared connection space
-        if connectionCount > 1: breakingThreshold1 /= connectionCount
-    elif dim1.y > dim1.x and dim1.y > dim1.z:  # If Y axis is the greatest (Girder)
-        crossArea1 = dim1.x *dim1.z
-        breakingThreshold1 = crossArea1 *1000000 *realWorldBreakingThresholdTensile
-        # Divide threshold by connection count to neighbor constraints to respect shared connection space
-        if connectionCount > 1: breakingThreshold1 /= connectionCount
-    else:                                      # If Z axis is the greatest (Column)
-        crossArea1 = dim1.x *dim1.y
-        breakingThreshold1 = crossArea1 *1000000 *realWorldBreakingThresholdCompressive
-        # For columns we don't divide by connection count
-    ### Do the same for the second object
-    dim2 = objConst.rigid_body_constraint.object2.dimensions
-    if dim2.x > dim2.y and dim2.x > dim2.z:    # If X axis is the greatest (Girder)
-        crossArea2 = dim2.y *dim2.z
-        breakingThreshold2 = crossArea2 *1000000 *realWorldBreakingThresholdTensile
-        # Divide threshold by connection count to neighbor constraints to respect shared connection space
-        if connectionCount > 1: breakingThreshold2 /= connectionCount
-    elif dim2.y > dim2.x and dim2.y > dim2.z:  # If Y axis is the greatest (Girder)
-        crossArea2 = dim2.x *dim2.z
-        breakingThreshold2 = crossArea2 *1000000 *realWorldBreakingThresholdTensile
-        # Divide threshold by connection count to neighbor constraints to respect shared connection space
-        if connectionCount > 1: breakingThreshold2 /= connectionCount
-    else:                                      # If Z axis is the greatest (Column)
-        crossArea2 = dim2.x *dim2.y
-        breakingThreshold2 = crossArea2 *1000000 *realWorldBreakingThresholdCompressive
-        # For columns we don't divide by connection count
-    # Use the weaker threshold of both connected elements
-    if breakingThreshold1 <= breakingThreshold2: breakingThreshold = breakingThreshold1
-    else:                                        breakingThreshold = breakingThreshold2
-    # Take also simulation steps into account (Threshold = F / Steps)
-    objConst.rigid_body_constraint.breaking_threshold = breakingThreshold /bpy.context.scene.rigidbody_world.steps_per_second
-    
-    # Override calculation with a fixed threshold for everything
-    #objConst.rigid_body_constraint.breaking_threshold = 300   # 30000     | Predefined breaking threshold
-
     ### Constraints settings
-    objConst.rigid_body_constraint.type = constraintType
     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+    objConst.rigid_body_constraint.type = constraintType
     
+    ### Calculate constraint threshold from real world thresholds for compressive or tensile force limits per mm^2
+    obj1 = objConst.rigid_body_constraint.object1
+    obj2 = objConst.rigid_body_constraint.object2
+    
+    if obj1 == None or obj2 == None: return obj1, obj2
+    
+    breakingThreshold1, elementType1 = calculateThreshold(obj1, objConst)
+    breakingThreshold2, elementType2 = calculateThreshold(obj2, objConst)
+    
+    # Store element type as object property (1 = pillar, 2 = other, girder, slab, wall etc.)
+    obj1['elemType'] = elementType1
+    obj2['elemType'] = elementType2
+    # Store breaking threshold sum and also take simulation steps into account (Threshold = F / Steps)
+    obj1['brkThreshSum'] = breakingThreshold1 /bpy.context.scene.rigidbody_world.steps_per_second
+    obj2['brkThreshSum'] = breakingThreshold2 /bpy.context.scene.rigidbody_world.steps_per_second
+    
+    # Flag breaking threshold for later balancing
+    objConst.rigid_body_constraint.breaking_threshold = 999999999
+    
+    # Add to Bullet group in case someone removed it in the mean time
+    try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst)
+    except: pass
+
+    return obj1, obj2
+   
+#######################   
+   
+def balanceThreshold(obj, objConsts):
+    """"""
+    ### Balance breaking threshold by splitting it according to shared connection space (based on cross section area)   
+    if obj['elemType'] == 2:  # Girder, slab, wall etc.
+        breakingThreshold = obj['brkThreshSum'] #/len(objConsts)
+    elif obj['elemType'] == 1:  # Pillar
+        breakingThreshold = obj['brkThreshSum'] #/len(objConsts) ### Debug-Test
+    
+    ### Now we got the final breaking threshold
+    for objConst in objConsts:
+        breakingThresholdItem = objConst.rigid_body_constraint.breaking_threshold
+        # Overwrite threshold only if weaker than the already set one
+        if breakingThreshold < breakingThresholdItem:
+            objConst.rigid_body_constraint.breaking_threshold = breakingThreshold
+        
+#######################    
     
 def run():
     """"""
@@ -82,6 +126,8 @@ def run():
     
     time_start = time.time()
     
+    print("\nStarting...")
+        
     # Leave edit mode
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
@@ -90,63 +136,28 @@ def run():
     bpy.ops.object.make_single_user(object=True, obdata=True, material=False, texture=False, animation=False)
 
     ### Create object lists of selected objects
+    print("Gathering objects...")
     objs = []
     empties = []
     for obj in bpy.data.objects:
         if obj.select and not obj.hide and obj.is_visible(scene):
             if obj.type == 'MESH':
+                sys.stdout.write('\r' +"%s      " %obj.name)
                 objs.append(obj)
             elif obj.type == 'EMPTY':
                 if obj.rigid_body_constraint != None:
+                    sys.stdout.write('\r' +"%s      " %obj.name)
                     empties.append(obj)
         
-        
-    ### If constraint emptys are detected then only update constraint settings
-    if len(empties) > 0:
-        print("\nOnly updating %d selected constraints..." %len(empties))
-        
-        count = 0
-        for obj in empties:
-            sys.stdout.write('\r' +"%d" %count)
             
-            ###### Own function
-            setConstraintSettings(obj, empties)
-            count += 1
-    
-        ### Calculate a mass for all mesh objects
-        print("\nUpdating masses from preset material...")
-        for obj in objs:
-            if obj.rigid_body != None:
-                obj.select = 1
-        if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
-        else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
-        
-        # Deselect all objects
-        bpy.ops.object.select_all(action='DESELECT')
-        
-        print('\nConstraints:', count, '- Time total: %0.2f s' %(time.time()-time_start))
-        print('Done.')
-       
-        
     ### If no constraint empties are detected and instead only meshes then start building new ones
-    elif len(objs) > 0:
-        print("\nStarting building...")
+    if len(objs) > 0:
+        print("\nStarting building process...")
         
         # Create or reset connection count per object property
         for obj in objs:
             obj['conCount'] = 0
-            
-        # Deselect all objects
-        bpy.ops.object.select_all(action='DESELECT')
-        
-        ### Calculate a mass for all mesh objects
-        print("\nCalculating masses from preset material...")
-        for obj in objs:
-            if obj.rigid_body != None:
-                obj.select = 1
-        if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
-        else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
-                        
+                       
         # Deselect all objects
         bpy.ops.object.select_all(action='DESELECT')
         
@@ -284,33 +295,74 @@ def run():
                 obj2['conCount'] += 1
                 
                 i += 1
-        print()
         
-        ### If objects are set continue to calculate other constraint settings
+        print(' - Time: %0.2f s' %(time.time()-time_start_building))
+
+            
+    ### If constraint emptys are detected then update constraint settings
+    if len(empties) > 0:
+        print("\nUpdating %d selected constraints..." %len(empties))
+        
+        ### Create element list
+        objs = []
+        for objConst in empties:
+            obj1 = objConst.rigid_body_constraint.object1
+            obj2 = objConst.rigid_body_constraint.object2
+            if obj1 not in objs: objs.append(obj1)
+            if obj2 not in objs: objs.append(obj2)
+            
+        ### Set constraint settings and create connected constraints list per element
+        objsConsts = []
+        for obj in objs:
+            objsConsts.append([])
         count = 0
-        for obj in empties:
+        for objConst in empties:
             sys.stdout.write('\r' +"%d" %count)
             
             ###### Own function
-            setConstraintSettings(obj, empties)
+            obj1, obj2 = setConstraintSettings(objConst, empties)
+            
+            objsConsts[objs.index(obj1)].append(objConst)
+            objsConsts[objs.index(obj2)].append(objConst)
             count += 1
         
-        # Finished   
-        print(' - Time: %0.2f s' %(time.time()-time_start_building))
-
+        ### Balance breaking thresholds by splitting them according to shared connection space (based on cross section area)   
+        print("\nBalancing breaking thresholds for %d objects..." %len(objs))
+        count = 0
+        for obj in objs:
+            if obj != None:
+                sys.stdout.write('\r' +"%d" %count)
+            
+                objConsts = objsConsts[objs.index(obj)]
+                
+                ###### Own function
+                balanceThreshold(obj, objConsts)
+            
+                count += 1
+        
+        ### Calculate a mass for all mesh objects
+        print("\nCalculating masses from preset material...")
+        for obj in objs:
+            if obj != None:
+                if obj.rigid_body != None:
+                    obj.select = 1
+        if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
+        else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
+        
         # Deselect all objects
         bpy.ops.object.select_all(action='DESELECT')
         
         # Select all new constraint empties
         for obj in empties: obj.select = 1
-                                           
-        print('\nConstraints:', count, '- Time total: %0.2f s' %(time.time()-time_start))
-        print('Done.')
-            
+        
+        print('\nConstraints:', len(empties), '- Time total: %0.2f s' %(time.time()-time_start))
+        print('Done.')       
+
             
     else:
         print('\nNeither mesh objects to connect nor constraint empties for updating selected.')       
         print('Nothing done.')       
+
 
 
 if __name__ == "__main__":
