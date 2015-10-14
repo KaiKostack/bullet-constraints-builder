@@ -1,10 +1,14 @@
 ##################################################
-# Bullet Constraints Builder v1.4 by Kai Kostack #
+# Bullet Constraints Builder v1.5 by Kai Kostack #
 ##################################################
 
 ### Vars for constraint distribution
-searchDistance = 0.5            # 0.15        | Search distance to neighbor geometry
-constraintCountLimit = 1000       # 100       | Maximum count of constraints per object (0 = disabled)
+constraintCountLimit = 1000  # 150   | Maximum count of constraints per object (0 = disabled)
+searchDistance = 0.9         # 0.10  | Search distance to neighbor geometry
+clusterRadius = 0.9          # 0.40  | Radius for bundling close constraints into clusters (0 = clusters disabled)
+ReqVertexPairs = 3           # 3     | How many vertex connections between an object pair are required to create an constraint
+ReqVertexPairsToPillars = 2  # 2     | How many vertex connections between an object pair of whom one is a pillar are required to create an constraint
+                             # This can help to ensure there is an actual surface on surface connection between both objects (for at least 3 verts you can expect a shared surface).
 
 ### Vars for constraint settings
 realWorldBreakingThresholdCompressive = 60  # 60      | Real world material compressive breaking threshold in N/mm^2
@@ -28,41 +32,34 @@ from mathutils import Vector
 
 def calculateThreshold(obj, objConst):
     """"""
-    ### Autodetect if pillar or girder and calculate breaking threshold from cross area
-    ### In case of a pillar use rather compressive threshold and in case of a girder the tensile one
     try: grpPillarGroup = bpy.data.groups[pillarGroup]
     except: grpPillarGroup = None
+    
+    ### Find smallest cross section area
     dim = obj.dimensions
-    # If X axis is the greatest (Girder detected)
-    if dim.x > dim.y and dim.x > dim.z:    
-        crossArea = dim.y *dim.z
-        breakingThreshold = crossArea *1000000 *realWorldBreakingThresholdTensile
-    # If Y axis is the greatest (Girder detected)
-    elif dim.y > dim.x and dim.y > dim.z:
-        crossArea = dim.x *dim.z
-        breakingThreshold = crossArea *1000000 *realWorldBreakingThresholdTensile
-    # If Z axis is the greatest (Pillar detected) also check if there is an extra group for pillars
-    else:
-        crossArea = dim.x *dim.y
-        breakingThreshold = crossArea *1000000 *realWorldBreakingThresholdCompressive
-    ### Now check if there is an extra group for pillars and deal with special cases
-    qPillar = 0
+    if dim.x > dim.y and dim.x > dim.z:   crossArea = dim.y *dim.z
+    elif dim.y > dim.x and dim.y > dim.z: crossArea = dim.x *dim.z
+    else:                                 crossArea = dim.x *dim.y
+         
+    ### Check if pillar or girder and apply respective settings
+    ### In case of a pillar use rather compressive threshold and in case of a girder the tensile one
     if grpPillarGroup and obj.name in bpy.data.groups[pillarGroup].objects:
-        qPillar = 1
-    elif (dim.z > dim.x and dim.z > dim.y):
-        qPillar = 2
-        # If the pillar is less then 1.5x as high as its width then it's considered to be no pillar
-        if dim.z < dim.x *1.5 or dim.z < dim.y *1.5: qPillar = 3
-    if qPillar:
-        if qPillar == 1: # group pillar
-            if objConst.location.z > obj.location.z: objConst.rigid_body_constraint.type = pillarGroupConstraintTypeTop
-            else: objConst.rigid_body_constraint.type = pillarGroupConstraintTypeBottom
-            elementType = 1
-        elif qPillar == 2: # autodetected pillar
-            elementType = 1
-        elif qPillar == 3: # no pillar
-            elementType = 2
-    else: elementType = 2
+        # Pillar
+        elementType = 1
+        # Convert real world breaking threshold to bullet breaking threshold
+        breakingThreshold = crossArea *1000000 *realWorldBreakingThresholdCompressive
+        # Set constraint typ for top or bottom connection
+        if objConst.location.z > obj.location.z: objConst.rigid_body_constraint.type = pillarGroupConstraintTypeTop
+        else: objConst.rigid_body_constraint.type = pillarGroupConstraintTypeBottom
+    else:
+        # Girder, slab, wall etc.
+        elementType = 2
+        # Convert real world breaking threshold to bullet breaking threshold
+        breakingThreshold = crossArea *1000000 *realWorldBreakingThresholdTensile
+        objConst.rigid_body_constraint.type = constraintType
+    
+    # Take simulation steps into account (Threshold = F / Steps)    
+    breakingThreshold /= bpy.context.scene.rigidbody_world.steps_per_second
         
     return breakingThreshold, elementType
     
@@ -82,47 +79,35 @@ def setConstraintSettings(objConst, empties):
     
     breakingThreshold1, elementType1 = calculateThreshold(obj1, objConst)
     breakingThreshold2, elementType2 = calculateThreshold(obj2, objConst)
+    # Store breaking threshold sum (all connections combined over the cross section)
+    obj1['brkThreshSum'] = breakingThreshold1
+    obj2['brkThreshSum'] = breakingThreshold2
+    # Always use weaker breaking threshold of both objects for the connecting constraint
+    if breakingThreshold1 <= breakingThreshold2: breakingThreshold = breakingThreshold1
+    else:                                        breakingThreshold = breakingThreshold2 
     
-    # Store element type as object property (1 = pillar, 2 = other, girder, slab, wall etc.)
-    obj1['elemType'] = elementType1
-    obj2['elemType'] = elementType2
-    # Store breaking threshold sum and also take simulation steps into account (Threshold = F / Steps)
-    obj1['brkThreshSum'] = breakingThreshold1 /bpy.context.scene.rigidbody_world.steps_per_second
-    obj2['brkThreshSum'] = breakingThreshold2 /bpy.context.scene.rigidbody_world.steps_per_second
+    # If it's not a connection between two pillars:
+    # Divide breaking threshold by connection count, this should emulate the shared connection space (based on cross section area).
+    #if elementType1 != 1 or elementType2 != 1:
+    #    breakingThreshold /= 4     # Because of 4 connecting sides, earlier I used: objConst['clusterConCount']
     
-    # Flag breaking threshold for later balancing
-    objConst.rigid_body_constraint.breaking_threshold = 999999999
-    
+    objConst.rigid_body_constraint.breaking_threshold = breakingThreshold
+
     # Add to Bullet group in case someone removed it in the mean time
     try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst)
     except: pass
 
     return obj1, obj2
    
-#######################   
-   
-def balanceThreshold(obj, objConsts):
-    """"""
-    ### Balance breaking threshold by splitting it according to shared connection space (based on cross section area)   
-    if obj['elemType'] == 2:  # Girder, slab, wall etc.
-        breakingThreshold = obj['brkThreshSum'] #/len(objConsts)
-    elif obj['elemType'] == 1:  # Pillar
-        breakingThreshold = obj['brkThreshSum'] #/len(objConsts) ### Debug-Test
-    
-    ### Now we got the final breaking threshold
-    for objConst in objConsts:
-        breakingThresholdItem = objConst.rigid_body_constraint.breaking_threshold
-        # Overwrite threshold only if weaker than the already set one
-        if breakingThreshold < breakingThresholdItem:
-            objConst.rigid_body_constraint.breaking_threshold = breakingThreshold
-        
 #######################    
     
 def run():
     """"""
+    pi = 3.1415927
     bpy.context.tool_settings.mesh_select_mode = True, False, False
     scene = bpy.context.scene
-    pi = 3.1415927
+    try: grpPillarGroup = bpy.data.groups[pillarGroup]
+    except: grpPillarGroup = None
     
     time_start = time.time()
     
@@ -141,6 +126,9 @@ def run():
     empties = []
     for obj in bpy.data.objects:
         if obj.select and not obj.hide and obj.is_visible(scene):
+            # Clear object properties
+            for key in obj.keys(): del obj[key]
+            # Detect if mesh or empty (constraint)
             if obj.type == 'MESH':
                 sys.stdout.write('\r' +"%s      " %obj.name)
                 objs.append(obj)
@@ -154,10 +142,6 @@ def run():
     if len(objs) > 0:
         print("\nStarting building process...")
         
-        # Create or reset connection count per object property
-        for obj in objs:
-            obj['conCount'] = 0
-                       
         # Deselect all objects
         bpy.ops.object.select_all(action='DESELECT')
         
@@ -175,7 +159,7 @@ def run():
             
             kd = mathutils.kdtree.KDTree(len(me.vertices))
             for i, v in enumerate(me.vertices):
-                loc = mat *v.co       # Multiply matrix by vertex to get global coordinates
+                loc = mat *v.co       # Multiply matrix by vertex coordinates to get global coordinates
                 kd.insert(loc, i)
             kd.balance()
             kdsMeComp.append(kd)
@@ -184,8 +168,9 @@ def run():
         print("Building connection map for %d objects..." %len(objs))
         time_start_connections = time.time()
     
-        objsCons = []   # will store object indices and locations of the constraints to be created
-        conPairs = []
+        consPair = []   # Stores both connected objects indices per constraint
+        consLoc = []    # Stores locations of the constraints
+        consVertPairCnt = []    # Stores number of vertex pairs found between each object pair
         count = 0
         for k in range(len(objs)):
             sys.stdout.write('\r' +"%d" %k)
@@ -194,7 +179,6 @@ def run():
             obj = objs[k]
             mat = obj.matrix_world
             me = obj.data
-            objsCons.append([])
                     
             ### Find closest objects via kd-tree
             co_find = obj.location
@@ -205,18 +189,18 @@ def run():
             else:
                 for (co, index, dist) in kdObjs.find_range(co_find, 999999):
                     aIndex.append(index)#; aCo.append(co); aDist.append(dist)
-            aIndex = aIndex[1:] # Remove first item because it's the same as k (zero distance)
+            aIndex = aIndex[1:] # Remove first item because it's the same as co_find (zero distance)
             
             for m in range(len(me.vertices)):
                 vert = me.vertices[m]
-                co_find = mat *vert.co     # Multiply matrix by vertex to get global coordinates
+                co_find = mat *vert.co     # Multiply matrix by vertex coordinates to get global coordinates
                             
                 # Loops for comparison object
                 for j in range(len(aIndex)):
                     l = aIndex[j]
                     
                     if k != l:
-                        # Use object specific kd-tree
+                        # Use object specific vertex kd-tree
                         kdMeComp = kdsMeComp[l]
                         
                         ### Find closest vertices via kd-tree
@@ -224,19 +208,48 @@ def run():
                             coComp = kdMeComp.find(co_find)[0]    # Find coordinates of the closest vertex
                             co = (co_find +coComp) /2             # Calculate center of both vertices
                             
-                            ### create connection if not already existing
-                            if (k, l) not in conPairs and (l, k) not in conPairs:
-                                objsCons[-1:][0].append((l, co))
-                                conPairs.append((k, l))
+                            ### Create connection if not already existing
+                            conCount = 0
+                            pair = [k, l]
+                            pair.sort()
+                            if pair not in consPair:
+                                consPair.append(pair)
+                                if clusterRadius > 0: consLoc.append(co)
+                                else:                 consLoc.append((objs[k].location +objs[l].location) /2)
+                                consVertPairCnt.append(.5)
+                                conCount += 1
                                 count += 1
-                                if len(objsCons[-1:][0]) == constraintCountLimit:
-                                    qNextObj = 1
-                                    break
-                if qNextObj: break             
+                                if conCount == constraintCountLimit:
+                                    if ReqVertexPairs <= 1:
+                                        qNextObj = 1
+                                        break
+                            else:
+                                consVertPairCnt[consPair.index(pair)] += .5
+                if qNextObj: break
         
         print(' - Time: %0.2f s' %(time.time()-time_start_connections))
-           
-                    
+        
+        ### Delete connections with too few connected vertices
+        ### With one exception: Connections to pillars need only one vertex pair
+        if ReqVertexPairs > 1:
+            consPairTmp = []
+            consLocTmp = []
+            countOld = count
+            count = 0
+            for i in range(len(consPair)):
+                pair = consPair[i]
+                co = consLoc[i]
+                if consVertPairCnt[i] >= ReqVertexPairs \
+                or (grpPillarGroup and (objs[pair[0]].name in bpy.data.groups[pillarGroup].objects \
+                or objs[pair[1]].name in bpy.data.groups[pillarGroup].objects) \
+                and consVertPairCnt[i] >= ReqVertexPairsToPillars):
+                    consPairTmp.append(pair)
+                    consLocTmp.append(co)
+                    count += 1
+            consPair = consPairTmp
+            consLoc = consLocTmp
+            print("%d connections skipped due to too few connecting vertices." %(countOld -count))
+                                
         ###### Main building part
         print("Building %d empties..." %count)
         time_start_building = time.time()
@@ -269,37 +282,62 @@ def run():
                 if obj.select and obj.is_visible(scene):
                     if obj.type == 'EMPTY':
                         empties.append(obj)
-                        
+        
+        ### Bundling close empties into clusters, merge locations and count connections per cluster
+        if clusterRadius > 0:
+            print("Bundling close empties into clusters...")
+            ### Build kd-tree for constraint locations
+            kdObjs = mathutils.kdtree.KDTree(len(consLoc))
+            for i, loc in enumerate(consLoc):
+                kdObjs.insert(loc, i)
+            kdObjs.balance()
+            clustersCons = []   # Stores all constraints indices per cluster
+            clustersLoc = []    # Stores the location of each cluster
+            consIdx = []
+            for i in range(len(consLoc)):
+                consIdx.append(i)
+            while len(consIdx) > 0:
+                ### Find closest objects via kd-tree (zero distance start item included)
+                co_find = consLoc[consIdx[0]]
+                aIndex = []; aCo = []#; aDist = [];
+                for (co, index, dist) in kdObjs.find_range(co_find, clusterRadius):
+                    aIndex.append(index); aCo.append(co)#; aDist.append(dist)
+                
+                ### Calculate average location of all constraints found in cluster radius
+                ### (Cluster locations can be fuzzy because of "first come, first served" method if constraints are scattered all over the place.
+                ### This however could be improved by more clever averaging, like only merge two constraints at a time and doing multiple loops.)
+                clustersCons.append([])
+                loc = Vector((0,0,0))
+                for l in range(len(aIndex)):
+                    if aIndex[l] in consIdx:
+                        clustersCons[-1:][0].append(aIndex[l])
+                        consIdx.remove(aIndex[l])
+                        loc += aCo[l]
+                loc /= len(clustersCons[-1:][0])
+                clustersLoc.append(loc)
+            ### Apply cluster locations to constraints
+            for l in range(len(clustersCons)):
+                for k in clustersCons[l]:
+                    consLoc[k] = clustersLoc[l]
+                    empties[k]['clusterConCount'] = len(clustersCons[l])
+        else:
+            for empty in empties:
+                empty['clusterConCount'] = 1
+                                
         ### Add constraint settings to empties
-        i = 0
-        for k in range(len(objs)):
-            cons = objsCons[k]
-            
-            for l in range(len(cons)):
-                sys.stdout.write('\r' +"%d" %i)
+        print("Add constraint settings to empties...")
+        for k in range(len(empties)):
+            sys.stdout.write('\r' +"%d" %k)
                 
-                obj = objs[cons[l][0]]
-                loc = cons[l][1]
-               
-                objConst = empties[i]
-                objConst.location = loc
-                #objConst.empty_draw_type = 'PLAIN_AXES'
-                
-                obj1 = objs[k]
-                obj2 = obj
-                
-                objConst.rigid_body_constraint.object1 = obj1
-                objConst.rigid_body_constraint.object2 = obj2
-                
-                obj1['conCount'] += 1
-                obj2['conCount'] += 1
-                
-                i += 1
+            objConst = empties[k]
+            objConst.location = consLoc[k]
+            objConst.rigid_body_constraint.object1 = objs[consPair[k][0]]
+            objConst.rigid_body_constraint.object2 = objs[consPair[k][1]]
         
         print(' - Time: %0.2f s' %(time.time()-time_start_building))
 
             
-    ### If constraint emptys are detected then update constraint settings
+    ### If constraint empties are detected then update constraint settings
     if len(empties) > 0:
         print("\nUpdating %d selected constraints..." %len(empties))
         
@@ -325,21 +363,7 @@ def run():
             objsConsts[objs.index(obj1)].append(objConst)
             objsConsts[objs.index(obj2)].append(objConst)
             count += 1
-        
-        ### Balance breaking thresholds by splitting them according to shared connection space (based on cross section area)   
-        print("\nBalancing breaking thresholds for %d objects..." %len(objs))
-        count = 0
-        for obj in objs:
-            if obj != None:
-                sys.stdout.write('\r' +"%d" %count)
-            
-                objConsts = objsConsts[objs.index(obj)]
                 
-                ###### Own function
-                balanceThreshold(obj, objConsts)
-            
-                count += 1
-        
         ### Calculate a mass for all mesh objects
         print("\nCalculating masses from preset material...")
         for obj in objs:
