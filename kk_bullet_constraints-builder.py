@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.70 #
+# Bullet Constraints Builder v1.71 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -30,6 +30,7 @@
 ### Vars for constraint distribution
 withGUI = 1    # Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
 
+stepsPerSecond = 200         # 200   | Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable)
 distanceTolerance = 0.05     # 0.05  | Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
 constraintUseBreaking = 1    # 1     | Enables breaking for all constraints
 connectionCountLimit = 0     # 0     | Maximum count of connections per object pair (0 = disabled)
@@ -37,18 +38,19 @@ searchDistance = 0.02        # 0.02  | Search distance to neighbor geometry
 clusterRadius = 0.4          # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
 alignVertical = 0.9          # 0.9   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
                              #       | Internally X and Y components of the directional vector will be reduced by this factor, should always be < 1 to make horizontal connections still possible.
-useAccurateArea = 1          # 1     | Enables accurate contact area calculation using booleans (only works correct with solid i.e. manifold objects, recommended for truss structures or steel constructions in general)
+useAccurateArea = 0          # 1     | Enables accurate contact area calculation using booleans (only works correct with solid i.e. manifold objects, recommended for truss structures or steel constructions in general)
                              #       | If disabled a simpler boundary box intersection approach is used (only recommended for concrete constructions without diagonal elements)
+minimumElementSize = 0       # 0.2   | Delete connections whose elements are too small and make them parents instead (this can be helpful to increase performance on models with unrelevant detail such as screws)
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [ \
 # 0          1    2           3        4   5     6    7    8     9
 # Name       RVP  Mat.preset  Density  CT  BTC   BTT  Bev. Scale facing
-[ "",        1,   "Concrete", 0,       5,  20,   5,   0,   .95,  0      ],   # Defaults to be used when element is not part of any element group
-[ "Columns", 1,   "Concrete", 0,       5,  20,   5,   0,   .95,  0      ],
-[ "Girders", 1,   "Concrete", 0,       5,  20,   5,   0,   .95,  0      ],
-[ "Walls",   1,   "Concrete", 0,       5,  20,   5,   0,   .95,  0      ],
-[ "Slabs",   1,   "Concrete", 0,       5,  20,   5,   0,   .95,  0      ]
+[ "",        1,   "Concrete", 0,       5,  30,   10,   0,   .95,  0      ],   # Defaults to be used when element is not part of any element group
+[ "Columns", 1,   "Concrete", 0,       5,  30,   10,   0,   .95,  0      ],
+[ "Girders", 1,   "Concrete", 0,       5,  30,   10,   0,   .95,  0      ],
+[ "Walls",   1,   "Concrete", 0,       5,  30,   10,   0,   .95,  0      ],
+[ "Slabs",   1,   "Concrete", 0,       5,  30,   10,   0,   .95,  0      ]
 ]
 
 # Column descriptions (in order from left to right):
@@ -62,8 +64,8 @@ elemGrps = [ \
 # Connection Type       | Connection type ID for the constraint presets defined by this script, see list below.
 # Break.Thresh.Compres. | Real world material compressive breaking threshold in N/mm^2.
 # Break.Thresh.Tensile  | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
-# Bevel                 | Use beveling for elements to avoid `Jenga0
-# Scale                 | Apply scaling factor on elements to avoid `Jenga
+# Bevel                 | Use beveling for elements to avoid `JengaÂÂ´´ effect (uses hidden collision meshes)
+# Scale                 | Apply scaling factor on elements to avoid `JengaÂÂ´´ effect (uses hidden collision meshes)
 # Facing                | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
 
 # Connection types:
@@ -91,7 +93,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 7, 0),
+    "version": (1, 7, 1),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -112,6 +114,7 @@ def storeConfigDataInScene(scene):
     ### Store menu config data in scene
     if debug: print("Storing menu config data in scene...")
     
+    scene["bcb_prop_stepsPerSecond"] = stepsPerSecond
     scene["bcb_prop_distanceTolerance"] = distanceTolerance
     scene["bcb_prop_constraintUseBreaking"] = constraintUseBreaking
     scene["bcb_prop_connectionCountLimit"] = connectionCountLimit
@@ -134,26 +137,43 @@ def storeConfigDataInScene(scene):
 def getConfigDataFromScene(scene):
     
     ### Get menu config data from scene
-    if debug: print("Getting menu config data from scene...")
+    print("Getting menu config data from scene...")
     
     props = bpy.context.window_manager.bcb
+    if "bcb_prop_stepsPerSecond" in scene.keys():
+        global stepsPerSecond;
+        try: stepsPerSecond = props.prop_stepsPerSecond = scene["bcb_prop_stepsPerSecond"]
+        except: pass
     if "bcb_prop_distanceTolerance" in scene.keys():
-        global distanceTolerance; distanceTolerance = props.prop_distanceTolerance = scene["bcb_prop_distanceTolerance"]
+        global distanceTolerance;
+        try: distanceTolerance = props.prop_distanceTolerance = scene["bcb_prop_distanceTolerance"]
+        except: pass
     if "bcb_prop_constraintUseBreaking" in scene.keys():
-        global constraintUseBreaking; constraintUseBreaking = props.prop_constraintUseBreaking = scene["bcb_prop_constraintUseBreaking"]
+        global constraintUseBreaking
+        try: constraintUseBreaking = props.prop_constraintUseBreaking = scene["bcb_prop_constraintUseBreaking"]
+        except: pass
     if "bcb_prop_connectionCountLimit" in scene.keys():
-        global connectionCountLimit; connectionCountLimit = props.prop_connectionCountLimit = scene["bcb_prop_connectionCountLimit"]
+        global connectionCountLimit
+        try: connectionCountLimit = props.prop_connectionCountLimit = scene["bcb_prop_connectionCountLimit"]
+        except: pass
     if "bcb_prop_searchDistance" in scene.keys():
-        global searchDistance; searchDistance = props.prop_searchDistance = scene["bcb_prop_searchDistance"]
+        global searchDistance
+        try: searchDistance = props.prop_searchDistance = scene["bcb_prop_searchDistance"]
+        except: pass
     if "bcb_prop_clusterRadius" in scene.keys():
-        global clusterRadius; clusterRadius = props.prop_clusterRadius = scene["bcb_prop_clusterRadius"]
+        global clusterRadius
+        try: clusterRadius = props.prop_clusterRadius = scene["bcb_prop_clusterRadius"]
+        except: pass
     if "bcb_prop_alignVertical" in scene.keys():
-        global alignVertical; alignVertical = props.prop_alignVertical = scene["bcb_prop_alignVertical"]
+        global alignVertical
+        try: alignVertical = props.prop_alignVertical = scene["bcb_prop_alignVertical"]
+        except: pass
             
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     if "bcb_prop_elemGrps" in scene.keys():
         global elemGrps
-        elemGrpsProp = scene["bcb_prop_elemGrps"]
+        try: elemGrpsProp = scene["bcb_prop_elemGrps"]
+        except: pass
         elemGrpsInverted = []
         for i in range(len(elemGrpsProp[0])):
             column = []
@@ -164,7 +184,7 @@ def getConfigDataFromScene(scene):
     
 ################################################################################   
 
-def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect):
+def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect):
     
     ### Store build data in scene
     if debug: print("Storing build data in scene...")
@@ -179,6 +199,8 @@ def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsP
         scene["bcb_childObjs"] = [obj.name for obj in childObjs]
     if connectsPair != None:
         scene["bcb_connectsPair"] = connectsPair
+    if connectsPairParent != None:
+        scene["bcb_connectsPairParent"] = connectsPairParent
     if connectsLoc != None:
         scene["bcb_connectsLoc"] = connectsLoc
     if connectsArea != None:
@@ -193,7 +215,7 @@ def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsP
 def getBuildDataFromScene(scene):
     
     ### Get build data from scene
-    if debug: print("Getting build data from scene...")
+    print("Getting build data from scene...")
     
     ### Prepare scene object dictionaries by type to be used for faster item search (optimization)
     scnObjs = {}
@@ -203,30 +225,38 @@ def getBuildDataFromScene(scene):
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
 
     ### Get data from scene
-    names = scene["bcb_objs"]
-    try: objs = [scnObjs[name] for name in names]
-    except: objs = []; print("Error: BCB related object(s) not found, rebuilding constraints is required.")
-    #objsEGrp = scene["bcb_objsEGrp"]    # Not required for building only for clearAllDataFromScene(), index will be renewed on update
-    names = scene["bcb_emptyObjs"]
-    try: emptyObjs = [scnEmptyObjs[name] for name in names]
-    except: emptyObjs = []; print("Error: BCB related object(s) not found, rebuilding constraints is required.")
-    names = scene["bcb_childObjs"]
-    try: childObjs = [scnObjs[name] for name in names]
-    except: childObjs = []; print("Error: BCB related object(s) not found, rebuilding constraints is required.")
-    connectsPair = scene["bcb_connectsPair"]
-    connectsLoc = scene["bcb_connectsLoc"]
-    connectsArea = scene["bcb_connectsArea"]
-    connectsConsts = scene["bcb_connectsConsts"]
-    constsConnect = scene["bcb_constsConnect"]
+    try: names = scene["bcb_objs"]
+    except: names = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    objs = [scnObjs[name] for name in names]
+    #try: objsEGrp = scene["bcb_objsEGrp"]    # Not required for building only for clearAllDataFromScene(), index will be renewed on update
+    #except: objsEGrp = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    try: names = scene["bcb_emptyObjs"]
+    except: names = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    emptyObjs = [scnEmptyObjs[name] for name in names]
+    try: names = scene["bcb_childObjs"]
+    except: names = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    childObjs = [scnObjs[name] for name in names]
+    try: connectsPair = scene["bcb_connectsPair"]
+    except: connectsPair = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    try: connectsPairParent = scene["bcb_connectsPairParent"]
+    except: connectsPairParent = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    try: connectsLoc = scene["bcb_connectsLoc"]
+    except: connectsLoc = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    try: connectsArea = scene["bcb_connectsArea"]
+    except: connectsArea = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    try: connectsConsts = scene["bcb_connectsConsts"]
+    except: connectsConsts = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    try: constsConnect = scene["bcb_constsConnect"]
+    except: constsConnect = []; print("Error: BCB related property not found, rebuilding constraints is required.")
     
-    return objs, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect
+    return objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect
 
 ################################################################################   
 
 def clearAllDataFromScene(scene):
     
-    ### Clear all data related to Bullet Constraint Builder from scene
-    if debug: print("Clearing all data related to Bullet Constraint Builder from scene...")
+    ### Clear all data related to Bullet Constraints Builder from scene
+    print("Clearing all data related to Bullet Constraints Builder from scene...")
     
     ### Prepare scene object dictionaries by type to be used for faster item search (optimization)
     scnObjs = {}
@@ -236,16 +266,19 @@ def clearAllDataFromScene(scene):
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
 
     ### Get data from scene
-    objsEGrp = scene["bcb_objsEGrp"]
-    objsNames = scene["bcb_objs"]
-    try: objs = [scnObjs[name] for name in objsNames]
-    except: objs = []; print("Error: BCB related object(s) not found, cleanup may be incomplete.")
-    names = scene["bcb_emptyObjs"]
-    try: emptyObjs = [scnEmptyObjs[name] for name in names]
-    except: emptyObjs = []; print("Error: BCB related object(s) not found, cleanup may be incomplete.")
-    names = scene["bcb_childObjs"]
-    try: childObjs = [scnObjs[name] for name in names]
-    except: childObjs = []; print("Error: BCB related object(s) not found, cleanup may be incomplete.")
+    try: objsEGrp = scene["bcb_objsEGrp"]
+    except: objsEGrp = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    try: objsNames = scene["bcb_objs"]
+    except: objsNames = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    objs = [scnObjs[name] for name in objsNames]
+    try: names = scene["bcb_emptyObjs"]
+    except: names = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    emptyObjs = [scnEmptyObjs[name] for name in names]
+    try: names = scene["bcb_childObjs"]
+    except: names = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    childObjs = [scnObjs[name] for name in names]
+    try: connectsPairParent = scene["bcb_connectsPairParent"]
+    except: connectsPairParent = []; print("Error: BCB related property not found, cleanup may be incomplete.")
     
     ### Store layer settings and activate all layers
     layers = []
@@ -253,10 +286,18 @@ def clearAllDataFromScene(scene):
         layers.append(int(scene.layers[i]))
         scene.layers[i] = 1
     
+    ### Remove parents for too small elements 
+    for k in range(len(connectsPairParent)):
+        objChild = objs[connectsPairParent[k][0]]
+        objChild.parent = None
+        ### Reactivate rigid body settings (with defaults though, TODO: Use an actual backup of the original settings)
+        #if objChild.rigid_body == None:
+        #    bpy.context.scene.objects.active = objChild
+        #    bpy.ops.rigidbody.object_add()
+
+    ### Replace modified elements with their child counterparts (the original meshes) 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
-    
-    ### Replace modified elements with their child counterparts (the original meshes) 
     parentTmpObjs = []
     childTmpObjs = []
     ### Make lists first to avoid confusion with renaming
@@ -292,13 +333,13 @@ def clearAllDataFromScene(scene):
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
 
     ### Get data again from scene after we changed obj names
-    names = scene["bcb_objs"]
-    try: objs = [scnObjs[name] for name in names]
-    except: objs = []; print("Error: BCB related object(s) not found, cleanup may be incomplete.")
-    names = scene["bcb_emptyObjs"]
-    try: emptyObjs = [scnEmptyObjs[name] for name in names]
-    except: emptyObjs = []; print("Error: BCB related object(s) not found, cleanup may be incomplete.")
-    
+    try: objsNames = scene["bcb_objs"]
+    except: objsNames = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    objs = [scnObjs[name] for name in objsNames]
+    try: names = scene["bcb_emptyObjs"]
+    except: names = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    emptyObjs = [scnEmptyObjs[name] for name in names]
+        
     ### Revert element scaling
     for k in range(len(objs)):
         obj = objs[k]
@@ -394,14 +435,16 @@ def monitor_initBuffers(scene):
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
     
     ### Get temp data from scene
-    names = scene["bcb_objs"]
-    try: objs = [scnObjs[name] for name in names]
-    except: objs = []; print("Error: BCB related object(s) not found, rebuilding constraints is required."); return
-    names = scene["bcb_emptyObjs"]
-    try: emptyObjs = [scnEmptyObjs[name] for name in names]
-    except: emptyObjs = []; print("Error: BCB related object(s) not found, rebuilding constraints is required."); return
-    connectsPair = scene["bcb_connectsPair"]
-    connectsConsts = scene["bcb_connectsConsts"]
+    try: objsNames = scene["bcb_objs"]
+    except: objsNames = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    objs = [scnObjs[name] for name in objsNames]
+    try: names = scene["bcb_emptyObjs"]
+    except: names = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    emptyObjs = [scnEmptyObjs[name] for name in names]
+    try: connectsPair = scene["bcb_connectsPair"]
+    except: connectsPair = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    try: connectsConsts = scene["bcb_connectsConsts"]
+    except: connectsConsts = []; print("Error: BCB related property not found, rebuilding constraints is required.")
     
     ### Create original transform data array
     d = 0
@@ -447,7 +490,8 @@ def monitor_checkForDistanceChange():
             objB = connect[1]
             # Calculate distance between both elements of the connection
             distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
-            distanceDif = abs(1 -(connect[2] /distance))
+            if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
+            else: distanceDif = 1
             # Calculate angle between two elements
             quatA = objA.matrix_world.to_quaternion()
             quatB = objB.matrix_world.to_quaternion()
@@ -495,6 +539,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_menu_gotData = int(0)
     prop_menu_selectedItem = int(0)
     
+    prop_stepsPerSecond = int(name="Steps Per Sec.", default=stepsPerSecond, min=1, max=32767, description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
     prop_distanceTolerance = float(name="Tolerance", default=distanceTolerance, min=0.0, max=1.0, description="Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).")
     prop_constraintUseBreaking = bool(name="Enable Breaking", default=constraintUseBreaking, description="Enables breaking for all constraints.")
     prop_connectionCountLimit = int(name="Con.Count Limit", default=connectionCountLimit, min=0, max=10000, description="Maximum count of connections per object pair (0 = disabled).")
@@ -512,8 +557,8 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("prop_elemGrp_%d_1" %i +" = int(name='Req.Vert.Pairs', default=elemGrps[j][1], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
         exec("prop_elemGrp_%d_2" %i +" = string(name='Mat.Preset', default=elemGrps[j][2], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
         exec("prop_elemGrp_%d_3" %i +" = float(name='Matl. Density', default=elemGrps[j][3], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
-        exec("prop_elemGrp_%d_7" %i +" = bool(name='Bevel', default=elemGrps[j][7], description='Enables beveling for elements to avoid `Jengax effect (uses hidden collision meshes).')")
-        exec("prop_elemGrp_%d_8" %i +" = float(name='Rescale Factor', default=elemGrps[j][8], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jengai effect (uses hidden collision meshes).')")
+        exec("prop_elemGrp_%d_7" %i +" = bool(name='Bevel', default=elemGrps[j][7], description='Enables beveling for elements to avoid `JengaÂ´ effect (uses hidden collision meshes).')")
+        exec("prop_elemGrp_%d_8" %i +" = float(name='Rescale Factor', default=elemGrps[j][8], min=0.0, max=1, description='Applies scaling factor on elements to avoid `JengaÂ´ effect (uses hidden collision meshes).')")
         exec("prop_elemGrp_%d_9" %i +" = bool(name='Facing', default=elemGrps[j][9], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
         
     def props_update_menu(self):
@@ -532,6 +577,7 @@ class bcb_props(bpy.types.PropertyGroup):
             
     def props_update_globals(self):
         ### Update global vars from menu related properties
+        global stepsPerSecond; stepsPerSecond = self.prop_stepsPerSecond
         global distanceTolerance; distanceTolerance = self.prop_distanceTolerance
         global constraintUseBreaking; constraintUseBreaking = self.prop_constraintUseBreaking
         global connectionCountLimit; connectionCountLimit = self.prop_connectionCountLimit
@@ -579,8 +625,9 @@ class bcb_panel(bpy.types.Panel):
         split2 = split.row()
         split2.prop(props, "prop_distanceTolerance")
         
+        row = layout.row(); row.prop(props, "prop_stepsPerSecond")
         row = layout.row(); row.prop(props, "prop_constraintUseBreaking")
-        row = layout.row(); row.prop(props, "prop_connectionCountLimit")
+        #row = layout.row(); row.prop(props, "prop_connectionCountLimit")
         row = layout.row(); row.prop(props, "prop_searchDistance")
         row = layout.row(); row.prop(props, "prop_clusterRadius")
         row = layout.row(); row.prop(props, "prop_alignVertical")
@@ -698,10 +745,21 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
     bl_description = "Updates constraints generated from a previous built."
     def execute(self, context):
         props = context.window_manager.bcb
-        # Update menu related properties from global vars
-        props.props_update_menu()
+        scene = bpy.context.scene
+        # Go to start frame for cache data removal
+        scene.frame_current = scene.frame_start
+        ### Free previous bake data
+        contextFix = bpy.context.copy()
+        contextFix['point_cache'] = scene.rigidbody_world.point_cache
+        bpy.ops.ptcache.free_bake(contextFix)
+        ### Invalidate point cache to enforce a full bake without using previous cache data
+        if "RigidBodyWorld" in bpy.data.groups:
+            obj = bpy.data.groups["RigidBodyWorld"].objects[0]
+            obj.location = obj.location
         ###### Execute update of all existing constraints with new settings
         execute()
+        # Update menu related properties from global vars
+        props.props_update_menu()
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_bake(bpy.types.Operator):
@@ -713,14 +771,15 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         scene = bpy.context.scene
         print('Init BCB monitor event handler.')
         bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
-        # Invalidate point cache to enforce a full bake without using previous cache data
+        ### Free previous bake data
+        contextFix = bpy.context.copy()
+        contextFix['point_cache'] = scene.rigidbody_world.point_cache
+        bpy.ops.ptcache.free_bake(contextFix)
+        ### Invalidate point cache to enforce a full bake without using previous cache data
         if "RigidBodyWorld" in bpy.data.groups:
             obj = bpy.data.groups["RigidBodyWorld"].objects[0]
             obj.location = obj.location
         # Invoke baking
-        contextFix = bpy.context.copy()
-        contextFix['point_cache'] = scene.rigidbody_world.point_cache
-        bpy.ops.ptcache.free_bake(contextFix)
         bpy.ops.ptcache.bake(contextFix, bake=True)
         print('Removing BCB monitor event handler.')
         for i in range( len( bpy.app.handlers.frame_change_pre ) ):
@@ -870,6 +929,19 @@ classes = [ \
 ################################################################################   
 ################################################################################   
 
+def initGeneralRigidBodyWorldSettings(scene):
+
+    ### Set general rigid body world settings
+    # Set FPS rate for rigid body simulation (from Blender preset)
+    scene.render.fps = 25
+    scene.render.fps_base = 1
+    # Set Steps Per Second for rigid body simulation
+    scene.rigidbody_world.steps_per_second = stepsPerSecond
+    # Set Split Impulse for rigid body simulation
+    scene.rigidbody_world.use_split_impulse = True
+
+################################################################################   
+
 def createElementGroupIndex(objs):
 
     ### Create a list about which object belongs to which element group
@@ -902,12 +974,11 @@ def gatherObjects(scene):
             # Clear object properties
             #for key in obj.keys(): del obj[key]
             # Detect if mesh or empty (constraint)
-            if obj.type == 'MESH':
+            if obj.type == 'MESH' and len(obj.data.vertices) > 0:  # obj.rigid_body != None
                 objs.append(obj)
-            elif obj.type == 'EMPTY':
-                if obj.rigid_body_constraint != None:
-                    sys.stdout.write('\r' +"%s      " %obj.name)
-                    emptyObjs.append(obj)
+            elif obj.type == 'EMPTY' and obj.rigid_body_constraint != None:
+                sys.stdout.write('\r' +"%s      " %obj.name)
+                emptyObjs.append(obj)
     
     return objs, emptyObjs
 
@@ -967,6 +1038,7 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                         
     ### Find connections by vertex pairs
     connectsPair = []          # Stores both connected objects indices per connection
+    connectsPairDist = []      # Stores distance between both elements
     for k in range(len(objs)):
         sys.stdout.write('\r' +"%d" %k)
         # Update progress bar
@@ -979,14 +1051,14 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                 
         ### Find closest objects via kd-tree
         co_find = obj.location
-        aIndex = []#; aCo = []; aDist = [];
+        aIndex = []; aDist = [] #; aCo = [] 
         if connectionCountLimit:
             for (co, index, dist) in kdObjs.find_n(co_find, connectionCountLimit +1):  # +1 because the first item will be removed
-                aIndex.append(index)#; aCo.append(co); aDist.append(dist)
+                aIndex.append(index); aDist.append(dist) #; aCo.append(co)
         else:
             for (co, index, dist) in kdObjs.find_range(co_find, 999999):
-                aIndex.append(index)#; aCo.append(co); aDist.append(dist)
-        aIndex = aIndex[1:] # Remove first item because it's the same as co_find (zero distance)
+                aIndex.append(index); aDist.append(dist) #; aCo.append(co) 
+        aIndex = aIndex[1:]; aDist = aDist[1:] # Remove first item because it's the same as co_find (zero distance)
         
         ### Walk through current object vertices
         for m in range(len(me.vertices)):
@@ -1013,6 +1085,7 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                         pair.sort()
                         if pair not in connectsPair:
                             connectsPair.append(pair)
+                            connectsPairDist.append(aDist[j])
                             connectCnt += 1
                             if connectCnt == connectionCountLimit:
                                 if elemGrps[objsEGrp[k]][1] <= 1:
@@ -1022,7 +1095,7 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
             if qNextObj: break
         
     print()
-    return connectsPair
+    return connectsPair, connectsPairDist
 
 ################################################################################   
 
@@ -1049,6 +1122,7 @@ def findConnectionsByBoundaryBoxIntersection(objs, objsEGrp):
     
     ### Find connections by vertex pairs
     connectsPair = []          # Stores both connected objects indices per connection
+    connectsPairDist = []      # Stores distance between both elements
     for k in range(len(objs)):
         sys.stdout.write('\r' +"%d" %k)
         # Update progress bar
@@ -1060,14 +1134,14 @@ def findConnectionsByBoundaryBoxIntersection(objs, objsEGrp):
                 
         ### Find closest objects via kd-tree
         co_find = obj.location
-        aIndex = []#; aCo = []; aDist = [];
+        aIndex = []; aDist = [] #; aCo = [] 
         if connectionCountLimit:
             for (co, index, dist) in kdObjs.find_n(co_find, connectionCountLimit +1):  # +1 because the first item will be removed
-                aIndex.append(index)#; aCo.append(co); aDist.append(dist)
+                aIndex.append(index); aDist.append(dist) #; aCo.append(co)
         else:
             for (co, index, dist) in kdObjs.find_range(co_find, 999999):
-                aIndex.append(index)#; aCo.append(co); aDist.append(dist)
-        aIndex = aIndex[1:] # Remove first item because it's the same as co_find (zero distance)
+                aIndex.append(index); aDist.append(dist) #; aCo.append(co) 
+        aIndex = aIndex[1:]; aDist = aDist[1:] # Remove first item because it's the same as co_find (zero distance)
     
         # Loop through comparison object found
         for j in range(len(aIndex)):
@@ -1090,12 +1164,95 @@ def findConnectionsByBoundaryBoxIntersection(objs, objsEGrp):
                     pair.sort()
                     if pair not in connectsPair:
                         connectsPair.append(pair)
+                        connectsPairDist.append(aDist[j])
                         connectCnt += 1
-                        if connectCnt == connectionCountLimit:
-                            break
+                        if connectCnt == connectionCountLimit: break
     
     print()
-    return connectsPair
+    return connectsPair, connectsPairDist
+
+################################################################################   
+
+def deleteConnectionsWithTooSmallElementsAndParentThemInstead(objs, connectsPair, connectsPairDist):
+    
+    ### Delete connections whose elements are too small and make them parents instead
+    print("Make parents for too small elements and remove them as connections...")
+    
+    connectsPairTmp = []
+    connectsPairParent = []
+    connectsPairParentDist = []
+    connectCntOld = len(connectsPair)
+    connectCnt = 0
+    for k in range(len(connectsPair)):
+        objA_idx = connectsPair[k][0]
+        objB_idx = connectsPair[k][1]
+        dist = connectsPairDist[k]
+        objA = objs[objA_idx]
+        objB = objs[objB_idx]
+        objA_dim = list(objA.dimensions)
+        objA_dim.sort()
+        objA_dim = objA_dim[2]   # Use largest dimension axis as size
+        objB_dim = list(objB.dimensions)
+        objB_dim.sort()
+        objB_dim = objB_dim[2]   # Use largest dimension axis as size
+        if (objA_dim > minimumElementSize and objB_dim > minimumElementSize) \
+        or (objA_dim <= minimumElementSize and objB_dim <= minimumElementSize):
+            connectsPairTmp.append(connectsPair[k])
+            connectCnt += 1
+        elif objA_dim <= minimumElementSize:
+            connectsPairParent.append([objA_idx, objB_idx])  # First child, second parent
+            connectsPairParentDist.append(dist)
+        elif objB_dim <= minimumElementSize:
+            connectsPairParent.append([objB_idx, objA_idx])  # First child, second parent
+            connectsPairParentDist.append(dist)
+    connectsPair = connectsPairTmp
+    
+    # Sort list into the order of distance between elements
+    if len(connectsPairParent) > 1:
+        connectsPairParentDist, connectsPairParent = zip(*sorted(zip(connectsPairParentDist, connectsPairParent)))
+    
+    ### Filter out children doubles because each children can only have one parent, other connections are discarded
+    checkList = []
+    connectsPairParentTmp = []
+    for item in connectsPairParent:
+        if item[0] not in checkList:
+            connectsPairParentTmp.append(item)
+            checkList.append(item[0])
+    connectsPairParent = connectsPairParentTmp
+    
+    print("%d connections converted and removed." %len(connectsPairParent))
+    return connectsPair, connectsPairParent
+
+################################################################################   
+
+def makeParentsForTooSmallElementsReal(objs, connectsPairParent):
+    
+    ### Create actual parents for too small elements
+    print("Create actual parents for too small elements... (%d)" %len(connectsPairParent))
+    
+    # Deselect all objects
+    bpy.ops.object.select_all(action='DESELECT')
+    
+    ### Make parents
+    for k in range(len(connectsPairParent)):
+        sys.stdout.write('\r' +"%d" %k)
+        
+        objChild = objs[connectsPairParent[k][0]]
+        objParent = objs[connectsPairParent[k][1]]
+        ### Make parent
+        objParent.select = 1
+        objChild.select = 1
+        bpy.context.scene.objects.active = objParent   # Parent
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        objParent.select = 0
+        objChild.select = 0
+    
+    ### Remove child object from rigid body world (should not be simulated anymore)
+    for k in range(len(connectsPairParent)):
+        objChild = objs[connectsPairParent[k][0]].select = 1
+    bpy.ops.rigidbody.objects_remove()
+        
+    print()
 
 ################################################################################   
 
@@ -1176,10 +1333,11 @@ def calculateContactAreaBasedOnBooleans(objs, connectsPair):
     # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
     bpy.context.screen.scene = scene
     # Link cameras because in second scene is none and when coming back camera view will losing focus
+    objCameras = []
     for objTemp in scene.objects:
         if objTemp.type == 'CAMERA':
-            objTemp.select = 0
             sceneTemp.objects.link(objTemp)
+            objCameras.append(objTemp)
     # Switch to new scene
     bpy.context.screen.scene = sceneTemp
 
@@ -1197,31 +1355,33 @@ def calculateContactAreaBasedOnBooleans(objs, connectsPair):
         objA.select = 0
         objB.select = 0
             
-        # Link objects we're working on to second scene
-        sceneTemp.objects.link(objA)
-        sceneTemp.objects.link(objB)
-
-        ### Check if meshes are water tight (non-manifold), if not, issue a warning
-        for obj in [objA, objB]:
-            bpy.context.scene.objects.active = obj
-            me = obj.data
-            # Enter edit mode              
-            try: bpy.ops.object.mode_set(mode='EDIT')
-            except: pass 
-            # Deselect all elements
-            try: bpy.ops.mesh.select_all(action='DESELECT')
-            except: pass 
-            # Select non-manifold elements
-            bpy.ops.mesh.select_non_manifold()
-            # Leave edit mode
-            try: bpy.ops.object.mode_set(mode='OBJECT')
-            except: pass 
-            # check mesh if there are selected elements found
-            qNonManifolds = 0
-            for edge in me.edges:
-                if edge.select: qNonManifolds = 1; break
-            if qNonManifolds:
-                print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
+        # Link objects we're working on to second scene (we try because of the object unlink workaround)
+        try: sceneTemp.objects.link(objA)
+        except: pass
+        try: sceneTemp.objects.link(objB)
+        except: pass
+        
+#        ### Check if meshes are water tight (non-manifold), if not, issue a warning
+#        for obj in [objA, objB]:
+#            bpy.context.scene.objects.active = obj
+#            me = obj.data
+#            # Enter edit mode              
+#            try: bpy.ops.object.mode_set(mode='EDIT')
+#            except: pass 
+#            # Deselect all elements
+#            try: bpy.ops.mesh.select_all(action='DESELECT')
+#            except: pass 
+#            # Select non-manifold elements
+#            bpy.ops.mesh.select_non_manifold()
+#            # Leave edit mode
+#            try: bpy.ops.object.mode_set(mode='OBJECT')
+#            except: pass 
+#            # check mesh if there are selected elements found
+#            qNonManifolds = 0
+#            for edge in me.edges:
+#                if edge.select: qNonManifolds = 1; break
+#            if qNonManifolds:
+#                print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
         
         ### Add displacement modifier to objects to take search distance into account
         objA.modifiers.new(name="Displace_BCB", type='DISPLACE')
@@ -1329,11 +1489,20 @@ def calculateContactAreaBasedOnBooleans(objs, connectsPair):
         objA.modifiers.remove(modA_bool)
         objA.modifiers.remove(modA_disp)
         objB.modifiers.remove(modB_disp)
-            
-        # Unlink objects from second scene
-        sceneTemp.objects.unlink(objA)
-        sceneTemp.objects.unlink(objB)
         
+#        # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
+#        sceneTemp.objects.unlink(objA)
+#        sceneTemp.objects.unlink(objB)
+        # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
+        if k %500 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
+            bpy.data.scenes.remove(sceneTemp)
+            sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+            # Link cameras because in second scene is none and when coming back camera view will losing focus
+            for obj in objCameras:
+                sceneTemp.objects.link(obj)
+            # Switch to new scene
+            bpy.context.screen.scene = sceneTemp
+    
         connectsArea.append([contactArea, thickness])
         connectsLoc.append(center)
             
@@ -1828,12 +1997,12 @@ def createParentsIfRequired(scene, objs, objsEGrp, childObjs):
             bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
             parentObj.select = 0
             childObj.select = 0
-            ### Remove child object from rigid body world (should not be simulated anymore)
-            bpy.context.scene.objects.active = childObj
-            bpy.ops.rigidbody.object_remove()
-        
             if len(childObjsNew) > 0: print()
-            
+        ### Remove child object from rigid body world (should not be simulated anymore)
+        for k in range(len(childObjsNew)):
+            childObjsNew[k].select
+        bpy.ops.rigidbody.objects_remove()
+        
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
     ### Revert back to original selection
@@ -1975,9 +2144,10 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
             bpy.ops.rigidbody.object_settings_copy()
             parentObj.select = 0
             childObj.select = 0
-            ### Remove child object from rigid body world (should not be simulated anymore)
-            bpy.context.scene.objects.active = childObj
-            bpy.ops.rigidbody.object_remove()
+    ### Remove child objects from rigid body world (should not be simulated anymore)
+    for childObj in childObjs:
+        childObj.select
+    bpy.ops.rigidbody.objects_remove()
             
     if len(childObjs) > 0: print()
             
@@ -2005,7 +2175,9 @@ def execute():
                 
             # Remove instancing from objects
             bpy.ops.object.make_single_user(object=True, obdata=True, material=False, texture=False, animation=False)
-           
+            # Apply scale factor of all objects (to make sure volume and mass calculation are correct)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
             ###### Create object lists of selected objects
             childObjs = []
             objs, emptyObjs = gatherObjects(scene)
@@ -2017,11 +2189,14 @@ def execute():
                 time_start_connections = time.time()
                 
                 ###### Find connections by vertex pairs
-                #connectsPair = findConnectionsByVertexPairs(objs, objsEGrp)
+                #connectsPair, connectsPairDist = findConnectionsByVertexPairs(objs, objsEGrp)
                 ###### Find connections by boundary box intersection
-                connectsPair = findConnectionsByBoundaryBoxIntersection(objs, objsEGrp)
+                connectsPair, connectsPairDist = findConnectionsByBoundaryBoxIntersection(objs, objsEGrp)
+                ###### Delete connections whose elements are too small and make them parents instead
+                if minimumElementSize: connectsPair, connectsPairParent = deleteConnectionsWithTooSmallElementsAndParentThemInstead(objs, connectsPair, connectsPairDist)
+                else: connectsPairParent = []
                 ###### Delete connections with too few connected vertices
-                connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
+                #connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
                 ###### Calculate contact area for all connections
                 if useAccurateArea:
                     connectsArea, connectsLoc = calculateContactAreaBasedOnBooleans(objs, connectsPair)
@@ -2043,6 +2218,8 @@ def execute():
                     applyScale(scene, objs, objsEGrp, childObjs)
                     ###### Bevel elements and make separate collision object for that
                     applyBevel(scene, objs, objsEGrp, childObjs)
+                    ###### Create actual parents for too small elements
+                    if minimumElementSize: makeParentsForTooSmallElementsReal(objs, connectsPairParent)
                     ###### Create empty objects (without any data)
                     emptyObjs = createEmptyObjs(scene, len(constsConnect))
                     ###### Bundling close empties into clusters, merge locations and count connections per cluster
@@ -2050,7 +2227,7 @@ def execute():
                     ###### Add constraint base settings to empties
                     addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect)
                     ###### Store build data in scene
-                    storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect)
+                    storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect)
                     
                     print('-- Time: %0.2f s\n' %(time.time()-time_start_building))
                 
@@ -2072,13 +2249,15 @@ def execute():
             ###### Store menu config data in scene
             storeConfigDataInScene(scene)
             ###### Get temp data from scene
-            objs, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect = getBuildDataFromScene(scene)
+            objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect = getBuildDataFromScene(scene)
             ###### Create fresh element group index to make sure the data is still valid (reordering in menu invalidates it for instance)
             objsEGrp = createElementGroupIndex(objs)
             ###### Store build data in scene
-            storeBuildDataInScene(scene, None, objsEGrp, None, None, None, None, None, None, None)
+            storeBuildDataInScene(scene, None, objsEGrp, None, None, None, None, None, None, None, None)
                             
             if len(emptyObjs) > 0:
+                ###### Set general rigid body world settings
+                initGeneralRigidBodyWorldSettings(scene)
                 ###### Set constraint settings
                 setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect)
                 ###### Calculate mass for all mesh objects
