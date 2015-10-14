@@ -1,5 +1,5 @@
 ###################################################
-# Bullet Constraints Builder v1.62 by Kai Kostack #
+# Bullet Constraints Builder v1.63 by Kai Kostack #
 ###################################################
    
 ### Vars for constraint distribution
@@ -12,13 +12,13 @@ clusterRadius = 0.4          # 0.4   | Radius for bundling close constraints int
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [ \
-# 0          1    2           3        4   5    6    7
-# Name       RVP  Mat.preset  Density  CT  BTC  BTT  Bevel
-[ "",        1,   "Concrete", 0,       3,  5,  5,  1  ],   # Defaults to be used when element is not part of any element group
-[ "Slabs",   1,   "Concrete", 0,       3,  5,  5,  1  ],
-[ "Walls",   1,   "Concrete", 0,       3,  5,  5,  1  ],
-[ "Girders", 1,   "Concrete", 0,       3,  5,  5,  1  ],
-[ "Columns", 1,   "Concrete", 0,       3,  5,  5,  1  ]
+# 0          1    2           3        4   5    6    7      8
+# Name       RVP  Mat.preset  Density  CT  BTC  BTT  Bev. Scale
+[ "",        1,   "Concrete", 0,       3,  5,   5,   1,   .95  ],   # Defaults to be used when element is not part of any element group
+[ "Slabs",   1,   "Concrete", 0,       3,  5,   5,   1,   .95  ],
+[ "Walls",   1,   "Concrete", 0,       3,  5,   5,   1,   .95  ],
+[ "Girders", 1,   "Concrete", 0,       3,  5,   5,   1,   .95  ],
+[ "Columns", 1,   "Concrete", 0,       3,  5,   5,   1,   .95  ]
 ]
 
 # Column descriptions (in order from left to right):
@@ -32,7 +32,9 @@ elemGrps = [ \
 # Connection Type       | Connection type ID for the constraint presets defined by this script, see list below.
 # Break.Thresh.Compres. | Real world material compressive breaking threshold in N/mm^2.
 # Break.Thresh.Tensile  | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
-# Bevel                 | Use beveling for elements
+# Bevel                 | Use beveling for elements to avoid `Jenga effect´ (uses hidden collision meshes)
+# Scale                 | Apply scaling factor on elements to avoid `Jenga effect´ (uses hidden collision meshes)
+
 
 # Connection types:
 #
@@ -41,7 +43,8 @@ elemGrps = [ \
 # 3 = 1x 'FIXED' & 1x 'POINT' constraint per connection, compressive breaking threshold is used for the first one and tensile for the second
 # 4 = 2x 'GENERIC' constraint per connection, one to evaluate the compressive and the other the tensile breaking threshold
 
-### Constants
+### Developer
+debug = 0    # Enables verbose console output for debugging purposes
 maxMenuElementGroupItems = len(elemGrps) +100    # Maximum allowed element group entries in menu 
 
 ########################################
@@ -53,7 +56,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 6, 2),
+    "version": (1, 6, 3),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -72,6 +75,8 @@ from mathutils import Vector
 def storeConfigDataInScene(scene):
 
     ### Store menu config data in scene
+    if debug: print("Storing menu config data in scene...")
+    
     scene["bcb_constraintUseBreaking"] = constraintUseBreaking
     scene["bcb_connectionCountLimit"] = connectionCountLimit
     scene["bcb_searchDistance"] = searchDistance
@@ -92,6 +97,8 @@ def storeConfigDataInScene(scene):
 def getConfigDataFromScene(scene):
     
     ### Get menu config data from scene
+    if debug: childObj("Getting menu config data from scene...")
+    
     props = bpy.context.window_manager.bcb
     if "bcb_constraintUseBreaking" in scene.keys():
         global constraintUseBreaking; constraintUseBreaking = props.constraintUseBreaking = scene["bcb_constraintUseBreaking"]
@@ -103,24 +110,28 @@ def getConfigDataFromScene(scene):
         global clusterRadius; clusterRadius = props.clusterRadius = scene["bcb_clusterRadius"]
             
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
-    elemGrps = scene["bcb_elemGrps"]
-    elemGrpsInverted = []
-    for i in range(len(elemGrps[0])):
-        column = []
-        for j in range(len(elemGrps)):
-            column.append(elemGrps[j][i])
-        elemGrpsInverted.append(column)
-    global elemGrps
-    elemGrps = elemGrpsInverted
+    if "bcb_elemGrps" in scene.keys():
+        global elemGrps
+        elemGrpsProp = scene["bcb_elemGrps"]
+        elemGrpsInverted = []
+        for i in range(len(elemGrpsProp[0])):
+            column = []
+            for j in range(len(elemGrpsProp)):
+                column.append(elemGrpsProp[j][i])
+            elemGrpsInverted.append(column)
+        elemGrps = elemGrpsInverted
     
 ################################################################################   
 
-def storeTempDataInScene(scene, objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect):
+def storeTempDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect):
     
     ### Store temp data in scene
+    if debug: childObj("Storing temp data in scene...")
+    
     scene["bcb_objs"] = [obj.name for obj in objs]
     scene["bcb_objsEGrp"] = objsEGrp
     scene["bcb_emptyObjs"] = [obj.name for obj in emptyObjs]
+    scene["bcb_childObjs"] = [obj.name for obj in childObjs]
     scene["bcb_connectsPair"] = connectsPair
     scene["bcb_connectsLoc"] = connectsLoc
     scene["bcb_connectsArea"] = connectsArea
@@ -132,52 +143,84 @@ def storeTempDataInScene(scene, objs, objsEGrp, emptyObjs, connectsPair, connect
 def getTempDataFromScene(scene):
     
     ### Get temp data from scene
+    if debug: print("Getting temp data from scene...")
+    
     names = scene["bcb_objs"]; objs = [scene.objects[name] for name in names]
     objsEGrp = scene["bcb_objsEGrp"]
     names = scene["bcb_emptyObjs"]; emptyObjs = [scene.objects[name] for name in names]
+    names = scene["bcb_childObjs"]; childObjs = [scene.objects[name] for name in names]
     connectsPair = scene["bcb_connectsPair"]
     connectsLoc = scene["bcb_connectsLoc"]
     connectsArea = scene["bcb_connectsArea"]
     connectsConsts = scene["bcb_connectsConsts"]
     constsConnect = scene["bcb_constsConnect"]
     
-    return objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect
+    return objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect
 
 ################################################################################   
 
 def clearAllDataFromScene(scene):
     
     ### Clear all data related to Bullet Constraint Builder from scene
+    if debug: print("Clearing all data related to Bullet Constraint Builder from scene...")
     
     # Store layer settings and activate all layers
     layers = []
     for i in range(20):
         layers.append(int(scene.layers[i]))
         scene.layers[i] = 1
-       
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
 
-    ### Start by deleting constraint empty objects from scene
+    ### Replace modified elements with their child counterparts (the original meshes) 
+    names = scene["bcb_childObjs"]
+    parentTmpObjs = []
+    childTmpObjs = []
+    ### Make lists first to avoid confusion with renaming
+    for name in names:
+        childObj = scene.objects[name]
+        parentObj = scene.objects[childObj["bcb_parent"]]
+        parentTmpObjs.append(parentObj)
+        childTmpObjs.append(childObj)
+    ### Revert names and scaling back to original
+    for i in range(len(parentTmpObjs)):
+        parentObj = parentTmpObjs[i]
+        childObj = childTmpObjs[i]
+        childObj.name = parentObj.name
+        childObj.data.name = parentObj.data.name
+        childObj.scale *= parentObj.scale.z
+        ### Add rigid body settings back to child element again
+        if parentObj.rigid_body != None:
+            bpy.context.scene.objects.active = childObj
+            bpy.ops.rigidbody.object_add()
+            parentObj.select = 1
+            childObj.select = 1
+            bpy.context.scene.objects.active = parentObj
+            bpy.ops.rigidbody.object_settings_copy()
+            parentObj.select = 0
+            childObj.select = 0
+            
+    ### Select modified elements for deletion from scene 
+    for parentObj in parentTmpObjs:
+        parentObj.select = 1
+    
+    ### Select constraint empty objects for deletion from scene
     names = scene["bcb_emptyObjs"]
     for name in names: scene.objects[name].select = 1
-    bpy.ops.object.delete(use_global=True)
-        
-    ### Select rigid bodies to revert also selection back to original state
-    names = scene["bcb_objs"]
-    for name in names: scene.objects[name].select = 1
     
-    ### Remove only one bevel modifier and copy that to the other selected objects (Todo: Should be done for each object individually but is slower)
-    obj = scene.objects[names[0]]
-    if obj != None:
-        bpy.context.scene.objects.active = obj
-        bpy.ops.object.modifier_remove(modifier="Bevel_bcb")
-        bpy.ops.object.make_links_data(type='MODIFIERS')
+    ### Delete all selected objects
+    bpy.ops.object.delete(use_global=True)
+    
+    ### Select rigid bodies to revert even selection back to original state
+    names = scene["bcb_objs"]
+    for name in names:
+        if name in scene.objects:
+            scene.objects[name].select = 1
     
     ### Finally remove all ID property data
     for key in scene.keys():
         if "bcb_" in key: del scene[key]
-    
+   
     # Set layers as in original scene
     for i in range(20): scene.layers[i] = layers[i]
         
@@ -208,7 +251,8 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_1" %i +" = int(name='Req.Vert.Pairs', default=elemGrps[j][1], min=0, max=100, description='How many vertex pairs between two elements are required to generate a constraint.')")
         exec("elemGrp_%d_2" %i +" = string(name='Mat.Preset', default=elemGrps[j][2], description='Preset name of the physical material to be used from Blender´s internal database. See Blender´s Rigid Body Tools for a list of available presets.')")
         exec("elemGrp_%d_3" %i +" = float(name='Mat.Density', default=elemGrps[j][3], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
-        exec("elemGrp_%d_7" %i +" = bool(name='Bevel', default=elemGrps[j][7], description='Use beveling for elements to avoid `Jenga effect´.')")
+        exec("elemGrp_%d_7" %i +" = bool(name='Bevel', default=elemGrps[j][7], description='Use beveling for elements to avoid `Jenga effect´ (uses hidden collision meshes).')")
+        exec("elemGrp_%d_8" %i +" = float(name='Scale', default=elemGrps[j][8], min=0.0, max=1, description='Apply scaling factor on elements to avoid `Jenga effect´ (uses hidden collision meshes).')")
         
     def props_update_menu(self):
         ### Update menu related properties from global vars
@@ -221,7 +265,8 @@ class bcb_props(bpy.types.PropertyGroup):
             exec("self.elemGrp_%d_2" %i +" = elemGrps[i][2]")
             exec("self.elemGrp_%d_3" %i +" = elemGrps[i][3]")
             exec("self.elemGrp_%d_7" %i +" = elemGrps[i][7]")
-        
+            exec("self.elemGrp_%d_8" %i +" = elemGrps[i][8]")
+            
     def props_update_globals(self):
         ### Update global vars from menu related properties
         global constraintUseBreaking; constraintUseBreaking = self.constraintUseBreaking
@@ -299,7 +344,8 @@ class bcb_panel(bpy.types.Panel):
         row = layout.row(); row.prop(props, "elemGrp_%d_2" %i)
         row = layout.row(); row.prop(props, "elemGrp_%d_3" %i)
         row = layout.row(); row.prop(props, "elemGrp_%d_7" %i)
-       
+        row = layout.row(); row.prop(props, "elemGrp_%d_8" %i)
+        
         # Update global vars from menu related properties
         props.props_update_globals()
  
@@ -434,7 +480,8 @@ classes = [ \
 def gatherObjects(scene):
 
     ### Create object lists of selected objects
-    print("\nGathering objects...")
+    print("Creating object lists of selected objects...")
+    
     objs = []
     objsEGrp = []
     emptyObjs = []
@@ -444,7 +491,6 @@ def gatherObjects(scene):
             for key in obj.keys(): del obj[key]
             # Detect if mesh or empty (constraint)
             if obj.type == 'MESH':
-                sys.stdout.write('\r' +"%s      " %obj.name)
                 objs.append(obj)
                 objGrpsTmp = []
                 for elemGrp in elemGrps:
@@ -466,6 +512,9 @@ def gatherObjects(scene):
 ################################################################################   
 
 def findConnectionsByVertexPairs(objs, objsEGrp):
+    
+    ### Find connections by vertex pairs
+    print("Searching connections by vertex pairs... (%d)" %len(objs))
     
     ### Build kd-tree for object locations
     kdObjs = mathutils.kdtree.KDTree(len(objs))
@@ -550,6 +599,7 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                             
             if qNextObj: break
         
+    print()
     return connectsPair, connectsLocs
 
 ################################################################################   
@@ -557,6 +607,8 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
 def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair, connectsLocs):
     
     ### Delete connections with too few connected vertices
+    if debug: print("Deleting connections with too few connected vertices...")
+    
     connectsPairTmp = []
     connectsLocsTmp = []
     connectCntOld = len(connectsPair)
@@ -573,9 +625,8 @@ def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair, c
             connectCnt += 1
     connectsPair = connectsPairTmp
     connectsLocs = connectsLocsTmp
-    print("\n%d connections skipped due to too few connecting vertices." %(connectCntOld -connectCnt))
-    print(connectCnt)
     
+    print("%d connections skipped due to too few connecting vertices." %(connectCntOld -connectCnt))
     return connectsPair, connectsLocs
         
 ################################################################################   
@@ -583,7 +634,8 @@ def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair, c
 def calculateContactAreaForConnections(objs, connectsPair):
     
     ### Calculate contact area for all connections
-    print("\nCalculate cross area for all connections...")
+    if debug: print("Calculating cross area for connections...")
+    
     connectsArea = []
     for k in range(len(connectsPair)):
         objA = objs[connectsPair[k][0]]
@@ -615,6 +667,8 @@ def calculateContactAreaForConnections(objs, connectsPair):
 def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsLocs, connectsArea):
     
     ### Delete connections with zero contact area
+    if debug: print("Deleting connections with zero contact area...")
+    
     connectsPairTmp = []
     connectsLocsTmp = []
     connectsAreaTmp = []
@@ -632,15 +686,17 @@ def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsL
     connectsPair = connectsPairTmp
     connectsLocs = connectsLocsTmp
     connectsArea = connectsAreaTmp
-    print("\n%d connections skipped due to zero contact area." %(connectCntOld -connectCnt))
     
+    print("%d connections skipped due to zero contact area." %(connectCntOld -connectCnt))
     return connectsPair, connectsLocs, connectsArea
 
 ################################################################################   
 
 def calculateBoundaryBoxOfVertexPairs(connectsLocs):
     
-    ### Calculate boundary box center of valid vertex pairs per connection
+    ### Calculate boundary box centers of valid vertex pairs per connection
+    if debug: print("Calculate boundary box centers of vertex pairs...")
+    
     connectsLoc = []
     for connectLocs in connectsLocs:
         if len(connectLocs) > 1:
@@ -666,6 +722,8 @@ def calculateBoundaryBoxOfVertexPairs(connectsLocs):
 def createConnectionData(objsEGrp, connectsPair, connectsLoc):
     
     ### Create connection data
+    if debug: print("Creating connection data...")
+    
     connectsConsts = []
     constsConnect = []
     constCnt = 0
@@ -704,6 +762,9 @@ def createConnectionData(objsEGrp, connectsPair, connectsLoc):
 
 def createEmptyObjs(scene, constCnt):
     
+    ### Create empty objects
+    print("Creating empty objects... (%d)" %constCnt)
+    
     ### Create first object
     objConst = bpy.data.objects.new('Constraint', None)
     scene.objects.link(objConst)
@@ -714,7 +775,7 @@ def createEmptyObjs(scene, constCnt):
     emptyObjs = [objConst]
     ### Duplicate them as long as we got the desired count   
     while len(emptyObjs) < constCnt:
-        sys.stdout.write("%d\n" %len(emptyObjs))
+        sys.stdout.write("%d " %len(emptyObjs))
         # Update progress bar
         bpy.context.window_manager.progress_update(len(emptyObjs) /constCnt)
         
@@ -734,7 +795,8 @@ def createEmptyObjs(scene, constCnt):
             if obj.select and obj.is_visible(scene):
                 if obj.type == 'EMPTY':
                     emptyObjs.append(obj)
-
+    
+    print()
     return emptyObjs        
 
 ################################################################################   
@@ -742,63 +804,65 @@ def createEmptyObjs(scene, constCnt):
 def bundlingEmptyObjsToClusters(connectsLoc, connectsConsts):
     
     ### Bundling close empties into clusters, merge locations and count connections per cluster
-    if clusterRadius > 0:
-        print("\nBundling close empties into clusters...")
+    print("Bundling close empties into clusters...")
+    
+    m = 1
+    qChanged = 1
+    while qChanged:   # Repeat until no more constraints are moved
+        qChanged = 0
         
-        m = 1
-        qChanged = 1
-        while qChanged:   # Repeat until no more constraints are moved
-            qChanged = 0
+        sys.stdout.write('\r' +"Pass %d" %m)
+        # Update progress bar
+        bpy.context.window_manager.progress_update(1 -(1 /m))
+        m += 1
+        
+        ### Build kd-tree for constraint locations
+        kdObjs = mathutils.kdtree.KDTree(len(connectsLoc))
+        for i, loc in enumerate(connectsLoc):
+            kdObjs.insert(loc, i)
+        kdObjs.balance()
+        
+        clustersConnects = []  # Stores all constraints indices per cluster
+        clustersLoc = []       # Stores the location of each cluster
+        for i in range(len(connectsLoc)):
             
-            sys.stdout.write('\r' +"Pass %d" %m)
-            # Update progress bar
-            bpy.context.window_manager.progress_update(1 -(1 /m))
-            m += 1
-            
-            ### Build kd-tree for constraint locations
-            kdObjs = mathutils.kdtree.KDTree(len(connectsLoc))
-            for i, loc in enumerate(connectsLoc):
-                kdObjs.insert(loc, i)
-            kdObjs.balance()
-            
-            clustersConnects = []  # Stores all constraints indices per cluster
-            clustersLoc = []       # Stores the location of each cluster
-            for i in range(len(connectsLoc)):
-                
-                ### Find closest connection location via kd-tree (zero distance start item included)
-                co_find = connectsLoc[i]
-                aIndex = []; aCo = []#; aDist = [];
-                j = 0
-                for (co, index, dist) in kdObjs.find_range(co_find, clusterRadius):   # Find constraint object within search range
-                    if j == 0 or co != lastCo:   # Skip constraints that already share the same location (caused by earlier loops)
-                        aIndex.append(index); aCo.append(co)#; aDist.append(dist)
-                        lastCo = co
-                        # Stop after second different constraint is found
-                        j += 1
-                        if j == 2: qChanged = 1; break
-                            
-                ### Calculate average location of the two constraints found within cluster radius
-                ### We merge them pairwise instead of all at once for improved and more even distribution
-                if len(aCo) == 2:
-                    loc = (aCo[0] +aCo[1]) /2
-                    clustersLoc.append(loc)
-                    clustersConnects.append([aIndex[0], aIndex[1]])
-                    ### Also move all other constraints with the same locations because we can assume they already have been merged earlier
-                    for i in range(len(connectsLoc)):
-                        if aCo[0] == connectsLoc[i] or aCo[1] == connectsLoc[i]:
-                            clustersConnects[-1:][0].append(i)
-                      
-            ### Apply cluster locations to constraints
-            for l in range(len(clustersConnects)):
-                for k in clustersConnects[l]:
-                    connectsLoc[k] = clustersLoc[l]
-            
+            ### Find closest connection location via kd-tree (zero distance start item included)
+            co_find = connectsLoc[i]
+            aIndex = []; aCo = []#; aDist = [];
+            j = 0
+            for (co, index, dist) in kdObjs.find_range(co_find, clusterRadius):   # Find constraint object within search range
+                if j == 0 or co != lastCo:   # Skip constraints that already share the same location (caused by earlier loops)
+                    aIndex.append(index); aCo.append(co)#; aDist.append(dist)
+                    lastCo = co
+                    # Stop after second different constraint is found
+                    j += 1
+                    if j == 2: qChanged = 1; break
+                        
+            ### Calculate average location of the two constraints found within cluster radius
+            ### We merge them pairwise instead of all at once for improved and more even distribution
+            if len(aCo) == 2:
+                loc = (aCo[0] +aCo[1]) /2
+                clustersLoc.append(loc)
+                clustersConnects.append([aIndex[0], aIndex[1]])
+                ### Also move all other constraints with the same locations because we can assume they already have been merged earlier
+                for i in range(len(connectsLoc)):
+                    if aCo[0] == connectsLoc[i] or aCo[1] == connectsLoc[i]:
+                        clustersConnects[-1:][0].append(i)
+                  
+        ### Apply cluster locations to constraints
+        for l in range(len(clustersConnects)):
+            for k in clustersConnects[l]:
+                connectsLoc[k] = clustersLoc[l]
+    
+    print()
+        
 ################################################################################   
 
-def addConstraintBaseSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect):
+def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect):
     
-    ### Add constraint base settings to empties
-    print("\nAdd constraint settings to empties...")
+    ### Add base constraint settings to empties
+    print("Adding base constraint settings to empties... (%d)" %len(emptyObjs))
+    
     for k in range(len(emptyObjs)):
         sys.stdout.write('\r' +"%d" %k)
         # Update progress bar
@@ -809,12 +873,16 @@ def addConstraintBaseSettings(objs, emptyObjs, connectsPair, connectsLoc, consts
         objConst.location = connectsLoc[l]
         objConst.rigid_body_constraint.object1 = objs[connectsPair[l][0]]
         objConst.rigid_body_constraint.object2 = objs[connectsPair[l][1]]
+    
+    print()
                 
 ################################################################################   
     
 def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect):
     
     ### Set constraint settings
+    print("Adding main constraint settings... (%d)" %len(connectsPair))
+    
     count = 0
     for k in range(len(connectsPair)):
         sys.stdout.write('\r' +"%d" %k)
@@ -933,66 +1001,209 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         # Add to Bullet group in case someone removed it in the mean time
         try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst)
         except: pass
+    
+    print()
         
-################################################################################   
+################################################################################
 
-def calculateMass(objs, objsEGrp):
-    
-    ### Calculate a mass for all mesh objects
-    print("\nCalculating masses from preset material...")
-    for obj in objs:
-        if obj != None:
-            if obj.rigid_body != None:
-                obj.select = 1
-    elemGrp = elemGrps[objsEGrp[objs.index(obj)]]
-    materialPreset = elemGrp[2]
-    materialDensity = elemGrp[3]
-    if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
-    else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
-    
-################################################################################   
+def createParentsIfRequired(scene, objs, childObjs):
 
-def updateBevel(objs, objsEGrp):
+    ### Create parents if required
+    print("Creating invisible parent / visible child elements...")
+    
+    ### Selecting objects without parent
+    selectionOld = []
+    for k in range(len(objs)):
+        obj = objs[k]
+        if obj.select:
+            selectionOld.append(k)
+            if not "bcb_child" in obj.keys():
+                obj["bcb_parent"] = obj.name
+            else: obj.select = 0
+    
+    # Duplicate selected objects            
+    bpy.ops.object.duplicate(linked=False)
+    
+    ### Add newly created objects to parent object list and make them actual parents
+    childObjsNew = []
+    for obj in scene.objects:
+        if obj.select:
+            if obj not in childObjs:
+                childObjsNew.append(obj)
+                obj.select = 0
+    childObjs.extend(childObjsNew)
+    
+    ### Make parent relationship
+    for k in range(len(childObjsNew)):
+        sys.stdout.write('\r' +"%d" %k)
+        
+        childObj = childObjsNew[k]
+        parentObj = scene.objects[childObj["bcb_parent"]]
+        del parentObj["bcb_parent"]
+        parentObj["bcb_child"] = childObj.name
+        ### Make parent
+        parentObj.select = 1
+        childObj.select = 1
+        bpy.context.scene.objects.active = parentObj
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        parentObj.select = 0
+        childObj.select = 0
+        ### Remove child object from rigid body world (should not be simulated anymore)
+        bpy.context.scene.objects.active = childObj
+        bpy.ops.rigidbody.object_remove()
+    
+    # Deselect all objects
+    bpy.ops.object.select_all(action='DESELECT')
+    ### Revert back to original selection
+    for idx in selectionOld:
+        objs[idx].select = 1       
+    
+    print()
+        
+################################################################################
+
+def applyScale(scene, objs, objsEGrp, childObjs):
+    
+    ### Scale elements by custom scale factor and make separate collision object for that
+    print("Applying scale...")
     
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
     obj = None
-    ### Select all objects to be beveled
+    ### Select objects in question
+    for k in range(len(objs)):
+        scale = elemGrps[objsEGrp[k]][8]
+        if scale != 0 and scale != 1:
+            obj = objs[k]
+            obj.select = 1
+    if obj != None:
+        ###### Create parents if required
+        createParentsIfRequired(scene, objs, childObjs)
+        ### Apply scale
+        for k in range(len(objs)):
+            obj = objs[k]
+            if obj.select:
+                scale = elemGrps[objsEGrp[k]][8]
+                obj.scale *= scale
+                # For childs invert scaling to compensate for indirect scaling through parenting
+                if "bcb_child" in obj.keys():
+                    scene.objects[obj["bcb_child"]].scale /= scale
+                    
+################################################################################   
+
+def applyBevel(scene, objs, objsEGrp, childObjs):
+    
+    ### Bevel elements and make separate collision object for that
+    print("Applying bevel...")
+    
+    # Deselect all objects
+    bpy.ops.object.select_all(action='DESELECT')
+    obj = None
+    ### Select objects in question
     for k in range(len(objs)):
         qBevel = elemGrps[objsEGrp[k]][7]
         if qBevel:
             obj = objs[k]
             obj.select = 1
+    
     ### Add only one bevel modifier and copy that to the other selected objects (Todo: Should be done for each object individually but is slower)
     if obj != None:
+        ###### Create parents if required
+        createParentsIfRequired(scene, objs, childObjs)
+        ### Apply bevel
         bpy.context.scene.objects.active = obj
         if "Bevel_bcb" not in obj.modifiers:
             bpy.ops.object.modifier_add(type='BEVEL')
             obj.modifiers["Bevel"].name = "Bevel_bcb"
             obj.modifiers["Bevel_bcb"].width = 10.0
             bpy.ops.object.make_links_data(type='MODIFIERS')
-            
+    
+    ### Make modifiers real (required to be taken into account by Bullet physics)
+    for k in range(len(objs)):
+        obj = objs[k]
+        if obj.select:
+            bpy.context.scene.objects.active = obj
+            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Bevel_bcb")
+       
+################################################################################   
+
+def calculateMass(scene, objs, objsEGrp, childObjs):
+    
+    ### Calculate a mass for all mesh objects according to element groups settings
+    print("Calculating masses from preset material... (%d)" %len(childObjs))
+     
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
-    obj = None
-    ### Select all objects not to be beveled
-    for k in range(len(objs)):
-        qBevel = elemGrps[objsEGrp[k]][7]
-        if not qBevel:
-            obj = objs[k]
-            obj.select = 1
-    ### Remove only one bevel modifier and copy that to the other selected objects (Todo: Should be done for each object individually but is slower)
-    if obj != None:
-        bpy.context.scene.objects.active = obj
-        bpy.ops.object.modifier_remove(modifier="Bevel_bcb")
-        bpy.ops.object.make_links_data(type='MODIFIERS')
+    
+    ### Create new rigid body settings for childs with the data from its parent (so mass can be calculated on childs)
+    i = 0
+    for childObj in childObjs:
+        parentObj = scene.objects[childObj["bcb_parent"]]
+        if parentObj.rigid_body != None:
+            sys.stdout.write('\r' +"%d  " %i)
+            i += 1
+            
+            bpy.context.scene.objects.active = childObj
+            bpy.ops.rigidbody.object_add()
+            parentObj.select = 1
+            childObj.select = 1
+            bpy.context.scene.objects.active = parentObj
+            bpy.ops.rigidbody.object_settings_copy()
+            parentObj.select = 0
+            childObj.select = 0
+    sys.stdout.write('\r        ')
+            
+    ### Update masses
+    for j in range(len(elemGrps)):
+        elemGrp = elemGrps[j]
         
+        # Deselect all objects
+        bpy.ops.object.select_all(action='DESELECT')
+        
+        for k in range(len(objs)):
+            if j == objsEGrp[k]:
+                obj = objs[k]
+                if obj != None:
+                    if obj.rigid_body != None:
+                        if not "bcb_child" in obj.keys():
+                            obj.select = 1
+                        else:
+                            scene.objects[obj["bcb_child"]].select = 1
+        
+        materialPreset = elemGrp[2]
+        materialDensity = elemGrp[3]
+        if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
+        else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
+    
+    # Deselect all objects
+    bpy.ops.object.select_all(action='DESELECT')
+
+    ### Copy rigid body settings (and mass) from childs back to their parents and remove childs from rigid body world
+    i = 0
+    for childObj in childObjs:
+        parentObj = scene.objects[childObj["bcb_parent"]]
+        if parentObj.rigid_body != None:
+            sys.stdout.write('\r' +"%d  " %i)
+            i += 1
+            
+            parentObj.select = 1
+            childObj.select = 1
+            bpy.context.scene.objects.active = childObj
+            bpy.ops.rigidbody.object_settings_copy()
+            parentObj.select = 0
+            childObj.select = 0
+            ### Remove child object from rigid body world (should not be simulated anymore)
+            bpy.context.scene.objects.active = childObj
+            bpy.ops.rigidbody.object_remove()
+            
+    print()
+            
 ################################################################################   
 ################################################################################   
     
 def execute():
     
-    print("\nStarting...")
+    print("\nStarting...\n")
     time_start = time.time()
     
     pi = 3.1415927
@@ -1014,12 +1225,12 @@ def execute():
         bpy.ops.object.make_single_user(object=True, obdata=True, material=False, texture=False, animation=False)
        
         ###### Create object lists of selected objects
+        childObjs = []
         objs, objsEGrp, emptyObjs = gatherObjects(scene) 
         
         if len(objs) > 0:
             #############################
             ###### Prepare connection map
-            print("\nBuilding connection map for %d objects..." %len(objs))
             time_start_connections = time.time()
             
             ###### Find connections by vertex pairs
@@ -1034,25 +1245,28 @@ def execute():
             connectsLoc = calculateBoundaryBoxOfVertexPairs(connectsLocs)
             ###### Create connection data
             connectsPair, connectsLoc, connectsConsts, constsConnect = createConnectionData(objsEGrp, connectsPair, connectsLoc)
-        
-            print(' - Time: %0.2f s' %(time.time()-time_start_connections))
+            
+            print('-- Time: %0.2f s\n' %(time.time()-time_start_connections))
             
             #########################                        
             ###### Main building part
             if len(constsConnect) > 0:
-                print("\nBuilding %d empties..." %len(constsConnect))
                 time_start_building = time.time()
                 
+                ###### Scale elements by custom scale factor and make separate collision object for that
+                applyScale(scene, objs, objsEGrp, childObjs)
+                ###### Bevel elements and make separate collision object for that
+                applyBevel(scene, objs, objsEGrp, childObjs)
                 ###### Create empty objects (without any data)
                 emptyObjs = createEmptyObjs(scene, len(constsConnect))
                 ###### Bundling close empties into clusters, merge locations and count connections per cluster
-                bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
+                if clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
                 ###### Add constraint base settings to empties
-                addConstraintBaseSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect)
+                addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect)
                 ###### Store temp data in scene
-                storeTempDataInScene(scene, objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect)
+                storeTempDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect)
                 
-                print(' - Time: %0.2f s' %(time.time()-time_start_building))
+                print('-- Time: %0.2f s\n' %(time.time()-time_start_building))
             
             ###########################
             ###### No connections found   
@@ -1072,24 +1286,21 @@ def execute():
         ###### Store menu config data in scene
         storeConfigDataInScene(scene)
         ###### Get temp data from scene
-        objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect = getTempDataFromScene(scene)
-        
+        objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect = getTempDataFromScene(scene)
+                
         if len(emptyObjs) > 0:
-            print("\nUpdating %d selected constraints..." %len(emptyObjs))
-            
             ###### Set constraint settings
             setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect)
             ###### Calculate mass for all mesh objects
-            calculateMass(objs, objsEGrp)
-            ###### Add bevel modifiers
-            updateBevel(objs, objsEGrp)
+            calculateMass(scene, objs, objsEGrp, childObjs)
             
             # Deselect all objects
             bpy.ops.object.select_all(action='DESELECT')
             # Select all new constraint empties
             for emptyObj in emptyObjs: emptyObj.select = 1
             
-            print('\nConstraints:', len(emptyObjs), '- Time total: %0.2f s' %(time.time()-time_start))
+            print('-- Time total: %0.2f s\n' %(time.time()-time_start))
+            print('Constraints:', len(emptyObjs), '| Elements:', len(objs), '| Childs:', len(childObjs))
             print('Done.')
 
         #####################
