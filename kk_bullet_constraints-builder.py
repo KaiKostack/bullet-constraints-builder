@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.71 #
+# Bullet Constraints Builder v1.72 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -40,6 +40,7 @@ alignVertical = 0.9          # 0.9   | Uses a vertical alignment multiplier for 
                              #       | Internally X and Y components of the directional vector will be reduced by this factor, should always be < 1 to make horizontal connections still possible.
 useAccurateArea = 0          # 1     | Enables accurate contact area calculation using booleans (only works correct with solid i.e. manifold objects, recommended for truss structures or steel constructions in general)
                              #       | If disabled a simpler boundary box intersection approach is used (only recommended for concrete constructions without diagonal elements)
+nonManifoldThickness = 0.1   # 0.01  | Use this thickness for non-manifold elements when using accurate contact area calculation
 minimumElementSize = 0       # 0.2   | Delete connections whose elements are too small and make them parents instead (this can be helpful to increase performance on models with unrelevant detail such as screws)
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
@@ -64,8 +65,8 @@ elemGrps = [ \
 # Connection Type       | Connection type ID for the constraint presets defined by this script, see list below.
 # Break.Thresh.Compres. | Real world material compressive breaking threshold in N/mm^2.
 # Break.Thresh.Tensile  | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
-# Bevel                 | Use beveling for elements to avoid `Jenga侣创 effect (uses hidden collision meshes)
-# Scale                 | Apply scaling factor on elements to avoid `Jenga侣创 effect (uses hidden collision meshes)
+# Bevel                 | Use beveling for elements to avoid `Jenga脗脗脗脗侣创 effect (uses hidden collision meshes)
+# Scale                 | Apply scaling factor on elements to avoid `Jenga脗脗脗脗侣创 effect (uses hidden collision meshes)
 # Facing                | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
 
 # Connection types:
@@ -77,7 +78,8 @@ elemGrps = [ \
 # 5 = 3x 'GENERIC' constraint per connection, one to evaluate the compressive, another one for the tensile / lateral and the last one for bending / buckling breaking threshold
 
 ### Developer
-debug = 0                         # Enables verbose console output for debugging purposes
+debug = 1                         # Enables verbose console output for debugging purposes
+logPath = r"/tmp"               # Path to log file
 maxMenuElementGroupItems = 100    # Maximum allowed element group entries in menu 
 emptyDrawSize = 0.25              # Display size of constraint empty objects as radius in meters
                 
@@ -93,7 +95,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 7, 1),
+    "version": (1, 7, 2),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -107,6 +109,36 @@ from mathutils import Vector
 #os.system("cls")
 
 ################################################################################
+################################################################################
+
+import pickle
+
+def logDataToFile(data, pathName):
+    try: f = open(pathName, "wb")
+    except:
+        print('Error: Could not write log file:', pathName)
+        return 1
+    else:
+        pickle.dump(data, f, 0)
+        f.close()
+
+########################################
+
+def makeListsPickleFriendly(listOld):
+    listNew = []
+    for sub in listOld:
+        # Check if sub is a list, isinstance(sub, list) doesn't work on ID property lists
+        try: test = len(sub)
+        # If it fails it is no list
+        except: listNew.append(sub)
+        # If it is a list
+        else:
+            sublistNew = []
+            for item in sub:
+                sublistNew.append(item)
+            listNew.append(sublistNew)
+    return listNew
+
 ################################################################################
 
 def storeConfigDataInScene(scene):
@@ -216,7 +248,7 @@ def getBuildDataFromScene(scene):
     
     ### Get build data from scene
     print("Getting build data from scene...")
-    
+
     ### Prepare scene object dictionaries by type to be used for faster item search (optimization)
     scnObjs = {}
     scnEmptyObjs = {}
@@ -225,30 +257,47 @@ def getBuildDataFromScene(scene):
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
 
     ### Get data from scene
-    try: names = scene["bcb_objs"]
-    except: names = []; print("Error: BCB related property not found, rebuilding constraints is required.")
-    objs = [scnObjs[name] for name in names]
     #try: objsEGrp = scene["bcb_objsEGrp"]    # Not required for building only for clearAllDataFromScene(), index will be renewed on update
-    #except: objsEGrp = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    #except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, rebuilding constraints is required.")
+    try: names = scene["bcb_objs"]
+    except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+    objs = [scnObjs[name] for name in names]
     try: names = scene["bcb_emptyObjs"]
-    except: names = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
     emptyObjs = [scnEmptyObjs[name] for name in names]
     try: names = scene["bcb_childObjs"]
-    except: names = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: names = []; print("Error: bcb_childObjs property not found, rebuilding constraints is required.")
     childObjs = [scnObjs[name] for name in names]
     try: connectsPair = scene["bcb_connectsPair"]
-    except: connectsPair = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
     try: connectsPairParent = scene["bcb_connectsPairParent"]
-    except: connectsPairParent = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: connectsPairParent = []; print("Error: bcb_connectsPairParent property not found, rebuilding constraints is required.")
     try: connectsLoc = scene["bcb_connectsLoc"]
-    except: connectsLoc = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: connectsLoc = []; print("Error: bcb_connectsLoc property not found, rebuilding constraints is required.")
     try: connectsArea = scene["bcb_connectsArea"]
-    except: connectsArea = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: connectsArea = []; print("Error: bcb_connectsArea property not found, rebuilding constraints is required.")
     try: connectsConsts = scene["bcb_connectsConsts"]
-    except: connectsConsts = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
     try: constsConnect = scene["bcb_constsConnect"]
-    except: constsConnect = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: constsConnect = []; print("Error: bcb_constsConnect property not found, rebuilding constraints is required.")
     
+    ### Debug: Log all data to ASCII file
+    if debug:
+        log = []
+        log.append([obj.name for obj in objs])
+        log.append([obj.name for obj in emptyObjs])
+        log.append([obj.name for obj in childObjs])
+        log.append(makeListsPickleFriendly(connectsPair))
+        log.append(makeListsPickleFriendly(connectsPairParent))
+        log.append(makeListsPickleFriendly(connectsLoc))
+        log.append(makeListsPickleFriendly(connectsArea))
+        log.append(makeListsPickleFriendly(connectsConsts))
+        log.append(makeListsPickleFriendly(constsConnect))
+        logDataToFile(log, logPath +r"\log_bcb_keys.txt")
+        log = []
+        log.append([obj.name for obj in bpy.context.scene.objects])
+        logDataToFile(log, logPath +r"\log_bcb_scene.txt")
+        
     return objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect
 
 ################################################################################   
@@ -267,18 +316,18 @@ def clearAllDataFromScene(scene):
 
     ### Get data from scene
     try: objsEGrp = scene["bcb_objsEGrp"]
-    except: objsEGrp = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
     try: objsNames = scene["bcb_objs"]
-    except: objsNames = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    except: objsNames = []; print("Error: bcb_objs property not found, cleanup may be incomplete.")
     objs = [scnObjs[name] for name in objsNames]
     try: names = scene["bcb_emptyObjs"]
-    except: names = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    except: names = []; print("Error: bcb_emptyObjs property not found, cleanup may be incomplete.")
     emptyObjs = [scnEmptyObjs[name] for name in names]
     try: names = scene["bcb_childObjs"]
-    except: names = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    except: names = []; print("Error: bcb_childObjs property not found, cleanup may be incomplete.")
     childObjs = [scnObjs[name] for name in names]
     try: connectsPairParent = scene["bcb_connectsPairParent"]
-    except: connectsPairParent = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    except: connectsPairParent = []; print("Error: bcb_connectsPairParent property not found, cleanup may be incomplete.")
     
     ### Store layer settings and activate all layers
     layers = []
@@ -334,10 +383,10 @@ def clearAllDataFromScene(scene):
 
     ### Get data again from scene after we changed obj names
     try: objsNames = scene["bcb_objs"]
-    except: objsNames = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    except: objsNames = []; print("Error: bcb_objs property not found, cleanup may be incomplete.")
     objs = [scnObjs[name] for name in objsNames]
     try: names = scene["bcb_emptyObjs"]
-    except: names = []; print("Error: BCB related property not found, cleanup may be incomplete.")
+    except: names = []; print("Error: bcb_emptyObjs property not found, cleanup may be incomplete.")
     emptyObjs = [scnEmptyObjs[name] for name in names]
         
     ### Revert element scaling
@@ -436,15 +485,15 @@ def monitor_initBuffers(scene):
     
     ### Get temp data from scene
     try: objsNames = scene["bcb_objs"]
-    except: objsNames = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: objsNames = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
     objs = [scnObjs[name] for name in objsNames]
     try: names = scene["bcb_emptyObjs"]
-    except: names = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
     emptyObjs = [scnEmptyObjs[name] for name in names]
     try: connectsPair = scene["bcb_connectsPair"]
-    except: connectsPair = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
     try: connectsConsts = scene["bcb_connectsConsts"]
-    except: connectsConsts = []; print("Error: BCB related property not found, rebuilding constraints is required.")
+    except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
     
     ### Create original transform data array
     d = 0
@@ -551,7 +600,7 @@ class bcb_props(bpy.types.PropertyGroup):
         if i < len(elemGrps): j = i
         else: j = 0
         exec("prop_elemGrp_%d_0" %i +" = string(name='Grp.Name', default=elemGrps[j][0], description='The name of the element group.')")
-        exec("prop_elemGrp_%d_4" %i +" = int(name='Connection Type', default=elemGrps[j][4], min=1, max=5, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
+        exec("prop_elemGrp_%d_4" %i +" = int(name='Connection Type', default=elemGrps[j][4], min=1, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
         exec("prop_elemGrp_%d_5" %i +" = float(name='Brk.Trs.Compressive', default=elemGrps[j][5], min=0.0, max=10000, description='Real world material compressive breaking threshold in N/mm^2.')")
         exec("prop_elemGrp_%d_6" %i +" = float(name='Brk.Trs.Tensile', default=elemGrps[j][6], min=0.0, max=10000, description='Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).')")
         exec("prop_elemGrp_%d_1" %i +" = int(name='Req.Vert.Pairs', default=elemGrps[j][1], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
@@ -1746,6 +1795,29 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst1)
             except: pass
             objConst1.empty_draw_size = emptyDrawSize
+
+# Experimental spring constraint attempt. However results for individual generic spring use looks rather
+# bad due to the lack of bending stiffness evaluation. But may be used for AEM-like method via a matrix of spings.
+#            objConst1.rigid_body_constraint.type = 'GENERIC_SPRING'
+#            objConst1.rigid_body_constraint.use_spring_x = 1
+#            objConst1.rigid_body_constraint.use_spring_y = 1
+#            objConst1.rigid_body_constraint.use_spring_z = 1
+#            objConst1.rigid_body_constraint.spring_stiffness_x = 100000
+#            objConst1.rigid_body_constraint.spring_damping_x = 1
+#            objConst1.rigid_body_constraint.spring_stiffness_y = 100000
+#            objConst1.rigid_body_constraint.spring_damping_y = 1
+#            objConst1.rigid_body_constraint.spring_stiffness_z = 100000
+#            objConst1.rigid_body_constraint.spring_damping_z = 1
+#
+#            objConst1.rigid_body_constraint.use_limit_ang_x = 1
+#            objConst1.rigid_body_constraint.use_limit_ang_y = 1
+#            objConst1.rigid_body_constraint.use_limit_ang_z = 1
+#            objConst1.rigid_body_constraint.limit_ang_x_lower = 0 
+#            objConst1.rigid_body_constraint.limit_ang_x_upper = 0 
+#            objConst1.rigid_body_constraint.limit_ang_y_lower = 0
+#            objConst1.rigid_body_constraint.limit_ang_y_upper = 0
+#            objConst1.rigid_body_constraint.limit_ang_z_lower = 0
+#            objConst1.rigid_body_constraint.limit_ang_z_upper = 0
         
         elif connectionType == 2:
             objConst1 = emptyObjs[consts[0]]
@@ -2125,7 +2197,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         materialPreset = elemGrp[2]
         materialDensity = elemGrp[3]
         if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
-        else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
+        else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
     
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
@@ -2294,11 +2366,17 @@ def register():
     for c in classes:
         bpy.utils.register_class(c)
     bpy.types.WindowManager.bcb = bpy.props.PointerProperty(type=bcb_props)
-
+    # Reinitialize menu for convenience reasons when running from text window
+    props = bpy.context.window_manager.bcb
+    props.prop_menu_gotConfig = 0
+    props.prop_menu_gotData = 0
+    props.props_update_menu()
+    
            
 def unregister():
     for c in classes:
-        bpy.utils.unregister_class(c) 
+        try: bpy.utils.unregister_class(c) 
+        except: pass
     del bpy.types.WindowManager.bcb
  
  
