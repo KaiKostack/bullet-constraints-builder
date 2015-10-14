@@ -1,5 +1,5 @@
 ###################################################
-# Bullet Constraints Builder v1.66 by Kai Kostack #
+# Bullet Constraints Builder v1.67 by Kai Kostack #
 ###################################################
    
 ### Vars for constraint distribution
@@ -8,7 +8,7 @@ withGUI = 1    # Enable graphical user interface, after pressing the "Run Script
 distanceTolerance = 0.05     # 0.05  | Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
 constraintUseBreaking = 1    # 1     | Enables breaking for all constraints
 connectionCountLimit = 0     # 0     | Maximum count of connections per object pair (0 = disabled)
-searchDistance = 0.13        # 0.15  | Search distance to neighbor geometry
+searchDistance = 0.02        # 0.02  | Search distance to neighbor geometry
 clusterRadius = 0.4          # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
 alignVertical = 0.9          # 0.9   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
                              #       | Internally X and Y components of the directional vector will be reduced by this factor, should always be < 1 to make horizontal connections still possible.
@@ -17,11 +17,11 @@ alignVertical = 0.9          # 0.9   | Uses a vertical alignment multiplier for 
 elemGrps = [ \
 # 0          1    2           3        4   5     6    7    8     9
 # Name       RVP  Mat.preset  Density  CT  BTC   BTT  Bev. Scale facing
-[ "",        1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ],   # Defaults to be used when element is not part of any element group
-[ "Columns", 1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ],
-[ "Girders", 1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ],
-[ "Walls",   1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ],
-[ "Slabs",   1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ]
+[ "",        1,   "Concrete", 0,       4,  20,   5,   0,   .95,  0      ],   # Defaults to be used when element is not part of any element group
+[ "Columns", 1,   "Concrete", 0,       4,  20,   5,   0,   .95,  0      ],
+[ "Girders", 1,   "Concrete", 0,       4,  20,   5,   0,   .95,  0      ],
+[ "Walls",   1,   "Concrete", 0,       4,  20,   5,   0,   .95,  0      ],
+[ "Slabs",   1,   "Concrete", 0,       4,  20,   5,   0,   .95,  0      ]
 ]
 
 # Column descriptions (in order from left to right):
@@ -49,10 +49,10 @@ elemGrps = [ \
 ### Developer
 debug = 0                         # Enables verbose console output for debugging purposes
 maxMenuElementGroupItems = 100    # Maximum allowed element group entries in menu 
+emptyDrawSize = 0.25              # Display size of constraint empty objects as radius in meters
                 
 # For monitor event handler:
 qRenderAnimation = 0     # Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
-                         # Unfortunately there is no way for using the regular render animation button, since bpy.ops don't work with it
 
 ########################################
 
@@ -361,7 +361,8 @@ def monitor_checkForDistanceChange():
             # Calculate distance between both elements of the connection
             distance = (connect[0].matrix_world.to_translation() -connect[1].matrix_world.to_translation()).length
             # If change in distance is larger than tolerance
-            if abs(1 -(connect[2] /distance)) > distanceTolerance:
+            #if abs(connect[2] -distance) > distanceTolerance:      # Absolute distance
+            if abs(1 -(connect[2] /distance)) > distanceTolerance:  # Relative distance
                 # Disable all constraints for this connection by setting breaking threshold to 0
                 for const in connect[3]:
                     const.rigid_body_constraint.breaking_threshold = 0
@@ -814,6 +815,34 @@ def gatherObjects(scene):
 
 ################################################################################   
 
+def boundaryBox(obj, qGlobalSpace):
+
+    ### Calculate boundary box corners and center from given object
+    me = obj.data
+    verts = me.vertices
+    if qGlobalSpace:
+        # Multiply local coordinates by world matrix to get global coordinates
+        mat = obj.matrix_world
+        bbMin = mat *verts[0].co
+        bbMax = mat *verts[0].co
+    else:
+        bbMin = verts[0].co.copy()
+        bbMax = verts[0].co.copy()
+    for vert in verts:
+        if qGlobalSpace: loc = mat *vert.co
+        else:            loc = vert.co.copy()
+        if bbMax[0] < loc[0]: bbMax[0] = loc[0]
+        if bbMin[0] > loc[0]: bbMin[0] = loc[0]
+        if bbMax[1] < loc[1]: bbMax[1] = loc[1]
+        if bbMin[1] > loc[1]: bbMin[1] = loc[1]
+        if bbMax[2] < loc[2]: bbMax[2] = loc[2]
+        if bbMin[2] > loc[2]: bbMin[2] = loc[2]
+    bbCenter = (bbMin +bbMax) /2
+        
+    return bbMin, bbMax, bbCenter
+
+################################################################################   
+
 def findConnectionsByVertexPairs(objs, objsEGrp):
     
     ### Find connections by vertex pairs
@@ -840,7 +869,6 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                         
     ### Find connections by vertex pairs
     connectsPair = []          # Stores both connected objects indices per connection
-    count = 0
     for k in range(len(objs)):
         sys.stdout.write('\r' +"%d" %k)
         # Update progress bar
@@ -888,7 +916,6 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                         if pair not in connectsPair:
                             connectsPair.append(pair)
                             connectCnt += 1
-                            count += 1
                             if connectCnt == connectionCountLimit:
                                 if elemGrps[objsEGrp[k]][1] <= 1:
                                     qNextObj = 1
@@ -896,6 +923,79 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                             
             if qNextObj: break
         
+    print()
+    return connectsPair
+
+################################################################################   
+
+def findConnectionsByBoundaryBoxIntersection(objs, objsEGrp):
+    
+    ### Find connections by boundary box intersection
+    print("Searching connections by boundary box intersection... (%d)" %len(objs))
+    
+    ### Build kd-tree for object locations
+    kdObjs = mathutils.kdtree.KDTree(len(objs))
+    for i, obj in enumerate(objs):
+        kdObjs.insert(obj.location, i)
+    kdObjs.balance()
+    
+    ### Precalculate boundary boxes for all objects
+    bboxes = []
+    for obj in objs:
+        # Calculate boundary box corners
+        bbMin, bbMax, bbCenter = boundaryBox(obj, 1)
+        # Extend boundary box dimensions by searchDistance
+        bbMin -= Vector((searchDistance, searchDistance, searchDistance))
+        bbMax += Vector((searchDistance, searchDistance, searchDistance))
+        bboxes.append([bbMin, bbMax])
+    
+    ### Find connections by vertex pairs
+    connectsPair = []          # Stores both connected objects indices per connection
+    for k in range(len(objs)):
+        sys.stdout.write('\r' +"%d" %k)
+        # Update progress bar
+        bpy.context.window_manager.progress_update(k /len(objs))
+        
+        obj = objs[k]
+        mat = obj.matrix_world
+        me = obj.data
+                
+        ### Find closest objects via kd-tree
+        co_find = obj.location
+        aIndex = []#; aCo = []; aDist = [];
+        if connectionCountLimit:
+            for (co, index, dist) in kdObjs.find_n(co_find, connectionCountLimit +1):  # +1 because the first item will be removed
+                aIndex.append(index)#; aCo.append(co); aDist.append(dist)
+        else:
+            for (co, index, dist) in kdObjs.find_range(co_find, 999999):
+                aIndex.append(index)#; aCo.append(co); aDist.append(dist)
+        aIndex = aIndex[1:] # Remove first item because it's the same as co_find (zero distance)
+    
+        # Loop through comparison object found
+        for j in range(len(aIndex)):
+            l = aIndex[j]
+            
+            # Skip same object index
+            if k != l:
+                bbAMin, bbAMax = bboxes[k]
+                bbBMin, bbBMax = bboxes[l]
+                ### Calculate overlap per axis of both intersecting boundary boxes
+                overlapX = max(0, min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]))
+                overlapY = max(0, min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]))
+                overlapZ = max(0, min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
+                # Calculate volume
+                volume = overlapX *overlapY *overlapZ
+                if volume > 0:                
+                    ### Store connection if not already existing
+                    connectCnt = 0
+                    pair = [k, l]
+                    pair.sort()
+                    if pair not in connectsPair:
+                        connectsPair.append(pair)
+                        connectCnt += 1
+                        if connectCnt == connectionCountLimit:
+                            break
+    
     print()
     return connectsPair
 
@@ -923,34 +1023,6 @@ def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair):
     return connectsPair
         
 ################################################################################   
-
-def boundaryBox(obj, qGlobalSpace):
-
-    ### Calculate boundary box corners and center from given object
-    me = obj.data
-    verts = me.vertices
-    if qGlobalSpace:
-        # Multiply local coordinates by world matrix to get global coordinates
-        mat = obj.matrix_world
-        bbMin = mat *verts[0].co
-        bbMax = mat *verts[0].co
-    else:
-        bbMin = verts[0].co.copy()
-        bbMax = verts[0].co.copy()
-    for vert in verts:
-        if qGlobalSpace: loc = mat *vert.co
-        else:            loc = vert.co.copy()
-        if bbMax[0] < loc[0]: bbMax[0] = loc[0]
-        if bbMin[0] > loc[0]: bbMin[0] = loc[0]
-        if bbMax[1] < loc[1]: bbMax[1] = loc[1]
-        if bbMin[1] > loc[1]: bbMin[1] = loc[1]
-        if bbMax[2] < loc[2]: bbMax[2] = loc[2]
-        if bbMin[2] > loc[2]: bbMin[2] = loc[2]
-    bbCenter = (bbMin +bbMax) /2
-        
-    return bbMin, bbMax, bbCenter
-
-########################################
 
 def calculateContactAreaForConnections(objs, connectsPair):
     
@@ -1065,7 +1137,6 @@ def createEmptyObjs(scene, constCnt):
     objConst = bpy.data.objects.new('Constraint', None)
     scene.objects.link(objConst)
     objConst.empty_draw_type = 'SPHERE'
-    objConst.empty_draw_size = searchDistance
     bpy.context.scene.objects.active = objConst
     bpy.ops.rigidbody.constraint_add()
     emptyObjs = [objConst]
@@ -1214,6 +1285,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             ### Add to Bullet constraint group in case it got removed for some reason
             try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst1)
             except: pass
+            objConst1.empty_draw_size = emptyDrawSize
         
         elif connectionType == 2:
             objConst1 = emptyObjs[consts[0]]
@@ -1224,6 +1296,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             ### Add to Bullet constraint group in case it got removed for some reason
             try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst1)
             except: pass
+            objConst1.empty_draw_size = emptyDrawSize
         
         elif connectionType == 3:
             constCnt = 2   # As both constraints bear all load and forces are evenly distributed among them the breaking thresholds need to be divided by their count to compensate
@@ -1244,6 +1317,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             except: pass
             try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst2)
             except: pass
+            objConst1.empty_draw_size = emptyDrawSize
+            objConst2.empty_draw_size = emptyDrawSize
         
         elif connectionType == 4:
             # Correction multiplier for breaking thresholds
@@ -1323,7 +1398,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             except: pass
             try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst2)
             except: pass
-            
+            objConst1.empty_draw_size = emptyDrawSize
+            objConst2.empty_draw_size = emptyDrawSize
+        
     print()
         
 ################################################################################
@@ -1567,7 +1644,9 @@ def execute():
             time_start_connections = time.time()
             
             ###### Find connections by vertex pairs
-            connectsPair = findConnectionsByVertexPairs(objs, objsEGrp)
+            #connectsPair = findConnectionsByVertexPairs(objs, objsEGrp)
+            ###### Find connections by boundary box intersection
+            connectsPair = findConnectionsByBoundaryBoxIntersection(objs, objsEGrp)
             ###### Delete connections with too few connected vertices
             connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
             ###### Calculate contact area for all connections
