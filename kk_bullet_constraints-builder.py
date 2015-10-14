@@ -1,23 +1,23 @@
-##################################################
-# Bullet Constraints Builder v1.5 by Kai Kostack #
-##################################################
+###################################################
+# Bullet Constraints Builder v1.51 by Kai Kostack #
+###################################################
 
 ### Vars for constraint distribution
-constraintCountLimit = 1000  # 150   | Maximum count of constraints per object (0 = disabled)
+constraintCountLimit = 150   # 150   | Maximum count of constraints per object (0 = disabled)
 searchDistance = 0.9         # 0.10  | Search distance to neighbor geometry
 clusterRadius = 0.9          # 0.40  | Radius for bundling close constraints into clusters (0 = clusters disabled)
-ReqVertexPairs = 3           # 3     | How many vertex connections between an object pair are required to create an constraint
-ReqVertexPairsToPillars = 2  # 2     | How many vertex connections between an object pair of whom one is a pillar are required to create an constraint
+reqVertexPairs = 3           # 3     | How many vertex connections between an object pair are required to create an constraint
+reqVertexPairsToPillars = 2  # 2     | How many vertex connections between an object pair of whom one is a pillar are required to create an constraint
                              # This can help to ensure there is an actual surface on surface connection between both objects (for at least 3 verts you can expect a shared surface).
 
 ### Vars for constraint settings
 realWorldBreakingThresholdCompressive = 60  # 60      | Real world material compressive breaking threshold in N/mm^2
-realWorldBreakingThresholdTensile     = 10  # 20      | Real world material tensile breaking threshold in N/mm^2
+realWorldBreakingThresholdTensile     = 20  # 20      | Real world material tensile breaking threshold in N/mm^2
 constraintUseBreaking = 1                   # 1       | Enables breaking
 constraintType = 'FIXED'                    # 'FIXED' | Available: FIXED, POINT, HINGE, SLIDER, PISTON, GENERIC, GENERIC_SPRING, MOTOR
 pillarGroup = "Pillars"                     #         | Name of group which contains only pillars (optional, overrides autodetection)  
 pillarGroupConstraintTypeTop = 'FIXED'      # 'FIXED' | Available: FIXED, POINT, HINGE, SLIDER, PISTON, GENERIC, GENERIC_SPRING, MOTOR
-pillarGroupConstraintTypeBottom = 'FIXED'   # 'FIXED' | Available: FIXED, POINT, HINGE, SLIDER, PISTON, GENERIC, GENERIC_SPRING, MOTOR
+pillarGroupConstraintTypeBottom = 'POINT'   # 'FIXED' | Available: FIXED, POINT, HINGE, SLIDER, PISTON, GENERIC, GENERIC_SPRING, MOTOR
 
 ### Vars for volume calculation
 materialPreset = 'Concrete'      # 'Concrete' | See Blender rigid body tools for a list of available presets
@@ -27,6 +27,8 @@ materialDensity = 0              # 0          | Custom density value (kg/m^3) to
 
 import bpy, sys, mathutils, time
 from mathutils import Vector
+import os
+os.system("cls")
 
 ##################################################  
 
@@ -220,7 +222,7 @@ def run():
                                 conCount += 1
                                 count += 1
                                 if conCount == constraintCountLimit:
-                                    if ReqVertexPairs <= 1:
+                                    if reqVertexPairs <= 1:
                                         qNextObj = 1
                                         break
                             else:
@@ -231,7 +233,7 @@ def run():
         
         ### Delete connections with too few connected vertices
         ### With one exception: Connections to pillars need only one vertex pair
-        if ReqVertexPairs > 1:
+        if reqVertexPairs > 1:
             consPairTmp = []
             consLocTmp = []
             countOld = count
@@ -239,10 +241,10 @@ def run():
             for i in range(len(consPair)):
                 pair = consPair[i]
                 co = consLoc[i]
-                if consVertPairCnt[i] >= ReqVertexPairs \
+                if consVertPairCnt[i] >= reqVertexPairs \
                 or (grpPillarGroup and (objs[pair[0]].name in bpy.data.groups[pillarGroup].objects \
                 or objs[pair[1]].name in bpy.data.groups[pillarGroup].objects) \
-                and consVertPairCnt[i] >= ReqVertexPairsToPillars):
+                and consVertPairCnt[i] >= reqVertexPairsToPillars):
                     consPairTmp.append(pair)
                     consLocTmp.append(co)
                     count += 1
