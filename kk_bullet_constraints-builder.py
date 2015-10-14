@@ -1,29 +1,30 @@
 ###################################################
-# Bullet Constraints Builder v1.64 by Kai Kostack #
+# Bullet Constraints Builder v1.65 by Kai Kostack #
 ###################################################
    
 ### Vars for constraint distribution
 withGUI = 1    # Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
 
+distanceTolerance = 0.05     # 0.05  | Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
 constraintUseBreaking = 1    # 1     | Enables breaking for all constraints
-connectionCountLimit = 150   # 150   | Maximum count of connections per object pair (0 = disabled)
+connectionCountLimit = 0     # 0     | Maximum count of connections per object pair (0 = disabled)
 searchDistance = 0.13        # 0.15  | Search distance to neighbor geometry
 clusterRadius = 0.4          # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [ \
-# 0          1    2           3        4   5    6    7    8     9
-# Name       RVP  Mat.preset  Density  CT  BTC  BTT  Bev. Scale facing
+# 0          1    2           3        4   5     6    7    8     9
+# Name       RVP  Mat.preset  Density  CT  BTC   BTT  Bev. Scale facing
 [ "",        1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ],   # Defaults to be used when element is not part of any element group
-[ "Slabs",   1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ],
-[ "Walls",   1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ],
+[ "Columns", 1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ],
 [ "Girders", 1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ],
-[ "Columns", 1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ]
+[ "Walls",   1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ],
+[ "Slabs",   1,   "Concrete", 0,       4,  20,   7,   0,   .95,  0      ]
 ]
 
 # Column descriptions (in order from left to right):
 #
-# Required Vertex Pairs | How many vertex pairs between two elements are required to generate a constraint.
+# Required Vertex Pairs | How many vertex pairs between two elements are required to generate a connection.
 # (Depreciated)         | This can help to ensure there is an actual surface to surface connection between both elements (for at least 3 verts you can expect a shared surface).
 #                       | For two elements from different groups with different RVPs the lower number is decisive.
 # Material Preset       | Preset name of the physical material to be used from Blender's internal database.
@@ -32,21 +33,26 @@ elemGrps = [ \
 # Connection Type       | Connection type ID for the constraint presets defined by this script, see list below.
 # Break.Thresh.Compres. | Real world material compressive breaking threshold in N/mm^2.
 # Break.Thresh.Tensile  | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
-# Bevel                 | Use beveling for elements to avoid `Jenga effect´ (uses hidden collision meshes)
-# Scale                 | Apply scaling factor on elements to avoid `Jenga effect´ (uses hidden collision meshes)
+# Bevel                 | Use beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes)
+# Scale                 | Apply scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes)
 # Facing                | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
 
 # Connection types:
 #
 # 1 = 1x 'FIXED' constraint per connection, only compressive breaking threshold is used (tensile limit is the same, angular forces limit as well)
 # 2 = 1x 'POINT' constraint per connection, only compressive breaking threshold is used (tensile limit is the same)
-# 3 = 1x 'FIXED' & 1x 'POINT' constraint per connection, compressive breaking threshold is used for the first one and tensile for the second
+# 3 = 1x 'FIXED' + 1x 'POINT' constraint per connection, compressive breaking threshold is used for the first one and tensile for the second
 # 4 = 2x 'GENERIC' constraint per connection, one to evaluate the compressive and the other the tensile breaking threshold
 
 ### Developer
-debug = 0    # Enables verbose console output for debugging purposes
-maxMenuElementGroupItems = len(elemGrps) +100    # Maximum allowed element group entries in menu 
-alignVertical = 1  # Enables vertical alignment for connection type 4 instead of center-to-center
+debug = 0                         # Enables verbose console output for debugging purposes
+maxMenuElementGroupItems = 100    # Maximum allowed element group entries in menu 
+alignVertical = 0.9       # 0.9   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
+                          #       | Internally X and Y components of the directional vector will be reduced by this factor, should always be < 1 to make horizontal connections still possible.
+                
+# For monitor event handler:
+qRenderAnimation = 0     # Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
+                         # Unfortunately there is no way for using the regular render animation button, since bpy.ops don't work with it
 
 ########################################
 
@@ -57,7 +63,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 6, 4),
+    "version": (1, 6, 5),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -124,30 +130,39 @@ def getConfigDataFromScene(scene):
     
 ################################################################################   
 
-def storeSimDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect):
+def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect):
     
-    ### Store simulation data in scene
-    if debug: print("Storing temp data in scene...")
+    ### Store build data in scene
+    if debug: print("Storing build data in scene...")
     
-    scene["bcb_objs"] = [obj.name for obj in objs]
-    scene["bcb_objsEGrp"] = objsEGrp
-    scene["bcb_emptyObjs"] = [obj.name for obj in emptyObjs]
-    scene["bcb_childObjs"] = [obj.name for obj in childObjs]
-    scene["bcb_connectsPair"] = connectsPair
-    scene["bcb_connectsLoc"] = connectsLoc
-    scene["bcb_connectsArea"] = connectsArea
-    scene["bcb_connectsConsts"] = connectsConsts
-    scene["bcb_constsConnect"] = constsConnect    
+    if objs != None:
+        scene["bcb_objs"] = [obj.name for obj in objs]
+    if objsEGrp != None:
+        scene["bcb_objsEGrp"] = objsEGrp
+    if emptyObjs != None:
+        scene["bcb_emptyObjs"] = [obj.name for obj in emptyObjs]
+    if childObjs != None:
+        scene["bcb_childObjs"] = [obj.name for obj in childObjs]
+    if connectsPair != None:
+        scene["bcb_connectsPair"] = connectsPair
+    if connectsLoc != None:
+        scene["bcb_connectsLoc"] = connectsLoc
+    if connectsArea != None:
+        scene["bcb_connectsArea"] = connectsArea
+    if connectsConsts != None:
+        scene["bcb_connectsConsts"] = connectsConsts
+    if constsConnect != None:
+        scene["bcb_constsConnect"] = constsConnect    
                     
 ################################################################################   
 
-def getSimDataFromScene(scene):
+def getBuildDataFromScene(scene):
     
-    ### Get simulation data from scene
-    if debug: print("Getting temp data from scene...")
+    ### Get build data from scene
+    if debug: print("Getting build data from scene...")
     
     names = scene["bcb_objs"]; objs = [scene.objects[name] for name in names]
-    objsEGrp = scene["bcb_objsEGrp"]
+    #objsEGrp = scene["bcb_objsEGrp"]    # Not required for building only for clearAllDataFromScene(), index will be renewed on update
     names = scene["bcb_emptyObjs"]; emptyObjs = [scene.objects[name] for name in names]
     names = scene["bcb_childObjs"]; childObjs = [scene.objects[name] for name in names]
     connectsPair = scene["bcb_connectsPair"]
@@ -156,7 +171,7 @@ def getSimDataFromScene(scene):
     connectsConsts = scene["bcb_connectsConsts"]
     constsConnect = scene["bcb_constsConnect"]
     
-    return objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect
+    return objs, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect
 
 ################################################################################   
 
@@ -230,7 +245,7 @@ def clearAllDataFromScene(scene):
     ### Revert selection back to original state
     for obj in objs: obj.select = 1
     
-    ### Finally remove ID property sim data (leaves menu props in place)
+    ### Finally remove ID property build data (leaves menu props in place)
     for key in scene.keys():
         if "bcb_" in key and not "bcb_prop" in key: del scene[key]
    
@@ -238,6 +253,136 @@ def clearAllDataFromScene(scene):
     for i in range(20): scene.layers[i] = layers[i]
         
 ################################################################################   
+################################################################################
+
+def monitor_eventHandler(scene):
+
+    ### Check if last frame is reached then stop animation playback
+    if scene.frame_current == scene.frame_end:
+        if bpy.context.screen.is_animation_playing:
+            bpy.ops.screen.animation_play()
+            print('\nTime: %0.2f s' %(time.time()-time_start))
+    
+    ### Render part
+    if qRenderAnimation:
+        # Need to disable handler while rendering, otherwise Blender crashes
+        bpy.app.handlers.frame_change_pre.pop()
+        
+        filepathOld = bpy.context.scene.render.filepath
+        bpy.context.scene.render.filepath += "%04d" %(scene.frame_current -1)
+        bpy.context.scene.render.image_settings.file_format = 'JPEG'
+        bpy.context.scene.render.image_settings.quality = 75
+        
+        # Stupid Blender design hack, enforcing context to be accepted by operators (at this point copy() even throws a warning but works anyway, funny Blender)
+        contextFix = bpy.context.copy()
+        print("Note: Please ignore above copy warning, it's a false alarm.")
+        contextFix["area"] = None     
+        # Render single frame with render settings
+        if qRenderAnimation == 1: bpy.ops.render.render(contextFix, write_still=True)
+        # Render single frame in OpenGL mode
+        elif qRenderAnimation == 2: bpy.ops.render.opengl(contextFix, write_still=True)
+        
+        bpy.context.scene.render.filepath = filepathOld
+        
+        # Append handler again
+        bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
+
+    #############################
+    ### What to do on start frame
+    if not "bcb_monitor" in bpy.app.driver_namespace:
+        print("Initializing buffers...")
+        
+        ###### Function
+        monitor_initBuffers(scene)
+                
+    ################################
+    ### What to do AFTER start frame
+    else:
+        print("Frame:", scene.frame_current, " ")
+        
+        ###### Function
+        monitor_checkForDistanceChange()
+                            
+################################################################################
+
+def monitor_initBuffers(scene):
+    
+    if debug: print("Calling initBuffers")
+    
+    connects = bpy.app.driver_namespace["bcb_monitor"] = [] 
+    
+    ### Get temp data from scene
+    names = scene["bcb_objs"]; objs = [scene.objects[name] for name in names]
+    names = scene["bcb_emptyObjs"]; emptyObjs = [scene.objects[name] for name in names]
+    connectsPair = scene["bcb_connectsPair"]
+    connectsConsts = scene["bcb_connectsConsts"]
+    
+    ### Create original transform data array
+    d = 0
+    for pair in connectsPair:
+        d += 1
+        sys.stdout.write('\r' +"%d " %d)
+        
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
+        distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+        consts = []
+        constsBrkTs = []
+        for const in connectsConsts[d -1]:
+            emptyObj = emptyObjs[const]
+            consts.append(emptyObj)
+            # Backup original breaking thresholds
+            constsBrkTs.append(emptyObj.rigid_body_constraint.breaking_threshold)
+        connects.append([objA, objB, distance, consts, constsBrkTs, 1])
+
+    print("Connections")
+        
+################################################################################
+
+def monitor_checkForDistanceChange():
+
+    if debug: print("Calling checkForDistanceChange")
+    
+    connects = bpy.app.driver_namespace["bcb_monitor"]
+    d = 0
+    cnt = 0
+    for connect in connects:
+        # If connection is not flagged as loose then do:
+        if connect[5]:
+            d += 1
+            sys.stdout.write('\r' +"%d " %d)
+        
+            # Calculate distance between both elements of the connection
+            distance = (connect[0].matrix_world.to_translation() -connect[1].matrix_world.to_translation()).length
+            # If change in distance is larger than tolerance
+            if abs(1 -(connect[2] /distance)) > distanceTolerance:
+                # Disable all constraints for this connection by setting breaking threshold to 0
+                for const in connect[3]:
+                    const.rigid_body_constraint.breaking_threshold = 0
+                # Flag connection as being disconnected
+                connect[5] = 0
+                cnt += 1
+    
+    if cnt > 0: print("Connections | Removed:", cnt)
+    else: print("Connections")
+                
+################################################################################
+
+def monitor_freeBuffers():
+    
+    if debug: print("Calling freeBuffers")
+    
+    connects = bpy.app.driver_namespace["bcb_monitor"]
+    ### Restore original breaking thresholds
+    for connect in connects:
+        consts = connect[3]
+        constsBrkTs = connect[4]
+        for i in range(len(consts)):
+            consts[i].rigid_body_constraint.breaking_threshold = constsBrkTs[i]
+    # Clear property
+    del bpy.app.driver_namespace["bcb_monitor"]
+
+################################################################################
 ################################################################################
 
 class bcb_props(bpy.types.PropertyGroup):
@@ -250,6 +395,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_menu_gotData = int(0)
     prop_menu_selectedItem = int(0)
     
+    prop_distanceTolerance = float(name="Tolerance", default=distanceTolerance, min=0.0, max=1.0, description="Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).")
     prop_constraintUseBreaking = bool(name="Enable Breaking", default=constraintUseBreaking, description="Enables breaking for all constraints.")
     prop_connectionCountLimit = int(name="Con.Count Limit", default=connectionCountLimit, min=0, max=10000, description="Maximum count of connections per object pair (0 = disabled).")
     prop_searchDistance = float(name="Search Distance", default=searchDistance, min=0.0, max=1000, description="Search distance to neighbor geometry.")
@@ -262,11 +408,11 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("prop_elemGrp_%d_4" %i +" = int(name='Connection Type', default=elemGrps[j][4], min=1, max=4, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
         exec("prop_elemGrp_%d_5" %i +" = float(name='Brk.Trs.Compressive', default=elemGrps[j][5], min=0.0, max=10000, description='Real world material compressive breaking threshold in N/mm^2.')")
         exec("prop_elemGrp_%d_6" %i +" = float(name='Brk.Trs.Tensile', default=elemGrps[j][6], min=0.0, max=10000, description='Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).')")
-        exec("prop_elemGrp_%d_1" %i +" = int(name='Req.Vert.Pairs', default=elemGrps[j][1], min=0, max=100, description='How many vertex pairs between two elements are required to generate a constraint.')")
+        exec("prop_elemGrp_%d_1" %i +" = int(name='Req.Vert.Pairs', default=elemGrps[j][1], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
         exec("prop_elemGrp_%d_2" %i +" = string(name='Mat.Preset', default=elemGrps[j][2], description='Preset name of the physical material to be used from Blender´s internal database. See Blender´s Rigid Body Tools for a list of available presets.')")
         exec("prop_elemGrp_%d_3" %i +" = float(name='Matl. Density', default=elemGrps[j][3], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
-        exec("prop_elemGrp_%d_7" %i +" = bool(name='Bevel', default=elemGrps[j][7], description='Enables beveling for elements to avoid `Jenga effect´ (uses hidden collision meshes).')")
-        exec("prop_elemGrp_%d_8" %i +" = float(name='Rescale Factor', default=elemGrps[j][8], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga effect´ (uses hidden collision meshes).')")
+        exec("prop_elemGrp_%d_7" %i +" = bool(name='Bevel', default=elemGrps[j][7], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
+        exec("prop_elemGrp_%d_8" %i +" = float(name='Rescale Factor', default=elemGrps[j][8], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
         exec("prop_elemGrp_%d_9" %i +" = bool(name='Facing', default=elemGrps[j][9], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
         
     def props_update_menu(self):
@@ -285,6 +431,7 @@ class bcb_props(bpy.types.PropertyGroup):
             
     def props_update_globals(self):
         ### Update global vars from menu related properties
+        global distanceTolerance; distanceTolerance = self.prop_distanceTolerance
         global constraintUseBreaking; constraintUseBreaking = self.prop_constraintUseBreaking
         global connectionCountLimit; connectionCountLimit = self.prop_connectionCountLimit
         global searchDistance; searchDistance = self.prop_searchDistance
@@ -318,10 +465,17 @@ class bcb_panel(bpy.types.Panel):
                 else: split2.operator("bcb.set_config", icon="NEW")
             else:
                 split2.operator("bcb.set_config", icon="NEW")
+            row = layout.row() # for baking buttons
+            row.enabled = 0
         else:
             split = row.split(percentage=.85, align=False)
             split.operator("bcb.update", icon="FILE_REFRESH")
             split.operator("bcb.clear", icon="CANCEL")
+            row = layout.row() # for baking buttons
+        split = row.split(percentage=.50, align=False)
+        split.operator("bcb.bake", icon="REC")
+        split2 = split.row()
+        split2.prop(props, "prop_distanceTolerance")
         
         row = layout.row(); row.prop(props, "prop_constraintUseBreaking")
         row = layout.row(); row.prop(props, "prop_connectionCountLimit")
@@ -419,7 +573,7 @@ class OBJECT_OT_bcb_get_config(bpy.types.Operator):
             props.prop_menu_gotConfig = 1
         if "bcb_objs" in scene.keys():
             ###### Get menu config data from scene
-            getSimDataFromScene(scene)
+            getBuildDataFromScene(scene)
             props.prop_menu_gotData = 1
         return{'FINISHED'} 
         
@@ -446,6 +600,26 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
         execute()
         return{'FINISHED'} 
 
+class OBJECT_OT_bcb_bake(bpy.types.Operator):
+    bl_idname = "bcb.bake"
+    bl_label = "Bake"
+    bl_description = "Bakes simulation. Use of this button is crucial if connection type 4 is used, because then constraints require monitoring on per frame basis during simulation."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        print('Init BCB monitor event handler.')
+        bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
+        # Invoke baking
+        contextFix = bpy.context.copy()
+        contextFix['point_cache'] = scene.rigidbody_world.point_cache
+        bpy.ops.ptcache.free_bake(contextFix)
+        bpy.ops.ptcache.bake(contextFix, bake=True)
+        print('Removing BCB monitor event handler.')
+        for i in range( len( bpy.app.handlers.frame_change_pre ) ):
+             bpy.app.handlers.frame_change_pre.pop()
+        monitor_freeBuffers()
+        return{'FINISHED'} 
+
 class OBJECT_OT_bcb_clear(bpy.types.Operator):
     bl_idname = "bcb.clear"
     bl_label = "Clear"
@@ -466,7 +640,7 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
         props = context.window_manager.bcb
         global elemGrps
         if len(elemGrps) < maxMenuElementGroupItems:
-            # Add element group (syncing element group indices is not required as we basically append the group)
+            # Add element group (syncing element group indices happens on execution)
             elemGrps.append(elemGrps[props.prop_menu_selectedItem])
             # Update menu selection
             props.prop_menu_selectedItem = len(elemGrps) -1
@@ -484,23 +658,8 @@ class OBJECT_OT_bcb_del(bpy.types.Operator):
         global elemGrps
         scene = bpy.context.scene
         if len(elemGrps) > 1:
-            # Remove element group
+            # Remove element group (syncing element group indices happens on execution)
             elemGrps.remove(elemGrps[props.prop_menu_selectedItem])
-            ### Sync element group indices in scene data to meet change
-            if "bcb_objsEGrp" in scene.keys():
-                objsEGrp = scene["bcb_objsEGrp"]
-                objsEGrpNew = []
-                for j in range(len(objsEGrp)):
-                    grpIdx = objsEGrp[j]
-                    if grpIdx == props.prop_menu_selectedItem:
-                        q = 0
-                        for i in range(len(elemGrps)):
-                            if elemGrps[i][0] == "":
-                                grpIdx = i; q = 1; break   # Try to assign object to default element group
-                        if not q: grpIdx = 0               # Otherwise assign element group 0
-                    if grpIdx > props.prop_menu_selectedItem: grpIdx -= 1
-                    objsEGrpNew.append(grpIdx)
-                scene["bcb_objsEGrp"] = objsEGrpNew
             # Update menu selection
             if props.prop_menu_selectedItem >= len(elemGrps):
                 props.prop_menu_selectedItem = len(elemGrps) -1
@@ -516,9 +675,10 @@ class OBJECT_OT_bcb_move_up(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         global elemGrps
+        scene = bpy.context.scene
         if props.prop_menu_selectedItem > 0:
             swapItem = props.prop_menu_selectedItem -1
-            # Swap items
+            # Swap items (syncing element group indices happens on execution)
             elemGrps[swapItem], elemGrps[props.prop_menu_selectedItem] = elemGrps[props.prop_menu_selectedItem], elemGrps[swapItem]
             # Also move menu selection
             props.prop_menu_selectedItem -= 1
@@ -533,9 +693,10 @@ class OBJECT_OT_bcb_move_down(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         global elemGrps
+        scene = bpy.context.scene
         if props.prop_menu_selectedItem < len(elemGrps) -1:
             swapItem = props.prop_menu_selectedItem +1
-            # Swap items
+            # Swap items (syncing element group indices happens on execution)
             elemGrps[swapItem], elemGrps[props.prop_menu_selectedItem] = elemGrps[props.prop_menu_selectedItem], elemGrps[swapItem]
             # Also move menu selection
             props.prop_menu_selectedItem += 1
@@ -571,24 +732,8 @@ class OBJECT_OT_bcb_reset(bpy.types.Operator):
         props = context.window_manager.bcb
         global elemGrps
         scene = bpy.context.scene
-        # Overwrite element group with original backup
+        # Overwrite element group with original backup (syncing element group indices happens on execution)
         elemGrps = elemGrpsBak.copy()
-        ### Reassign objects to element groups as resetting has invalidated the element group index
-        if "bcb_objs" in scene.keys():
-            objsNames = scene["bcb_objs"]; objs = [scene.objects[name] for name in objsNames]
-            objsEGrp = []
-            for obj in objs:
-                objGrpsTmp = []
-                for elemGrp in elemGrps:
-                    if elemGrp[0] in bpy.data.groups:
-                        if obj.name in bpy.data.groups[elemGrp[0]].objects:
-                            objGrpsTmp.append(elemGrps.index(elemGrp))
-                if len(objGrpsTmp) > 1:
-                    print("\nWarning: Object %s belongs to more than one element group, defaults are used." %obj.name)
-                    objGrpsTmp = [0]
-                elif len(objGrpsTmp) == 0: objGrpsTmp = [0]
-                objsEGrp.append(objGrpsTmp[0])
-            scene["bcb_objsEGrp"] = objsEGrp
         # Update menu selection
         props.prop_menu_selectedItem = 0
         # Update menu related properties from global vars
@@ -603,6 +748,7 @@ classes = [ \
     OBJECT_OT_bcb_get_config,
     OBJECT_OT_bcb_execute,
     OBJECT_OT_bcb_update,
+    OBJECT_OT_bcb_bake,
     OBJECT_OT_bcb_clear,
     OBJECT_OT_bcb_add,
     OBJECT_OT_bcb_del,
@@ -616,13 +762,32 @@ classes = [ \
 ################################################################################   
 ################################################################################   
 
+def createElementGroupIndex(objs):
+
+    ### Create a list about which object belongs to which element group
+    objsEGrp = []
+    for obj in objs:
+        objGrpsTmp = []
+        for elemGrp in elemGrps:
+            if elemGrp[0] in bpy.data.groups:
+                if obj.name in bpy.data.groups[elemGrp[0]].objects:
+                    objGrpsTmp.append(elemGrps.index(elemGrp))
+        if len(objGrpsTmp) > 1:
+            print("\nWarning: Object %s belongs to more than one element group, defaults are used." %obj.name)
+            objGrpsTmp = [0]
+        elif len(objGrpsTmp) == 0: objGrpsTmp = [0]
+        objsEGrp.append(objGrpsTmp[0])
+        
+    return objsEGrp
+
+########################################
+
 def gatherObjects(scene):
 
     ### Create object lists of selected objects
     print("Creating object lists of selected objects...")
     
     objs = []
-    objsEGrp = []
     emptyObjs = []
     for obj in bpy.data.objects:
         if obj.select and not obj.hide and obj.is_visible(scene):
@@ -631,22 +796,12 @@ def gatherObjects(scene):
             # Detect if mesh or empty (constraint)
             if obj.type == 'MESH':
                 objs.append(obj)
-                objGrpsTmp = []
-                for elemGrp in elemGrps:
-                    if elemGrp[0] in bpy.data.groups:
-                        if obj.name in bpy.data.groups[elemGrp[0]].objects:
-                            objGrpsTmp.append(elemGrps.index(elemGrp))
-                if len(objGrpsTmp) > 1:
-                    print("\nWarning: Object %s belongs to more than one element group, defaults are used." %obj.name)
-                    objGrpsTmp = [0]
-                elif len(objGrpsTmp) == 0: objGrpsTmp = [0]
-                objsEGrp.append(objGrpsTmp[0])
             elif obj.type == 'EMPTY':
                 if obj.rigid_body_constraint != None:
                     sys.stdout.write('\r' +"%s      " %obj.name)
                     emptyObjs.append(obj)
     
-    return objs, objsEGrp, emptyObjs
+    return objs, emptyObjs
 
 ################################################################################   
 
@@ -719,16 +874,16 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                         co = (co_find +coComp) /2             # Calculate center of both vertices
                         
                         ### Store connection if not already existing
-                        constCnt = 0
+                        connectCnt = 0
                         pair = [k, l]
                         pair.sort()
                         if pair not in connectsPair:
                             connectsPair.append(pair)
                             if clusterRadius > 0: connectsLocs.append([co])
                             else:                 connectsLocs.append([(objs[k].location +objs[l].location) /2])
-                            constCnt += 1
+                            connectCnt += 1
                             count += 1
-                            if constCnt == connectionCountLimit:
+                            if connectCnt == connectionCountLimit:
                                 if elemGrps[objsEGrp[k]][1] <= 1:
                                     qNextObj = 1
                                     break
@@ -1094,16 +1249,17 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             except: pass
         
         elif connectionType == 3:
+            constCnt = 2   # As both constraints bear all load and forces are evenly distributed among them the breaking thresholds need to be divided by their count to compensate
             ### First constraint
             objConst1 = emptyObjs[consts[0]]
             objConst1.rigid_body_constraint.type = 'FIXED'
-            objConst1.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
+            objConst1.rigid_body_constraint.breaking_threshold = (( crossArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second) /constCnt
             objConst1['BrkThreshold'] = breakingThreshold1   # Store value as ID property for debug purposes
             objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
             ### Second constraint
             objConst2 = emptyObjs[consts[1]]
             objConst2.rigid_body_constraint.type = 'POINT'
-            objConst2.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second
+            objConst2.rigid_body_constraint.breaking_threshold = (( crossArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) /constCnt
             objConst2['BrkThreshold'] = breakingThreshold2   # Store value as ID property for debug purposes
             objConst2.rigid_body_constraint.use_breaking = constraintUseBreaking
             ### Add to Bullet constraint group in case it got removed for some reason
@@ -1113,19 +1269,22 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             except: pass
         
         elif connectionType == 4:
+            # Correction multiplier for breaking thresholds
+            # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
+            # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
+            correction = 2
             ### First constraint
             objConst1 = emptyObjs[consts[0]]
-            if not alignVertical:
-                # Calculate orientation between the two elements, imagine a line from center to center
-                dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
-            else:
-                # Use constraint location as end point for the directional vector
-                dirVec = objConst1.location -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
+            # Calculate orientation between the two elements, imagine a line from center to center
+            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
+            if alignVertical:
+                # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
+                dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
             # Align constraint rotation to that vector
             objConst1.rotation_mode = 'QUATERNION'
             objConst1.rotation_quaternion = dirVec.to_track_quat('X','Z')
             objConst1.rigid_body_constraint.type = 'GENERIC'
-            objConst1.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
+            objConst1.rigid_body_constraint.breaking_threshold = (( crossArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
             objConst1['BrkThreshold'] = breakingThreshold1   # Store value as ID property for debug purposes
             objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
             ### Lock all directions but the tensile one (compressive is used for breaking theshold)
@@ -1134,6 +1293,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             objConst1.rigid_body_constraint.use_limit_lin_x = 1
 #            objConst1.rigid_body_constraint.use_limit_lin_y = 1
 #            objConst1.rigid_body_constraint.use_limit_lin_z = 1
+            objConst1.rigid_body_constraint.use_limit_lin_y = 0
+            objConst1.rigid_body_constraint.use_limit_lin_z = 0
             objConst1.rigid_body_constraint.limit_lin_x_lower = 0
             objConst1.rigid_body_constraint.limit_lin_x_upper = 99999
 #            objConst1.rigid_body_constraint.limit_lin_y_lower = 0
@@ -1143,6 +1304,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 #            objConst1.rigid_body_constraint.use_limit_ang_x = 1
 #            objConst1.rigid_body_constraint.use_limit_ang_y = 1
 #            objConst1.rigid_body_constraint.use_limit_ang_z = 1
+            objConst1.rigid_body_constraint.use_limit_ang_x = 0
+            objConst1.rigid_body_constraint.use_limit_ang_y = 0
+            objConst1.rigid_body_constraint.use_limit_ang_z = 0
 #            objConst1.rigid_body_constraint.limit_ang_x_lower = 0
 #            objConst1.rigid_body_constraint.limit_ang_x_upper = 0
 #            objConst1.rigid_body_constraint.limit_ang_y_lower = 0
@@ -1155,7 +1319,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             objConst2.rotation_mode = 'QUATERNION'
             objConst2.rotation_quaternion = dirVec.to_track_quat('X','Z')
             objConst2.rigid_body_constraint.type = 'GENERIC'
-            objConst2.rigid_body_constraint.breaking_threshold = ( crossArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second
+            objConst2.rigid_body_constraint.breaking_threshold = (( crossArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
             objConst2['BrkThreshold'] = breakingThreshold2   # Store value as ID property for debug purposes
             objConst2.rigid_body_constraint.use_breaking = constraintUseBreaking
             ### Lock all directions but the compressive one (tensile is used for breaking theshold)
@@ -1276,7 +1440,7 @@ def applyScale(scene, objs, objsEGrp, childObjs):
             if obj.select:
                 scale = elemGrps[objsEGrp[k]][8]
                 obj.scale *= scale
-                # For childs invert scaling to compensate for indirect scaling through parenting
+                # For children invert scaling to compensate for indirect scaling through parenting
                 if "bcb_child" in obj.keys():
                     scene.objects[obj["bcb_child"]].scale /= scale
                     
@@ -1322,12 +1486,12 @@ def applyBevel(scene, objs, objsEGrp, childObjs):
 def calculateMass(scene, objs, objsEGrp, childObjs):
     
     ### Calculate a mass for all mesh objects according to element groups settings
-    print("Calculating masses from preset material... (Childs: %d)" %len(childObjs))
+    print("Calculating masses from preset material... (Children: %d)" %len(childObjs))
      
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
     
-    ### Create new rigid body settings for childs with the data from its parent (so mass can be calculated on childs)
+    ### Create new rigid body settings for children with the data from its parent (so mass can be calculated on children)
     i = 0
     for childObj in childObjs:
         parentObj = scene.objects[childObj["bcb_parent"]]
@@ -1370,7 +1534,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
 
-    ### Copy rigid body settings (and mass) from childs back to their parents and remove childs from rigid body world
+    ### Copy rigid body settings (and mass) from children back to their parents and remove children from rigid body world
     i = 0
     for childObj in childObjs:
         parentObj = scene.objects[childObj["bcb_parent"]]
@@ -1398,7 +1562,6 @@ def execute():
     print("\nStarting...\n")
     time_start = time.time()
     
-    pi = 3.1415927
     bpy.context.tool_settings.mesh_select_mode = True, False, False
     scene = bpy.context.scene
          
@@ -1418,7 +1581,8 @@ def execute():
        
         ###### Create object lists of selected objects
         childObjs = []
-        objs, objsEGrp, emptyObjs = gatherObjects(scene) 
+        objs, emptyObjs = gatherObjects(scene)
+        objsEGrp = createElementGroupIndex(objs)
         
         if len(objs) > 0:
             #############################
@@ -1455,8 +1619,8 @@ def execute():
                 if clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
                 ###### Add constraint base settings to empties
                 addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect)
-                ###### Store temp data in scene
-                storeSimDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect)
+                ###### Store build data in scene
+                storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect)
                 
                 print('-- Time: %0.2f s\n' %(time.time()-time_start_building))
             
@@ -1478,8 +1642,12 @@ def execute():
         ###### Store menu config data in scene
         storeConfigDataInScene(scene)
         ###### Get temp data from scene
-        objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect = getSimDataFromScene(scene)
-                
+        objs, emptyObjs, childObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect = getBuildDataFromScene(scene)
+        ###### Create fresh element group index to make sure the data is still valid (reordering in menu invalidates it for instance)
+        objsEGrp = createElementGroupIndex(objs)
+        ###### Store build data in scene
+        storeBuildDataInScene(scene, None, objsEGrp, None, None, None, None, None, None, None)
+                        
         if len(emptyObjs) > 0:
             ###### Set constraint settings
             setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsArea, connectsConsts, constsConnect)
@@ -1492,7 +1660,7 @@ def execute():
             for emptyObj in emptyObjs: emptyObj.select = 1
             
             print('-- Time total: %0.2f s\n' %(time.time()-time_start))
-            print('Constraints:', len(emptyObjs), '| Elements:', len(objs), '| Childs:', len(childObjs))
+            print('Constraints:', len(emptyObjs), '| Elements:', len(objs), '| Children:', len(childObjs))
             print('Done.')
 
         #####################
