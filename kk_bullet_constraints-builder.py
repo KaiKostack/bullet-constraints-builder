@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.73 #
+# Bullet Constraints Builder v1.74 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -31,17 +31,20 @@
 withGUI = 1                  # 1     | Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
 
 stepsPerSecond = 200         # 200   | Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable)
-distanceTolerance = 0.05     # 0.05  | Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
+toleranceDist = 0.05         # 0.05  | For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
+toleranceRot = 1.57          # 1.57  | For baking: Allowed tolerance for angular change in radian for connection removal
 constraintUseBreaking = 1    # 1     | Enables breaking for all constraints
 connectionCountLimit = 0     # 0     | Maximum count of connections per object pair (0 = disabled)
 searchDistance = 0.02        # 0.02  | Search distance to neighbor geometry
 clusterRadius = 0.4          # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
 alignVertical = 0.9          # 0.9   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
                              #       | Internally X and Y components of the directional vector will be reduced by this factor, should always be < 1 to make horizontal connections still possible.
-useAccurateArea = 0          # 1     | Enables accurate contact area calculation using booleans for the cost of an up to 20x slower building process (only works correct with solids i.e. watertight and manifold objects, recommended for truss structures or steel constructions in general)
-                             #       | If disabled a simpler boundary box intersection approach is used (only recommended for concrete constructions without diagonal elements)
+useAccurateArea = 0          # 1     | Enables accurate contact area calculation using booleans for the cost of an up to 20x slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.
+                             #       | If disabled a simpler boundary box intersection approach is used which is only recommended for rectangular constructions without diagonal elements.
 nonManifoldThickness = 0.1   # 0.01  | Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.
-minimumElementSize = 0       # 0.2   | Delete connections whose elements are below this diameter and make them parents instead (this can be helpful to increase performance on models with unrelevant geometric detail such as screwheads)
+minimumElementSize = 0       # 0.2   | Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.
+automaticMode = 0            # 0     | Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore
+                             #       | After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [ \
@@ -65,8 +68,8 @@ elemGrps = [ \
 # Connection Type       | Connection type ID for the constraint presets defined by this script, see list below.
 # Break.Thresh.Compres. | Real world material compressive breaking threshold in N/mm^2.
 # Break.Thresh.Tensile  | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
-# Bevel                 | Use beveling for elements to avoid `JengaÃ‚ÂÂ´´´ effect (uses hidden collision meshes)
-# Scale                 | Apply scaling factor on elements to avoid `JengaÃ‚ÂÂ´´´ effect (uses hidden collision meshes)
+# Bevel                 | Use beveling for elements to avoid `JengaÂ´ effect (uses hidden collision meshes)
+# Scale                 | Apply scaling factor on elements to avoid `JengaÂ´ effect (uses hidden collision meshes)
 # Facing                | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
 
 # Connection types:
@@ -80,8 +83,6 @@ elemGrps = [ \
 ### Developer
 debug = 0                         # 0     | Enables verbose console output for debugging purposes
 logPath = r"/tmp"                 #       | Path to log files if debugging is enabled
-automaticMode = 0                 # 0     | Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore
-                                  #       | After clicking Execute this is being done: Building of constraints, baking simulation, clearing constraint and BCB data from scene, saving Blend file (overwriting old!)
 maxMenuElementGroupItems = 100    # 100   | Maximum allowed element group entries in menu 
 emptyDrawSize = 0.25              # 0.25  | Display size of constraint empty objects as radius in meters
                 
@@ -97,7 +98,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 7, 3),
+    "version": (1, 7, 4),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -149,7 +150,8 @@ def storeConfigDataInScene(scene):
     if debug: print("Storing menu config data in scene...")
     
     scene["bcb_prop_stepsPerSecond"] = stepsPerSecond
-    scene["bcb_prop_distanceTolerance"] = distanceTolerance
+    scene["bcb_prop_toleranceDist"] = toleranceDist
+    scene["bcb_prop_toleranceRot"] = toleranceRot
     scene["bcb_prop_constraintUseBreaking"] = constraintUseBreaking
     scene["bcb_prop_connectionCountLimit"] = connectionCountLimit
     scene["bcb_prop_searchDistance"] = searchDistance
@@ -158,6 +160,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_useAccurateArea"] = useAccurateArea 
     scene["bcb_prop_nonManifoldThickness"] = nonManifoldThickness 
     scene["bcb_prop_minimumElementSize"] = minimumElementSize 
+    scene["bcb_prop_automaticMode"] = automaticMode 
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     #scene["bcb_prop_elemGrps"] = elemGrps
@@ -178,12 +181,16 @@ def getConfigDataFromScene(scene):
     
     props = bpy.context.window_manager.bcb
     if "bcb_prop_stepsPerSecond" in scene.keys():
-        global stepsPerSecond;
+        global stepsPerSecond
         try: stepsPerSecond = props.prop_stepsPerSecond = scene["bcb_prop_stepsPerSecond"]
         except: pass
-    if "bcb_prop_distanceTolerance" in scene.keys():
-        global distanceTolerance;
-        try: distanceTolerance = props.prop_distanceTolerance = scene["bcb_prop_distanceTolerance"]
+    if "bcb_prop_toleranceDist" in scene.keys():
+        global toleranceDist
+        try: toleranceDist = props.prop_toleranceDist = scene["bcb_prop_toleranceDist"]
+        except: pass
+    if "bcb_prop_toleranceRot" in scene.keys():
+        global toleranceRot
+        try: toleranceRot = props.prop_toleranceRot = scene["bcb_prop_toleranceRot"]
         except: pass
     if "bcb_prop_constraintUseBreaking" in scene.keys():
         global constraintUseBreaking
@@ -216,6 +223,10 @@ def getConfigDataFromScene(scene):
     if "bcb_prop_minimumElementSize" in scene.keys():
         global minimumElementSize
         try: minimumElementSize = props.prop_minimumElementSize = scene["bcb_prop_minimumElementSize"]
+        except: pass
+    if "bcb_prop_automaticMode" in scene.keys():
+        global automaticMode
+        try: automaticMode = props.prop_automaticMode = scene["bcb_prop_automaticMode"]
         except: pass
             
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
@@ -541,15 +552,25 @@ def monitor_initBuffers(scene):
         if obj.type == 'MESH':    scnObjs[obj.name] = obj
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
     
-    ### Get temp data from scene
-    try: objsNames = scene["bcb_objs"]
-    except: objsNames = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
-    objs = [scnObjs[name] for name in objsNames]
+    ###### Get data from scene
+
+    try: names = scene["bcb_objs"]
+    except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+    objs = []
+    for name in names:
+        try: objs.append(scnObjs[name])
+        except: print("Error: Object %s missing, rebuilding constraints is required." %name)
+
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
-    emptyObjs = [scnEmptyObjs[name] for name in names]
+    emptyObjs = []
+    for name in names:
+        try: emptyObjs.append(scnEmptyObjs[name])
+        except: print("Error: Object %s missing, rebuilding constraints is required." %name)
+
     try: connectsPair = scene["bcb_connectsPair"]
     except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
+
     try: connectsConsts = scene["bcb_connectsConsts"]
     except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
     
@@ -604,9 +625,8 @@ def monitor_checkForDistanceChange():
             quatB = objB.matrix_world.to_quaternion()
             angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
             # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-            if distanceDif > distanceTolerance +(angleDif /3.1416) \
-            or angleDif > 1.5708:       # Use pi/2 as tolerance for angle (could be an further setting in UI later though)
-                if angleDif > 1.5708: print(angleDif, connect[3], quatA.rotation_difference(quatB).angle)
+            if distanceDif > toleranceDist +(angleDif /3.1416) \
+            or angleDif > toleranceRot:
                 # Disable all constraints for this connection by setting breaking threshold to 0
                 for const in connect[4]:
                     const.rigid_body_constraint.breaking_threshold = 0
@@ -634,6 +654,40 @@ def monitor_freeBuffers():
     del bpy.app.driver_namespace["bcb_monitor"]
 
 ################################################################################
+
+def estimateClusterRadius(scene):
+    
+    objs, emptyObjs = gatherObjects(scene)
+    
+    if len(objs) > 0:        
+        print("Estimating optimal cluster radius...")
+        
+        #objsDiameter = []
+        diameterSum = 0
+        for obj in objs:
+            
+            ### Calculate diameter for each object
+            dim = list(obj.dimensions)
+            dim.sort()
+            diameter = dim[2]   # Use the largest dimension axis as diameter
+            
+            #objsDiameter.append(diameter)
+            diameterSum += diameter
+        
+#        ### Sort all diameters, take the midst item and multiply it by 1 /sqrt(2)
+#        objsDiameter.sort()
+#        diameterEstimation = (objsDiameter[int(len(objsDiameter) /2)] /2) *0.707
+
+        ### Alternative: Calculate average of all object diameters and multiply it by 1 /sqrt(2)
+        diameterEstimation = ((diameterSum /2) /len(objs)) *0.707
+        
+        return diameterEstimation
+
+    else:
+        print("Selected objects required for cluster radius estimation.") 
+        return 0
+ 
+################################################################################
 ################################################################################
 
 class bcb_props(bpy.types.PropertyGroup):
@@ -645,17 +699,20 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_menu_gotConfig = int(0)
     prop_menu_gotData = int(0)
     prop_menu_selectedItem = int(0)
-    
+    prop_menu_advanced = bool(0)
+
     prop_stepsPerSecond = int(name="Steps Per Sec.", default=stepsPerSecond, min=1, max=32767, description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
-    prop_distanceTolerance = float(name="Tolerance", default=distanceTolerance, min=0.0, max=1.0, description="Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).")
+    prop_toleranceDist = float(name="Dist.Tolerance", default=toleranceDist, min=0.0, max=1.0, description="For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).")
+    prop_toleranceRot = float(name="Rot.Tolerance", default=toleranceRot, min=0.0, max=3.14159, description="For baking: Allowed tolerance for angular change in radian for connection removal.")
     prop_constraintUseBreaking = bool(name="Enable Breaking", default=constraintUseBreaking, description="Enables breaking for all constraints.")
     prop_connectionCountLimit = int(name="Con.Count Limit", default=connectionCountLimit, min=0, max=10000, description="Maximum count of connections per object pair (0 = disabled).")
     prop_searchDistance = float(name="Search Distance", default=searchDistance, min=0.0, max=1000, description="Search distance to neighbor geometry.")
     prop_clusterRadius = float(name="Cluster Radius", default=clusterRadius, min=0.0, max=1000, description="Radius for bundling close constraints into clusters (0 = clusters disabled).")
     prop_alignVertical = float(name="Vertical Alignment", default=alignVertical, min=0.0, max=1.0, description="Enables a vertical alignment multiplier for connection type 4 or above instead of using unweighted center to center orientation (0 = disabled, 1 = fully vertical).")
-    prop_useAccurateArea = bool(name="Accur. Contact Area Calculation", default=useAccurateArea , description="Enables accurate contact area calculation using booleans for the cost of an up to 20x slower building process (only works correct with solids i.e. watertight and manifold objects, recommended for truss structures or steel constructions in general).")
+    prop_useAccurateArea = bool(name="Accur. Contact Area Calculation", default=useAccurateArea , description="Enables accurate contact area calculation using booleans for the cost of an up to 20x slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.")
     prop_nonManifoldThickness = float(name="Non-solid Thickness", default=nonManifoldThickness, min=0.0, max=10, description="Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.")
-    prop_minimumElementSize = float(name="Min.Element Size", default=minimumElementSize, min=0.0, max=10, description="Delete connections whose elements are below this diameter and make them parents instead (this can be helpful to increase performance on models with unrelevant geometric detail such as screwheads).")
+    prop_minimumElementSize = float(name="Min.Element Size", default=minimumElementSize, min=0.0, max=10, description="Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.")
+    prop_automaticMode = bool(name="Automatic Mode", default=automaticMode, description="Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore. After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene.")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
@@ -688,7 +745,8 @@ class bcb_props(bpy.types.PropertyGroup):
     def props_update_globals(self):
         ### Update global vars from menu related properties
         global stepsPerSecond; stepsPerSecond = self.prop_stepsPerSecond
-        global distanceTolerance; distanceTolerance = self.prop_distanceTolerance
+        global toleranceDist; toleranceDist = self.prop_toleranceDist
+        global toleranceRot; toleranceRot = self.prop_toleranceRot
         global constraintUseBreaking; constraintUseBreaking = self.prop_constraintUseBreaking
         global connectionCountLimit; connectionCountLimit = self.prop_connectionCountLimit
         global searchDistance; searchDistance = self.prop_searchDistance
@@ -697,6 +755,7 @@ class bcb_props(bpy.types.PropertyGroup):
         global useAccurateArea; useAccurateArea = self.prop_useAccurateArea
         global nonManifoldThickness; nonManifoldThickness = self.prop_nonManifoldThickness
         global minimumElementSize; minimumElementSize = self.prop_minimumElementSize
+        global automaticMode; automaticMode = self.prop_automaticMode
         global elemGrps
         for i in range(len(elemGrps)):
             elemGrpNew = []
@@ -709,6 +768,11 @@ class bcb_panel(bpy.types.Panel):
     bl_label = "Bullet Constraints Builder"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
+
+    def icon(self, bool):
+        if bool: return 'TRIA_DOWN'
+        else: return 'TRIA_RIGHT'
+
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
@@ -718,7 +782,7 @@ class bcb_panel(bpy.types.Panel):
         row = layout.row()
         if not props.prop_menu_gotData: 
             split = row.split(percentage=.85, align=False)
-            split.operator("bcb.execute", icon="MOD_SKIN")
+            split.operator("bcb.build", icon="MOD_SKIN")
             split2 = split.row()
             if not props.prop_menu_gotConfig:
                 if "bcb_prop_elemGrps" in scene.keys():
@@ -726,39 +790,63 @@ class bcb_panel(bpy.types.Panel):
                 else: split2.operator("bcb.set_config", icon="NEW")
             else:
                 split2.operator("bcb.set_config", icon="NEW")
-            row = layout.row() # for baking buttons
-            row.enabled = 0
         else:
             split = row.split(percentage=.85, align=False)
             split.operator("bcb.update", icon="FILE_REFRESH")
             split.operator("bcb.clear", icon="CANCEL")
-            row = layout.row() # for baking buttons
-        split = row.split(percentage=.50, align=False);
+        row = layout.row()
+        split = row.split(percentage=.50, align=False)
         split.operator("bcb.bake", icon="REC")
-        split = split.row()
-        split.prop(props, "prop_distanceTolerance")
-        row = layout.row(); row.prop(props, "prop_stepsPerSecond")
+        split.prop(props, "prop_stepsPerSecond")
         
         layout.separator()
         row = layout.row(); row.prop(props, "prop_constraintUseBreaking")
-        #row = layout.row(); row.prop(props, "prop_connectionCountLimit")
-        row = layout.row(); row.prop(props, "prop_searchDistance")
-        row = layout.row(); row.prop(props, "prop_clusterRadius")
+        row = layout.row()
+        if props.prop_menu_gotData: row.enabled = 0
+        row.prop(props, "prop_searchDistance")
+        
+        row = layout.row()
+        split = row.split(percentage=.85, align=False)
+        if props.prop_menu_gotData: split.enabled = 0
+        split.prop(props, "prop_clusterRadius")
+        split.operator("bcb.estimate_cluster_radius", icon="AUTO")
+        
         row = layout.row(); row.prop(props, "prop_alignVertical")
 
-        layout.separator()
-        row = layout.row(); row.prop(props, "prop_useAccurateArea")
-        row = layout.row()
-        if not props.prop_useAccurateArea: row.enabled = 0
-        row.prop(props, "prop_nonManifoldThickness")
+        ###### Advanced settings box
         
         layout.separator()
-        row = layout.row(); row.prop(props, "prop_minimumElementSize")
+        box = layout.box()
+        box.prop(props, "prop_menu_advanced", text="Advanced Settings", icon=self.icon(props.prop_menu_advanced), emboss = False)
+
+        if props.prop_menu_advanced:
+            row = box.row(); row.prop(props, "prop_automaticMode")
+            row = box.row()
+            split = row.split(percentage=.50, align=False);
+            split.prop(props, "prop_toleranceDist")
+            split.prop(props, "prop_toleranceRot")
+            
+            box.separator()
+            row = box.row()
+            if props.prop_menu_gotData: row.enabled = 0
+            row.prop(props, "prop_connectionCountLimit")
+            row = box.row()
+            if props.prop_menu_gotData: row.enabled = 0
+            row.prop(props, "prop_minimumElementSize")
+
+            row = box.row()
+            if props.prop_menu_gotData: row.enabled = 0
+            row.prop(props, "prop_useAccurateArea")
+            row = box.row()
+            if not props.prop_useAccurateArea: row.enabled = 0
+            row.prop(props, "prop_nonManifoldThickness")
+        
+        ###### Element groups box
         
         layout.separator()
         row = layout.row(); row.label(text="Element Groups", icon="MOD_BUILD")
-        frm = layout.box()
-        row = frm.row()
+        box = layout.box()
+        row = box.row()
         row.operator("bcb.add", icon="ZOOMIN")
         row.operator("bcb.del", icon="X")
         row.operator("bcb.reset", icon="CANCEL")
@@ -766,8 +854,8 @@ class bcb_panel(bpy.types.Panel):
         row.operator("bcb.move_down", icon="TRIA_DOWN")
         for i in range(len(elemGrps)):
             if i == props.prop_menu_selectedItem:
-                  row = frm.box().row()
-            else: row = frm.row()
+                  row = box.box().row()
+            else: row = box.row()
             elemGrp0 = eval("props.prop_elemGrp_%d_0" %i)
             elemGrp4 = eval("props.prop_elemGrp_%d_4" %i)
             elemGrp5 = eval("props.prop_elemGrp_%d_5" %i)
@@ -779,10 +867,12 @@ class bcb_panel(bpy.types.Panel):
             split2.label(text=str(elemGrp4))
             split2.label(text=str(elemGrp5))
             split2.label(text=str(elemGrp6))
-        row = frm.row()
+        row = box.row()
         row.operator("bcb.up", icon="TRIA_UP")
         row.operator("bcb.down", icon="TRIA_DOWN")
         layout.separator()
+        
+        ###### Element group setting
         
         i = props.prop_menu_selectedItem
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_0" %i)
@@ -801,14 +891,18 @@ class bcb_panel(bpy.types.Panel):
         #row = layout.row(); row.prop(props, "prop_elemGrp_%d_1" %i)
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_2" %i)
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_3" %i)
-        layout.separator()
         
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_8" %i)
-        row = layout.row();
+        layout.separator()
+        row = layout.row()
+        if props.prop_menu_gotData: row.enabled = 0
+        row.prop(props, "prop_elemGrp_%d_8" %i)
+        row = layout.row()
+        if props.prop_menu_gotData: row.enabled = 0
         row.prop(props, "prop_elemGrp_%d_7" %i)
         elemGrp7 = eval("props.prop_elemGrp_%d_7" %i)
         elemGrp9 = eval("props.prop_elemGrp_%d_9" %i)
         if elemGrp7 and not elemGrp9: row.alert = 1
+        if props.prop_menu_gotData: row.enabled = 0
         row.prop(props, "prop_elemGrp_%d_9" %i)
         
         if elemGrp7 and not elemGrp9:
@@ -863,15 +957,19 @@ class OBJECT_OT_bcb_clear(bpy.types.Operator):
         props.prop_menu_gotData = 0
         return{'FINISHED'} 
         
-class OBJECT_OT_bcb_execute(bpy.types.Operator):
-    bl_idname = "bcb.execute"
-    bl_label = "Execute"
+class OBJECT_OT_bcb_build(bpy.types.Operator):
+    bl_idname = "bcb.build"
+    bl_label = "Build"
     bl_description = "Starts building process and adds constraints to selected elements."
     def execute(self, context):
         props = context.window_manager.bcb
         ###### Execute main building process from scratch
-        execute()
+        build()
         props.prop_menu_gotData = 1
+        ### For automatic mode autorun the next step
+        if automaticMode:
+            OBJECT_OT_bcb_bake.execute(self, context)
+            OBJECT_OT_bcb_clear.execute(self, context)
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_update(bpy.types.Operator):
@@ -892,9 +990,13 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
             obj = bpy.data.groups["RigidBodyWorld"].objects[0]
             obj.location = obj.location
         ###### Execute update of all existing constraints with new settings
-        execute()
+        build()
         # Update menu related properties from global vars
         props.props_update_menu()
+        ### For automatic mode autorun the next step
+        if automaticMode:
+            OBJECT_OT_bcb_bake.execute(self, context)
+            OBJECT_OT_bcb_clear.execute(self, context)
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_bake(bpy.types.Operator):
@@ -904,22 +1006,29 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
-        print('Init BCB monitor event handler.')
-        bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
-        ### Free previous bake data
-        contextFix = bpy.context.copy()
-        contextFix['point_cache'] = scene.rigidbody_world.point_cache
-        bpy.ops.ptcache.free_bake(contextFix)
-        ### Invalidate point cache to enforce a full bake without using previous cache data
-        if "RigidBodyWorld" in bpy.data.groups:
-            obj = bpy.data.groups["RigidBodyWorld"].objects[0]
-            obj.location = obj.location
-        # Invoke baking
-        bpy.ops.ptcache.bake(contextFix, bake=True)
-        print('Removing BCB monitor event handler.')
-        for i in range( len( bpy.app.handlers.frame_change_pre ) ):
-             bpy.app.handlers.frame_change_pre.pop()
-        monitor_freeBuffers()
+        ### Only start baking when we have constraints set
+        if props.prop_menu_gotData:
+            print('Init BCB monitor event handler.')
+            bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
+            ### Free previous bake data
+            contextFix = bpy.context.copy()
+            contextFix['point_cache'] = scene.rigidbody_world.point_cache
+            bpy.ops.ptcache.free_bake(contextFix)
+            ### Invalidate point cache to enforce a full bake without using previous cache data
+            if "RigidBodyWorld" in bpy.data.groups:
+                obj = bpy.data.groups["RigidBodyWorld"].objects[0]
+                obj.location = obj.location
+            # Invoke baking
+            bpy.ops.ptcache.bake(contextFix, bake=True)
+            print('Removing BCB monitor event handler.')
+            for i in range( len( bpy.app.handlers.frame_change_pre ) ):
+                 bpy.app.handlers.frame_change_pre.pop()
+            monitor_freeBuffers()
+        ### Otherwise build constraints if required
+        else:
+            OBJECT_OT_bcb_build.execute(self, context)
+            # Skip baking for automatic mode as it is already called in bcb.build
+            if not automaticMode: OBJECT_OT_bcb_bake.execute(self, context)
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_add(bpy.types.Operator):
@@ -1030,6 +1139,20 @@ class OBJECT_OT_bcb_reset(bpy.types.Operator):
         props.props_update_menu()
         return{'FINISHED'} 
 
+class OBJECT_OT_bcb_estimate_cluster_radius(bpy.types.Operator):
+    bl_idname = "bcb.estimate_cluster_radius"
+    bl_label = " Estimate Cluster Radius"
+    bl_description = "Estimate optimal cluster radius from selected objects in scene (even if you already have built a BCB structure only selected objects are considered)."
+    def execute(self, context):
+        scene = bpy.context.scene
+        result = estimateClusterRadius(scene)
+        if result > 0:
+            props = context.window_manager.bcb
+            props.prop_clusterRadius = result
+            # Update menu related properties from global vars
+            props.props_update_menu()
+        return{'FINISHED'} 
+
 
 classes = [ \
     bcb_props,
@@ -1037,7 +1160,7 @@ classes = [ \
     OBJECT_OT_bcb_set_config,
     OBJECT_OT_bcb_get_config,
     OBJECT_OT_bcb_clear,
-    OBJECT_OT_bcb_execute,
+    OBJECT_OT_bcb_build,
     OBJECT_OT_bcb_update,
     OBJECT_OT_bcb_bake,
     OBJECT_OT_bcb_add,
@@ -1046,7 +1169,8 @@ classes = [ \
     OBJECT_OT_bcb_move_down,
     OBJECT_OT_bcb_up,
     OBJECT_OT_bcb_down,
-    OBJECT_OT_bcb_reset
+    OBJECT_OT_bcb_reset,
+    OBJECT_OT_bcb_estimate_cluster_radius
     ]      
           
 ################################################################################   
@@ -1417,7 +1541,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=
     overlapZ = max(0, min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
     
     ### Calculate area based on either the sum of all axis surfaces...
-    if customThickness == 0:
+    if not customThickness:
         overlapAreaX = overlapY *overlapZ
         overlapAreaY = overlapX *overlapZ
         overlapAreaZ = overlapX *overlapY
@@ -1426,9 +1550,9 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=
     
     ### Or calculate contact area based on predefined custom thickness
     else:
-        contactArea = (overlapX +overlapY +overlapZ)
+        contactArea = overlapX +overlapY +overlapZ
         # This should actually be:
-        # contactArea = (overlapX +overlapY +overlapZ) *customThickness
+        # contactArea = (overlapX +overlapY +overlapZ) *nonManifoldThickness
         # For updating possibility this last operation is postponed to setConstraintSettings()
             
     ### Find out element thickness to be used for bending threshold calculation 
@@ -1461,7 +1585,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair):
         ###### Calculate contact area for a single pair of objects
         contactArea, bendingThickness, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
         
-        connectsArea.append([contactArea, bendingThickness])
+        connectsArea.append([contactArea, bendingThickness, 0])
         connectsLoc.append(center)
         
     return connectsArea, connectsLoc
@@ -1533,9 +1657,10 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
             #print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
 
             ###### Calculate contact area for a single pair of objects
-            contactArea, bendingThickness, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=nonManifoldThickness)
+            contactArea, bendingThickness, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=1)
+            surfaceThickness = nonManifoldThickness
             
-            connectsArea.append([contactArea, bendingThickness])
+            connectsArea.append([contactArea, bendingThickness, surfaceThickness])
             connectsLoc.append(center)
 
         ###### If both meshes are manifold continue with regular boolean based approach
@@ -1661,7 +1786,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 # Switch to new scene
                 bpy.context.screen.scene = sceneTemp
         
-            connectsArea.append([contactArea, bendingThickness])
+            connectsArea.append([contactArea, bendingThickness, 0])
             connectsLoc.append(center)
                 
     # Switch back to original scene
@@ -1880,8 +2005,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         for idx in consts: emptyObjs[idx]['ContactArea'] = contactArea   # Store value as ID property for debug purposes
         
         # Postponed contactArea calculation step from calculateContactAreaBasedOnBoundaryBoxesForPair() is being done now (update hack, could be better organized)
-        if useAccurateArea and nonManifoldThickness > 0:
-            contactArea *= nonManifoldThickness
+        if useAccurateArea:
+            surfaceThickness = connectsArea[k][2]
+            if surfaceThickness > 0:
+                contactArea *= surfaceThickness
         
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
@@ -2339,7 +2466,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
 ################################################################################   
 ################################################################################   
     
-def execute():
+def build():
     
     print("\nStarting...\n")
     time_start = time.time()
@@ -2497,4 +2624,4 @@ if __name__ == "__main__":
     if withGUI:
         register()
     else:
-        execute()
+        build()
