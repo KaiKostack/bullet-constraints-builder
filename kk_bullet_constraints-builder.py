@@ -1390,7 +1390,7 @@ def findConnectionsByBoundaryBoxIntersection(objs, objsEGrp):
                 aIndex.append(index); aDist.append(dist) #; aCo.append(co) 
         aIndex = aIndex[1:]; aDist = aDist[1:] # Remove first item because it's the same as co_find (zero distance)
     
-        # Loop through comparison object found
+        # Loop through comparison objects found
         for j in range(len(aIndex)):
             l = aIndex[j]
             
@@ -2485,15 +2485,15 @@ def build():
         ###### Create new empties
         if not "bcb_objs" in scene.keys():
                 
-            # Remove instancing from objects
-            bpy.ops.object.make_single_user(object=True, obdata=True, material=False, texture=False, animation=False)
-            # Apply scale factor of all objects (to make sure volume and mass calculation are correct)
-            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-
             ###### Create object lists of selected objects
             childObjs = []
             objs, emptyObjs = gatherObjects(scene)
             objsEGrp = createElementGroupIndex(objs)
+
+            # Remove instancing from objects
+            bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
+            # Apply scale factor of all objects (to make sure volume and mass calculation are correct)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
             
             if len(objs) > 1:
                 #############################
