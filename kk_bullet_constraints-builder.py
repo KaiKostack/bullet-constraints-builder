@@ -45,6 +45,7 @@ nonManifoldThickness = 0.1   # 0.01  | Thickness for non-manifold elements (surf
 minimumElementSize = 0       # 0.2   | Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.
 automaticMode = 0            # 0     | Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore
                              #       | After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene
+saveBackups = 0              # 0     | Enables saving of a backup blend file after the building and baking step when using automatic mode, whereby the name of the new blend ends with _BCB
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [ \
@@ -968,8 +969,11 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
         props.prop_menu_gotData = 1
         ### For automatic mode autorun the next step
         if automaticMode:
+            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
             OBJECT_OT_bcb_bake.execute(self, context)
+            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
             OBJECT_OT_bcb_clear.execute(self, context)
+            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_update(bpy.types.Operator):
@@ -995,8 +999,11 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
         props.props_update_menu()
         ### For automatic mode autorun the next step
         if automaticMode:
+            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
             OBJECT_OT_bcb_bake.execute(self, context)
+            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
             OBJECT_OT_bcb_clear.execute(self, context)
+            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_bake(bpy.types.Operator):
