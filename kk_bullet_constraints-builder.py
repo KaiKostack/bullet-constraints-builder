@@ -37,7 +37,7 @@ constraintUseBreaking = 1    # 1     | Enables breaking for all constraints
 connectionCountLimit = 0     # 0     | Maximum count of connections per object pair (0 = disabled)
 searchDistance = 0.02        # 0.02  | Search distance to neighbor geometry
 clusterRadius = 0.4          # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
-alignVertical = 0.9          # 0.9   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
+alignVertical = 0.0          # 0.0   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
                              #       | Internally X and Y components of the directional vector will be reduced by this factor, should always be < 1 to make horizontal connections still possible.
 useAccurateArea = 0          # 1     | Enables accurate contact area calculation using booleans for the cost of an up to 20x slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.
                              #       | If disabled a simpler boundary box intersection approach is used which is only recommended for rectangular constructions without diagonal elements.
@@ -812,8 +812,6 @@ class bcb_panel(bpy.types.Panel):
         split.prop(props, "prop_clusterRadius")
         split.operator("bcb.estimate_cluster_radius", icon="AUTO")
         
-        row = layout.row(); row.prop(props, "prop_alignVertical")
-
         ###### Advanced settings box
         
         layout.separator()
@@ -828,6 +826,7 @@ class bcb_panel(bpy.types.Panel):
             split.prop(props, "prop_toleranceRot")
             
             box.separator()
+            row = box.row(); row.prop(props, "prop_alignVertical")
             row = box.row()
             if props.prop_menu_gotData: row.enabled = 0
             row.prop(props, "prop_connectionCountLimit")
