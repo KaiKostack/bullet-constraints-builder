@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.74 #
+# Bullet Constraints Builder v1.75 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -45,7 +45,7 @@ nonManifoldThickness = 0.1   # 0.01  | Thickness for non-manifold elements (surf
 minimumElementSize = 0       # 0.2   | Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.
 automaticMode = 0            # 0     | Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore
                              #       | After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene
-saveBackups = 0              # 0     | Enables saving of a backup blend file after the building and baking step when using automatic mode, whereby the name of the new blend ends with _BCB
+saveBackups = 0              # 0     | Enables saving of a backup blend file after each step for automatic mode, whereby the name of the new blend ends with `_BCB´
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [ \
@@ -99,7 +99,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 7, 4),
+    "version": (1, 7, 5),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -162,6 +162,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_nonManifoldThickness"] = nonManifoldThickness 
     scene["bcb_prop_minimumElementSize"] = minimumElementSize 
     scene["bcb_prop_automaticMode"] = automaticMode 
+    scene["bcb_prop_saveBackups"] = saveBackups 
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     #scene["bcb_prop_elemGrps"] = elemGrps
@@ -228,6 +229,10 @@ def getConfigDataFromScene(scene):
     if "bcb_prop_automaticMode" in scene.keys():
         global automaticMode
         try: automaticMode = props.prop_automaticMode = scene["bcb_prop_automaticMode"]
+        except: pass
+    if "bcb_prop_saveBackups" in scene.keys():
+        global saveBackups
+        try: saveBackups = props.prop_saveBackups = scene["bcb_prop_saveBackups"]
         except: pass
             
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
@@ -714,6 +719,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_nonManifoldThickness = float(name="Non-solid Thickness", default=nonManifoldThickness, min=0.0, max=10, description="Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.")
     prop_minimumElementSize = float(name="Min.Element Size", default=minimumElementSize, min=0.0, max=10, description="Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.")
     prop_automaticMode = bool(name="Automatic Mode", default=automaticMode, description="Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore. After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene.")
+    prop_saveBackups = bool(name="Backup", default=saveBackups, description="Enables saving of a backup blend file after each step for automatic mode, whereby the name of the new blend ends with `_BCB´.")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
@@ -757,6 +763,7 @@ class bcb_props(bpy.types.PropertyGroup):
         global nonManifoldThickness; nonManifoldThickness = self.prop_nonManifoldThickness
         global minimumElementSize; minimumElementSize = self.prop_minimumElementSize
         global automaticMode; automaticMode = self.prop_automaticMode
+        global saveBackups; saveBackups = self.prop_saveBackups
         global elemGrps
         for i in range(len(elemGrps)):
             elemGrpNew = []
@@ -819,7 +826,10 @@ class bcb_panel(bpy.types.Panel):
         box.prop(props, "prop_menu_advanced", text="Advanced Settings", icon=self.icon(props.prop_menu_advanced), emboss = False)
 
         if props.prop_menu_advanced:
-            row = box.row(); row.prop(props, "prop_automaticMode")
+            row = box.row()
+            split = row.split(percentage=.50, align=False)
+            split.prop(props, "prop_automaticMode")
+            split.prop(props, "prop_saveBackups")
             row = box.row()
             split = row.split(percentage=.50, align=False);
             split.prop(props, "prop_toleranceDist")
