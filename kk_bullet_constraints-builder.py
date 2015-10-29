@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.75 #
+# Bullet Constraints Builder v1.76 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -45,7 +45,7 @@ nonManifoldThickness = 0.1   # 0.01  | Thickness for non-manifold elements (surf
 minimumElementSize = 0       # 0.2   | Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.
 automaticMode = 0            # 0     | Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore
                              #       | After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene
-saveBackups = 0              # 0     | Enables saving of a backup blend file after each step for automatic mode, whereby the name of the new blend ends with `_BCB´
+saveBackups = 0              # 0     | Enables saving of a backup .blend file after each step for automatic mode, whereby the name of the new .blend ends with `_BCB´
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [ \
@@ -99,7 +99,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 7, 5),
+    "version": (1, 7, 6),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -719,7 +719,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_nonManifoldThickness = float(name="Non-solid Thickness", default=nonManifoldThickness, min=0.0, max=10, description="Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.")
     prop_minimumElementSize = float(name="Min.Element Size", default=minimumElementSize, min=0.0, max=10, description="Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.")
     prop_automaticMode = bool(name="Automatic Mode", default=automaticMode, description="Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore. After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene.")
-    prop_saveBackups = bool(name="Backup", default=saveBackups, description="Enables saving of a backup blend file after each step for automatic mode, whereby the name of the new blend ends with `_BCB´.")
+    prop_saveBackups = bool(name="Backup", default=saveBackups, description="Enables saving of a backup .blend file after each step for automatic mode, whereby the name of the new .blend ends with `_BCB´.")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
@@ -1815,6 +1815,165 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
 
 ################################################################################   
 
+def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
+    
+    ### Calculate contact area for all connections
+    print("Calculating contact area for connections...", len(connectsPair))
+
+    ### Add vertex group for masking to all elements
+    for obj in objs:
+        bpy.context.scene.objects.active = obj
+        bpy.ops.object.vertex_group_add()
+        vgrp = bpy.context.scene.objects.active.vertex_groups[-1:][0]
+        vgrp.name = "Distance_Mask"
+        # Set vertex weights to 1 
+        vgrp.add(list(range(len(obj.data.vertices))), 1, 'REPLACE')
+
+    ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
+    scene = bpy.context.scene
+    sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+    # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
+    bpy.context.screen.scene = scene
+    # Link cameras because in second scene is none and when coming back camera view will losing focus
+    objCameras = []
+    for objTemp in scene.objects:
+        if objTemp.type == 'CAMERA':
+            sceneTemp.objects.link(objTemp)
+            objCameras.append(objTemp)
+    # Switch to new scene
+    bpy.context.screen.scene = sceneTemp
+
+    ### Main calculation loop
+    connectsArea = []
+    connectsLoc = []
+    connectsPair_len = len(connectsPair)
+    for k in range(connectsPair_len):
+        sys.stdout.write('\r' +"%d " %k)
+        # Update progress bar
+        bpy.context.window_manager.progress_update(k /connectsPair_len)
+
+        objA = objs[connectsPair[k][0]]
+        objB = objs[connectsPair[k][1]]
+        objA.select = 0
+        objB.select = 0
+            
+        # Link objects we're working on to second scene (we try because of the object unlink workaround)
+        try: sceneTemp.objects.link(objA)
+        except: pass
+        try: sceneTemp.objects.link(objB)
+        except: pass
+
+        contactAreas = []
+        bendingThicknesses = []
+        centers = []
+        
+        # Do this for both elements of the pair
+        for obj in [objA, objB]:
+            bpy.context.scene.objects.active = obj
+            if obj == objA: objPartner = objB
+            else:           objPartner = objA
+                        
+            ### Add Vertex Weight Proximity modifier
+            bpy.ops.object.modifier_add(type='VERTEX_WEIGHT_PROXIMITY')
+            mod = bpy.context.scene.objects.active.modifiers[-1:][0]
+            mod.name = "VertexWeightProximity_BCB"
+            mod.vertex_group = "Distance_Mask"
+            mod.target = objPartner
+            mod.proximity_mode = 'GEOMETRY'
+            mod.proximity_geometry = {'FACE'}
+            mod.falloff_type = 'STEP'
+            mod.max_dist = 0
+            mod.min_dist = searchDistance
+            
+            ### Add Mask modifier
+            bpy.ops.object.modifier_add(type='MASK')
+            mod = bpy.context.scene.objects.active.modifiers[-1:][0]
+            mod.name = "Mask_BCB"
+            mod.vertex_group = "Distance_Mask"
+            
+            # Make modified mesh real
+            me_intersect = bpy.context.scene.objects.active.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
+           
+            # If intersection mesh has geometry then continue calculation
+            if len(me_intersect.vertices) > 0:
+                
+                ### Calculate center point for the intersection mesh
+                # Create a new object for the mesh
+                objIntersect = bpy.data.objects.new("BCB Temp Object", me_intersect)
+                bpy.context.scene.objects.link(objIntersect)
+                objIntersect.matrix_world = bpy.context.scene.objects.active.matrix_world
+                
+                ### Calculate center of intersection mesh based on its boundary box (throws ugly "group # is unclassified!" warnings)
+                objIntersect.select = 1
+                bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS')
+                center = objIntersect.matrix_world.to_translation()
+#                ### Calculate center of intersection mesh based on its boundary box (alternative code, slower but no warnings)
+#                bbMin, bbMax, center = boundaryBox(objIntersect, 1)
+                
+                ### Find out element thickness to be used for bending threshold calculation (the diameter of the intersection mesh should be sufficient for now)
+                bendingThickness = list(objIntersect.dimensions)
+                bendingThickness.sort()
+                bendingThickness = bendingThickness[1]   # First item = mostly 0, second item = thickness, third item = width 
+                                
+                ### Calculate surface area
+                contactArea = 0
+                for poly in me_intersect.polygons: contactArea += poly.area
+                
+                # Unlink new object from second scene
+                sceneTemp.objects.unlink(objIntersect)
+            
+            # If intersection mesh has no geometry then invalidate connection
+            if len(me_intersect.vertices) == 0 or contactArea == 0:
+                contactArea = 0
+                bendingThickness = 0
+                center = Vector((0, 0, 0))
+            
+            contactAreas.append(contactArea)
+            bendingThicknesses.append(bendingThickness)
+            centers.append(center)
+            
+            # Remove BCB modifiers from original object
+            bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
+            bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
+            
+        # Use the larger value as contact area because it is likely to be the cross-section of one element, overlapping surfaces of the partner element will most likely being masked out
+        if contactAreas[0] >= contactAreas[1]: idx = 0
+        if contactAreas[0] < contactAreas[1]: idx = 1
+        contactArea = contactAreas[idx]
+        bendingThickness = bendingThicknesses[idx]
+        center = centers[idx]
+            
+#        # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
+#        sceneTemp.objects.unlink(objA)
+#        sceneTemp.objects.unlink(objB)
+        # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
+        if k %500 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
+            bpy.data.scenes.remove(sceneTemp)
+            sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+            # Link cameras because in second scene is none and when coming back camera view will losing focus
+            for obj in objCameras:
+                sceneTemp.objects.link(obj)
+            # Switch to new scene
+            bpy.context.screen.scene = sceneTemp
+
+        connectsArea.append([contactArea, bendingThickness, 0])
+        connectsLoc.append(center)
+                
+    # Switch back to original scene
+    bpy.context.screen.scene = scene
+    # Delete second scene
+    bpy.data.scenes.remove(sceneTemp)
+                
+    ### Remove BCB vertex group from all original objects
+    for obj in objs:
+        bpy.context.scene.objects.active = obj
+        bpy.ops.object.vertex_group_remove()
+
+    print()
+    return connectsArea, connectsLoc
+
+################################################################################   
+
 def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsArea, connectsLoc):
     
     ### Delete connections with zero contact area
@@ -2528,6 +2687,7 @@ def build():
                 ###### Calculate contact area for all connections
                 if useAccurateArea:
                     connectsArea, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
+                    #connectsArea, connectsLoc = calculateContactAreaBasedOnMaskingForAll(objs, connectsPair)
                 else:
                     connectsArea, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair)
                 ###### Delete connections with zero contact area
