@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.76 #
+# Bullet Constraints Builder v1.75 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -99,7 +99,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 7, 6),
+    "version": (1, 7, 5),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -847,9 +847,9 @@ class bcb_panel(bpy.types.Panel):
             row = box.row()
             if props.prop_menu_gotData: row.enabled = 0
             row.prop(props, "prop_useAccurateArea")
-            row = box.row()
-            if not props.prop_useAccurateArea: row.enabled = 0
-            row.prop(props, "prop_nonManifoldThickness")
+#            row = box.row()
+#            if not props.prop_useAccurateArea: row.enabled = 0
+#            row.prop(props, "prop_nonManifoldThickness")
         
         ###### Element groups box
         
@@ -1611,7 +1611,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair):
 def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
     
     ### Calculate contact area for all connections
-    print("Calculating contact area for connections...", len(connectsPair))
+    print("Calculating contact area for connections... (%d)" %len(connectsPair))
 
     ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
     scene = bpy.context.scene
@@ -1818,10 +1818,14 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
 def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
     
     ### Calculate contact area for all connections
-    print("Calculating contact area for connections...", len(connectsPair))
+    print("Calculating contact area for connections... (%d, %d)" %(len(objs), len(connectsPair)))
 
     ### Add vertex group for masking to all elements
+    k = -1
     for obj in objs:
+        k += 1
+        sys.stdout.write('\r' +"%d " %k)
+
         bpy.context.scene.objects.active = obj
         bpy.ops.object.vertex_group_add()
         vgrp = bpy.context.scene.objects.active.vertex_groups[-1:][0]
@@ -1829,6 +1833,25 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
         # Set vertex weights to 1 
         vgrp.add(list(range(len(obj.data.vertices))), 1, 'REPLACE')
 
+        ### Add Vertex Weight Proximity modifier
+        bpy.ops.object.modifier_add(type='VERTEX_WEIGHT_PROXIMITY')
+        mod = bpy.context.scene.objects.active.modifiers[-1:][0]
+        mod.name = "VertexWeightProximity_BCB"
+        mod.vertex_group = "Distance_Mask"
+        mod.proximity_mode = 'GEOMETRY'
+        mod.proximity_geometry = {'FACE'}
+        mod.falloff_type = 'STEP'
+        mod.max_dist = 0
+        mod.min_dist = searchDistance
+        
+        ### Add Mask modifier
+        bpy.ops.object.modifier_add(type='MASK')
+        mod = bpy.context.scene.objects.active.modifiers[-1:][0]
+        mod.name = "Mask_BCB"
+        mod.vertex_group = "Distance_Mask"
+
+    print()
+        
     ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
     scene = bpy.context.scene
     sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
@@ -1873,26 +1896,13 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
             if obj == objA: objPartner = objB
             else:           objPartner = objA
                         
-            ### Add Vertex Weight Proximity modifier
-            bpy.ops.object.modifier_add(type='VERTEX_WEIGHT_PROXIMITY')
-            mod = bpy.context.scene.objects.active.modifiers[-1:][0]
-            mod.name = "VertexWeightProximity_BCB"
-            mod.vertex_group = "Distance_Mask"
+            # Change target of Vertex Weight Proximity modifier
+            mod = bpy.context.scene.objects.active.modifiers["VertexWeightProximity_BCB"]
             mod.target = objPartner
-            mod.proximity_mode = 'GEOMETRY'
-            mod.proximity_geometry = {'FACE'}
-            mod.falloff_type = 'STEP'
-            mod.max_dist = 0
-            mod.min_dist = searchDistance
-            
-            ### Add Mask modifier
-            bpy.ops.object.modifier_add(type='MASK')
-            mod = bpy.context.scene.objects.active.modifiers[-1:][0]
-            mod.name = "Mask_BCB"
-            mod.vertex_group = "Distance_Mask"
-            
             # Make modified mesh real
             me_intersect = bpy.context.scene.objects.active.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
+            # Remove target to make the mesh visible again for the following objects
+            mod.target = None
            
             # If intersection mesh has geometry then continue calculation
             if len(me_intersect.vertices) > 0:
@@ -1932,17 +1942,35 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
             bendingThicknesses.append(bendingThickness)
             centers.append(center)
             
-            # Remove BCB modifiers from original object
-            bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
-            bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
-            
         # Use the larger value as contact area because it is likely to be the cross-section of one element, overlapping surfaces of the partner element will most likely being masked out
         if contactAreas[0] >= contactAreas[1]: idx = 0
         if contactAreas[0] < contactAreas[1]: idx = 1
         contactArea = contactAreas[idx]
         bendingThickness = bendingThicknesses[idx]
         center = centers[idx]
-            
+
+        ###### If both intersection meshes have no geometry then calculate a contact area estimation based on boundary boxes intersection and a user defined thickness
+        if contactArea == 0:
+            # Todo: Here the boolean approach could be used as a fallback, for now surfaceThickness is not used
+            ###### Calculate contact area for a single pair of objects
+            contactArea, bendingThickness, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
+        
+        connectsArea.append([contactArea, bendingThickness, 0])
+        connectsLoc.append(center)
+
+#        # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
+#        sceneTemp.objects.unlink(objA)
+#        sceneTemp.objects.unlink(objB)
+        # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
+        if k %500 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
+            bpy.data.scenes.remove(sceneTemp)
+            sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+            # Link cameras because in second scene is none and when coming back camera view will losing focus
+            for obj in objCameras:
+                sceneTemp.objects.link(obj)
+            # Switch to new scene
+            bpy.context.screen.scene = sceneTemp
+                
 #        # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
 #        sceneTemp.objects.unlink(objA)
 #        sceneTemp.objects.unlink(objB)
@@ -1956,16 +1984,17 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
             # Switch to new scene
             bpy.context.screen.scene = sceneTemp
 
-        connectsArea.append([contactArea, bendingThickness, 0])
-        connectsLoc.append(center)
-                
     # Switch back to original scene
     bpy.context.screen.scene = scene
     # Delete second scene
     bpy.data.scenes.remove(sceneTemp)
                 
-    ### Remove BCB vertex group from all original objects
+    ### Remove modified data from all original objects
     for obj in objs:
+        # Remove BCB modifiers from original object
+        bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
+        bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
+        # Remove BCB vertex group from all original objects
         bpy.context.scene.objects.active = obj
         bpy.ops.object.vertex_group_remove()
 
@@ -2686,8 +2715,8 @@ def build():
                 #connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
                 ###### Calculate contact area for all connections
                 if useAccurateArea:
-                    connectsArea, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
-                    #connectsArea, connectsLoc = calculateContactAreaBasedOnMaskingForAll(objs, connectsPair)
+                    #connectsArea, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
+                    connectsArea, connectsLoc = calculateContactAreaBasedOnMaskingForAll(objs, connectsPair)
                 else:
                     connectsArea, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair)
                 ###### Delete connections with zero contact area
