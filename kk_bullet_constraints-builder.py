@@ -1849,7 +1849,6 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
         mod = bpy.context.scene.objects.active.modifiers[-1:][0]
         mod.name = "Mask_BCB"
         mod.vertex_group = "Distance_Mask"
-
     print()
         
     ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
@@ -2078,39 +2077,89 @@ def createEmptyObjs(scene, constCnt):
     
     ### Create empty objects
     print("Creating empty objects... (%d)" %constCnt)
-    
+
     ### Create first object
     objConst = bpy.data.objects.new('Constraint', None)
-    scene.objects.link(objConst)
+    bpy.context.scene.objects.link(objConst)
     objConst.empty_draw_type = 'SPHERE'
     bpy.context.scene.objects.active = objConst
     bpy.ops.rigidbody.constraint_add()
-    emptyObjs = [objConst]
-    ### Duplicate them as long as we got the desired count   
-    while len(emptyObjs) < constCnt:
-        if len(emptyObjs) < 2048: sys.stdout.write("%d " %len(emptyObjs))
-        else:                     sys.stdout.write("%d\n" %len(emptyObjs))
-        # Update progress bar
-        bpy.context.window_manager.progress_update(len(emptyObjs) /constCnt)
+
+    constCntPerScene = 1024
+    scenesTemp = []
+    emptyObjsGlobal = [objConst]
+    # Repeat until desired object count is reached
+    while len(emptyObjsGlobal) < constCnt:
         
-        # Deselect all objects
-        bpy.ops.object.select_all(action='DESELECT')
-        # Select empties already in list
-        c = 0
-        for obj in emptyObjs:
-            if c < constCnt -len(emptyObjs):
-                obj.select = 1
-                c += 1
-            else: break
-        # Duplicate them
-        bpy.ops.object.duplicate(linked=False)
-        # Add duplicates to list again
-        for obj in bpy.data.objects:
-            if obj.select and obj.is_visible(scene):
-                if obj.type == 'EMPTY':
-                    emptyObjs.append(obj)
+        ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
+        sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+        scenesTemp.append(sceneTemp)
+        # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
+        bpy.context.screen.scene = scene
+        # Link cameras because in second scene is none and when coming back camera view will losing focus
+        objCameras = []
+        for objTemp in scene.objects:
+            if objTemp.type == 'CAMERA':
+                sceneTemp.objects.link(objTemp)
+                objCameras.append(objTemp)
+        # Switch to new scene
+        bpy.context.screen.scene = sceneTemp
+        # If using two scenes make sure both are using the same RigidBodyWorld and RigidBodyConstraints groups
+        bpy.ops.rigidbody.world_add()
+        bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
+        bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
+        # Link first empty into new scene
+        bpy.context.scene.objects.link(objConst)
+        
+        ### Duplicate empties as long as we got the desired count   
+        emptyObjs = [objConst]
+        while len(emptyObjs) < (constCnt -(len(emptyObjsGlobal) -1)) and len(emptyObjs) <= constCntPerScene:
+            sys.stdout.write("%d " %len(emptyObjs))
+            # Update progress bar
+            bpy.context.window_manager.progress_update(len(emptyObjsGlobal) /constCnt)
+            
+            # Deselect all objects
+            bpy.ops.object.select_all(action='DESELECT')
+            # Select empties already in list
+            c = 0
+            for obj in emptyObjs:
+                if c < (constCnt -(len(emptyObjsGlobal) -1)) -len(emptyObjs):
+                    obj.select = 1
+                    c += 1
+                else: break
+            # Duplicate them
+            bpy.ops.object.duplicate(linked=False)
+            # Add duplicates to list again
+            for obj in bpy.data.objects:
+                if obj.select and obj.is_visible(scene):
+                    if obj.type == 'EMPTY':
+                        emptyObjs.append(obj)
+        
+        emptyObjsGlobal.extend(emptyObjs[1:])
+        sys.stdout.write("\r%d - " %len(emptyObjsGlobal))
+        
+    emptyObjs = emptyObjsGlobal
+
+    ### Link new object back into original scene
+    for scn in scenesTemp:
+        # Switch through temp scenes
+        bpy.context.screen.scene = scn
+        # Select all objects
+        bpy.ops.object.select_all(action='SELECT')
+        # Link objects to original scene
+        bpy.ops.object.make_links_scene(scene=scene.name)
+
+#    # Link new object back into original scene
+#    for obj in emptyObjs[1:]:
+#        scene.objects.link(obj)
+        
+    # Switch back to original scene
+    bpy.context.screen.scene = scene
+    # Delete second scene
+    for scn in scenesTemp:
+        bpy.data.scenes.remove(scn)
     
-    if len(emptyObjs) < 2048: print()
+    print()
     return emptyObjs        
 
 ################################################################################   
