@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.75 #
+# Bullet Constraints Builder v1.76 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -34,7 +34,7 @@ stepsPerSecond = 200         # 200   | Number of simulation steps taken per seco
 toleranceDist = 0.05         # 0.05  | For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
 toleranceRot = 1.57          # 1.57  | For baking: Allowed tolerance for angular change in radian for connection removal
 constraintUseBreaking = 1    # 1     | Enables breaking for all constraints
-connectionCountLimit = 0     # 0     | Maximum count of connections per object pair (0 = disabled)
+connectionCountLimit = 100   # 0     | Maximum count of connections per object pair (0 = disabled)
 searchDistance = 0.02        # 0.02  | Search distance to neighbor geometry
 clusterRadius = 0.4          # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
 alignVertical = 0.0          # 0.0   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
@@ -99,7 +99,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 7, 5),
+    "version": (1, 7, 6),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1404,7 +1404,7 @@ def findConnectionsByBoundaryBoxIntersection(objs, objsEGrp):
         else:
             for (co, index, dist) in kdObjs.find_range(co_find, 999999):
                 aIndex.append(index); aDist.append(dist) #; aCo.append(co) 
-        aIndex = aIndex[1:]; aDist = aDist[1:] # Remove first item because it's the same as co_find (zero distance)
+        aIndex = aIndex[1:]; aDist = aDist[1:]  # Remove first item because it's the same as co_find (zero distance)
     
         # Loop through comparison objects found
         for j in range(len(aIndex)):
@@ -1431,7 +1431,7 @@ def findConnectionsByBoundaryBoxIntersection(objs, objsEGrp):
                         connectCnt += 1
                         if connectCnt == connectionCountLimit: break
     
-    print()
+    print("\nPossible connections found:", len(connectsPair))
     return connectsPair, connectsPairDist
 
 ################################################################################   
@@ -1483,7 +1483,7 @@ def deleteConnectionsWithTooSmallElementsAndParentThemInstead(objs, connectsPair
             checkList.append(item[0])
     connectsPairParent = connectsPairParentTmp
     
-    print("%d connections converted and removed." %len(connectsPairParent))
+    print("Connections converted and removed:", len(connectsPairParent))
     return connectsPair, connectsPairParent
 
 ################################################################################   
@@ -1491,8 +1491,22 @@ def deleteConnectionsWithTooSmallElementsAndParentThemInstead(objs, connectsPair
 def makeParentsForTooSmallElementsReal(objs, connectsPairParent):
     
     ### Create actual parents for too small elements
-    print("Create actual parents for too small elements... (%d)" %len(connectsPairParent))
+    print("Creating actual parents for too small elements... (%d)" %len(connectsPairParent))
     
+    ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
+    scene = bpy.context.scene
+    sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+    # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
+    bpy.context.screen.scene = scene
+    # Link cameras because in second scene is none and when coming back camera view will losing focus
+    objCameras = []
+    for objTemp in scene.objects:
+        if objTemp.type == 'CAMERA':
+            sceneTemp.objects.link(objTemp)
+            objCameras.append(objTemp)
+    # Switch to new scene
+    bpy.context.screen.scene = sceneTemp
+
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
     
@@ -1502,6 +1516,13 @@ def makeParentsForTooSmallElementsReal(objs, connectsPairParent):
         
         objChild = objs[connectsPairParent[k][0]]
         objParent = objs[connectsPairParent[k][1]]
+
+        # Link objects we're working on to second scene (we try because of the object unlink workaround)
+        try: sceneTemp.objects.link(objChild)
+        except: pass
+        try: sceneTemp.objects.link(objParent)
+        except: pass
+
         ### Make parent
         objParent.select = 1
         objChild.select = 1
@@ -1509,7 +1530,25 @@ def makeParentsForTooSmallElementsReal(objs, connectsPairParent):
         bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
         objParent.select = 0
         objChild.select = 0
+
+#        # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
+#        sceneTemp.objects.unlink(objChild)
+#        sceneTemp.objects.unlink(objParent)
+        # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
+        if k %200 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
+            bpy.data.scenes.remove(sceneTemp)
+            sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+            # Link cameras because in second scene is none and when coming back camera view will losing focus
+            for obj in objCameras:
+                sceneTemp.objects.link(obj)
+            # Switch to new scene
+            bpy.context.screen.scene = sceneTemp
     
+    # Switch back to original scene
+    bpy.context.screen.scene = scene
+    # Delete second scene
+    bpy.data.scenes.remove(sceneTemp)
+
     ### Remove child object from rigid body world (should not be simulated anymore)
     for k in range(len(connectsPairParent)):
         objChild = objs[connectsPairParent[k][0]].select = 1
@@ -1537,7 +1576,7 @@ def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair):
             connectCnt += 1
     connectsPair = connectsPairTmp
     
-    print("%d connections skipped due to too few connecting vertices." %(connectCntOld -connectCnt))
+    print("Connections skipped due to too few connecting vertices:", connectCntOld -connectCnt)
     return connectsPair
         
 ################################################################################   
@@ -1793,7 +1832,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
 #            sceneTemp.objects.unlink(objA)
 #            sceneTemp.objects.unlink(objB)
             # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
-            if k %500 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
+            if k %200 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
                 bpy.data.scenes.remove(sceneTemp)
                 sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
                 # Link cameras because in second scene is none and when coming back camera view will losing focus
@@ -1818,38 +1857,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
 def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
     
     ### Calculate contact area for all connections
-    print("Calculating contact area for connections... (%d, %d)" %(len(objs), len(connectsPair)))
-
-    ### Add vertex group for masking to all elements
-    k = -1
-    for obj in objs:
-        k += 1
-        sys.stdout.write('\r' +"%d " %k)
-
-        bpy.context.scene.objects.active = obj
-        bpy.ops.object.vertex_group_add()
-        vgrp = bpy.context.scene.objects.active.vertex_groups[-1:][0]
-        vgrp.name = "Distance_Mask"
-        # Set vertex weights to 1 
-        vgrp.add(list(range(len(obj.data.vertices))), 1, 'REPLACE')
-
-        ### Add Vertex Weight Proximity modifier
-        bpy.ops.object.modifier_add(type='VERTEX_WEIGHT_PROXIMITY')
-        mod = bpy.context.scene.objects.active.modifiers[-1:][0]
-        mod.name = "VertexWeightProximity_BCB"
-        mod.vertex_group = "Distance_Mask"
-        mod.proximity_mode = 'GEOMETRY'
-        mod.proximity_geometry = {'FACE'}
-        mod.falloff_type = 'STEP'
-        mod.max_dist = 0
-        mod.min_dist = searchDistance
-        
-        ### Add Mask modifier
-        bpy.ops.object.modifier_add(type='MASK')
-        mod = bpy.context.scene.objects.active.modifiers[-1:][0]
-        mod.name = "Mask_BCB"
-        mod.vertex_group = "Distance_Mask"
-    print()
+    print("Calculating contact area for connections... (%d)" %len(connectsPair))
         
     ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
     scene = bpy.context.scene
@@ -1895,13 +1903,40 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
             if obj == objA: objPartner = objB
             else:           objPartner = objA
                         
-            # Change target of Vertex Weight Proximity modifier
-            mod = bpy.context.scene.objects.active.modifiers["VertexWeightProximity_BCB"]
+            ### Create vertex group for masking
+            bpy.context.scene.objects.active = obj
+            bpy.ops.object.vertex_group_add()
+            vgrp = bpy.context.scene.objects.active.vertex_groups[-1:][0]
+            vgrp.name = "Distance_Mask"
+            # Set vertex weights to 1 
+            vgrp.add(list(range(len(obj.data.vertices))), 1, 'REPLACE')
+
+            ### Add Vertex Weight Proximity modifier
+            bpy.ops.object.modifier_add(type='VERTEX_WEIGHT_PROXIMITY')
+            mod = bpy.context.scene.objects.active.modifiers[-1:][0]
+            mod.name = "VertexWeightProximity_BCB"
+            mod.vertex_group = "Distance_Mask"
+            mod.proximity_mode = 'GEOMETRY'
+            mod.proximity_geometry = {'FACE'}
+            mod.falloff_type = 'STEP'
+            mod.max_dist = 0
+            mod.min_dist = searchDistance
             mod.target = objPartner
+            
+            ### Add Mask modifier
+            bpy.ops.object.modifier_add(type='MASK')
+            mod = bpy.context.scene.objects.active.modifiers[-1:][0]
+            mod.name = "Mask_BCB"
+            mod.vertex_group = "Distance_Mask"
+
             # Make modified mesh real
             me_intersect = bpy.context.scene.objects.active.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-            # Remove target to make the mesh visible again for the following objects
-            mod.target = None
+
+            # Remove BCB modifiers from original object
+            bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
+            bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
+            # Remove BCB vertex group from all original objects
+            bpy.ops.object.vertex_group_remove()
            
             # If intersection mesh has geometry then continue calculation
             if len(me_intersect.vertices) > 0:
@@ -1961,20 +1996,7 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
 #        sceneTemp.objects.unlink(objA)
 #        sceneTemp.objects.unlink(objB)
         # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
-        if k %500 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
-            bpy.data.scenes.remove(sceneTemp)
-            sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
-            # Link cameras because in second scene is none and when coming back camera view will losing focus
-            for obj in objCameras:
-                sceneTemp.objects.link(obj)
-            # Switch to new scene
-            bpy.context.screen.scene = sceneTemp
-                
-#        # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
-#        sceneTemp.objects.unlink(objA)
-#        sceneTemp.objects.unlink(objB)
-        # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
-        if k %500 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
+        if k %200 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
             bpy.data.scenes.remove(sceneTemp)
             sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
             # Link cameras because in second scene is none and when coming back camera view will losing focus
@@ -1988,15 +2010,6 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
     # Delete second scene
     bpy.data.scenes.remove(sceneTemp)
                 
-    ### Remove modified data from all original objects
-    for obj in objs:
-        # Remove BCB modifiers from original object
-        bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
-        bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
-        # Remove BCB vertex group from all original objects
-        bpy.context.scene.objects.active = obj
-        bpy.ops.object.vertex_group_remove()
-
     print()
     return connectsArea, connectsLoc
 
@@ -2022,7 +2035,7 @@ def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsA
     connectsArea = connectsAreaTmp
     connectsLoc = connectsLocTmp
     
-    print("%d connections skipped due to zero contact area." %(connectCntOld -connectCnt))
+    print("Connections skipped due to zero contact area:", connectCntOld -connectCnt)
     return connectsPair, connectsArea, connectsLoc
 
 ################################################################################   
@@ -2755,7 +2768,7 @@ def build():
                 
                 ###### Find connections by vertex pairs
                 #connectsPair, connectsPairDist = findConnectionsByVertexPairs(objs, objsEGrp)
-                ###### Find connections by boundary box intersection
+                ###### Find connections by boundary box intersection and skip connections whose elements are too small and store them for later parenting
                 connectsPair, connectsPairDist = findConnectionsByBoundaryBoxIntersection(objs, objsEGrp)
                 ###### Delete connections whose elements are too small and make them parents instead
                 if minimumElementSize: connectsPair, connectsPairParent = deleteConnectionsWithTooSmallElementsAndParentThemInstead(objs, connectsPair, connectsPairDist)
