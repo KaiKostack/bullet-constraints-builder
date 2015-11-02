@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.76 #
+# Bullet Constraints Builder v1.77 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -75,11 +75,17 @@ elemGrps = [ \
 
 # Connection types:
 #
-# 1 = 1x 'FIXED' constraint per connection, only compressive breaking threshold is used (tensile limit stays the same, angular forces limit as well)
-# 2 = 1x 'POINT' constraint per connection, only compressive breaking threshold is used (tensile limit stays the same)
-# 3 = 1x 'FIXED' + 1x 'POINT' constraint per connection, compressive breaking threshold is used for the first one and tensile for the second
-# 4 = 2x 'GENERIC' constraint per connection, one to evaluate the compressive and the other one for the tensile breaking threshold
-# 5 = 3x 'GENERIC' constraint per connection, one to evaluate the compressive, another one for the tensile / lateral and the last one for bending / buckling breaking threshold
+# 1 = 1x FIXED constraint per connection for linear omni-directional / bending breaking threshold
+# 2 = 1x POINT constraint per connection for linear omni-directional breaking threshold
+# 3 = 1x FIXED + 1x POINT constraint per connection for linear omni-directional and bending breaking thresholds
+# 4 = 2x GENERIC constraint per connection for compressive and tensile breaking thresholds
+# 5 = 3x GENERIC constraint per connection for compressive, tensile / shearing and bending breaking thresholds
+# 6 = 4x GENERIC constraint per connection for compressive, tensile, shearing and bending breaking thresholds
+# 7 = 4x GENERIC SPRING constraint per connection for linear omni-directional breaking threshold with plastic deformability
+#
+# To add further connection types changes to following functions are necessary:
+# createConnectionData()
+# setConstraintSettings()
 
 ### Developer
 debug = 0                         # 0     | Enables verbose console output for debugging purposes
@@ -99,7 +105,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 7, 6),
+    "version": (1, 7, 7),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -894,6 +900,8 @@ class bcb_panel(bpy.types.Panel):
         elif elemGrp4 == 3: box.label(text="1x FIXED + 1x POINT")
         elif elemGrp4 == 4: box.label(text="2x GENERIC")
         elif elemGrp4 == 5: box.label(text="3x GENERIC")
+        elif elemGrp4 == 6: box.label(text="4x GENERIC")
+        elif elemGrp4 == 7: box.label(text="4x GENERIC SPRING")
         
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_4" %i)
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_5" %i)
@@ -2081,6 +2089,20 @@ def createConnectionData(objsEGrp, connectsPair):
             constsConnect.append(i)
             constsConnect.append(i)
             constCnt += 3
+        elif connectionType == 6:
+            connectsConsts.append([constCnt, constCnt +1, constCnt +2, constCnt +3])
+            constsConnect.append(i)
+            constsConnect.append(i)
+            constsConnect.append(i)
+            constsConnect.append(i)
+            constCnt += 4
+        elif connectionType == 7:
+            connectsConsts.append([constCnt, constCnt +1, constCnt +2, constCnt +3])
+            constsConnect.append(i)
+            constsConnect.append(i)
+            constsConnect.append(i)
+            constsConnect.append(i)
+            constCnt += 4
     
     return connectsPair, connectsConsts, constsConnect
 
@@ -2287,76 +2309,43 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         connectionType = elemGrps[elemGrp][4]
         breakingThreshold1 = elemGrps[elemGrp][5]
         breakingThreshold2 = elemGrps[elemGrp][6]
+        breakingThreshold3 = elemGrps[elemGrp][6]
         
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
         
         if   connectionType == 1:
-            objConst1 = emptyObjs[consts[0]]
-            objConst1.rigid_body_constraint.type = 'FIXED'
-            objConst1.rigid_body_constraint.breaking_threshold = ( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
-            objConst1['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
-            objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
-            ### Add to Bullet constraint group in case it got removed for some reason
-            try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst1)
-            except: pass
-            objConst1.empty_draw_size = emptyDrawSize
-
-# Experimental spring constraint attempt. However results for individual generic spring use looks rather
-# bad due to the lack of bending stiffness evaluation. But may be used for AEM-like method via a matrix of spings.
-#            objConst1.rigid_body_constraint.type = 'GENERIC_SPRING'
-#            objConst1.rigid_body_constraint.use_spring_x = 1
-#            objConst1.rigid_body_constraint.use_spring_y = 1
-#            objConst1.rigid_body_constraint.use_spring_z = 1
-#            objConst1.rigid_body_constraint.spring_stiffness_x = 100000
-#            objConst1.rigid_body_constraint.spring_damping_x = 1
-#            objConst1.rigid_body_constraint.spring_stiffness_y = 100000
-#            objConst1.rigid_body_constraint.spring_damping_y = 1
-#            objConst1.rigid_body_constraint.spring_stiffness_z = 100000
-#            objConst1.rigid_body_constraint.spring_damping_z = 1
-#
-#            objConst1.rigid_body_constraint.use_limit_ang_x = 1
-#            objConst1.rigid_body_constraint.use_limit_ang_y = 1
-#            objConst1.rigid_body_constraint.use_limit_ang_z = 1
-#            objConst1.rigid_body_constraint.limit_ang_x_lower = 0 
-#            objConst1.rigid_body_constraint.limit_ang_x_upper = 0 
-#            objConst1.rigid_body_constraint.limit_ang_y_lower = 0
-#            objConst1.rigid_body_constraint.limit_ang_y_upper = 0
-#            objConst1.rigid_body_constraint.limit_ang_z_lower = 0
-#            objConst1.rigid_body_constraint.limit_ang_z_upper = 0
+            objConst = emptyObjs[consts[0]]
+            objConst.rigid_body_constraint.type = 'FIXED'
+            objConst.rigid_body_constraint.breaking_threshold = ( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
+            objConst['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+            objConst.empty_draw_size = emptyDrawSize
         
         elif connectionType == 2:
-            objConst1 = emptyObjs[consts[0]]
-            objConst1.rigid_body_constraint.type = 'POINT'
-            objConst1.rigid_body_constraint.breaking_threshold = ( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
-            objConst1['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
-            objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
-            ### Add to Bullet constraint group in case it got removed for some reason
-            try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst1)
-            except: pass
-            objConst1.empty_draw_size = emptyDrawSize
+            objConst = emptyObjs[consts[0]]
+            objConst.rigid_body_constraint.type = 'POINT'
+            objConst.rigid_body_constraint.breaking_threshold = ( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second
+            objConst['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+            objConst.empty_draw_size = emptyDrawSize
         
         elif connectionType == 3:
             constCnt = 2   # As both constraints bear all load and forces are evenly distributed among them the breaking thresholds need to be divided by their count to compensate
             ### First constraint
-            objConst1 = emptyObjs[consts[0]]
-            objConst1.rigid_body_constraint.type = 'FIXED'
-            objConst1.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second) /constCnt
-            objConst1['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
-            objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
+            objConst = emptyObjs[consts[0]]
+            objConst.rigid_body_constraint.type = 'FIXED'
+            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second) /constCnt
+            objConst['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+            objConst.empty_draw_size = emptyDrawSize
             ### Second constraint
-            objConst2 = emptyObjs[consts[1]]
-            objConst2.rigid_body_constraint.type = 'POINT'
-            objConst2.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) /constCnt
-            objConst2['BrkThreshold2'] = breakingThreshold2   # Store value as ID property for debug purposes
-            objConst2.rigid_body_constraint.use_breaking = constraintUseBreaking
-            ### Add to Bullet constraint group in case it got removed for some reason
-            try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst1)
-            except: pass
-            try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst2)
-            except: pass
-            objConst1.empty_draw_size = emptyDrawSize
-            objConst2.empty_draw_size = emptyDrawSize
+            objConst = emptyObjs[consts[1]]
+            objConst.rigid_body_constraint.type = 'POINT'
+            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) /constCnt
+            objConst['BrkThreshold2'] = breakingThreshold2   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+            objConst.empty_draw_size = emptyDrawSize
         
         elif connectionType == 4:
             # Correction multiplier for breaking thresholds
@@ -2364,70 +2353,65 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
             correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             ### First constraint
-            objConst1 = emptyObjs[consts[0]]
+            objConst = emptyObjs[consts[0]]
             # Check if full update is necessary (optimization)
-            if 'ConnectType' in objConst1.keys() and objConst1['ConnectType'] == connectionType: qUpdateComplete = 0
-            else: objConst1['ConnectType'] = connectionType; qUpdateComplete = 1
+            if 'ConnectType' in objConst.keys() and objConst['ConnectType'] == connectionType: qUpdateComplete = 0
+            else: objConst['ConnectType'] = connectionType; qUpdateComplete = 1
             # Calculate orientation between the two elements, imagine a line from center to center
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-            objConst1.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            objConst1['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
-            objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
+            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
-                objConst1.rotation_mode = 'QUATERNION'
-                objConst1.rigid_body_constraint.type = 'GENERIC'
-                objConst1.empty_draw_size = emptyDrawSize
+                objConst.rotation_mode = 'QUATERNION'
+                objConst.rigid_body_constraint.type = 'GENERIC'
+                objConst.empty_draw_size = emptyDrawSize
                 ### Lock all directions for the compressive force
                 ### I left Y and Z unlocked because for this CT we have no separate breaking threshold for lateral force, the tensile constraint and its breaking threshold should apply for now
                 ### Also rotational forces should only be carried by the tensile constraint
-                objConst1.rigid_body_constraint.use_limit_lin_x = 1
-                objConst1.rigid_body_constraint.use_limit_lin_y = 0
-                objConst1.rigid_body_constraint.use_limit_lin_z = 0
-                objConst1.rigid_body_constraint.limit_lin_x_lower = 0
-                objConst1.rigid_body_constraint.limit_lin_x_upper = 99999
-                objConst1.rigid_body_constraint.use_limit_ang_x = 0
-                objConst1.rigid_body_constraint.use_limit_ang_y = 0
-                objConst1.rigid_body_constraint.use_limit_ang_z = 0
+                objConst.rigid_body_constraint.use_limit_lin_x = 1
+                objConst.rigid_body_constraint.use_limit_lin_y = 0
+                objConst.rigid_body_constraint.use_limit_lin_z = 0
+                objConst.rigid_body_constraint.limit_lin_x_lower = 0
+                objConst.rigid_body_constraint.limit_lin_x_upper = 99999
+                objConst.rigid_body_constraint.use_limit_ang_x = 0
+                objConst.rigid_body_constraint.use_limit_ang_y = 0
+                objConst.rigid_body_constraint.use_limit_ang_z = 0
             # Align constraint rotation to that vector
-            objConst1.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             ### Second constraint
-            objConst2 = emptyObjs[consts[1]]
-            objConst2.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            objConst2['BrkThreshold2'] = breakingThreshold2   # Store value as ID property for debug purposes
-            objConst2.rigid_body_constraint.use_breaking = constraintUseBreaking
+            objConst = emptyObjs[consts[1]]
+            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst['BrkThreshold2'] = breakingThreshold2   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
-                objConst2.rotation_mode = 'QUATERNION'
-                objConst2.rigid_body_constraint.type = 'GENERIC'
-                objConst2.empty_draw_size = emptyDrawSize
+                objConst.rotation_mode = 'QUATERNION'
+                objConst.rigid_body_constraint.type = 'GENERIC'
+                objConst.empty_draw_size = emptyDrawSize
                 ### Lock all directions for the tensile force
-                objConst2.rigid_body_constraint.use_limit_lin_x = 1
-                objConst2.rigid_body_constraint.use_limit_lin_y = 1
-                objConst2.rigid_body_constraint.use_limit_lin_z = 1
-                objConst2.rigid_body_constraint.limit_lin_x_lower = -99999
-                objConst2.rigid_body_constraint.limit_lin_x_upper = 0
-                objConst2.rigid_body_constraint.limit_lin_y_lower = 0
-                objConst2.rigid_body_constraint.limit_lin_y_upper = 0
-                objConst2.rigid_body_constraint.limit_lin_z_lower = 0
-                objConst2.rigid_body_constraint.limit_lin_z_upper = 0
-                objConst2.rigid_body_constraint.use_limit_ang_x = 1
-                objConst2.rigid_body_constraint.use_limit_ang_y = 1
-                objConst2.rigid_body_constraint.use_limit_ang_z = 1
-                objConst2.rigid_body_constraint.limit_ang_x_lower = 0
-                objConst2.rigid_body_constraint.limit_ang_x_upper = 0
-                objConst2.rigid_body_constraint.limit_ang_y_lower = 0
-                objConst2.rigid_body_constraint.limit_ang_y_upper = 0
-                objConst2.rigid_body_constraint.limit_ang_z_lower = 0
-                objConst2.rigid_body_constraint.limit_ang_z_upper = 0
+                objConst.rigid_body_constraint.use_limit_lin_x = 1
+                objConst.rigid_body_constraint.use_limit_lin_y = 1
+                objConst.rigid_body_constraint.use_limit_lin_z = 1
+                objConst.rigid_body_constraint.limit_lin_x_lower = -99999
+                objConst.rigid_body_constraint.limit_lin_x_upper = 0
+                objConst.rigid_body_constraint.limit_lin_y_lower = 0
+                objConst.rigid_body_constraint.limit_lin_y_upper = 0
+                objConst.rigid_body_constraint.limit_lin_z_lower = 0
+                objConst.rigid_body_constraint.limit_lin_z_upper = 0
+                objConst.rigid_body_constraint.use_limit_ang_x = 1
+                objConst.rigid_body_constraint.use_limit_ang_y = 1
+                objConst.rigid_body_constraint.use_limit_ang_z = 1
+                objConst.rigid_body_constraint.limit_ang_x_lower = 0
+                objConst.rigid_body_constraint.limit_ang_x_upper = 0
+                objConst.rigid_body_constraint.limit_ang_y_lower = 0
+                objConst.rigid_body_constraint.limit_ang_y_upper = 0
+                objConst.rigid_body_constraint.limit_ang_z_lower = 0
+                objConst.rigid_body_constraint.limit_ang_z_upper = 0
             # Align constraint rotation like above
-            objConst2.rotation_quaternion = dirVec.to_track_quat('X','Z')
-            ### Add to Bullet constraint group in case it got removed for some reason
-            try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst1)
-            except: pass
-            try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst2)
-            except: pass
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             
         elif connectionType == 5:
             # Correction multiplier for breaking thresholds
@@ -2435,92 +2419,237 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
             correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             ### First constraint
-            objConst1 = emptyObjs[consts[0]]
+            objConst = emptyObjs[consts[0]]
             # Check if full update is necessary (optimization)
-            if 'ConnectType' in objConst1.keys() and objConst1['ConnectType'] == connectionType: qUpdateComplete = 0
-            else: objConst1['ConnectType'] = connectionType; qUpdateComplete = 1
+            if 'ConnectType' in objConst.keys() and objConst['ConnectType'] == connectionType: qUpdateComplete = 0
+            else: objConst['ConnectType'] = connectionType; qUpdateComplete = 1
             # Calculate orientation between the two elements, imagine a line from center to center
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-            objConst1.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            objConst1['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
-            objConst1.rigid_body_constraint.use_breaking = constraintUseBreaking
+            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
-                objConst1.rotation_mode = 'QUATERNION'
-                objConst1.rigid_body_constraint.type = 'GENERIC'
-                objConst1.empty_draw_size = emptyDrawSize
-                ### Lock all directions for the compressive force
-                objConst1.rigid_body_constraint.use_limit_lin_x = 1
-                objConst1.rigid_body_constraint.use_limit_lin_y = 0
-                objConst1.rigid_body_constraint.use_limit_lin_z = 0
-                objConst1.rigid_body_constraint.limit_lin_x_lower = 0
-                objConst1.rigid_body_constraint.limit_lin_x_upper = 99999
-                objConst1.rigid_body_constraint.use_limit_ang_x = 0
-                objConst1.rigid_body_constraint.use_limit_ang_y = 0
-                objConst1.rigid_body_constraint.use_limit_ang_z = 0
-                #objConst1.rigid_body_constraint.disable_collisions = False   # Can reduce instability (explosion-like repelling)
+                objConst.rotation_mode = 'QUATERNION'
+                objConst.rigid_body_constraint.type = 'GENERIC'
+                objConst.empty_draw_size = emptyDrawSize
+                ### Lock direction for compressive force
+                objConst.rigid_body_constraint.use_limit_lin_x = 1
+                objConst.rigid_body_constraint.use_limit_lin_y = 0
+                objConst.rigid_body_constraint.use_limit_lin_z = 0
+                objConst.rigid_body_constraint.limit_lin_x_lower = 0
+                objConst.rigid_body_constraint.limit_lin_x_upper = 99999
+                objConst.rigid_body_constraint.use_limit_ang_x = 0
+                objConst.rigid_body_constraint.use_limit_ang_y = 0
+                objConst.rigid_body_constraint.use_limit_ang_z = 0
+                #objConst.rigid_body_constraint.disable_collisions = False
             # Align constraint rotation to that vector
-            objConst1.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             ### Second constraint
-            objConst2 = emptyObjs[consts[1]]
-            objConst2.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            objConst2['BrkThreshold2'] = breakingThreshold2   # Store value as ID property for debug purposes
-            objConst2.rigid_body_constraint.use_breaking = constraintUseBreaking
+            objConst = emptyObjs[consts[1]]
+            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst['BrkThreshold2'] = breakingThreshold2   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
-                objConst2.rotation_mode = 'QUATERNION'
-                objConst2.rigid_body_constraint.type = 'GENERIC'
-                objConst2.empty_draw_size = emptyDrawSize
-                ### Lock all directions for the tensile force
-                objConst2.rigid_body_constraint.use_limit_lin_x = 1
-                objConst2.rigid_body_constraint.use_limit_lin_y = 1
-                objConst2.rigid_body_constraint.use_limit_lin_z = 1
-                objConst2.rigid_body_constraint.limit_lin_x_lower = -99999
-                objConst2.rigid_body_constraint.limit_lin_x_upper = 0
-                objConst2.rigid_body_constraint.limit_lin_y_lower = 0
-                objConst2.rigid_body_constraint.limit_lin_y_upper = 0
-                objConst2.rigid_body_constraint.limit_lin_z_lower = 0
-                objConst2.rigid_body_constraint.limit_lin_z_upper = 0
-                objConst2.rigid_body_constraint.use_limit_ang_x = 0
-                objConst2.rigid_body_constraint.use_limit_ang_y = 0
-                objConst2.rigid_body_constraint.use_limit_ang_z = 0
-                #objConst2.rigid_body_constraint.disable_collisions = False   # Can reduce instability (explosion-like repelling)
+                objConst.rotation_mode = 'QUATERNION'
+                objConst.rigid_body_constraint.type = 'GENERIC'
+                objConst.empty_draw_size = emptyDrawSize
+                ### Lock directions for shearing force
+                objConst.rigid_body_constraint.use_limit_lin_x = 1
+                objConst.rigid_body_constraint.use_limit_lin_y = 1
+                objConst.rigid_body_constraint.use_limit_lin_z = 1
+                objConst.rigid_body_constraint.limit_lin_x_lower = -99999
+                objConst.rigid_body_constraint.limit_lin_x_upper = 0
+                objConst.rigid_body_constraint.limit_lin_y_lower = 0
+                objConst.rigid_body_constraint.limit_lin_y_upper = 0
+                objConst.rigid_body_constraint.limit_lin_z_lower = 0
+                objConst.rigid_body_constraint.limit_lin_z_upper = 0
+                objConst.rigid_body_constraint.use_limit_ang_x = 0
+                objConst.rigid_body_constraint.use_limit_ang_y = 0
+                objConst.rigid_body_constraint.use_limit_ang_z = 0
+                #objConst.rigid_body_constraint.disable_collisions = False
             # Align constraint rotation like above
-            objConst2.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             ### Third constraint
-            objConst3 = emptyObjs[consts[2]]
-            objConst3.rigid_body_constraint.breaking_threshold = (( (contactArea *bendingThickness *0.33) *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            objConst3['BrkThreshold3'] = breakingThreshold2   # Store value as ID property for debug purposes
-            objConst3.rigid_body_constraint.use_breaking = constraintUseBreaking
+            objConst = emptyObjs[consts[2]]
+            objConst.rigid_body_constraint.breaking_threshold = (( (contactArea *bendingThickness *0.33) *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst['BrkThreshold3'] = breakingThreshold2   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
-                objConst3.rotation_mode = 'QUATERNION'
-                objConst3.rigid_body_constraint.type = 'GENERIC'
-                objConst3.empty_draw_size = emptyDrawSize
-                ### Lock all directions for the lateral tensile and bending force
-                objConst3.rigid_body_constraint.use_limit_lin_x = 0
-                objConst3.rigid_body_constraint.use_limit_lin_y = 0
-                objConst3.rigid_body_constraint.use_limit_lin_z = 0
-                objConst3.rigid_body_constraint.use_limit_ang_x = 1
-                objConst3.rigid_body_constraint.use_limit_ang_y = 1
-                objConst3.rigid_body_constraint.use_limit_ang_z = 1
-                objConst3.rigid_body_constraint.limit_ang_x_lower = 0 
-                objConst3.rigid_body_constraint.limit_ang_x_upper = 0 
-                objConst3.rigid_body_constraint.limit_ang_y_lower = 0
-                objConst3.rigid_body_constraint.limit_ang_y_upper = 0
-                objConst3.rigid_body_constraint.limit_ang_z_lower = 0
-                objConst3.rigid_body_constraint.limit_ang_z_upper = 0
-                #objConst3.rigid_body_constraint.disable_collisions = False   # Can reduce instability (explosion-like repelling)
+                objConst.rotation_mode = 'QUATERNION'
+                objConst.rigid_body_constraint.type = 'GENERIC'
+                objConst.empty_draw_size = emptyDrawSize
+                ### Lock directions for bending force
+                objConst.rigid_body_constraint.use_limit_lin_x = 0
+                objConst.rigid_body_constraint.use_limit_lin_y = 0
+                objConst.rigid_body_constraint.use_limit_lin_z = 0
+                objConst.rigid_body_constraint.use_limit_ang_x = 1
+                objConst.rigid_body_constraint.use_limit_ang_y = 1
+                objConst.rigid_body_constraint.use_limit_ang_z = 1
+                objConst.rigid_body_constraint.limit_ang_x_lower = 0 
+                objConst.rigid_body_constraint.limit_ang_x_upper = 0 
+                objConst.rigid_body_constraint.limit_ang_y_lower = 0
+                objConst.rigid_body_constraint.limit_ang_y_upper = 0
+                objConst.rigid_body_constraint.limit_ang_z_lower = 0
+                objConst.rigid_body_constraint.limit_ang_z_upper = 0
+                #objConst.rigid_body_constraint.disable_collisions = False
             # Align constraint rotation like above
-            objConst3.rotation_quaternion = dirVec.to_track_quat('X','Z')
-            ### Add to Bullet constraint group in case it got removed for some reason
-            try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst1)
-            except: pass
-            try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst2)
-            except: pass
-            try: bpy.data.groups["RigidBodyConstraints"].objects.link(objConst3)
-            except: pass
-            
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+
+        elif connectionType == 6:
+            # Correction multiplier for breaking thresholds
+            # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
+            # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
+            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+            ### First constraint
+            objConst = emptyObjs[consts[0]]
+            # Check if full update is necessary (optimization)
+            if 'ConnectType' in objConst.keys() and objConst['ConnectType'] == connectionType: qUpdateComplete = 0
+            else: objConst['ConnectType'] = connectionType; qUpdateComplete = 1
+            # Calculate orientation between the two elements, imagine a line from center to center
+            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
+            if alignVertical:
+                # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
+                dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
+            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst['BrkThreshold1'] = breakingThreshold1   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+            if qUpdateComplete:
+                objConst.rotation_mode = 'QUATERNION'
+                objConst.rigid_body_constraint.type = 'GENERIC'
+                objConst.empty_draw_size = emptyDrawSize
+                ### Lock direction for compressive force
+                objConst.rigid_body_constraint.use_limit_lin_x = 1
+                objConst.rigid_body_constraint.use_limit_lin_y = 0
+                objConst.rigid_body_constraint.use_limit_lin_z = 0
+                objConst.rigid_body_constraint.limit_lin_x_lower = 0
+                objConst.rigid_body_constraint.limit_lin_x_upper = 99999
+                objConst.rigid_body_constraint.use_limit_ang_x = 0
+                objConst.rigid_body_constraint.use_limit_ang_y = 0
+                objConst.rigid_body_constraint.use_limit_ang_z = 0
+                #objConst.rigid_body_constraint.disable_collisions = False
+            # Align constraint rotation to that vector
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            ### Second constraint
+            objConst = emptyObjs[consts[1]]
+            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst['BrkThreshold2'] = breakingThreshold2   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+            if qUpdateComplete:
+                objConst.rotation_mode = 'QUATERNION'
+                objConst.rigid_body_constraint.type = 'GENERIC'
+                objConst.empty_draw_size = emptyDrawSize
+                ### Lock direction for tensile force
+                objConst.rigid_body_constraint.use_limit_lin_x = 1
+                objConst.rigid_body_constraint.use_limit_lin_y = 0
+                objConst.rigid_body_constraint.use_limit_lin_z = 0
+                objConst.rigid_body_constraint.limit_lin_x_lower = -99999
+                objConst.rigid_body_constraint.limit_lin_x_upper = 0
+                objConst.rigid_body_constraint.use_limit_ang_x = 0
+                objConst.rigid_body_constraint.use_limit_ang_y = 0
+                objConst.rigid_body_constraint.use_limit_ang_z = 0
+                #objConst.rigid_body_constraint.disable_collisions = False
+            # Align constraint rotation like above
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            ### Third constraint
+            objConst = emptyObjs[consts[2]]
+            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakingThreshold3 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst['BrkThreshold3'] = breakingThreshold3   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+            if qUpdateComplete:
+                objConst.rotation_mode = 'QUATERNION'
+                objConst.rigid_body_constraint.type = 'GENERIC'
+                objConst.empty_draw_size = emptyDrawSize
+                ### Lock directions for shearing force
+                objConst.rigid_body_constraint.use_limit_lin_x = 0
+                objConst.rigid_body_constraint.use_limit_lin_y = 1
+                objConst.rigid_body_constraint.use_limit_lin_z = 1
+                objConst.rigid_body_constraint.limit_lin_y_lower = 0
+                objConst.rigid_body_constraint.limit_lin_y_upper = 0
+                objConst.rigid_body_constraint.limit_lin_z_lower = 0
+                objConst.rigid_body_constraint.limit_lin_z_upper = 0
+                objConst.rigid_body_constraint.use_limit_ang_x = 0
+                objConst.rigid_body_constraint.use_limit_ang_y = 0
+                objConst.rigid_body_constraint.use_limit_ang_z = 0
+                #objConst.rigid_body_constraint.disable_collisions = False
+            # Align constraint rotation like above
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            ### Fourth constraint
+            objConst = emptyObjs[consts[3]]
+            objConst.rigid_body_constraint.breaking_threshold = (( (contactArea *bendingThickness *0.33) *1000000 *breakingThreshold2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst['BrkThreshold4'] = breakingThreshold2   # Store value as ID property for debug purposes
+            objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+            if qUpdateComplete:
+                objConst.rotation_mode = 'QUATERNION'
+                objConst.rigid_body_constraint.type = 'GENERIC'
+                objConst.empty_draw_size = emptyDrawSize
+                ### Lock directions for bending force
+                objConst.rigid_body_constraint.use_limit_lin_x = 0
+                objConst.rigid_body_constraint.use_limit_lin_y = 0
+                objConst.rigid_body_constraint.use_limit_lin_z = 0
+                objConst.rigid_body_constraint.use_limit_ang_x = 1
+                objConst.rigid_body_constraint.use_limit_ang_y = 1
+                objConst.rigid_body_constraint.use_limit_ang_z = 1
+                objConst.rigid_body_constraint.limit_ang_x_lower = 0 
+                objConst.rigid_body_constraint.limit_ang_x_upper = 0 
+                objConst.rigid_body_constraint.limit_ang_y_lower = 0
+                objConst.rigid_body_constraint.limit_ang_y_upper = 0
+                objConst.rigid_body_constraint.limit_ang_z_lower = 0
+                objConst.rigid_body_constraint.limit_ang_z_upper = 0
+                #objConst.rigid_body_constraint.disable_collisions = False
+            # Align constraint rotation like above
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+
+        elif connectionType == 7:
+            # Correction multiplier for breaking thresholds
+            # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
+            # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
+            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+            radius = bendingThickness /2
+            ### First constraint
+            objConst = emptyObjs[consts[0]]
+            # Check if full update is necessary (optimization)
+            if 'ConnectType' in objConst.keys() and objConst['ConnectType'] == connectionType: qUpdateComplete = 0
+            else: objConst['ConnectType'] = connectionType; qUpdateComplete = 1
+            # Calculate orientation between the two elements, imagine a line from center to center
+            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
+            if alignVertical:
+                # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
+                dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
+            constBreakingThreshold = (( contactArea *1000000 *breakingThreshold1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            stiffness = constBreakingThreshold *1000
+            # Loop through all constraints of this connection
+            for i in range(4):
+                objConst = emptyObjs[consts[i]]
+                objConst.rigid_body_constraint.breaking_threshold = constBreakingThreshold
+                objConst['BrkThreshold'] = breakingThreshold1   # Store value as ID property for debug purposes
+                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                if qUpdateComplete:
+                    objConst.rotation_mode = 'QUATERNION'
+                    objConst.rigid_body_constraint.type = 'GENERIC_SPRING'
+                    objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    objConst.empty_draw_size = emptyDrawSize
+                    ### Rotate constraint matrix
+                    if   i == 0: vec = Vector((0, radius, radius))
+                    elif i == 1: vec = Vector((0, radius, -radius))
+                    elif i == 2: vec = Vector((0, -radius, -radius))
+                    elif i == 3: vec = Vector((0, -radius, radius))
+                    vec.rotate(objConst.rotation_quaternion)
+                    objConst.location += vec
+                    ### Enable linear spring
+                    objConst.rigid_body_constraint.use_spring_x = True
+                    objConst.rigid_body_constraint.use_spring_y = True
+                    objConst.rigid_body_constraint.use_spring_z = True
+                    objConst.rigid_body_constraint.spring_damping_x = 1
+                    objConst.rigid_body_constraint.spring_damping_y = 1
+                    objConst.rigid_body_constraint.spring_damping_z = 1
+                    #objConst.rigid_body_constraint.disable_collisions = False
+                objConst.rigid_body_constraint.spring_stiffness_x = stiffness
+                objConst.rigid_body_constraint.spring_stiffness_y = stiffness
+                objConst.rigid_body_constraint.spring_stiffness_z = stiffness
+                
     print()
         
 ################################################################################
