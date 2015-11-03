@@ -6,7 +6,7 @@
 # "Technological and Methodological Solutions for Integrated
 # Wide Area Situation Awareness and Survivor Localisation to
 # Support Search and Rescue (USaR) Teams"
-# This version is developed at the Laurea University of applied Sciences, Finland
+# This version is developed at the Laurea University of Applied Sciences, Finland
 # Copyright (C) 2015 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
@@ -39,7 +39,7 @@ searchDistance = 0.02        # 0.02  | Search distance to neighbor geometry
 clusterRadius = 0            # 0.4   | Radius for bundling close constraints into clusters (0 = clusters disabled)
 alignVertical = 0            # 0.0   | Uses a vertical alignment multiplier for connection type 4 instead of using unweighted center to center orientation (0 = disabled)
                              #       | Internally X and Y components of the directional vector will be reduced by this factor, should always be < 1 to make horizontal connections still possible.
-useAccurateArea = 0          # 1     | Enables accurate contact area calculation using booleans for the cost of an up to 20x slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.
+useAccurateArea = 0          # 1     | Enables accurate contact area calculation using booleans for the cost of an slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.
                              #       | If disabled a simpler boundary box intersection approach is used which is only recommended for rectangular constructions without diagonal elements.
 nonManifoldThickness = 0.1   # 0.01  | Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.
 minimumElementSize = 0       # 0.2   | Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.
@@ -740,7 +740,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_searchDistance = float(name="Search Distance", default=searchDistance, min=0.0, max=1000, description="Search distance to neighbor geometry.")
     prop_clusterRadius = float(name="Cluster Radius", default=clusterRadius, min=0.0, max=1000, description="Radius for bundling close constraints into clusters (0 = clusters disabled).")
     prop_alignVertical = float(name="Vertical Alignment", default=alignVertical, min=0.0, max=1.0, description="Enables a vertical alignment multiplier for connection type 4 or above instead of using unweighted center to center orientation (0 = disabled, 1 = fully vertical).")
-    prop_useAccurateArea = bool(name="Accur. Contact Area Calculation", default=useAccurateArea , description="Enables accurate contact area calculation using booleans for the cost of an up to 20x slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.")
+    prop_useAccurateArea = bool(name="Accur. Contact Area Calculation", default=useAccurateArea , description="Enables accurate contact area calculation using booleans for the cost of an slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.")
     prop_nonManifoldThickness = float(name="Non-solid Thickness", default=nonManifoldThickness, min=0.0, max=10, description="Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.")
     prop_minimumElementSize = float(name="Min. Element Size", default=minimumElementSize, min=0.0, max=10, description="Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.")
     prop_automaticMode = bool(name="Automatic Mode", default=automaticMode, description="Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore. After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene.")
@@ -2317,6 +2317,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
     ### Set constraint settings
     print("Adding main constraint settings... (%d)" %len(connectsPair))
     
+    scene = bpy.context.scene
+    
     count = 0
     for k in range(len(connectsPair)):
         sys.stdout.write('\r' +"%d" %k)
@@ -2358,11 +2360,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
         
         if   connectType == 1 or connectType == 9 or connectType == 10:
-            if connectType == 9: correction = 1 /(1 +3)     # Divided by the count of constraints which are sharing the same degree of freedom
-            elif connectType == 10: correction = 1 /(1 +4)  # Divided by the count of constraints which are sharing the same degree of freedom
+            correction = 1
+            if connectType == 9: correction /= 1 +3     # Divided by the count of constraints which are sharing the same degree of freedom
+            elif connectType == 10: correction /= 1 +4  # Divided by the count of constraints which are sharing the same degree of freedom
             objConst = emptyObjs[consts[0]]
             objConst.rigid_body_constraint.type = 'FIXED'
-            objConst.rigid_body_constraint.breaking_threshold = ( contactArea *1000000 *breakThres1 ) /bpy.context.scene.rigidbody_world.steps_per_second *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             objConst.empty_draw_size = emptyDrawSize
@@ -2370,7 +2373,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         elif connectType == 2:
             objConst = emptyObjs[consts[0]]
             objConst.rigid_body_constraint.type = 'POINT'
-            objConst.rigid_body_constraint.breaking_threshold = ( contactArea *1000000 *breakThres1 ) /bpy.context.scene.rigidbody_world.steps_per_second
+            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale
             objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             objConst.empty_draw_size = emptyDrawSize
@@ -2380,14 +2383,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             ### First constraint
             objConst = emptyObjs[consts[0]]
             objConst.rigid_body_constraint.type = 'FIXED'
-            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres4 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres1'] = breakThres4   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             objConst.empty_draw_size = emptyDrawSize
             ### Second constraint
             objConst = emptyObjs[consts[1]]
             objConst.rigid_body_constraint.type = 'POINT'
-            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres2'] = breakThres1   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             objConst.empty_draw_size = emptyDrawSize
@@ -2404,7 +2407,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
             ### First constraint
             objConst = emptyObjs[consts[0]]
-            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
@@ -2426,7 +2429,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             ### Second constraint
             objConst = emptyObjs[consts[1]]
-            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
@@ -2467,7 +2470,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
             ### First constraint
             objConst = emptyObjs[consts[0]]
-            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
@@ -2488,7 +2491,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             ### Second constraint
             objConst = emptyObjs[consts[1]]
-            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
@@ -2513,7 +2516,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             ### Third constraint
             objConst = emptyObjs[consts[2]]
-            objConst.rigid_body_constraint.breaking_threshold = (( (contactArea *bendingThickness) *1000000 *breakThres4 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( (contactArea *bendingThickness) *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres3'] = breakThres4   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
@@ -2551,7 +2554,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
             ### First constraint
             objConst = emptyObjs[consts[0]]
-            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
@@ -2572,7 +2575,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             ### Second constraint
             objConst = emptyObjs[consts[1]]
-            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
@@ -2593,7 +2596,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             ### Third constraint
             objConst = emptyObjs[consts[2]]
-            objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres3 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres3 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres3'] = breakThres3   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
@@ -2616,7 +2619,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             ### Fourth constraint
             objConst = emptyObjs[consts[3]]
-            objConst.rigid_body_constraint.breaking_threshold = (( (contactArea *bendingThickness) *1000000 *breakThres4 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            objConst.rigid_body_constraint.breaking_threshold = ((( (contactArea *bendingThickness) *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             objConst['BrkThres4'] = breakThres4   # Store value as ID property for debug purposes
             objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
             if qUpdateComplete:
@@ -2655,7 +2658,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-            constBreakThres = (( contactArea *1000000 *breakThres1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            constBreakThres = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             # Some connection types are designed to use a combination of multiple presets, then an index offset for accessing the right constraints is required
             if connectType == 9: conIdxOfs = connectTypes[1][1]
             elif connectType == 11: conIdxOfs = connectTypes[6][1]
@@ -2703,7 +2706,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-            constBreakThres = (( contactArea *1000000 *breakThres1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            constBreakThres = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             # Some connection types are designed to use a combination of multiple presets, then an index offset for accessing the right constraints is required
             if connectType == 10: conIdxOfs = connectTypes[1][1]
             elif connectType == 12: conIdxOfs = connectTypes[6][1]
@@ -2750,10 +2753,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-            constBreakThres1 = (( contactArea *1000000 *breakThres1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            constBreakThres2 = (( contactArea *1000000 *breakThres2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            constBreakThres3 = (( contactArea *1000000 *breakThres3 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            constBreakThres4 = (( (contactArea *bendingThickness) *1000000 *breakThres4 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            constBreakThres1 = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            constBreakThres2 = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            constBreakThres3 = ((( contactArea *1000000 *breakThres3 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            constBreakThres4 = ((( (contactArea *bendingThickness) *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             # Loop through all constraints of this connection
             i = -3
             for j in range(3):
@@ -2889,10 +2892,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-            constBreakThres1 = (( contactArea *1000000 *breakThres1 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            constBreakThres2 = (( contactArea *1000000 *breakThres2 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            constBreakThres3 = (( contactArea *1000000 *breakThres3 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
-            constBreakThres4 = (( (contactArea *bendingThickness) *1000000 *breakThres4 ) /bpy.context.scene.rigidbody_world.steps_per_second) *correction
+            constBreakThres1 = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            constBreakThres2 = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            constBreakThres3 = ((( contactArea *1000000 *breakThres3 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            constBreakThres4 = ((( (contactArea *bendingThickness) *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             # Loop through all constraints of this connection
             i = -3
             for j in range(4):
