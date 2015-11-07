@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.78 #
+# Bullet Constraints Builder v1.79 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -31,8 +31,6 @@
 withGUI = 1                  # 1     | Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
 
 stepsPerSecond = 200         # 200   | Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable)
-toleranceDist = 0.10         # 0.10  | For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
-toleranceRot = 1.57          # 1.57  | For baking: Allowed tolerance for angular change in radian for connection removal
 constraintUseBreaking = 1    # 1     | Enables breaking for all constraints
 connectionCountLimit = 100   # 0     | Maximum count of connections per object pair (0 = disabled)
 searchDistance = 0.02        # 0.02  | Search distance to neighbor geometry
@@ -46,55 +44,61 @@ minimumElementSize = 0       # 0.2   | Deletes connections whose elements are be
 automaticMode = 0            # 0     | Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore
                              #       | After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene
 saveBackups = 0              # 0     | Enables saving of a backup .blend file after each step for automatic mode, whereby the name of the new .blend ends with `_BCB´
+initPeriodEnd = 0            # 0     | For baking: Use a different time scale for an initial period of the simulation until this keyframe (0 = disabled)
+initPeriodTimeScale = 0.01   # 0.01  | For baking: Use this time scale for the initial period of the simulation, after that it is switching back to default time scale and updating breaking thresholds accordingly on runtime
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [
-# 0          1    2           3        4   5    6    7    8    9       10   11    12
-# Name       RVP  Mat.preset  Density  CT  BTC  BTT  BTS  BTB  Stiff.  Bev. Scale facing
-[ "",        1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  0,   .95,  0      ],   # Defaults to be used when element is not part of any element group
-[ "Columns", 1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  0,   .95,  0      ],
-[ "Girders", 1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  0,   .95,  0      ],
-[ "Walls",   1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  0,   .95,  0      ],
-[ "Slabs",   1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  0,   .95,  0      ]
+# 0          1    2           3        4   5    6    7    8    9       10   11   12   13    14   15    16
+# Name       RVP  Mat.preset  Density  CT  BTC  BTT  BTS  BTB  Stiff.  TPD. TPR. TBD. TBR.  Bev. Scale facing
+[ "",        1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  .1, .2,  .2,  .8,   0,   .95,  0      ],   # Defaults to be used when element is not part of any element group
+[ "Columns", 1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  .1, .2,  .2,  .8,   0,   .95,  0      ],
+[ "Girders", 1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  .1, .2,  .2,  .8,   0,   .95,  0      ],
+[ "Walls",   1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  .1, .2,  .2,  .8,   0,   .95,  0      ],
+[ "Slabs",   1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  .1, .2,  .2,  .8,   0,   .95,  0      ]
 ]
 
 # Column descriptions (in order from left to right):
 #
-# Required Vertex Pairs | How many vertex pairs between two elements are required to generate a connection.
-# (Depreciated)         | This can help to ensure there is an actual surface to surface connection between both elements (for at least 3 verts you can expect a shared surface).
-#                       | For two elements from different groups with different RVPs the lower number is decisive.
-# Material Preset       | Preset name of the physical material to be used from Blender's internal database.
-#                       | See Blender's Rigid Body Tools for a list of available presets.
-# Material Density      | Custom density value (kg/m^3) to use instead of material preset (0 = disabled).
-# Connection Type       | Connection type ID for the constraint presets defined by this script, see list below.
-# Break.Thresh.Compres. | Real world material compressive breaking threshold in N/mm^2.
-# Break.Thresh.Tensile  | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
-# Break.Thresh.Shear    | Real world material shearing breaking threshold in N/mm^2.
-# Break.Thresh.Bend     | Real world material bending breaking threshold in N/mm^2.
-# Spring Stiffness      | Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.
-# Bevel                 | Use beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes)
-# Scale                 | Apply scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes)
-# Facing                | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
+# 1.  Required Vertex Pairs     | How many vertex pairs between two elements are required to generate a connection.
+#     (Depreciated)             | This can help to ensure there is an actual surface to surface connection between both elements (for at least 3 verts you can expect a shared surface).
+#                               | For two elements from different groups with different RVPs the lower number is decisive.
+# 2.  Material Preset           | Preset name of the physical material to be used from Blender's internal database.
+#                               | See Blender's Rigid Body Tools for a list of available presets.
+# 3.  Material Density          | Custom density value (kg/m^3) to use instead of material preset (0 = disabled).
+# 4.  Connection Type           | Connection type ID for the constraint presets defined by this script, see list below.
+# 5.  Break.Thresh.Compres.     | Real world material compressive breaking threshold in N/mm^2.
+# 6.  Break.Thresh.Tensile      | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
+# 7.  Break.Thresh.Shear        | Real world material shearing breaking threshold in N/mm^2.
+# 8.  Break.Thresh.Bend         | Real world material bending breaking threshold in N/mm^2.
+# 9.  Spring Stiffness          | Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.
+# 10. Tolerance Plast.Def.Dist. | For baking: Allowed tolerance for distance change in percent for plastic deformation (1.00 = 100 %)
+# 11. Tolerance Plast.Def.Rot.  | For baking: Allowed tolerance for angular change in radian for plastic deformation
+# 12. Tolerance Break.Def.Dist. | For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
+# 13. Tolerance Break.Def.Rot.  | For baking: Allowed tolerance for angular change in radian for connection removal
+# 14. Bevel                     | Use beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes)
+# 15. Scale                     | Apply scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes)
+# 16. Facing                    | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
 #
 # To add further settings each reference to elemGrps should be checked because indices may shift
 
 # Connection types:
-connectTypes = [          # Cnt C T S B Stf    CT
-[ "UNDEFINED",              0, [0,0,0,0,0]], # 0. Undefined (reserved)
-[ "1x FIXED",               1, [1,0,0,0,0]], # 1. Linear omni-directional + bending breaking threshold
-[ "1x POINT",               1, [1,0,0,0,0]], # 2. Linear omni-directional breaking threshold
-[ "1x FIXED + 1x POINT",    2, [1,0,0,1,0]], # 3. Linear omni-directional and bending breaking thresholds
-[ "2x GENERIC",             2, [1,1,0,0,0]], # 4. Compressive and tensile breaking thresholds
-[ "3x GENERIC",             3, [1,1,0,1,0]], # 5. Compressive, tensile + shearing and bending breaking thresholds
-[ "4x GENERIC",             4, [1,1,1,1,0]], # 6. Compressive, tensile, shearing and bending breaking thresholds
-[ "3x SPRING",              3, [1,0,0,0,1]], # 7. Linear omni-directional breaking threshold with plastic deformability
-[ "4x SPRING",              4, [1,0,0,0,1]], # 8. Linear omni-directional breaking threshold with plastic deformability
-[ "1x FIXED + 3x SPRING",   4, [1,0,0,0,1]], # 9. Linear omni-directional + bending breaking threshold with plastic deformability
-[ "1x FIXED + 4x SPRING",   5, [1,0,0,0,1]], # 10. Linear omni-directional + bending breaking threshold with plastic deformability
-[ "4x GENERIC + 3x SPRING", 7, [1,1,1,1,1]], # 11. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
-[ "4x GENERIC + 4x SPRING", 8, [1,1,1,1,1]], # 12. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
-[ "3 x 3x SPRING",          9, [1,1,1,0,1]], # 13. Compressive, tensile and shearing breaking thresholds with plastic deformability
-[ "3 x 4x SPRING",         12, [1,1,1,0,1]]  # 14. Compressive, tensile and shearing breaking thresholds with plastic deformability
+connectTypes = [          # Cnt C T S B S T T T T      CT
+[ "UNDEFINED",              0, [0,0,0,0,0,0,0,1,1]], # 0. Undefined (reserved)
+[ "1x FIXED",               1, [1,0,0,0,0,0,0,1,1]], # 1. Linear omni-directional + bending breaking threshold
+[ "1x POINT",               1, [1,0,0,0,0,0,0,1,1]], # 2. Linear omni-directional breaking threshold
+[ "1x FIXED + 1x POINT",    2, [1,0,0,1,0,0,0,1,1]], # 3. Linear omni-directional and bending breaking thresholds
+[ "2x GENERIC",             2, [1,1,0,0,0,0,0,1,1]], # 4. Compressive and tensile breaking thresholds
+[ "3x GENERIC",             3, [1,1,0,1,0,0,0,1,1]], # 5. Compressive, tensile + shearing and bending breaking thresholds
+[ "4x GENERIC",             4, [1,1,1,1,0,0,0,1,1]], # 6. Compressive, tensile, shearing and bending breaking thresholds
+[ "3x SPRING",              3, [1,0,0,0,1,0,0,1,1]], # 7. Linear omni-directional breaking threshold with plastic deformability
+[ "4x SPRING",              4, [1,0,0,0,1,0,0,1,1]], # 8. Linear omni-directional breaking threshold with plastic deformability
+[ "1x FIXED + 3x SPRING",   4, [1,0,0,0,1,1,1,1,1]], # 9. Linear omni-directional + bending breaking threshold with plastic deformability
+[ "1x FIXED + 4x SPRING",   5, [1,0,0,0,1,1,1,1,1]], # 10. Linear omni-directional + bending breaking threshold with plastic deformability
+[ "4x GENERIC + 3x SPRING", 7, [1,1,1,1,1,1,1,1,1]], # 11. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
+[ "4x GENERIC + 4x SPRING", 8, [1,1,1,1,1,1,1,1,1]], # 12. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
+[ "3 x 3x SPRING",          9, [1,1,1,0,1,0,0,1,1]], # 13. Compressive, tensile and shearing breaking thresholds with plastic deformability
+[ "3 x 4x SPRING",         12, [1,1,1,0,1,0,0,1,1]]  # 14. Compressive, tensile and shearing breaking thresholds with plastic deformability
 ]
 # To add further connection types changes to following functions are necessary:
 # setConstraintSettings() and bcb_panel() for the UI
@@ -117,7 +121,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 7, 8),
+    "version": (1, 7, 9),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -169,8 +173,6 @@ def storeConfigDataInScene(scene):
     if debug: print("Storing menu config data in scene...")
     
     scene["bcb_prop_stepsPerSecond"] = stepsPerSecond
-    scene["bcb_prop_toleranceDist"] = toleranceDist
-    scene["bcb_prop_toleranceRot"] = toleranceRot
     scene["bcb_prop_constraintUseBreaking"] = constraintUseBreaking
     scene["bcb_prop_connectionCountLimit"] = connectionCountLimit
     scene["bcb_prop_searchDistance"] = searchDistance
@@ -203,14 +205,6 @@ def getConfigDataFromScene(scene):
     if "bcb_prop_stepsPerSecond" in scene.keys():
         global stepsPerSecond
         try: stepsPerSecond = props.prop_stepsPerSecond = scene["bcb_prop_stepsPerSecond"]
-        except: pass
-    if "bcb_prop_toleranceDist" in scene.keys():
-        global toleranceDist
-        try: toleranceDist = props.prop_toleranceDist = scene["bcb_prop_toleranceDist"]
-        except: pass
-    if "bcb_prop_toleranceRot" in scene.keys():
-        global toleranceRot
-        try: toleranceRot = props.prop_toleranceRot = scene["bcb_prop_toleranceRot"]
         except: pass
     if "bcb_prop_constraintUseBreaking" in scene.keys():
         global constraintUseBreaking
@@ -492,7 +486,7 @@ def clearAllDataFromScene(scene):
     ### Revert element scaling
     for k in range(len(objs)):
         obj = objs[k]
-        scale = elemGrps[objsEGrp[k]][11]
+        scale = elemGrps[objsEGrp[k]][15]
         if scale != 0 and scale != 1:
             obj.scale /= scale
             
@@ -566,7 +560,7 @@ def monitor_eventHandler(scene):
         print("Frame:", scene.frame_current, " ")
         
         ###### Function
-        monitor_checkForDistanceChange()
+        monitor_checkForChange()
                             
 ################################################################################
 
@@ -584,6 +578,9 @@ def monitor_initBuffers(scene):
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
     
     ###### Get data from scene
+
+    try: objsEGrp = scene["bcb_objsEGrp"]
+    except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
 
     try: names = scene["bcb_objs"]
     except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
@@ -613,6 +610,18 @@ def monitor_initBuffers(scene):
         
         objA = objs[pair[0]]
         objB = objs[pair[1]]
+        elemGrpA = objsEGrp[pair[0]]
+        elemGrpB = objsEGrp[pair[1]]
+        
+        # Element group order defines priority for connection type (first preferred over latter) 
+        if elemGrpA <= elemGrpB: elemGrp = elemGrpA
+        else:                    elemGrp = elemGrpB
+        springStiff = elemGrps[elemGrp][9]
+        tolDistPlast = elemGrps[elemGrp][10]
+        tolRotPlast = elemGrps[elemGrp][11]
+        tolDistBreak = elemGrps[elemGrp][12]
+        tolRotBreak = elemGrps[elemGrp][13]
+        
         # Calculate distance between both elements of the connection
         distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
         # Calculate angle between two elements
@@ -621,32 +630,72 @@ def monitor_initBuffers(scene):
         angle = quat0.rotation_difference(quat1).angle
         consts = []
         constsBrkTs = []
+        constsSprSt = []
         for const in connectsConsts[d -1]:
             emptyObj = emptyObjs[const]
             consts.append(emptyObj)
             # Backup original breaking thresholds
             constsBrkTs.append(emptyObj.rigid_body_constraint.breaking_threshold)
-        connects.append([objA, objB, distance, angle, consts, constsBrkTs, 1])
+            # Backup original spring stiffness
+            constsSprSt.append([emptyObj.rigid_body_constraint.spring_stiffness_x, emptyObj.rigid_body_constraint.spring_stiffness_y, emptyObj.rigid_body_constraint.spring_stiffness_z])
+        #                0                1                2         3      4       5            6            7            8            9             10            11           12
+        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, constsSprSt, springStiff, tolDistPlast, tolRotPlast, tolDistBreak, tolRotBreak, 0])
 
     print("Connections")
         
 ################################################################################
 
-def monitor_checkForDistanceChange():
+def monitor_checkForChange():
 
     if debug: print("Calling checkForDistanceChange")
     
     connects = bpy.app.driver_namespace["bcb_monitor"]
-    d = 0
-    cnt = 0
+    d = 0; cntP = 0; cntB = 0
     for connect in connects:
-        # If connection is not flagged as loose then do:
-        if connect[6]:
+        sys.stdout.write('\r' +"%d " %d)
+
+        ### If connection is in fixed mode then check if plastic tolerance is reached
+        if connect[12] == 0:
             d += 1
-            sys.stdout.write('\r' +"%d " %d)
+            objA = connect[0][0]
+            objB = connect[1][0]
+            springStiff = connect[7]
+            toleranceDist = connect[8]
+            toleranceRot = connect[9]
             
-            objA = connect[0]
-            objB = connect[1]
+            # Calculate distance between both elements of the connection
+            distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+            if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
+            else: distanceDif = 1
+            # Calculate angle between two elements
+            quatA = objA.matrix_world.to_quaternion()
+            quatB = objB.matrix_world.to_quaternion()
+            angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+            # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
+            if distanceDif > toleranceDist +(angleDif /3.1416) \
+            or angleDif > toleranceRot:
+                consts = connect[4]
+                for const in consts:
+                    # Enable spring constraints for this connection by setting its stiffness
+                    if const.rigid_body_constraint.type == 'GENERIC_SPRING':
+                        const.rigid_body_constraint.spring_stiffness_x = springStiff
+                        const.rigid_body_constraint.spring_stiffness_y = springStiff
+                        const.rigid_body_constraint.spring_stiffness_z = springStiff
+                    # Disable non-spring constraints for this connection by setting breaking threshold to 0
+                    else:
+                        const.rigid_body_constraint.breaking_threshold = 0
+                # Switch connection to plastic mode
+                connect[12] += 1
+                cntP += 1
+
+        ### If connection is in plastic mode then check if breaking tolerance is reached
+        elif connect[12] == 1:
+            d += 1
+            objA = connect[0][0]
+            objB = connect[1][0]
+            toleranceDist = connect[10]
+            toleranceRot = connect[11]
+            
             # Calculate distance between both elements of the connection
             distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
             if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
@@ -659,14 +708,17 @@ def monitor_checkForDistanceChange():
             if distanceDif > toleranceDist +(angleDif /3.1416) \
             or angleDif > toleranceRot:
                 # Disable all constraints for this connection by setting breaking threshold to 0
-                for const in connect[4]:
+                consts = connect[4]
+                for const in consts:
                     const.rigid_body_constraint.breaking_threshold = 0
                 # Flag connection as being disconnected
-                connect[6] = 0
-                cnt += 1
-    
-    if cnt > 0: print("Connections | Removed:", cnt)
-    else: print("Connections")
+                connect[12] += 1
+                cntB += 1
+
+    sys.stdout.write("Connections")
+    if cntP > 0: sys.stdout.write(" | Plastic: %d" %cntP)
+    if cntB > 0: sys.stdout.write(" | Broken: %d" %cntB)
+    print()
                 
 ################################################################################
 
@@ -675,12 +727,21 @@ def monitor_freeBuffers():
     if debug: print("Calling freeBuffers")
     
     connects = bpy.app.driver_namespace["bcb_monitor"]
-    ### Restore original breaking thresholds
+    ### Restore original constraint and element data
     for connect in connects:
         consts = connect[4]
         constsBrkTs = connect[5]
+        constsSprSt = connect[6]
         for i in range(len(consts)):
-            consts[i].rigid_body_constraint.breaking_threshold = constsBrkTs[i]
+            const = consts[i]
+            # Restore original breaking thresholds
+            const.rigid_body_constraint.breaking_threshold = constsBrkTs[i]
+            # Restore original spring settings
+            if const.rigid_body_constraint.type == 'GENERIC_SPRING':
+                const.rigid_body_constraint.spring_stiffness_x = constsSprSt[i][0]
+                const.rigid_body_constraint.spring_stiffness_y = constsSprSt[i][1]
+                const.rigid_body_constraint.spring_stiffness_z = constsSprSt[i][2]
+            
     # Clear property
     del bpy.app.driver_namespace["bcb_monitor"]
 
@@ -730,11 +791,10 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_menu_gotConfig = int(0)
     prop_menu_gotData = int(0)
     prop_menu_selectedItem = int(0)
-    prop_menu_advanced = bool(0)
+    prop_menu_advancedG = bool(0)
+    prop_menu_advancedE = bool(0)
 
     prop_stepsPerSecond = int(name="Steps Per Second", default=stepsPerSecond, min=1, max=32767, description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
-    prop_toleranceDist = float(name="Dist. Tolerance", default=toleranceDist, min=0.0, max=1.0, description="For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).")
-    prop_toleranceRot = float(name="Rot. Tolerance", default=toleranceRot, min=0.0, max=3.14159, description="For baking: Allowed tolerance for angular change in radian for connection removal.")
     prop_constraintUseBreaking = bool(name="Enable Breaking", default=constraintUseBreaking, description="Enables breaking for all constraints.")
     prop_connectionCountLimit = int(name="Con. Count Limit", default=connectionCountLimit, min=0, max=10000, description="Maximum count of connections per object pair (0 = disabled).")
     prop_searchDistance = float(name="Search Distance", default=searchDistance, min=0.0, max=1000, description="Search distance to neighbor geometry.")
@@ -759,10 +819,14 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("prop_elemGrp_%d_1" %i +" = int(name='Req. Vertex Pairs', default=elemGrps[j][1], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
         exec("prop_elemGrp_%d_2" %i +" = string(name='Mat. Preset', default=elemGrps[j][2], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
         exec("prop_elemGrp_%d_3" %i +" = float(name='Density', default=elemGrps[j][3], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
-        exec("prop_elemGrp_%d_10" %i +" = bool(name='Bevel', default=elemGrps[j][10], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
-        exec("prop_elemGrp_%d_11" %i +" = float(name='Rescale Factor', default=elemGrps[j][11], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
-        exec("prop_elemGrp_%d_12" %i +" = bool(name='Facing', default=elemGrps[j][12], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
-        
+        exec("prop_elemGrp_%d_10" %i +" = float(name='Dist. Tol. Plastic', default=elemGrps[j][10], min=0.0, max=10.0, description='For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).')")
+        exec("prop_elemGrp_%d_11" %i +" = float(name='Rot. Tol. Plastic', default=elemGrps[j][11], min=0.0, max=3.14159, description='For baking: Allowed tolerance for angular change in radian for connection removal.')")
+        exec("prop_elemGrp_%d_12" %i +" = float(name='Dist. Tol. Break', default=elemGrps[j][12], min=0.0, max=10.0, description='For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).')")
+        exec("prop_elemGrp_%d_13" %i +" = float(name='Rot. Tol. Break', default=elemGrps[j][13], min=0.0, max=3.14159, description='For baking: Allowed tolerance for angular change in radian for connection removal.')")
+        exec("prop_elemGrp_%d_14" %i +" = bool(name='Bevel', default=elemGrps[j][14], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
+        exec("prop_elemGrp_%d_15" %i +" = float(name='Rescale Factor', default=elemGrps[j][15], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
+        exec("prop_elemGrp_%d_16" %i +" = bool(name='Facing', default=elemGrps[j][16], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
+
     def props_update_menu(self):
         ### Update menu related properties from global vars
         for i in range(len(elemGrps)):
@@ -779,12 +843,14 @@ class bcb_props(bpy.types.PropertyGroup):
             exec("self.prop_elemGrp_%d_10" %i +" = elemGrps[i][10]")
             exec("self.prop_elemGrp_%d_11" %i +" = elemGrps[i][11]")
             exec("self.prop_elemGrp_%d_12" %i +" = elemGrps[i][12]")
+            exec("self.prop_elemGrp_%d_13" %i +" = elemGrps[i][13]")
+            exec("self.prop_elemGrp_%d_14" %i +" = elemGrps[i][14]")
+            exec("self.prop_elemGrp_%d_15" %i +" = elemGrps[i][15]")
+            exec("self.prop_elemGrp_%d_16" %i +" = elemGrps[i][16]")
            
     def props_update_globals(self):
         ### Update global vars from menu related properties
         global stepsPerSecond; stepsPerSecond = self.prop_stepsPerSecond
-        global toleranceDist; toleranceDist = self.prop_toleranceDist
-        global toleranceRot; toleranceRot = self.prop_toleranceRot
         global constraintUseBreaking; constraintUseBreaking = self.prop_constraintUseBreaking
         global connectionCountLimit; connectionCountLimit = self.prop_connectionCountLimit
         global searchDistance; searchDistance = self.prop_searchDistance
@@ -822,7 +888,7 @@ class bcb_panel(bpy.types.Panel):
         if not props.prop_menu_gotData: 
             split = row.split(percentage=.85, align=False)
             split.operator("bcb.build", icon="MOD_SKIN")
-            split2 = split.row()
+            split2 = split.split(align=False)
             if not props.prop_menu_gotConfig:
                 if "bcb_prop_elemGrps" in scene.keys():
                       split2.operator("bcb.get_config", icon="FILE_REFRESH")
@@ -850,13 +916,13 @@ class bcb_panel(bpy.types.Panel):
         split.prop(props, "prop_clusterRadius")
         split.operator("bcb.estimate_cluster_radius", icon="AUTO")
         
-        ###### Advanced settings box
+        ###### Advanced main settings box
         
         layout.separator()
         box = layout.box()
-        box.prop(props, "prop_menu_advanced", text="Advanced Settings", icon=self.icon(props.prop_menu_advanced), emboss = False)
+        box.prop(props, "prop_menu_advancedG", text="Advanced Global Settings", icon=self.icon(props.prop_menu_advancedG), emboss = False)
 
-        if props.prop_menu_advanced:
+        if props.prop_menu_advancedG:
             row = box.row()
             split = row.split(percentage=.50, align=False)
             split.prop(props, "prop_automaticMode")
@@ -887,7 +953,7 @@ class bcb_panel(bpy.types.Panel):
         layout.separator()
         row = layout.row(); row.label(text="Element Groups", icon="MOD_BUILD")
         box = layout.box()
-        row = box.row()
+        row = box.split(align=False)
         row.operator("bcb.add", icon="ZOOMIN")
         row.operator("bcb.del", icon="X")
         row.operator("bcb.reset", icon="CANCEL")
@@ -956,10 +1022,6 @@ class bcb_panel(bpy.types.Panel):
         if not connectType[2][3]: row.active = 0
 
         layout.separator()
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_9" %i)
-        if not connectType[2][4]: row.active = 0
-        
-        layout.separator()
         #row = layout.row(); row.prop(props, "prop_elemGrp_%d_1" %i)
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_2" %i)
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_3" %i)
@@ -967,19 +1029,45 @@ class bcb_panel(bpy.types.Panel):
         layout.separator()
         row = layout.row()
         if props.prop_menu_gotData: row.enabled = 0
-        row.prop(props, "prop_elemGrp_%d_11" %i)
+        row.prop(props, "prop_elemGrp_%d_15" %i)
         row = layout.row()
         if props.prop_menu_gotData: row.enabled = 0
-        row.prop(props, "prop_elemGrp_%d_10" %i)
-        elemGrp10 = eval("props.prop_elemGrp_%d_10" %i)
-        elemGrp12 = eval("props.prop_elemGrp_%d_12" %i)
-        if elemGrp10 and not elemGrp12: row.alert = 1
+        row.prop(props, "prop_elemGrp_%d_14" %i)
+        elemGrp14 = eval("props.prop_elemGrp_%d_14" %i)
+        elemGrp16 = eval("props.prop_elemGrp_%d_16" %i)
+        if elemGrp14 and not elemGrp16: row.alert = 1
         if props.prop_menu_gotData: row.enabled = 0
-        row.prop(props, "prop_elemGrp_%d_12" %i)
+        row.prop(props, "prop_elemGrp_%d_16" %i)
         
-        if elemGrp10 and not elemGrp12:
+        if elemGrp14 and not elemGrp16:
             row = layout.row(); row.label(text="Warning: Disabled facing")
             row = layout.row(); row.label(text="makes bevel permanent!")
+            
+        ###### Advanced element group settings box
+        
+        box = layout.box()
+        box.prop(props, "prop_menu_advancedE", text="Advanced Element Settings", icon=self.icon(props.prop_menu_advancedE), emboss = False)
+
+        if props.prop_menu_advancedE:
+            elemGrp9 = eval("props.prop_elemGrp_%d_9" %i)
+            elemGrp10 = eval("props.prop_elemGrp_%d_10" %i)
+            elemGrp11 = eval("props.prop_elemGrp_%d_11" %i)
+            elemGrp12 = eval("props.prop_elemGrp_%d_12" %i)
+            elemGrp13 = eval("props.prop_elemGrp_%d_13" %i)
+            
+            row = box.row(); row.prop(props, "prop_elemGrp_%d_9" %i)
+            if not connectType[2][4]: row.active = 0
+            row = box.row(); row.label(text="Plastic & Breaking Tolerances:")
+            row = box.row()
+            split = row.split(percentage=.50, align=False);
+            split.prop(props, "prop_elemGrp_%d_10" %i)
+            split.prop(props, "prop_elemGrp_%d_11" %i)
+            if not connectType[2][5]: split.active = 0
+            row = box.row()
+            split = row.split(percentage=.50, align=False);
+            split.prop(props, "prop_elemGrp_%d_12" %i)
+            split.prop(props, "prop_elemGrp_%d_13" %i)
+            if not connectType[2][7]: split.active = 0
             
         # Update global vars from menu related properties
         props.props_update_globals()
@@ -987,7 +1075,7 @@ class bcb_panel(bpy.types.Panel):
          
 class OBJECT_OT_bcb_set_config(bpy.types.Operator):
     bl_idname = "bcb.set_config"
-    bl_label = " Set Config"
+    bl_label = ""
     bl_description = "Stores actual config data in current scene."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -1000,7 +1088,7 @@ class OBJECT_OT_bcb_set_config(bpy.types.Operator):
 
 class OBJECT_OT_bcb_get_config(bpy.types.Operator):
     bl_idname = "bcb.get_config"
-    bl_label = " Get Config"
+    bl_label = ""
     bl_description = "Loads previous config data from current scene."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -1019,7 +1107,7 @@ class OBJECT_OT_bcb_get_config(bpy.types.Operator):
 
 class OBJECT_OT_bcb_clear(bpy.types.Operator):
     bl_idname = "bcb.clear"
-    bl_label = " Clear"
+    bl_label = ""
     bl_description = "Clears constraints from scene and revert back to original state (required to rebuild constraints from scratch)."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -1122,7 +1210,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
 
 class OBJECT_OT_bcb_add(bpy.types.Operator):
     bl_idname = "bcb.add"
-    bl_label = " Add"
+    bl_label = ""
     bl_description = "Adds element group to list."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -1139,7 +1227,7 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
 
 class OBJECT_OT_bcb_del(bpy.types.Operator):
     bl_idname = "bcb.del"
-    bl_label = " Delete"
+    bl_label = ""
     bl_description = "Deletes element group from list."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -1158,7 +1246,7 @@ class OBJECT_OT_bcb_del(bpy.types.Operator):
 
 class OBJECT_OT_bcb_move_up(bpy.types.Operator):
     bl_idname = "bcb.move_up"
-    bl_label = " M.Up"
+    bl_label = ""
     bl_description = "Moves element group in list (the order defines priority for conflicting connection settings)."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -1176,7 +1264,7 @@ class OBJECT_OT_bcb_move_up(bpy.types.Operator):
 
 class OBJECT_OT_bcb_move_down(bpy.types.Operator):
     bl_idname = "bcb.move_down"
-    bl_label = " M.Down"
+    bl_label = ""
     bl_description = "Moves element group in list (the order defines priority for conflicting connection settings)."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -1194,7 +1282,7 @@ class OBJECT_OT_bcb_move_down(bpy.types.Operator):
 
 class OBJECT_OT_bcb_up(bpy.types.Operator):
     bl_idname = "bcb.up"
-    bl_label = " Up"
+    bl_label = " Previous"
     bl_description = "Selects element group from list."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -1204,7 +1292,7 @@ class OBJECT_OT_bcb_up(bpy.types.Operator):
 
 class OBJECT_OT_bcb_down(bpy.types.Operator):
     bl_idname = "bcb.down"
-    bl_label = " Down"
+    bl_label = " Next"
     bl_description = "Selects element group from list."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -1214,7 +1302,7 @@ class OBJECT_OT_bcb_down(bpy.types.Operator):
 
 class OBJECT_OT_bcb_reset(bpy.types.Operator):
     bl_idname = "bcb.reset"
-    bl_label = " Reset"
+    bl_label = ""
     bl_description = "Resets element group list to defaults."
     def execute(self, context):
         props = context.window_manager.bcb
@@ -1230,7 +1318,7 @@ class OBJECT_OT_bcb_reset(bpy.types.Operator):
 
 class OBJECT_OT_bcb_estimate_cluster_radius(bpy.types.Operator):
     bl_idname = "bcb.estimate_cluster_radius"
-    bl_label = " Estimate Cluster Radius"
+    bl_label = ""
     bl_description = "Estimate optimal cluster radius from selected objects in scene (even if you already have built a BCB structure only selected objects are considered)."
     def execute(self, context):
         scene = bpy.context.scene
@@ -1285,13 +1373,21 @@ def createElementGroupIndex(objs):
     for obj in objs:
         objGrpsTmp = []
         for elemGrp in elemGrps:
-            if elemGrp[0] in bpy.data.groups:
-                if obj.name in bpy.data.groups[elemGrp[0]].objects:
+            elemGrpName = elemGrp[0]
+            if elemGrpName in bpy.data.groups:
+                if obj.name in bpy.data.groups[elemGrpName].objects:
                     objGrpsTmp.append(elemGrps.index(elemGrp))
         if len(objGrpsTmp) > 1:
             print("\nWarning: Object %s belongs to more than one element group, defaults are used." %obj.name)
-            objGrpsTmp = [0]
-        elif len(objGrpsTmp) == 0: objGrpsTmp = [0]
+            q = 1
+        elif len(objGrpsTmp) == 0: q = 1
+        else: q = 0
+        if q:
+            for elemGrp in elemGrps:
+                elemGrpName = elemGrp[0]
+                if elemGrpName == '':
+                    objGrpsTmp = [elemGrps.index(elemGrp)]
+                    break
         objsEGrp.append(objGrpsTmp[0])
         
     return objsEGrp
@@ -2349,7 +2445,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         breakThres2 = elemGrps[elemGrp][6]
         breakThres3 = elemGrps[elemGrp][7]
         breakThres4 = elemGrps[elemGrp][8]
-        stiffness = elemGrps[elemGrp][9]
+        springStiff = elemGrps[elemGrp][9]
         
         ### Check if full update is necessary (optimization)
         objConst = emptyObjs[consts[0]]
@@ -2361,8 +2457,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         
         if   connectType == 1 or connectType == 9 or connectType == 10:
             correction = 1
-            if connectType == 9: correction /= 1 +3     # Divided by the count of constraints which are sharing the same degree of freedom
-            elif connectType == 10: correction /= 1 +4  # Divided by the count of constraints which are sharing the same degree of freedom
+            # Obsolete code (before plastic mode):
+            #if connectType == 9: correction /= 1 +3     # Divided by the count of constraints which are sharing the same degree of freedom
+            #elif connectType == 10: correction /= 1 +4  # Divided by the count of constraints which are sharing the same degree of freedom
             objConst = emptyObjs[consts[0]]
             objConst.rigid_body_constraint.type = 'FIXED'
             objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
@@ -2545,8 +2642,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
             # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value, divided by the count of constraints which are sharing the same degree of freedom
-            if connectType == 11: correction /= 1 +3    # Divided by the count of constraints which are sharing the same degree of freedom
-            elif connectType == 12: correction /= 1 +4  # Divided by the count of constraints which are sharing the same degree of freedom
+            # Obsolete code (before plastic mode):
+            #if connectType == 11: correction /= 1 +3    # Divided by the count of constraints which are sharing the same degree of freedom
+            #elif connectType == 12: correction /= 1 +4  # Divided by the count of constraints which are sharing the same degree of freedom
             ### Calculate orientation between the two elements, imagine a line from center to center
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
             if alignVertical:
@@ -2648,10 +2746,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
             # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-            # Divided by the count of constraints which are sharing the same degree of freedom
-            if connectType == 7: correction /= 3        # Divided by the count of constraints which are sharing the same degree of freedom
-            elif connectType == 9: correction /= 3 +1   # Divided by the count of constraints which are sharing the same degree of freedom
-            elif connectType == 11: correction /= 3 +4  # Divided by the count of constraints which are sharing the same degree of freedom
+            correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
+            # Obsolete code (before plastic mode):
+            #if connectType == 7: correction /= 3        # Divided by the count of constraints which are sharing the same degree of freedom
+            #elif connectType == 9: correction /= 3 +1   # Divided by the count of constraints which are sharing the same degree of freedom
+            #elif connectType == 11: correction /= 3 +4  # Divided by the count of constraints which are sharing the same degree of freedom
             radius = bendingThickness /2
             ### Calculate orientation between the two elements, imagine a line from center to center
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
@@ -2688,18 +2787,25 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.spring_damping_y = 1
                     objConst.rigid_body_constraint.spring_damping_z = 1
                     #objConst.rigid_body_constraint.disable_collisions = False
-                objConst.rigid_body_constraint.spring_stiffness_x = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_y = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_z = stiffness
-
+                if connectType == 7:
+                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                else:
+                    objConst.rigid_body_constraint.spring_stiffness_x = 0
+                    objConst.rigid_body_constraint.spring_stiffness_y = 0
+                    objConst.rigid_body_constraint.spring_stiffness_z = 0
+                
         elif connectType == 8 or connectType == 10 or connectType == 12:
             # Correction multiplier for breaking thresholds
             # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
             # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-            if connectType == 8: correction /= 4        # Divided by the count of constraints which are sharing the same degree of freedom
-            elif connectType == 10: correction /= 4 +1  # Divided by the count of constraints which are sharing the same degree of freedom
-            elif connectType == 12: correction /= 4 +4  # Divided by the count of constraints which are sharing the same degree of freedom
+            correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
+            # Obsolete code (before plastic mode):
+            #if connectType == 8: correction /= 4        # Divided by the count of constraints which are sharing the same degree of freedom
+            #elif connectType == 10: correction /= 4 +1  # Divided by the count of constraints which are sharing the same degree of freedom
+            #elif connectType == 12: correction /= 4 +4  # Divided by the count of constraints which are sharing the same degree of freedom
             radius = bendingThickness /2
             ### Calculate orientation between the two elements, imagine a line from center to center
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
@@ -2737,9 +2843,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.spring_damping_y = 1
                     objConst.rigid_body_constraint.spring_damping_z = 1
                     #objConst.rigid_body_constraint.disable_collisions = False
-                objConst.rigid_body_constraint.spring_stiffness_x = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_y = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_z = stiffness
+                if connectType == 8:
+                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                else:
+                    objConst.rigid_body_constraint.spring_stiffness_x = 0
+                    objConst.rigid_body_constraint.spring_stiffness_y = 0
+                    objConst.rigid_body_constraint.spring_stiffness_z = 0
                 
         if connectType == 13:
             # Correction multiplier for breaking thresholds
@@ -2795,9 +2906,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.use_limit_ang_z = 0
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Set stiffness
-                objConst.rigid_body_constraint.spring_stiffness_x = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_y = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_z = stiffness
+                objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 ### Second constraint
@@ -2834,9 +2945,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.use_limit_ang_z = 0
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Set stiffness
-                objConst.rigid_body_constraint.spring_stiffness_x = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_y = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_z = stiffness
+                objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 ### Third constraint
@@ -2875,9 +2986,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.use_limit_ang_z = 0
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Set stiffness
-                objConst.rigid_body_constraint.spring_stiffness_x = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_y = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_z = stiffness
+                objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
 
@@ -2935,9 +3046,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.use_limit_ang_z = 0
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Set stiffness
-                objConst.rigid_body_constraint.spring_stiffness_x = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_y = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_z = stiffness
+                objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 ### Second constraint
@@ -2975,9 +3086,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.use_limit_ang_z = 0
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Set stiffness
-                objConst.rigid_body_constraint.spring_stiffness_x = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_y = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_z = stiffness
+                objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 ### Third constraint
@@ -3017,9 +3128,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.use_limit_ang_z = 0
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Set stiffness
-                objConst.rigid_body_constraint.spring_stiffness_x = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_y = stiffness
-                objConst.rigid_body_constraint.spring_stiffness_z = stiffness
+                objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
 
@@ -3042,7 +3153,7 @@ def createParentsIfRequired(scene, objs, objsEGrp, childObjs):
     q = 0
     for k in range(len(objs)):
         obj = objs[k]
-        facing = elemGrps[objsEGrp[k]][12]
+        facing = elemGrps[objsEGrp[k]][16]
         if facing:
             q = 1
             if obj.select:
@@ -3102,7 +3213,7 @@ def applyScale(scene, objs, objsEGrp, childObjs):
     obj = None
     ### Select objects in question
     for k in range(len(objs)):
-        scale = elemGrps[objsEGrp[k]][11]
+        scale = elemGrps[objsEGrp[k]][15]
         if scale != 0 and scale != 1:
             obj = objs[k]
             obj.select = 1
@@ -3114,7 +3225,7 @@ def applyScale(scene, objs, objsEGrp, childObjs):
         for k in range(len(objs)):
             obj = objs[k]
             if obj.select:
-                scale = elemGrps[objsEGrp[k]][11]
+                scale = elemGrps[objsEGrp[k]][15]
                 obj.scale *= scale
                 # For children invert scaling to compensate for indirect scaling through parenting
                 if "bcb_child" in obj.keys():
@@ -3133,7 +3244,7 @@ def applyBevel(scene, objs, objsEGrp, childObjs):
     obj = None
     ### Select objects in question
     for k in range(len(objs)):
-        qBevel = elemGrps[objsEGrp[k]][10]
+        qBevel = elemGrps[objsEGrp[k]][14]
         if qBevel:
             obj = objs[k]
             obj.select = 1
