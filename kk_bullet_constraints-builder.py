@@ -3062,6 +3062,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
                 correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
                 correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
+                radius = bendingThickness /2
                 ### Calculate orientation between the two elements, imagine a line from center to center
                 dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
                 if alignVertical:
