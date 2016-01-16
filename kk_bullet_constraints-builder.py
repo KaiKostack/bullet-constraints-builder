@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.80 #
+# Bullet Constraints Builder v1.81 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -108,7 +108,8 @@ debug = 0                         # 0     | Enables verbose console output for d
 logPath = r"/tmp"                 #       | Path to log files if debugging is enabled
 maxMenuElementGroupItems = 100    # 100   | Maximum allowed element group entries in menu 
 emptyDrawSize = 0.25              # 0.25  | Display size of constraint empty objects as radius in meters
-                
+asciiExport = 0                   # 0     | Create a ASCII text file containing all constraint data instead of creating actual empty objects (WIP export to Fracture Modifier)
+    
 # For monitor event handler:
 qRenderAnimation = 0              # 0     | Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
 
@@ -121,7 +122,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 8, 0),
+    "version": (1, 8, 1),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -282,7 +283,7 @@ def getConfigDataFromScene(scene):
 def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect):
     
     ### Store build data in scene
-    if debug: print("Storing build data in scene...")
+    print("Storing build data in scene...")
     
     if objs != None:
         scene["bcb_objs"] = [obj.name for obj in objs]
@@ -499,14 +500,20 @@ def clearAllDataFromScene(scene):
         scale = elemGrps[objsEGrp[k]][15]
         if scale != 0 and scale != 1:
             obj.scale /= scale
-            
-    ### Select modified elements for deletion from scene 
-    for parentObj in parentTmpObjs: parentObj.select = 1
-    ### Select constraint empty objects for deletion from scene
-    for emptyObj in emptyObjs: emptyObj.select = 1
-    
-    ### Delete all selected objects
-    bpy.ops.object.delete(use_global=True)
+
+    ### Delete (unlink) modified elements from scene 
+    for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
+    ### Delete (unlink) constraint empty objects from scene
+    for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
+
+### Original code for object removal (slower):            
+#    ### Select modified elements for deletion from scene 
+#    for parentObj in parentTmpObjs: parentObj.select = 1
+#    ### Select constraint empty objects for deletion from scene
+#    for emptyObj in emptyObjs: emptyObj.select = 1
+#    
+#    ### Delete all selected objects
+#    bpy.ops.object.delete(use_global=True)
     
     ### Revert selection back to original state and clear ID properties from objects
     for obj in objs:
@@ -645,9 +652,11 @@ def monitor_initBuffers(scene):
     
     ### Create original transform data array
     d = 0
+    qWarning = 0
     for pair in connectsPair:
         d += 1
-        sys.stdout.write('\r' +"%d " %d)
+        if not qWarning:
+            sys.stdout.write('\r' +"%d " %d)
         
         objA = objs[pair[0]]
         objB = objs[pair[1]]
@@ -675,10 +684,18 @@ def monitor_initBuffers(scene):
         for const in connectsConsts[d -1]:
             emptyObj = emptyObjs[const]
             consts.append(emptyObj)
-            # Backup original breaking thresholds
-            constsBrkTs.append(emptyObj.rigid_body_constraint.breaking_threshold)
-            # Backup original spring stiffness
-            constsSprSt.append([emptyObj.rigid_body_constraint.spring_stiffness_x, emptyObj.rigid_body_constraint.spring_stiffness_y, emptyObj.rigid_body_constraint.spring_stiffness_z])
+            if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
+                # Backup original breaking thresholds
+                constsBrkTs.append(emptyObj.rigid_body_constraint.breaking_threshold)
+                # Backup original spring stiffness
+                constsSprSt.append([emptyObj.rigid_body_constraint.spring_stiffness_x, emptyObj.rigid_body_constraint.spring_stiffness_y, emptyObj.rigid_body_constraint.spring_stiffness_z])
+            else:
+                if not qWarning:
+                    qWarning = 1
+                    print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
+                print("(%s)" %emptyObj.name)
+                constsBrkTs.append(0)
+                constsSprSt.append([0, 0, 0])
         #                0                1                2         3      4       5            6            7            8            9             10            11           12
         connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, constsSprSt, springStiff, tolDistPlast, tolRotPlast, tolDistBreak, tolRotBreak, 0])
 
@@ -769,19 +786,26 @@ def monitor_freeBuffers(scene):
     
     connects = bpy.app.driver_namespace["bcb_monitor"]
     ### Restore original constraint and element data
+    qWarning = 0
     for connect in connects:
         consts = connect[4]
         constsBrkTs = connect[5]
         constsSprSt = connect[6]
         for i in range(len(consts)):
-            const = consts[i]
-            # Restore original breaking thresholds
-            const.rigid_body_constraint.breaking_threshold = constsBrkTs[i]
-            # Restore original spring settings
-            if const.rigid_body_constraint.type == 'GENERIC_SPRING':
-                const.rigid_body_constraint.spring_stiffness_x = constsSprSt[i][0]
-                const.rigid_body_constraint.spring_stiffness_y = constsSprSt[i][1]
-                const.rigid_body_constraint.spring_stiffness_z = constsSprSt[i][2]
+            emptyObj = consts[i]
+            if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
+                # Restore original breaking thresholds
+                emptyObj.rigid_body_constraint.breaking_threshold = constsBrkTs[i]
+                # Restore original spring settings
+                if emptyObj.rigid_body_constraint.type == 'GENERIC_SPRING':
+                    emptyObj.rigid_body_constraint.spring_stiffness_x = constsSprSt[i][0]
+                    emptyObj.rigid_body_constraint.spring_stiffness_y = constsSprSt[i][1]
+                    emptyObj.rigid_body_constraint.spring_stiffness_z = constsSprSt[i][2]
+            else:
+                if not qWarning:
+                    qWarning = 1
+                    print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
+                print("(%s)" %emptyObj.name)
             
     if initPeriod:
         # Set original time scale
@@ -1592,7 +1616,7 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
 
 ################################################################################   
 
-def findConnectionsByBoundaryBoxIntersection(objs, objsEGrp):
+def findConnectionsByBoundaryBoxIntersection(objs):
     
     ### Find connections by boundary box intersection
     print("Searching connections by boundary box intersection... (%d)" %len(objs))
@@ -1826,19 +1850,26 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=
     overlapZ = max(0, min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
     
     ### Calculate area based on either the sum of all axis surfaces...
-    if not customThickness:
-        overlapAreaX = overlapY *overlapZ
-        overlapAreaY = overlapX *overlapZ
-        overlapAreaZ = overlapX *overlapY
-        # Add up all contact areas
-        contactArea = overlapAreaX +overlapAreaY +overlapAreaZ
-    
-    ### Or calculate contact area based on predefined custom thickness
-    else:
-        contactArea = overlapX +overlapY +overlapZ
-        # This should actually be:
-        # contactArea = (overlapX +overlapY +overlapZ) *nonManifoldThickness
-        # For updating possibility this last operation is postponed to setConstraintSettings()
+    # Formula only valid if we have overlap for all 3 axis
+    # (This line is commented out because of the earlier connection pair check which ensured contact including a margin.)
+    #if overlapX > 0 and overlapY > 0 and overlapZ > 0:  
+    if 1:
+        
+        if not customThickness:
+            overlapAreaX = overlapY *overlapZ
+            overlapAreaY = overlapX *overlapZ
+            overlapAreaZ = overlapX *overlapY
+            # Add up all contact areas
+            contactArea = overlapAreaX +overlapAreaY +overlapAreaZ
+
+        ### Or calculate contact area based on predefined custom thickness
+        else:
+            contactArea = overlapX +overlapY +overlapZ
+            # This should actually be:
+            # contactArea = (overlapX +overlapY +overlapZ) *nonManifoldThickness
+            # For updating possibility this last operation is postponed to setConstraintSettings()
+
+    else: contactArea = 0
             
     ### Find out element thickness to be used for bending threshold calculation 
     bendingThickness = [overlapX, overlapY, overlapZ]
@@ -2245,7 +2276,7 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
 
 ################################################################################   
 
-def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsArea, connectsLoc):
+def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsArea, connectsLoc):
     
     ### Delete connections with zero contact area
     if debug: print("Deleting connections with zero contact area...")
@@ -2255,8 +2286,9 @@ def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsA
     connectsLocTmp = []
     connectCntOld = len(connectsPair)
     connectCnt = 0
+    minimumArea = searchDistance**2
     for i in range(len(connectsPair)):
-        if connectsArea[i][0] > 0.0001:
+        if connectsArea[i][0] > minimumArea:
             connectsPairTmp.append(connectsPair[i])
             connectsAreaTmp.append(connectsArea[i])
             connectsLocTmp.append(connectsLoc[i])
@@ -2301,6 +2333,30 @@ def createConnectionData(objsEGrp, connectsPair):
 
 ################################################################################   
 
+def BackupLayerSettingsAndActivateNextEmptyLayer(scene):
+
+    ### Find and activate the first empty layer
+    print("Find and activate the first empty layer...")
+    
+    ### Backup layer settings
+    layers = []
+    for i in range(20):
+        layers.append(int(scene.layers[i]))
+    ### Find and activate the first empty layer
+    qFoundOne = 0
+    for i in range(20):
+        if not qFoundOne:
+            objsOnLayer = [obj for obj in scene.objects if obj.layers[i]]
+            if len(objsOnLayer) == 0:
+                scene.layers[i] = 1
+                qFoundOne = 1
+            else: scene.layers[i] = 0
+        else: scene.layers[i] = 0
+    # Return old layers state
+    return layers
+    
+################################################################################   
+
 def createEmptyObjs(scene, constCnt):
     
     ### Create empty objects
@@ -2322,6 +2378,8 @@ def createEmptyObjs(scene, constCnt):
         ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
         sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
         scenesTemp.append(sceneTemp)
+        # Set layers to same state as original scene
+        sceneTemp.layers = scene.layers
         # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
         bpy.context.screen.scene = scene
         # Link cameras because in second scene is none and when coming back camera view will losing focus
@@ -2386,7 +2444,7 @@ def createEmptyObjs(scene, constCnt):
     # Delete second scene
     for scn in scenesTemp:
         bpy.data.scenes.remove(scn)
-    
+
     print()
     return emptyObjs        
 
@@ -2454,17 +2512,28 @@ def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, consts
     ### Add base constraint settings to empties
     print("Adding base constraint settings to empties... (%d)" %len(emptyObjs))
     
+    if asciiExport:
+        text = bpy.data.texts.new("BCB_export.txt")
+
     for k in range(len(emptyObjs)):
         sys.stdout.write('\r' +"%d" %k)
         # Update progress bar
         bpy.context.window_manager.progress_update(k /len(emptyObjs))
                 
-        objConst = emptyObjs[k]
         l = constsConnect[k]
-        objConst.location = connectsLoc[l]
-        objConst.rigid_body_constraint.object1 = objs[connectsPair[l][0]]
-        objConst.rigid_body_constraint.object2 = objs[connectsPair[l][1]]
-    
+        if not asciiExport:
+            objConst = emptyObjs[k]
+            objConst.location = connectsLoc[l]
+            objConst.rigid_body_constraint.object1 = objs[connectsPair[l][0]]
+            objConst.rigid_body_constraint.object2 = objs[connectsPair[l][1]]
+        else:
+            ### Ascii export
+            text.write('%d ' %k)
+            text.write('(%0.6f, %0.6f, %0.6f) ' %(connectsLoc[l][0], connectsLoc[l][1], connectsLoc[l][2]))
+            text.write('\n' +objs[connectsPair[l][0]].name)
+            text.write('\n' +objs[connectsPair[l][1]].name)
+            text.write('\n')
+            
     print()
                 
 ################################################################################   
@@ -3447,7 +3516,7 @@ def build():
                 ###### Find connections by vertex pairs
                 #connectsPair, connectsPairDist = findConnectionsByVertexPairs(objs, objsEGrp)
                 ###### Find connections by boundary box intersection and skip connections whose elements are too small and store them for later parenting
-                connectsPair, connectsPairDist = findConnectionsByBoundaryBoxIntersection(objs, objsEGrp)
+                connectsPair, connectsPairDist = findConnectionsByBoundaryBoxIntersection(objs)
                 ###### Delete connections whose elements are too small and make them parents instead
                 if minimumElementSize: connectsPair, connectsPairParent = deleteConnectionsWithTooSmallElementsAndParentThemInstead(objs, connectsPair, connectsPairDist)
                 else: connectsPairParent = []
@@ -3460,7 +3529,7 @@ def build():
                 else:
                     connectsArea, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair)
                 ###### Delete connections with zero contact area
-                connectsPair, connectsArea, connectsLoc = deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsArea, connectsLoc)
+                connectsPair, connectsArea, connectsLoc = deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsArea, connectsLoc)
                 ###### Create connection data
                 connectsPair, connectsConsts, constsConnect = createConnectionData(objsEGrp, connectsPair)
                 
@@ -3477,14 +3546,20 @@ def build():
                     applyBevel(scene, objs, objsEGrp, childObjs)
                     ###### Create actual parents for too small elements
                     if minimumElementSize: makeParentsForTooSmallElementsReal(objs, connectsPairParent)
+                    ###### Find and activate first empty layer
+                    layersBak = BackupLayerSettingsAndActivateNextEmptyLayer(scene)
                     ###### Create empty objects (without any data)
-                    emptyObjs = createEmptyObjs(scene, len(constsConnect))
+                    if not asciiExport: emptyObjs = createEmptyObjs(scene, len(constsConnect))
+                    else: emptyObjs = [None for i in range(len(constsConnect))]
                     ###### Bundling close empties into clusters, merge locations and count connections per cluster
                     if clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
                     ###### Add constraint base settings to empties
                     addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect)
+                    # Restore old layers state
+                    scene.update()  # Required to update empty locations before layer switching
+                    for i in range(20): scene.layers[i] = layersBak[i]
                     ###### Store build data in scene
-                    storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect)
+                    if not asciiExport: storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect)
                     
                     print('-- Time: %0.2f s\n' %(time.time()-time_start_building))
                 
