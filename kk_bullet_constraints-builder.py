@@ -27,9 +27,7 @@
 #
 # ##### END GPL LICENSE BLOCK #####
    
-### Vars for constraint distribution
-withGUI = 1                  # 1     | Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
-
+### Vars for constraint distribution (directly accessible from GUI)
 stepsPerSecond = 200         # 200   | Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable)
 constraintUseBreaking = 1    # 1     | Enables breaking for all constraints
 connectionCountLimit = 100   # 0     | Maximum count of connections per object pair (0 = disabled)
@@ -46,6 +44,9 @@ automaticMode = 0            # 0     | Enables a fully automated workflow for ex
 saveBackups = 0              # 0     | Enables saving of a backup .blend file after each step for automatic mode, whereby the name of the new .blend ends with `_BCB´
 initPeriod = 0               # 0     | For baking: Use a different time scale for an initial period of the simulation until this many frames has passed (0 = disabled)
 initPeriodTimeScale = 0.001  # 0.001 | For baking: Use this time scale for the initial period of the simulation, after that it is switching back to default time scale and updating breaking thresholds accordingly during runtime
+
+### Vars not directly accessible from GUI
+asciiExport = 0              # 0     | Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [
@@ -103,15 +104,16 @@ connectTypes = [          # Cnt C T S B S T T T T      CT
 # To add further connection types changes to following functions are necessary:
 # setConstraintSettings() and bcb_panel() for the UI
 
-### Developer
-debug = 0                         # 0     | Enables verbose console output for debugging purposes
-logPath = r"/tmp"                 #       | Path to log files if debugging is enabled
-maxMenuElementGroupItems = 100    # 100   | Maximum allowed element group entries in menu 
-emptyDrawSize = 0.25              # 0.25  | Display size of constraint empty objects as radius in meters
-asciiExport = 0                   # 0     | Create a ASCII text file containing all constraint data instead of creating actual empty objects (WIP export to Fracture Modifier)
+### Vars for developers
+debug = 0                            # 0     | Enables verbose console output for debugging purposes
+withGUI = 1                          # 1     | Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
+logPath = r"/tmp"                    #       | Path to log files if debugging is enabled
+maxMenuElementGroupItems = 100       # 100   | Maximum allowed element group entries in menu 
+emptyDrawSize = 0.25                 # 0.25  | Display size of constraint empty objects as radius in meters
+asciiExportName = "BCB_export.txt"   #       | Name of ASCII text file to be exported
     
-# For monitor event handler:
-qRenderAnimation = 0              # 0     | Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
+# For monitor event handler
+qRenderAnimation = 0                 # 0     | Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
 
 ########################################
 
@@ -130,15 +132,13 @@ bl_info = {
     "tracker_url": "http://kaikostack.com",
     "category": "Animation"}
 
-import bpy, sys, mathutils, time, copy, math
+import bpy, sys, mathutils, time, copy, math, pickle, base64, zlib
 from mathutils import Vector
 #import os
 #os.system("cls")
 
 ################################################################################
 ################################################################################
-
-import pickle
 
 def logDataToFile(data, pathName):
     try: f = open(pathName, "wb")
@@ -388,7 +388,8 @@ def getBuildDataFromScene(scene):
 def clearAllDataFromScene(scene):
     
     ### Clear all data related to Bullet Constraints Builder from scene
-    print("Clearing all data related to Bullet Constraints Builder from scene...")
+    print("\nStarting to clear all data related to Bullet Constraints Builder from scene...")
+    time_start = time.time()
     
     ### Prepare scene object dictionaries by type to be used for faster item search (optimization)
     scnObjs = {}
@@ -398,6 +399,7 @@ def clearAllDataFromScene(scene):
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
 
     ###### Get data from scene
+    print("Getting data from scene...")
 
     try: objsEGrp = scene["bcb_objsEGrp"]
     except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
@@ -442,6 +444,7 @@ def clearAllDataFromScene(scene):
         #    bpy.ops.rigidbody.object_add()
 
     ### Replace modified elements with their child counterparts (the original meshes) 
+    print("Replacing modified elements with their original meshes...")
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
     parentTmpObjs = []
@@ -479,6 +482,7 @@ def clearAllDataFromScene(scene):
         elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
 
     ###### Get data again from scene after we changed obj names
+    print("Getting updated data from scene...")
         
     try: names = scene["bcb_objs"]
     except: names = []; print("Error: bcb_objs property not found, cleanup may be incomplete.")
@@ -501,11 +505,7 @@ def clearAllDataFromScene(scene):
         if scale != 0 and scale != 1:
             obj.scale /= scale
 
-    ### Delete (unlink) modified elements from scene 
-    for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
-    ### Delete (unlink) constraint empty objects from scene
-    for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
-
+    print("Deleting objects...")
 ### Original code for object removal (slower):            
 #    ### Select modified elements for deletion from scene 
 #    for parentObj in parentTmpObjs: parentObj.select = 1
@@ -514,6 +514,32 @@ def clearAllDataFromScene(scene):
 #    
 #    ### Delete all selected objects
 #    bpy.ops.object.delete(use_global=True)
+
+#    ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
+#    scene = bpy.context.scene
+#    sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+#    # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
+#    bpy.context.screen.scene = scene
+#    # Link cameras because in second scene is none and when coming back camera view will losing focus
+#    objCameras = []
+#    for objTemp in scene.objects:
+#        if objTemp.type == 'CAMERA':
+#            sceneTemp.objects.link(objTemp)
+#            objCameras.append(objTemp)
+#    # Switch to new scene
+#    bpy.context.screen.scene = sceneTemp
+
+    ### Delete (unlink) modified elements from scene 
+    for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
+    ### Delete (unlink) constraint empty objects from scene
+    for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
+    
+#    # Switch back to original scene
+#    bpy.context.screen.scene = scene
+#    # Delete second scene
+#    bpy.data.scenes.remove(sceneTemp)
+
+    print("Removing ID properties...")
     
     ### Revert selection back to original state and clear ID properties from objects
     for obj in objs:
@@ -527,6 +553,9 @@ def clearAllDataFromScene(scene):
    
     # Set layers as in original scene
     for i in range(20): scene.layers[i] = layers[i]
+
+    print('\nTime: %0.2f s' %(time.time()-time_start))
+    print('Done.')
         
 ################################################################################   
 ################################################################################
@@ -1032,6 +1061,9 @@ class bcb_panel(bpy.types.Panel):
             row = box.row(); row.prop(props, "prop_initPeriod")
             row = box.row(); row.prop(props, "prop_initPeriodTimeScale")
             if props.prop_initPeriod == 0: row.enabled = 0
+            
+            box.separator()
+            row = box.row(); row.operator("bcb.export_ascii", icon="EXPORT")
         
         ###### Element groups box
         
@@ -1167,7 +1199,6 @@ class OBJECT_OT_bcb_set_config(bpy.types.Operator):
         scene = bpy.context.scene
         ###### Store menu config data in scene
         storeConfigDataInScene(scene)
-        # Update menu related properties from global vars
         props.prop_menu_gotConfig = 1
         return{'FINISHED'} 
 
@@ -1259,6 +1290,17 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
             if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
             OBJECT_OT_bcb_clear.execute(self, context)
             if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
+        return{'FINISHED'} 
+
+class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
+    bl_idname = "bcb.export_ascii"
+    bl_label = "Build & export to text file"
+    bl_description = "Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment)."
+    def execute(self, context):
+        global asciiExport; asciiExport = 1
+        ###### Execute main building process from scratch
+        build()
+        global asciiExport; asciiExport = 0
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_bake(bpy.types.Operator):
@@ -1413,8 +1455,7 @@ class OBJECT_OT_bcb_estimate_cluster_radius(bpy.types.Operator):
             props.prop_clusterRadius = result
             # Update menu related properties from global vars
             props.props_update_menu()
-        return{'FINISHED'} 
-
+        return{'FINISHED'}
 
 classes = [ \
     bcb_props,
@@ -1424,6 +1465,7 @@ classes = [ \
     OBJECT_OT_bcb_clear,
     OBJECT_OT_bcb_build,
     OBJECT_OT_bcb_update,
+    OBJECT_OT_bcb_export_ascii,
     OBJECT_OT_bcb_bake,
     OBJECT_OT_bcb_add,
     OBJECT_OT_bcb_del,
@@ -2339,21 +2381,25 @@ def BackupLayerSettingsAndActivateNextEmptyLayer(scene):
     print("Find and activate the first empty layer...")
     
     ### Backup layer settings
-    layers = []
+    layersBak = []
+    layersNew = []
     for i in range(20):
-        layers.append(int(scene.layers[i]))
+        layersBak.append(int(scene.layers[i]))
+        layersNew.append(0)
     ### Find and activate the first empty layer
-    qFoundOne = 0
+    qFound = 0
     for i in range(20):
-        if not qFoundOne:
-            objsOnLayer = [obj for obj in scene.objects if obj.layers[i]]
-            if len(objsOnLayer) == 0:
-                scene.layers[i] = 1
-                qFoundOne = 1
-            else: scene.layers[i] = 0
-        else: scene.layers[i] = 0
+        objsOnLayer = [obj for obj in scene.objects if obj.layers[i]]
+        if len(objsOnLayer) == 0:
+            layersNew[i] = 1
+            qFound = 1
+            break
+    if qFound:
+        # Set new layers
+        scene.layers = [bool(q) for q in layersNew]  # Convert array into boolean (required by layers)
+        
     # Return old layers state
-    return layers
+    return layersBak
     
 ################################################################################   
 
@@ -2507,14 +2553,11 @@ def bundlingEmptyObjsToClusters(connectsLoc, connectsConsts):
         
 ################################################################################   
 
-def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect):
+def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect, exportData):
     
     ### Add base constraint settings to empties
     print("Adding base constraint settings to empties... (%d)" %len(emptyObjs))
     
-    if asciiExport:
-        text = bpy.data.texts.new("BCB_export.txt")
-
     for k in range(len(emptyObjs)):
         sys.stdout.write('\r' +"%d" %k)
         # Update progress bar
@@ -2527,24 +2570,56 @@ def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, consts
             objConst.rigid_body_constraint.object1 = objs[connectsPair[l][0]]
             objConst.rigid_body_constraint.object2 = objs[connectsPair[l][1]]
         else:
-            ### Ascii export
-            text.write('%d ' %k)
-            text.write('(%0.6f, %0.6f, %0.6f) ' %(connectsLoc[l][0], connectsLoc[l][1], connectsLoc[l][2]))
-            text.write('\n' +objs[connectsPair[l][0]].name)
-            text.write('\n' +objs[connectsPair[l][1]].name)
-            text.write('\n')
-            
+            exportData[k].append(connectsLoc[l].to_tuple())
+            exportData[k].append(objs[connectsPair[l][0]].name)
+            exportData[k].append(objs[connectsPair[l][1]].name)
+             
     print()
                 
 ################################################################################   
+
+def getAttribsOfConstraint(objConst):
+
+    ### Create a dictionary of all attributes with values from the given constraint empty object    
+    con = bpy.context.object.rigid_body_constraint
+    props = {}
+    for prop in con.bl_rna.properties:
+        if not prop.is_hidden:
+            if prop.type == 'POINTER':
+                attr = getattr(con, prop.identifier)
+                props[prop.identifier] = None
+                if attr is not None:
+                    props[prop.identifier] = attr.name    
+            else:   props[prop.identifier] = getattr(con, prop.identifier)
+    return props
+        
+########################################
+
+def setAttribsOfConstraint(objConst, props):
+
+    ### Overwrite all attributes of the given constraint empty object with the values of the dictionary provided    
+    for prop in props:
+        try: setattr(con, prop.identifier, props[prop.identifier])
+        except: pass
+        
+########################################
     
-def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect):
+def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect, exportData):
     
     ### Set constraint settings
     print("Adding main constraint settings... (%d)" %len(connectsPair))
     
     scene = bpy.context.scene
     
+    if asciiExport:
+        ### Create temporary empty object (will only be used for exporting constraint settings)
+        objConst = bpy.data.objects.new('Constraint', None)
+        bpy.context.scene.objects.link(objConst)
+        objConst.empty_draw_type = 'SPHERE'
+        bpy.context.scene.objects.active = objConst
+        bpy.ops.rigidbody.constraint_add()
+        constSettingsBak = getAttribsOfConstraint(objConst)
+
     count = 0
     for k in range(len(connectsPair)):
         sys.stdout.write('\r' +"%d" %k)
@@ -2554,7 +2629,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         consts = connectsConsts[k]
         contactArea = connectsArea[k][0]
         bendingThickness = connectsArea[k][1]
-        for idx in consts: emptyObjs[idx]['ContactArea'] = contactArea   # Store value as ID property for debug purposes
+        if not asciiExport:
+            # Store value as ID property for debug purposes
+            for idx in consts: emptyObjs[idx]['ContactArea'] = contactArea
         
         # Postponed contactArea calculation step from calculateContactAreaBasedOnBoundaryBoxesForPair() is being done now (update hack, could be better organized)
         if useAccurateArea:
@@ -2577,11 +2654,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         breakThres4 = elemGrps[elemGrp][8]
         springStiff = elemGrps[elemGrp][9]
         
-        ### Check if full update is necessary (optimization)
-        objConst0 = emptyObjs[consts[0]]
-        if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == connectType: qUpdateComplete = 0
-        else: objConst0['ConnectType'] = connectType; qUpdateComplete = 1
-            
+        if not asciiExport:
+            ### Check if full update is necessary (optimization)
+            objConst0 = emptyObjs[consts[0]]
+            if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == connectType: qUpdateComplete = 0
+            else: objConst0['ConnectType'] = connectType; qUpdateComplete = 1
+        else:
+            objConst0 = objConst
+            qUpdateComplete = 1
+            objConst.rotation_mode = 'XYZ'  # Overwrite temporary object to default (Euler)
+                
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
         
@@ -2593,37 +2675,53 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # Obsolete code (before plastic mode):
                 #if connectType == 9: correction /= 1 +3     # Divided by the count of constraints which are sharing the same degree of freedom
                 #elif connectType == 10: correction /= 1 +4  # Divided by the count of constraints which are sharing the same degree of freedom
-                objConst = emptyObjs[consts[0]]
+                cIdx = consts[0]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.type = 'FIXED'
                 objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
-            
+                if asciiExport: exportData[cIdx].append(getAttribsOfConstraint(objConst))
+                    
             elif connectType == 2:
-                objConst = emptyObjs[consts[0]]
+                cIdx = consts[0]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.type = 'POINT'
                 objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale
                 objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
+                if asciiExport: exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 
             elif connectType == 3:
                 correction = 1 /2   # As both constraints bear all load and forces are evenly distributed among them the breaking thresholds need to be divided by their count to compensate
                 ### First constraint
-                objConst = emptyObjs[consts[0]]
+                cIdx = consts[0]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.type = 'FIXED'
                 objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres1'] = breakThres4   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
+                if asciiExport: exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 ### Second constraint
-                objConst = emptyObjs[consts[1]]
+                cIdx = consts[1]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.type = 'POINT'
                 objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres2'] = breakThres1   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
+                if asciiExport: exportData[cIdx].append(getAttribsOfConstraint(objConst))
             
             elif connectType == 4:
                 # Correction multiplier for breaking thresholds
@@ -2636,7 +2734,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
                 ### First constraint
-                objConst = emptyObjs[consts[0]]
+                cIdx = consts[0]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2657,8 +2758,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.use_limit_ang_z = 0
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                if asciiExport:
+                    exportData[cIdx].append(objConst.rotation_mode)
+                    exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 ### Second constraint
-                objConst = emptyObjs[consts[1]]
+                cIdx = consts[1]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2687,6 +2795,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.limit_ang_z_upper = 0
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                if asciiExport:
+                    exportData[cIdx].append(objConst.rotation_mode)
+                    exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 
             elif connectType == 5:
                 # Correction multiplier for breaking thresholds
@@ -2699,7 +2811,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
                 ### First constraint
-                objConst = emptyObjs[consts[0]]
+                cIdx = consts[0]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2719,8 +2834,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                if asciiExport:
+                    exportData[cIdx].append(objConst.rotation_mode)
+                    exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 ### Second constraint
-                objConst = emptyObjs[consts[1]]
+                cIdx = consts[1]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2744,8 +2866,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                if asciiExport:
+                    exportData[cIdx].append(objConst.rotation_mode)
+                    exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 ### Third constraint
-                objConst = emptyObjs[consts[2]]
+                cIdx = consts[2]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.breaking_threshold = ((( (contactArea *bendingThickness) *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres3'] = breakThres4   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2769,7 +2898,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
-
+                if asciiExport:
+                    exportData[cIdx].append(objConst.rotation_mode)
+                    exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
+                
             elif connectType == 6 or connectType == 11 or connectType == 12:
                 # Correction multiplier for breaking thresholds
                 # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
@@ -2784,7 +2917,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
                 ### First constraint
-                objConst = emptyObjs[consts[0]]
+                cIdx = consts[0]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2804,8 +2940,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                if asciiExport:
+                    exportData[cIdx].append(objConst.rotation_mode)
+                    exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 ### Second constraint
-                objConst = emptyObjs[consts[1]]
+                cIdx = consts[1]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2825,8 +2968,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                if asciiExport:
+                    exportData[cIdx].append(objConst.rotation_mode)
+                    exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 ### Third constraint
-                objConst = emptyObjs[consts[2]]
+                cIdx = consts[2]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres3 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres3'] = breakThres3   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2848,8 +2998,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                if asciiExport:
+                    exportData[cIdx].append(objConst.rotation_mode)
+                    exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 ### Fourth constraint
-                objConst = emptyObjs[consts[3]]
+                cIdx = consts[3]
+                if not asciiExport:
+                    objConst = emptyObjs[cIdx]
+                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.breaking_threshold = ((( (contactArea *bendingThickness) *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst['BrkThres4'] = breakThres4   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2873,7 +3030,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     #objConst.rigid_body_constraint.disable_collisions = False
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
-
+                if asciiExport:
+                    exportData[cIdx].append(objConst.rotation_mode)
+                    exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
+                
             if connectType == 7 or connectType == 9 or connectType == 11:
                 # Correction multiplier for breaking thresholds
                 # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
@@ -2897,7 +3058,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 else: conIdxOfs = 0
                 # Loop through all constraints of this connection
                 for i in range(3):
-                    objConst = emptyObjs[consts[i +conIdxOfs]]
+                    cIdx = consts[i +conIdxOfs]
+                    if not asciiExport:
+                        objConst = emptyObjs[cIdx]
+                    else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres
                     objConst['BrkThres'] = breakThres1   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2928,6 +3092,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_stiffness_x = 0
                         objConst.rigid_body_constraint.spring_stiffness_y = 0
                         objConst.rigid_body_constraint.spring_stiffness_z = 0
+                    if asciiExport:
+                        if connectType == 7:
+                            exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(objConst.rotation_mode)
+                        exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                        exportData[cIdx].append(getAttribsOfConstraint(objConst))
                     
             elif connectType == 8 or connectType == 10 or connectType == 12:
                 # Correction multiplier for breaking thresholds
@@ -2952,7 +3122,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 else: conIdxOfs = 0
                 # Loop through all constraints of this connection
                 for i in range(4):
-                    objConst = emptyObjs[consts[i +conIdxOfs]]
+                    cIdx = consts[i +conIdxOfs]
+                    if not asciiExport:
+                        objConst = emptyObjs[cIdx]
+                    else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres
                     objConst['BrkThres'] = breakThres1   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -2984,6 +3157,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_stiffness_x = 0
                         objConst.rigid_body_constraint.spring_stiffness_y = 0
                         objConst.rigid_body_constraint.spring_stiffness_z = 0
+                    if asciiExport:
+                        if connectType == 8:
+                            exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(objConst.rotation_mode)
+                        exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                        exportData[cIdx].append(getAttribsOfConstraint(objConst))
                     
             if connectType == 13:
                 # Correction multiplier for breaking thresholds
@@ -3006,7 +3185,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 for j in range(3):
                     i += 3
                     ### First constraint
-                    objConst = emptyObjs[consts[i]]
+                    cIdx = consts[i]
+                    if not asciiExport:
+                        objConst = emptyObjs[cIdx]
+                    else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres1
                     objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3044,8 +3226,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    if asciiExport:
+                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(objConst.rotation_mode)
+                        exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                        exportData[cIdx].append(getAttribsOfConstraint(objConst))
                     ### Second constraint
-                    objConst = emptyObjs[consts[i+1]]
+                    cIdx = consts[i+1]
+                    if not asciiExport:
+                        objConst = emptyObjs[cIdx]
+                    else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres2
                     objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3083,8 +3273,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    if asciiExport:
+                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(objConst.rotation_mode)
+                        exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                        exportData[cIdx].append(getAttribsOfConstraint(objConst))
                     ### Third constraint
-                    objConst = emptyObjs[consts[i+2]]
+                    cIdx = consts[i+2]
+                    if not asciiExport:
+                        objConst = emptyObjs[cIdx]
+                    else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres3
                     objConst['BrkThres3'] = breakThres3   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3124,6 +3322,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    if asciiExport:
+                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(objConst.rotation_mode)
+                        exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                        exportData[cIdx].append(getAttribsOfConstraint(objConst))
 
             elif connectType == 14:
                 # Correction multiplier for breaking thresholds
@@ -3146,7 +3349,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 for j in range(4):
                     i += 3
                     ### First constraint
-                    objConst = emptyObjs[consts[i]]
+                    cIdx = consts[i]
+                    if not asciiExport:
+                        objConst = emptyObjs[cIdx]
+                    else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres1
                     objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3185,8 +3391,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    if asciiExport:
+                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(objConst.rotation_mode)
+                        exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                        exportData[cIdx].append(getAttribsOfConstraint(objConst))
                     ### Second constraint
-                    objConst = emptyObjs[consts[i+1]]
+                    cIdx = consts[i+1]
+                    if not asciiExport:
+                        objConst = emptyObjs[cIdx]
+                    else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres2
                     objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3225,8 +3439,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    if asciiExport:
+                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(objConst.rotation_mode)
+                        exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                        exportData[cIdx].append(getAttribsOfConstraint(objConst))
                     ### Third constraint
-                    objConst = emptyObjs[consts[i+2]]
+                    cIdx = consts[i+2]
+                    if not asciiExport:
+                        objConst = emptyObjs[cIdx]
+                    else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres3
                     objConst['BrkThres3'] = breakThres3   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3267,7 +3489,18 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst.rigid_body_constraint.spring_stiffness_z = springStiff
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    if asciiExport:
+                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(objConst.rotation_mode)
+                        exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
+                        exportData[cIdx].append(getAttribsOfConstraint(objConst))
 
+    if asciiExport:
+        # Remove constraint settings from temporary empty object
+        bpy.ops.rigidbody.constraint_remove()
+        # Delete temporary empty object
+        scene.objects.unlink(objConst)
+        
     print()
         
 ################################################################################
@@ -3477,6 +3710,28 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
     if len(childObjs) > 0: print()
             
 ################################################################################   
+
+def exportDataToText(exportData):
+
+    ### Exporting data into internal ASCII text file
+    print("Exporting data into internal ASCII text file:", asciiExportName)
+    
+    ### Ascii export into internal text file
+    exportDataStr = pickle.dumps(exportData, 4)  # 0 for using real ASCII pickle protocol and comment out the base64 lines (slower but human readable)
+    exportDataStr = zlib.compress(exportDataStr, 9)
+    exportDataStr = base64.encodebytes(exportDataStr)  # Convert binary data into "text" representation
+    text = bpy.data.texts.new(asciiExportName)
+    text.write(exportDataStr.decode())
+    
+    ### Code for loading data back from text
+    #exportDataStr = text.as_string()
+    #exportDataStr = base64.decodestring(exportDataStr.encode())  # Convert binary data back from "text" representation
+    #exportDataStr = zlib.decompress(exportDataStr)
+    #exportData = pickle.loads(exportDataStr)  # Use exportDataStr.encode() here when using real ASCII pickle protocol
+    #print(exportData)
+    # For later import you can use setattr(item[0], item[1])
+      
+################################################################################   
 ################################################################################   
     
 def build():
@@ -3494,6 +3749,8 @@ def build():
         try: bpy.ops.object.mode_set(mode='OBJECT') 
         except: pass
         
+        exportData = None
+
         #########################
         ###### Create new empties
         if not "bcb_objs" in scene.keys():
@@ -3502,7 +3759,7 @@ def build():
             childObjs = []
             objs, emptyObjs = gatherObjects(scene)
             objsEGrp = createElementGroupIndex(objs)
-
+            
             # Remove instancing from objects
             bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
             # Apply scale factor of all objects (to make sure volume and mass calculation are correct)
@@ -3549,15 +3806,18 @@ def build():
                     ###### Find and activate first empty layer
                     layersBak = BackupLayerSettingsAndActivateNextEmptyLayer(scene)
                     ###### Create empty objects (without any data)
-                    if not asciiExport: emptyObjs = createEmptyObjs(scene, len(constsConnect))
-                    else: emptyObjs = [None for i in range(len(constsConnect))]
+                    if not asciiExport:
+                        emptyObjs = createEmptyObjs(scene, len(constsConnect))
+                    else:
+                        emptyObjs = [None for i in range(len(constsConnect))]
+                        exportData = [[] for i in range(len(emptyObjs))]  # if this is the case emptyObjs is filled with an empty array on None
                     ###### Bundling close empties into clusters, merge locations and count connections per cluster
                     if clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
                     ###### Add constraint base settings to empties
-                    addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect)
+                    addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect, exportData)
                     # Restore old layers state
                     scene.update()  # Required to update empty locations before layer switching
-                    for i in range(20): scene.layers[i] = layersBak[i]
+                    scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
                     ###### Store build data in scene
                     if not asciiExport: storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect)
                     
@@ -3576,12 +3836,12 @@ def build():
        
         ##########################################     
         ###### Update already existing constraints
-        if "bcb_objs" in scene.keys():
+        if "bcb_objs" in scene.keys() or asciiExport:
             
             ###### Store menu config data in scene
             storeConfigDataInScene(scene)
             ###### Get temp data from scene
-            objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect = getBuildDataFromScene(scene)
+            if not asciiExport: objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect = getBuildDataFromScene(scene)
             ###### Create fresh element group index to make sure the data is still valid (reordering in menu invalidates it for instance)
             objsEGrp = createElementGroupIndex(objs)
             ###### Store build data in scene
@@ -3591,14 +3851,17 @@ def build():
                 ###### Set general rigid body world settings
                 initGeneralRigidBodyWorldSettings(scene)
                 ###### Set constraint settings
-                setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect)
+                setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect, exportData)
                 ###### Calculate mass for all mesh objects
                 calculateMass(scene, objs, objsEGrp, childObjs)
-                
-                # Deselect all objects
-                bpy.ops.object.select_all(action='DESELECT')
-                # Select all new constraint empties
-                for emptyObj in emptyObjs: emptyObj.select = 1
+                ###### Exporting data into internal ASCII text file
+                if asciiExport: exportDataToText(exportData)
+                    
+                if not asciiExport:
+                    # Deselect all objects
+                    bpy.ops.object.select_all(action='DESELECT')
+                    # Select all new constraint empties
+                    for emptyObj in emptyObjs: emptyObj.select = 1
                 
                 print('-- Time total: %0.2f s\n' %(time.time()-time_start))
                 print('Constraints:', len(emptyObjs), '| Elements:', len(objs), '| Children:', len(childObjs))
