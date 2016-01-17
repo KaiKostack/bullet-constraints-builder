@@ -7,7 +7,7 @@
 # Wide Area Situation Awareness and Survivor Localisation to
 # Support Search and Rescue (USaR) Teams"
 # This version is developed at the Laurea University of Applied Sciences, Finland
-# Copyright (C) 2015 Kai Kostack
+# Copyright (C) 2015, 2016 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -428,11 +428,13 @@ def clearAllDataFromScene(scene):
     try: connectsPairParent = scene["bcb_connectsPairParent"]
     except: connectsPairParent = []; print("Error: bcb_connectsPairParent property not found, cleanup may be incomplete.")
     
-    ### Store layer settings and activate all layers
-    layers = []
+    ### Backup layer settings and activate all layers
+    layersBak = []
+    layersNew = []
     for i in range(20):
-        layers.append(int(scene.layers[i]))
-        scene.layers[i] = 1
+        layersBak.append(int(scene.layers[i]))
+        layersNew.append(1)
+    scene.layers = [bool(q) for q in layersNew]  # Convert array into boolean (required by layers)
     
     ### Remove parents for too small elements 
     for k in range(len(connectsPairParent)):
@@ -552,7 +554,7 @@ def clearAllDataFromScene(scene):
         if "bcb_" in key and not "bcb_prop" in key: del scene[key]
    
     # Set layers as in original scene
-    for i in range(20): scene.layers[i] = layers[i]
+    scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
 
     print('\nTime: %0.2f s' %(time.time()-time_start))
     print('Done.')
@@ -3715,6 +3717,15 @@ def exportDataToText(exportData):
 
     ### Exporting data into internal ASCII text file
     print("Exporting data into internal ASCII text file:", asciiExportName)
+    
+    # Data structure ("[]" means not always present):
+    #     empty.location
+    #     obj1.name
+    #     obj2.name
+    #     ["PLASTIC"]
+    #     [empty.rotation_mode]
+    #     [empty.rotation_quaternion]
+    #     empty.rigid_body_constraint (dictionary of attributes)
     
     ### Ascii export into internal text file
     exportDataStr = pickle.dumps(exportData, 4)  # 0 for using real ASCII pickle protocol and comment out the base64 lines (slower but human readable)
