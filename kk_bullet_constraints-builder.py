@@ -1261,7 +1261,7 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
             OBJECT_OT_bcb_bake.execute(self, context)
             if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
             OBJECT_OT_bcb_clear.execute(self, context)
-            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
+            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_update(bpy.types.Operator):
@@ -1291,7 +1291,7 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
             OBJECT_OT_bcb_bake.execute(self, context)
             if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
             OBJECT_OT_bcb_clear.execute(self, context)
-            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
+            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
@@ -2655,6 +2655,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         breakThres3 = elemGrps[elemGrp][7]
         breakThres4 = elemGrps[elemGrp][8]
         springStiff = elemGrps[elemGrp][9]
+        tolDistBreak = elemGrps[elemGrp][12]
+        tolRotBreak = elemGrps[elemGrp][13]
         
         if not asciiExport:
             ### Check if full update is necessary (optimization)
@@ -3086,17 +3088,18 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_damping_y = 1
                         objConst.rigid_body_constraint.spring_damping_z = 1
                         #objConst.rigid_body_constraint.disable_collisions = False
-                    if connectType == 7:
+                    if connectType == 7:  # If spring-only connection type then activate springs from start (no extra plastic activation required)
                         objConst.rigid_body_constraint.spring_stiffness_x = springStiff
                         objConst.rigid_body_constraint.spring_stiffness_y = springStiff
                         objConst.rigid_body_constraint.spring_stiffness_z = springStiff
-                    else:
+                    else:  # Disable springs on start (requires plastic activation during simulation)
                         objConst.rigid_body_constraint.spring_stiffness_x = 0
                         objConst.rigid_body_constraint.spring_stiffness_y = 0
                         objConst.rigid_body_constraint.spring_stiffness_z = 0
                     if asciiExport:
                         if connectType == 7:
-                            exportData[cIdx].append("PLASTIC")
+                              exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
+                        else: exportData[cIdx].append(["PLASTIC_OFF", tolDistBreak, tolRotBreak])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3151,17 +3154,18 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_damping_y = 1
                         objConst.rigid_body_constraint.spring_damping_z = 1
                         #objConst.rigid_body_constraint.disable_collisions = False
-                    if connectType == 8:
+                    if connectType == 8:  # If spring-only connection type then activate springs from start (no extra plastic activation required)
                         objConst.rigid_body_constraint.spring_stiffness_x = springStiff
                         objConst.rigid_body_constraint.spring_stiffness_y = springStiff
                         objConst.rigid_body_constraint.spring_stiffness_z = springStiff
-                    else:
+                    else:  # Disable springs on start (requires plastic activation during simulation)
                         objConst.rigid_body_constraint.spring_stiffness_x = 0
                         objConst.rigid_body_constraint.spring_stiffness_y = 0
                         objConst.rigid_body_constraint.spring_stiffness_z = 0
                     if asciiExport:
                         if connectType == 8:
-                            exportData[cIdx].append("PLASTIC")
+                              exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
+                        else: exportData[cIdx].append(["PLASTIC_OFF", tolDistBreak, tolRotBreak])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3229,7 +3233,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3276,7 +3280,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3325,7 +3329,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3394,7 +3398,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3442,7 +3446,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3492,7 +3496,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append("PLASTIC")
+                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3722,7 +3726,7 @@ def exportDataToText(exportData):
     #     empty.location
     #     obj1.name
     #     obj2.name
-    #     ["PLASTIC"]
+    #     [ ["PLASTIC"/"PLASTIC_OFF", tolDistBreak, tolRotBreak] ]
     #     [empty.rotation_mode]
     #     [empty.rotation_quaternion]
     #     empty.rigid_body_constraint (dictionary of attributes)
@@ -3735,11 +3739,11 @@ def exportDataToText(exportData):
     text.write(exportDataStr.decode())
     
     ### Code for loading data back from text
-    #exportDataStr = text.as_string()
-    #exportDataStr = base64.decodestring(exportDataStr.encode())  # Convert binary data back from "text" representation
-    #exportDataStr = zlib.decompress(exportDataStr)
-    #exportData = pickle.loads(exportDataStr)  # Use exportDataStr.encode() here when using real ASCII pickle protocol
-    #print(exportData)
+#    exportDataStr = text.as_string()
+#    exportDataStr = base64.decodestring(exportDataStr.encode())  # Convert binary data back from "text" representation
+#    exportDataStr = zlib.decompress(exportDataStr)
+#    exportData = pickle.loads(exportDataStr)  # Use exportDataStr.encode() here when using real ASCII pickle protocol
+#    print(exportData)
     # For later import you can use setattr(item[0], item[1])
       
 ################################################################################   
