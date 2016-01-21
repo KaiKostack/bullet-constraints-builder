@@ -85,13 +85,13 @@ elemGrps = [
 
 # Connection types:
 connectTypes = [          # Cnt C T S B S T T T T      CT
-[ "UNDEFINED",              0, [0,0,0,0,0,0,0,1,1]], # 0. Undefined (reserved)
-[ "1x FIXED",               1, [1,0,0,0,0,0,0,1,1]], # 1. Linear omni-directional + bending breaking threshold
-[ "1x POINT",               1, [1,0,0,0,0,0,0,1,1]], # 2. Linear omni-directional breaking threshold
-[ "1x FIXED + 1x POINT",    2, [1,0,0,1,0,0,0,1,1]], # 3. Linear omni-directional and bending breaking thresholds
-[ "2x GENERIC",             2, [1,1,0,0,0,0,0,1,1]], # 4. Compressive and tensile breaking thresholds
-[ "3x GENERIC",             3, [1,1,0,1,0,0,0,1,1]], # 5. Compressive, tensile + shearing and bending breaking thresholds
-[ "4x GENERIC",             4, [1,1,1,1,0,0,0,1,1]], # 6. Compressive, tensile, shearing and bending breaking thresholds
+[ "UNDEFINED",              0, [0,0,0,0,0,1,1,0,0]], # 0. Undefined (reserved)
+[ "1x FIXED",               1, [1,0,0,0,0,1,1,0,0]], # 1. Linear omni-directional + bending breaking threshold
+[ "1x POINT",               1, [1,0,0,0,0,1,1,0,0]], # 2. Linear omni-directional breaking threshold
+[ "1x FIXED + 1x POINT",    2, [1,0,0,1,0,1,1,0,0]], # 3. Linear omni-directional and bending breaking thresholds
+[ "2x GENERIC",             2, [1,1,0,0,0,1,1,0,0]], # 4. Compressive and tensile breaking thresholds
+[ "3x GENERIC",             3, [1,1,0,1,0,1,1,0,0]], # 5. Compressive, tensile + shearing and bending breaking thresholds
+[ "4x GENERIC",             4, [1,1,1,1,0,1,1,0,0]], # 6. Compressive, tensile, shearing and bending breaking thresholds
 [ "3x SPRING",              3, [1,0,0,0,1,0,0,1,1]], # 7. Linear omni-directional breaking threshold with plastic deformability
 [ "4x SPRING",              4, [1,0,0,0,1,0,0,1,1]], # 8. Linear omni-directional breaking threshold with plastic deformability
 [ "1x FIXED + 3x SPRING",   4, [1,0,0,0,1,1,1,1,1]], # 9. Linear omni-directional + bending breaking threshold with plastic deformability
@@ -1299,10 +1299,11 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
     bl_label = "Build & export to text file"
     bl_description = "Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment)."
     def execute(self, context):
-        global asciiExport; asciiExport = 1
+        global asciiExport
+        asciiExport = 1
         ###### Execute main building process from scratch
         build()
-        global asciiExport; asciiExport = 0
+        asciiExport = 0
         return{'FINISHED'} 
 
 class OBJECT_OT_bcb_bake(bpy.types.Operator):
