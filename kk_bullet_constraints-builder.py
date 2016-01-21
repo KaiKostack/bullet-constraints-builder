@@ -698,10 +698,10 @@ def monitor_initBuffers(scene):
         if elemGrpA <= elemGrpB: elemGrp = elemGrpA
         else:                    elemGrp = elemGrpB
         springStiff = elemGrps[elemGrp][9]
-        tolDistPlast = elemGrps[elemGrp][10]
-        tolRotPlast = elemGrps[elemGrp][11]
-        tolDistBreak = elemGrps[elemGrp][12]
-        tolRotBreak = elemGrps[elemGrp][13]
+        tol1dist = elemGrps[elemGrp][10]
+        tol1rot = elemGrps[elemGrp][11]
+        tol2dist = elemGrps[elemGrp][12]
+        tol2rot = elemGrps[elemGrp][13]
         
         # Calculate distance between both elements of the connection
         distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
@@ -728,7 +728,7 @@ def monitor_initBuffers(scene):
                 constsBrkTs.append(0)
                 constsSprSt.append([0, 0, 0])
         #                0                1                2         3      4       5            6            7            8            9             10            11           12
-        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, constsSprSt, springStiff, tolDistPlast, tolRotPlast, tolDistBreak, tolRotBreak, 0])
+        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, constsSprSt, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, 0])
 
     print("Connections")
         
@@ -2655,8 +2655,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         breakThres3 = elemGrps[elemGrp][7]
         breakThres4 = elemGrps[elemGrp][8]
         springStiff = elemGrps[elemGrp][9]
-        tolDistBreak = elemGrps[elemGrp][12]
-        tolRotBreak = elemGrps[elemGrp][13]
+        tol1dist = elemGrps[elemGrp][10]
+        tol1rot = elemGrps[elemGrp][11]
+        tol2dist = elemGrps[elemGrp][12]
+        tol2rot = elemGrps[elemGrp][13]
         
         if not asciiExport:
             ### Check if full update is necessary (optimization)
@@ -2688,7 +2690,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
-                if asciiExport: exportData[cIdx].append(getAttribsOfConstraint(objConst))
+                if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
                     
             elif connectType == 2:
                 cIdx = consts[0]
@@ -2700,7 +2704,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
-                if asciiExport: exportData[cIdx].append(getAttribsOfConstraint(objConst))
+                if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 
             elif connectType == 3:
                 correction = 1 /2   # As both constraints bear all load and forces are evenly distributed among them the breaking thresholds need to be divided by their count to compensate
@@ -2714,7 +2720,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 objConst['BrkThres1'] = breakThres4   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
-                if asciiExport: exportData[cIdx].append(getAttribsOfConstraint(objConst))
+                if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
                 ### Second constraint
                 cIdx = consts[1]
                 if not asciiExport:
@@ -2725,7 +2733,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 objConst['BrkThres2'] = breakThres1   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
-                if asciiExport: exportData[cIdx].append(getAttribsOfConstraint(objConst))
+                if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
+                    exportData[cIdx].append(getAttribsOfConstraint(objConst))
             
             elif connectType == 4:
                 # Correction multiplier for breaking thresholds
@@ -2763,6 +2773,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(objConst.rotation_mode)
                     exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -2800,6 +2811,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(objConst.rotation_mode)
                     exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -2839,6 +2851,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(objConst.rotation_mode)
                     exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -2871,6 +2884,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(objConst.rotation_mode)
                     exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -2903,6 +2917,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(objConst.rotation_mode)
                     exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -2945,6 +2960,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(objConst.rotation_mode)
                     exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -2973,6 +2989,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(objConst.rotation_mode)
                     exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3003,6 +3020,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(objConst.rotation_mode)
                     exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3035,6 +3053,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
+                    exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(objConst.rotation_mode)
                     exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3097,9 +3116,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_stiffness_y = 0
                         objConst.rigid_body_constraint.spring_stiffness_z = 0
                     if asciiExport:
+                        exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         if connectType == 7:
-                              exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
-                        else: exportData[cIdx].append(["PLASTIC_OFF", tolDistBreak, tolRotBreak])
+                              exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
+                        else: exportData[cIdx].append(["PLASTIC_OFF", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3163,9 +3183,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_stiffness_y = 0
                         objConst.rigid_body_constraint.spring_stiffness_z = 0
                     if asciiExport:
+                        exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         if connectType == 8:
-                              exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
-                        else: exportData[cIdx].append(["PLASTIC_OFF", tolDistBreak, tolRotBreak])
+                              exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
+                        else: exportData[cIdx].append(["PLASTIC_OFF", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3233,7 +3254,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
+                        exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
+                        exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3280,7 +3302,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
+                        exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
+                        exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3329,7 +3352,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
+                        exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
+                        exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3398,7 +3422,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
+                        exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
+                        exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3446,7 +3471,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
+                        exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
+                        exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3496,7 +3522,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx].append(["PLASTIC", tolDistBreak, tolRotBreak])
+                        exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
+                        exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
                         exportData[cIdx].append(Vector(objConst.rotation_quaternion).to_tuple())
                         exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3723,14 +3750,23 @@ def exportDataToText(exportData):
     print("Exporting data into internal ASCII text file:", asciiExportName)
     
     # Data structure ("[]" means not always present):
-    #     empty.location
-    #     obj1.name
-    #     obj2.name
-    #     [ ["PLASTIC"/"PLASTIC_OFF", tolDistBreak, tolRotBreak] ]
-    #     [empty.rotation_mode]
-    #     [empty.rotation_quaternion]
-    #     empty.rigid_body_constraint (dictionary of attributes)
-    
+    # 0 - empty.location
+    # 1 - obj1.name
+    # 2 - obj2.name
+    # 3 - [ ["TOLERANCE", tol1dist, tol1rot] ]
+    # 4 - [ ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot] ]
+    # 5 - [empty.rotation_mode]
+    # 6 - [empty.rotation_quaternion]
+    # 7 - empty.rigid_body_constraint (dictionary of attributes)
+    #
+    # Pseudo code for special constraint treatment:
+    #
+    # If tol1dist or tol1rot is exceeded:
+    #     If normal constraint: It will be detached
+    #     If spring constraint: It will be set to active
+    # If tol2dist or tol2rot is exceeded:
+    #     If spring constraint: It will be detached
+
     ### Ascii export into internal text file
     exportDataStr = pickle.dumps(exportData, 4)  # 0 for using real ASCII pickle protocol and comment out the base64 lines (slower but human readable)
     exportDataStr = zlib.compress(exportDataStr, 9)
