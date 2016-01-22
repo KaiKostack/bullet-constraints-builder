@@ -1296,7 +1296,7 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
 
 class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
     bl_idname = "bcb.export_ascii"
-    bl_label = "Build & export to text file"
+    bl_label = "Build & Export to Text File"
     bl_description = "Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment)."
     def execute(self, context):
         global asciiExport
@@ -2378,10 +2378,10 @@ def createConnectionData(objsEGrp, connectsPair):
 
 ################################################################################   
 
-def BackupLayerSettingsAndActivateNextEmptyLayer(scene):
+def backupLayerSettingsAndActivateNextEmptyLayer(scene):
 
-    ### Find and activate the first empty layer
-    print("Find and activate the first empty layer...")
+    ### Activate the first empty layer
+    print("Activating the first empty layer...")
     
     ### Backup layer settings
     layersBak = []
@@ -2401,6 +2401,53 @@ def BackupLayerSettingsAndActivateNextEmptyLayer(scene):
         # Set new layers
         scene.layers = [bool(q) for q in layersNew]  # Convert array into boolean (required by layers)
         
+    # Return old layers state
+    return layersBak
+    
+########################################
+
+def backupLayerSettingsAndActivateNextLayerWithObj(scene, objToFind):
+
+    ### Activating the first layer with constraint empty object
+    print("Activating the first layer with constraint empty object...")
+    
+    ### Backup layer settings
+    layersBak = []
+    layersNew = []
+    for i in range(20):
+        layersBak.append(int(scene.layers[i]))
+        layersNew.append(0)
+    ### Find and activate the first empty layer
+    qFound = 0
+    for i in range(20):
+        objsOnLayer = [obj for obj in scene.objects if obj.layers[i]]
+        if objToFind in objsOnLayer:
+            layersNew[i] = 1
+            qFound = 1
+            break
+    if qFound:
+        # Set new layers
+        scene.layers = [bool(q) for q in layersNew]  # Convert array into boolean (required by layers)
+        
+    # Return old layers state
+    return layersBak
+
+########################################
+
+def backupLayerSettingsAndActivateAllLayers(scene):
+
+    ### Activate all layers
+    print("Activating all layers...")
+    
+    ### Backup layer settings
+    layersBak = []
+    layersNew = []
+    for i in range(20):
+        layersBak.append(int(scene.layers[i]))
+        layersNew.append(0)
+    # Activate all layers
+    scene.layers = [True for q in scene.layers]
+       
     # Return old layers state
     return layersBak
     
@@ -2670,7 +2717,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             objConst0 = objConst
             qUpdateComplete = 1
             objConst.rotation_mode = 'XYZ'  # Overwrite temporary object to default (Euler)
-                
+            
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
         
@@ -3086,6 +3133,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres
                     objConst['BrkThres'] = breakThres1   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3117,6 +3168,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_stiffness_y = 0
                         objConst.rigid_body_constraint.spring_stiffness_z = 0
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         if connectType == 7:
                               exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
@@ -3152,6 +3204,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres
                     objConst['BrkThres'] = breakThres1   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3184,6 +3240,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_stiffness_y = 0
                         objConst.rigid_body_constraint.spring_stiffness_z = 0
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         if connectType == 8:
                               exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
@@ -3217,6 +3274,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres1
                     objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3255,6 +3316,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3265,6 +3327,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres2
                     objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3303,6 +3369,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3313,6 +3380,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres3
                     objConst['BrkThres3'] = breakThres3   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3353,6 +3424,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3384,6 +3456,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres1
                     objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3423,6 +3499,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3433,6 +3510,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres2
                     objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3472,6 +3553,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3482,6 +3564,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = constBreakThres3
                     objConst['BrkThres3'] = breakThres3   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3523,6 +3609,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3780,7 +3867,12 @@ def exportDataToText(exportData):
 #    exportDataStr = base64.decodestring(exportDataStr.encode())  # Convert binary data back from "text" representation
 #    exportDataStr = zlib.decompress(exportDataStr)
 #    exportData = pickle.loads(exportDataStr)  # Use exportDataStr.encode() here when using real ASCII pickle protocol
-#    print(exportData)
+#    #print(exportData)
+#    i = 0
+#    for const in exportData:
+#        if i > 300: bpy.ops.object.empty_add(type='SPHERE', view_align=False, location=const[0], layers=(True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False))
+#        if i > 600: break
+#        i += 1
     # For later import you can use setattr(item[0], item[1])
       
 ################################################################################   
@@ -3856,7 +3948,7 @@ def build():
                     ###### Create actual parents for too small elements
                     if minimumElementSize: makeParentsForTooSmallElementsReal(objs, connectsPairParent)
                     ###### Find and activate first empty layer
-                    layersBak = BackupLayerSettingsAndActivateNextEmptyLayer(scene)
+                    layersBak = backupLayerSettingsAndActivateNextEmptyLayer(scene)
                     ###### Create empty objects (without any data)
                     if not asciiExport:
                         emptyObjs = createEmptyObjs(scene, len(constsConnect))
@@ -3902,8 +3994,14 @@ def build():
             if len(emptyObjs) > 0:
                 ###### Set general rigid body world settings
                 initGeneralRigidBodyWorldSettings(scene)
+                ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
+                if not asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
                 setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect, exportData)
+                ### Restore old layers state
+                if not asciiExport:
+                    scene.update()  # Required to update empty locations before layer switching
+                    scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
                 ###### Calculate mass for all mesh objects
                 calculateMass(scene, objs, objsEGrp, childObjs)
                 ###### Exporting data into internal ASCII text file
