@@ -746,61 +746,63 @@ def monitor_checkForChange():
         ### If connection is in fixed mode then check if plastic tolerance is reached
         if connect[12] == 0:
             d += 1
-            objA = connect[0][0]
-            objB = connect[1][0]
-            springStiff = connect[7]
-            toleranceDist = connect[8]
-            toleranceRot = connect[9]
-            
-            # Calculate distance between both elements of the connection
-            distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
-            if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
-            else: distanceDif = 1
-            # Calculate angle between two elements
-            quatA = objA.matrix_world.to_quaternion()
-            quatB = objB.matrix_world.to_quaternion()
-            angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
-            # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-            if distanceDif > toleranceDist +(angleDif /3.1416) \
-            or angleDif > toleranceRot:
-                consts = connect[4]
-                for const in consts:
-                    # Enable spring constraints for this connection by setting its stiffness
-                    if const.rigid_body_constraint.type == 'GENERIC_SPRING':
-                        const.rigid_body_constraint.enabled = 1
-                    # Disable non-spring constraints for this connection by setting breaking threshold to 0
-                    else:
-                        const.rigid_body_constraint.breaking_threshold = 0
-                # Switch connection to plastic mode
-                connect[12] += 1
-                cntP += 1
+            consts = connect[4]
+            if consts[0].rigid_body_constraint.use_breaking:
+                objA = connect[0][0]
+                objB = connect[1][0]
+                springStiff = connect[7]
+                toleranceDist = connect[8]
+                toleranceRot = connect[9]
+                
+                # Calculate distance between both elements of the connection
+                distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+                if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
+                else: distanceDif = 1
+                # Calculate angle between two elements
+                quatA = objA.matrix_world.to_quaternion()
+                quatB = objB.matrix_world.to_quaternion()
+                angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+                # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
+                if distanceDif > toleranceDist +(angleDif /3.1416) \
+                or angleDif > toleranceRot:
+                    for const in consts:
+                        # Enable spring constraints for this connection by setting its stiffness
+                        if const.rigid_body_constraint.type == 'GENERIC_SPRING':
+                            const.rigid_body_constraint.enabled = 1
+                        # Disable non-spring constraints for this connection by setting breaking threshold to 0
+                        else:
+                            const.rigid_body_constraint.breaking_threshold = 0
+                    # Switch connection to plastic mode
+                    connect[12] += 1
+                    cntP += 1
 
         ### If connection is in plastic mode then check if breaking tolerance is reached
         if connect[12] == 1:
             e += 1
-            objA = connect[0][0]
-            objB = connect[1][0]
-            toleranceDist = connect[10]
-            toleranceRot = connect[11]
-            
-            # Calculate distance between both elements of the connection
-            distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
-            if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
-            else: distanceDif = 1
-            # Calculate angle between two elements
-            quatA = objA.matrix_world.to_quaternion()
-            quatB = objB.matrix_world.to_quaternion()
-            angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
-            # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-            if distanceDif > toleranceDist +(angleDif /3.1416) \
-            or angleDif > toleranceRot:
-                # Disable all constraints for this connection by setting breaking threshold to 0
-                consts = connect[4]
-                for const in consts:
-                    const.rigid_body_constraint.breaking_threshold = 0
-                # Flag connection as being disconnected
-                connect[12] += 1
-                cntB += 1
+            consts = connect[4]
+            if consts[0].rigid_body_constraint.use_breaking:
+                objA = connect[0][0]
+                objB = connect[1][0]
+                toleranceDist = connect[10]
+                toleranceRot = connect[11]
+                
+                # Calculate distance between both elements of the connection
+                distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+                if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
+                else: distanceDif = 1
+                # Calculate angle between two elements
+                quatA = objA.matrix_world.to_quaternion()
+                quatB = objB.matrix_world.to_quaternion()
+                angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+                # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
+                if distanceDif > toleranceDist +(angleDif /3.1416) \
+                or angleDif > toleranceRot:
+                    # Disable all constraints for this connection by setting breaking threshold to 0
+                    for const in consts:
+                        const.rigid_body_constraint.breaking_threshold = 0
+                    # Flag connection as being disconnected
+                    connect[12] += 1
+                    cntB += 1
        
     sys.stdout.write(" connections (intact & plastic)")
     if cntP > 0: sys.stdout.write(" | Plastic: %d" %cntP)
