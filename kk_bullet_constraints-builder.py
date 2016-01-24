@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.81 #
+# Bullet Constraints Builder v1.82 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -124,7 +124,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 8, 1),
+    "version": (1, 8, 2),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -720,6 +720,10 @@ def monitor_initBuffers(scene):
                 constsBrkTs.append(emptyObj.rigid_body_constraint.breaking_threshold)
                 # Backup original spring stiffness
                 constsSprSt.append([emptyObj.rigid_body_constraint.spring_stiffness_x, emptyObj.rigid_body_constraint.spring_stiffness_y, emptyObj.rigid_body_constraint.spring_stiffness_z])
+                # Set tolerance evaluation mode (if plastic or not)
+                if emptyObj.rigid_body_constraint.type == 'GENERIC_SPRING':
+                      mode = 1
+                else: mode = 0
             else:
                 if not qWarning:
                     qWarning = 1
@@ -727,8 +731,8 @@ def monitor_initBuffers(scene):
                 print("(%s)" %emptyObj.name)
                 constsBrkTs.append(0)
                 constsSprSt.append([0, 0, 0])
-        #                0                1                2         3      4       5            6            7            8            9             10            11           12
-        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, constsSprSt, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, 0])
+        #                0                1                2         3      4       5            6            7            8         9        10        11       12
+        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, constsSprSt, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode])
 
     print("Connections")
         
@@ -803,7 +807,7 @@ def monitor_checkForChange():
                 # Flag connection as being disconnected
                 connect[12] += 1
                 cntB += 1
-        
+       
     sys.stdout.write(" connections (intact & plastic)")
     if cntP > 0: sys.stdout.write(" | Plastic: %d" %cntP)
     if cntB > 0: sys.stdout.write(" | Broken: %d" %cntB)
@@ -2631,7 +2635,7 @@ def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, consts
 def getAttribsOfConstraint(objConst):
 
     ### Create a dictionary of all attributes with values from the given constraint empty object    
-    con = bpy.context.object.rigid_body_constraint
+    con = objConst.rigid_body_constraint
     props = {}
     for prop in con.bl_rna.properties:
         if not prop.is_hidden:
@@ -2648,11 +2652,13 @@ def getAttribsOfConstraint(objConst):
 def setAttribsOfConstraint(objConst, props):
 
     ### Overwrite all attributes of the given constraint empty object with the values of the dictionary provided    
-    for prop in props:
-        try: setattr(con, prop.identifier, props[prop.identifier])
-        except: pass
-        
+    con = objConst.rigid_body_constraint    
+    for prop in props.items():
+        try: setattr(con, prop[0], prop[1])
+        except: print("Error: Failed to set attribute:", prop[0], prop[1])
+                
 ########################################
+    
     
 def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect, exportData):
     
