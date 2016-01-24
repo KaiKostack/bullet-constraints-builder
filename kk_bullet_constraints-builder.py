@@ -711,15 +711,12 @@ def monitor_initBuffers(scene):
         angle = quat0.rotation_difference(quat1).angle
         consts = []
         constsBrkTs = []
-        constsSprSt = []
         for const in connectsConsts[d -1]:
             emptyObj = emptyObjs[const]
             consts.append(emptyObj)
             if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
                 # Backup original breaking thresholds
                 constsBrkTs.append(emptyObj.rigid_body_constraint.breaking_threshold)
-                # Backup original spring stiffness
-                constsSprSt.append([emptyObj.rigid_body_constraint.spring_stiffness_x, emptyObj.rigid_body_constraint.spring_stiffness_y, emptyObj.rigid_body_constraint.spring_stiffness_z])
                 # Set tolerance evaluation mode (if plastic or not)
                 if emptyObj.rigid_body_constraint.type == 'GENERIC_SPRING':
                       mode = 1
@@ -730,9 +727,8 @@ def monitor_initBuffers(scene):
                     print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
                 print("(%s)" %emptyObj.name)
                 constsBrkTs.append(0)
-                constsSprSt.append([0, 0, 0])
-        #                0                1                2         3      4       5            6            7            8         9        10        11       12
-        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, constsSprSt, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode])
+        #                0                1                2         3      4       5            6 (unused)  7      8         9        10        11       12
+        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, None, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode])
 
     print("Connections")
         
@@ -771,9 +767,7 @@ def monitor_checkForChange():
                 for const in consts:
                     # Enable spring constraints for this connection by setting its stiffness
                     if const.rigid_body_constraint.type == 'GENERIC_SPRING':
-                        const.rigid_body_constraint.spring_stiffness_x = springStiff
-                        const.rigid_body_constraint.spring_stiffness_y = springStiff
-                        const.rigid_body_constraint.spring_stiffness_z = springStiff
+                        const.rigid_body_constraint.enabled = 1
                     # Disable non-spring constraints for this connection by setting breaking threshold to 0
                     else:
                         const.rigid_body_constraint.breaking_threshold = 0
@@ -825,17 +819,11 @@ def monitor_freeBuffers(scene):
     for connect in connects:
         consts = connect[4]
         constsBrkTs = connect[5]
-        constsSprSt = connect[6]
         for i in range(len(consts)):
             emptyObj = consts[i]
             if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
                 # Restore original breaking thresholds
                 emptyObj.rigid_body_constraint.breaking_threshold = constsBrkTs[i]
-                # Restore original spring settings
-                if emptyObj.rigid_body_constraint.type == 'GENERIC_SPRING':
-                    emptyObj.rigid_body_constraint.spring_stiffness_x = constsSprSt[i][0]
-                    emptyObj.rigid_body_constraint.spring_stiffness_y = constsSprSt[i][1]
-                    emptyObj.rigid_body_constraint.spring_stiffness_z = constsSprSt[i][2]
             else:
                 if not qWarning:
                     qWarning = 1
@@ -3165,14 +3153,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_damping_y = 1
                         objConst.rigid_body_constraint.spring_damping_z = 1
                         #objConst.rigid_body_constraint.disable_collisions = False
-                    if connectType == 7:  # If spring-only connection type then activate springs from start (no extra plastic activation required)
-                        objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                        objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                        objConst.rigid_body_constraint.spring_stiffness_z = springStiff
-                    else:  # Disable springs on start (requires plastic activation during simulation)
-                        objConst.rigid_body_constraint.spring_stiffness_x = 0
-                        objConst.rigid_body_constraint.spring_stiffness_y = 0
-                        objConst.rigid_body_constraint.spring_stiffness_z = 0
+                    # Set stiffness
+                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    if connectType != 7:
+                        # Disable springs on start (requires plastic activation during simulation)
+                        objConst.rigid_body_constraint.enabled = 0
                     if asciiExport:
                         exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
@@ -3237,14 +3224,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_damping_y = 1
                         objConst.rigid_body_constraint.spring_damping_z = 1
                         #objConst.rigid_body_constraint.disable_collisions = False
-                    if connectType == 8:  # If spring-only connection type then activate springs from start (no extra plastic activation required)
-                        objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                        objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                        objConst.rigid_body_constraint.spring_stiffness_z = springStiff
-                    else:  # Disable springs on start (requires plastic activation during simulation)
-                        objConst.rigid_body_constraint.spring_stiffness_x = 0
-                        objConst.rigid_body_constraint.spring_stiffness_y = 0
-                        objConst.rigid_body_constraint.spring_stiffness_z = 0
+                    # Set stiffness
+                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    if connectType != 8:
+                        # Disable springs on start (requires plastic activation during simulation)
+                        objConst.rigid_body_constraint.enabled = 0
                     if asciiExport:
                         exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
