@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.82 #
+# Bullet Constraints Builder v1.83 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -124,7 +124,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 8, 2),
+    "version": (1, 8, 3),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -508,38 +508,13 @@ def clearAllDataFromScene(scene):
             obj.scale /= scale
 
     print("Deleting objects...")
-### Original code for object removal (slower):            
-#    ### Select modified elements for deletion from scene 
-#    for parentObj in parentTmpObjs: parentObj.select = 1
-#    ### Select constraint empty objects for deletion from scene
-#    for emptyObj in emptyObjs: emptyObj.select = 1
-#    
-#    ### Delete all selected objects
-#    bpy.ops.object.delete(use_global=True)
-
-#    ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
-#    scene = bpy.context.scene
-#    sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
-#    # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
-#    bpy.context.screen.scene = scene
-#    # Link cameras because in second scene is none and when coming back camera view will losing focus
-#    objCameras = []
-#    for objTemp in scene.objects:
-#        if objTemp.type == 'CAMERA':
-#            sceneTemp.objects.link(objTemp)
-#            objCameras.append(objTemp)
-#    # Switch to new scene
-#    bpy.context.screen.scene = sceneTemp
-
-    ### Delete (unlink) modified elements from scene 
-    for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
-    ### Delete (unlink) constraint empty objects from scene
-    for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
+    ### Select modified elements for deletion from scene 
+    for parentObj in parentTmpObjs: parentObj.select = 1
+    ### Select constraint empty objects for deletion from scene
+    for emptyObj in emptyObjs: emptyObj.select = 1
     
-#    # Switch back to original scene
-#    bpy.context.screen.scene = scene
-#    # Delete second scene
-#    bpy.data.scenes.remove(sceneTemp)
+    ### Delete all selected objects
+    bpy.ops.object.delete(use_global=True)
 
     print("Removing ID properties...")
     
