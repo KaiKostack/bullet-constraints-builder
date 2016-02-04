@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.01 #
+# Bullet Constraints Builder v2.02 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -108,28 +108,28 @@ formulaAssistants = [
 {"Name":"Reinforced Concrete (Beams & Columns)", "ID":"con_rei_beam",
  "fs":500, "fc":30, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
  "h":250, "b":150,  # Testing parameters, will be replaced on build
- "Exp:d":   " (h-c-dl/2) ",
- "Exp:e":   " (h-2*c-dl) ",
- "Exp:rho": " ((dl/2)**2*pi*n/h*b) ",
- "Exp:y":   " (((ds/2)**2*pi*2)*10/(h-c-dl/2)) ",
- "Exp:e1":  " ((h-2*c-dl)/h) ",
+ "Exp:d":   "h-c-dl/2",
+ "Exp:e":   "h-2*c-dl",
+ "Exp:rho": "(dl/2)**2*pi*n/(h*b)",
+ "Exp:y":   "((ds/2)**2*pi*2)*10/d",
+ "Exp:e1":  "(h-2*c-dl)/h",
  "Exp:N-":  "fc*((h*b)-rho*(h*b))+fs*rho*(h*b)",
  "Exp:N+":  "fs*rho*(h*b)",
- "Exp:V+/-": "fs*y*e1*h**2*1.2+(0.15/k*(100*rho*fc)**(1/3))*(h*b)",
- "Exp:M+/-": "fs*rho*(h*b)/2*e1*h"
+ "Exp:V+/-":"fs*y*e1*h**2*1.2",
+ "Exp:M+/-":"fs*rho*(h*b)/2*(e1*h)"
 },
 {"Name":"Reinforced Concrete (Walls & Slabs)", "ID":"con_rei_wall",
  "fs":500, "fc":30, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
  "h":250, "b":150,  # Testing parameters, will be replaced on build
- "Exp:d":   " (h-c-dl/2) ",
- "Exp:e":   " (h-2*c-dl) ",
- "Exp:rho": " ((dl/2)**2*pi*n/h*b) ",
- "Exp:y":   " (((ds/2)**2*pi*2)*10/(h-c-dl/2)) ",
- "Exp:e1":  " ((h-2*c-dl)/h) ",
+ "Exp:d":   "h-c-dl/2",
+ "Exp:e":   "h-2*c-dl",
+ "Exp:rho": "(dl/2)**2*pi*n/(h*b)",
+ "Exp:y":   "((ds/2)**2*pi*2)*10/d",
+ "Exp:e1":  "(h-2*c-dl)/h",
  "Exp:N-":  "fc*((h*b)-rho*(h*b))+fs*rho*(h*b)",
  "Exp:N+":  "fs*rho*(h*b)",
- "Exp:V+/-": "(0.15/k*(100*rho*fc)**(1/3))*(h*b)",
- "Exp:M+/-": "fs*rho*(h*b)/2*e1*h"
+ "Exp:V+/-":"(0.15*k*(100*rho*fc)**(1/3))*(h*b)",
+ "Exp:M+/-":"fs*rho*(h*b)/2*(e1*h)"
 }]
 # Material strength values (N/mm²):
 # fs = strength of steel
@@ -183,8 +183,9 @@ qRenderAnimation = 0                 # 0     | Render animation by using render 
 
 ### Consts
 pi = 3.1416
+        
+########################################
 
-### Corrections
 # Add formula assistant settings to element groups
 asstIdx = 17
 for elemGrp in elemGrps:
@@ -192,9 +193,8 @@ for elemGrp in elemGrps:
         if elemGrp[asstIdx] == formAssist['ID']:
             elemGrp[asstIdx] = formAssist.copy()
             break
-        
-########################################
 
+# Backup default element groups for reset functionality
 elemGrpsBak = elemGrps.copy()
 
 ################################################################################   
@@ -202,7 +202,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 0, 1),
+    "version": (2, 0, 2),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -983,6 +983,48 @@ def estimateClusterRadius(scene):
 
 ################################################################################
 
+def convertFloatToStr(value, precision):
+    
+    global strOut  # For some reason this global construct is needed for exec() to have access to strOut
+    exec("global strOut; strOut = (('%0.' +str(precision) +'f')%value).strip('0')")
+    if '.' in strOut:
+        # If digit count of the integer part is higher than precision then remove fractional part
+        strOutInt = strOut.split('.')[0]
+        if len(strOutInt) > precision: strOut = strOutInt
+    strOut = strOut.rstrip('.')    # Remove ending decimal point if no fractional digits are present
+    if strOut == '': strOut = '0'  # Replace a single left over decimal point with 0
+    elif strOut[0] == '.': strOut = '0' +strOut  # Add a 0 before a leading decimal point (comment out to disable)
+    return strOut
+
+########################################
+
+def splitAndApplyPrecisionToFormula(formulaIn):
+
+    ### Split formula at predefined splitting strings and add spaces
+    splitter = ['**', '+', '-', '*', '/', '(', ')', '[', ']', '!=', '>=', '<=', '==', '=']
+    formulaOut = ""; charLast = ''; qSkipNext = 0
+    for char in formulaIn:
+        if qSkipNext:
+            charLast = char; qSkipNext = 0; continue
+        if charLast in splitter:
+            if charLast +char not in splitter: formulaOut += ' ' +charLast +' '
+            else: formulaOut += ' ' +charLast +char +' '; qSkipNext = 1
+        else: formulaOut += charLast
+        charLast = char
+    if charLast in splitter: formulaOut += ' ' +charLast
+    else: formulaOut += charLast
+    formulaOut = formulaOut.replace('  ',' ')
+    formulaOut = formulaOut.strip(' ')
+    ### Apply precision to floats
+    formulaToSplit = formulaOut; formulaOut = ''
+    for term in formulaToSplit.split(' '):
+        try: formulaOut += convertFloatToStr(float(term), 4) +' '
+        except: formulaOut += term +' '
+    formulaOut = formulaOut.strip(' ')
+    return formulaOut
+
+########################################
+
 def combineExpressions():
 
     props = bpy.context.window_manager.bcb
@@ -1005,37 +1047,68 @@ def combineExpressions():
         if h == 0: h = 'h'
         if b == 0: b = 'b'
         
-        d = asst['Exp:d']
-        e = asst['Exp:e']
-        rho = asst['Exp:rho']
-        y = asst['Exp:y']
-        e1 = asst['Exp:e1']
-        Nn = asst['Exp:N-']
-        Np = asst['Exp:N+']
-        Vpn = asst['Exp:V+/-']
-        Mpn = asst['Exp:M+/-']
+        d = " (" +asst['Exp:d'] +") "
+        e = " (" +asst['Exp:e'] +") "
+        rho = " (" +asst['Exp:rho'] +") "
+        y = " (" +asst['Exp:y'] +") "
+        e1 = " (" +asst['Exp:e1'] +") "
+        Nn = " (" +asst['Exp:N-'] +") "
+        Np = " (" +asst['Exp:N+'] +") "
+        Vpn = " (" +asst['Exp:V+/-'] +") "
+        Mpn = " (" +asst['Exp:M+/-'] +") "
         
-        d = d.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
-        e = e.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
-        rho = rho.replace('dl',str(dl)).replace('n',str(n)).replace('pi',str(pi)).replace('h',str(h)).replace('b',str(b))
-        y = y.replace('dl',str(dl)).replace('ds',str(ds)).replace('pi',str(pi)).replace('h',str(h)).replace('c',str(c))
-        e1 = e1.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
+        symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','b','d','e','y']  # sorted by length
+        cnt = 0; cntLast = -1
+        while cnt != cntLast:
+            cntLast = cnt
+            for symbol in symbols:
+                cnt -= len(d)
+                try:    d   = d.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: d   = d.replace(symbol, eval(symbol))
+                cnt += len(d)
+                cnt -= len(e)
+                try:    e   = e.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: e   = e.replace(symbol, eval(symbol))
+                cnt += len(e)
+                cnt -= len(rho)
+                try:    rho = rho.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: rho = rho.replace(symbol, eval(symbol))
+                cnt += len(rho)
+                cnt -= len(y)
+                try:    y   = y.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: y   = y.replace(symbol, eval(symbol))
+                cnt += len(y)
+                cnt -= len(e1)
+                try:    e1  = e1.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: e1  = e1.replace(symbol, eval(symbol))
+                cnt += len(e1)
+                cnt -= len(Nn)
+                try:    Nn  = Nn.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: Nn  = Nn.replace(symbol, eval(symbol))
+                cnt += len(Nn)
+                cnt -= len(Np)
+                try:    Np  = Np.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: Np  = Np.replace(symbol, eval(symbol))
+                cnt += len(Np)
+                cnt -= len(Vpn)
+                try:    Vpn = Vpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: Vpn = Vpn.replace(symbol, eval(symbol))
+                cnt += len(Vpn)
+                cnt -= len(Mpn)
+                try:    Mpn = Mpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: Mpn = Mpn.replace(symbol, eval(symbol))
+                cnt += len(Mpn)
+                
+        if qSymPy:
+            Nn = str(sympy.simplify(Nn))
+            Np = str(sympy.simplify(Np))
+            Vpn = str(sympy.simplify(Vpn))
+            Mpn = str(sympy.simplify(Mpn))
 
-        Nn = Nn.replace('fc',str(fc)).replace('fs',str(fs)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
-        Np = Np.replace('fs',str(fs)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
-        Vpn = Vpn.replace('fc',str(fc)).replace('fs',str(fs)).replace('y',str(y)).replace('e1',str(e1)).replace('k',str(k)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
-        Mpn = Mpn.replace('fs',str(fs)).replace('rho',str(rho)).replace('e1',str(e1)).replace('h',str(h)).replace('b',str(b))
-
-        if not qSymPy:
-            elemGrps[i][5] = Nn
-            elemGrps[i][6] = Np
-            elemGrps[i][7] = Vpn
-            elemGrps[i][8] = Mpn
-        else: 
-            elemGrps[i][5] = str(sympy.simplify(Nn)).replace(' ','')
-            elemGrps[i][6] = str(sympy.simplify(Np)).replace(' ','')
-            elemGrps[i][7] = str(sympy.simplify(Vpn)).replace(' ','')
-            elemGrps[i][8] = str(sympy.simplify(Mpn)).replace(' ','')
+        elemGrps[i][5] = splitAndApplyPrecisionToFormula(Nn)
+        elemGrps[i][6] = splitAndApplyPrecisionToFormula(Np)
+        elemGrps[i][7] = splitAndApplyPrecisionToFormula(Vpn)
+        elemGrps[i][8] = splitAndApplyPrecisionToFormula(Mpn)
        
     ### Reinforced Concrete (Walls & Slabs)
     elif props.prop_assistant_menu == "con_rei_wall":
@@ -1052,37 +1125,68 @@ def combineExpressions():
         if h == 0: h = 'h'
         if b == 0: b = 'b'
 
-        d = asst['Exp:d']
-        e = asst['Exp:e']
-        rho = asst['Exp:rho']
-        y = asst['Exp:y']
-        e1 = asst['Exp:e1']
-        Nn = asst['Exp:N-']
-        Np = asst['Exp:N+']
-        Vpn = asst['Exp:V+/-']
-        Mpn = asst['Exp:M+/-']
+        d = " (" +asst['Exp:d'] +") "
+        e = " (" +asst['Exp:e'] +") "
+        rho = " (" +asst['Exp:rho'] +") "
+        y = " (" +asst['Exp:y'] +") "
+        e1 = " (" +asst['Exp:e1'] +") "
+        Nn = " (" +asst['Exp:N-'] +") "
+        Np = " (" +asst['Exp:N+'] +") "
+        Vpn = " (" +asst['Exp:V+/-'] +") "
+        Mpn = " (" +asst['Exp:M+/-'] +") "
         
-        d = d.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
-        e = e.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
-        rho = rho.replace('dl',str(dl)).replace('n',str(n)).replace('pi',str(pi)).replace('h',str(h)).replace('b',str(b))
-        y = y.replace('dl',str(dl)).replace('ds',str(ds)).replace('pi',str(pi)).replace('h',str(h)).replace('c',str(c))
-        e1 = e1.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
+        symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','b','d','e','y']  # sorted by length
+        cnt = 0; cntLast = -1
+        while cnt != cntLast:
+            cntLast = cnt
+            for symbol in symbols:
+                cnt -= len(d)
+                try:    d   = d.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: d   = d.replace(symbol, eval(symbol))
+                cnt += len(d)
+                cnt -= len(e)
+                try:    e   = e.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: e   = e.replace(symbol, eval(symbol))
+                cnt += len(e)
+                cnt -= len(rho)
+                try:    rho = rho.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: rho = rho.replace(symbol, eval(symbol))
+                cnt += len(rho)
+                cnt -= len(y)
+                try:    y   = y.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: y   = y.replace(symbol, eval(symbol))
+                cnt += len(y)
+                cnt -= len(e1)
+                try:    e1  = e1.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: e1  = e1.replace(symbol, eval(symbol))
+                cnt += len(e1)
+                cnt -= len(Nn)
+                try:    Nn  = Nn.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: Nn  = Nn.replace(symbol, eval(symbol))
+                cnt += len(Nn)
+                cnt -= len(Np)
+                try:    Np  = Np.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: Np  = Np.replace(symbol, eval(symbol))
+                cnt += len(Np)
+                cnt -= len(Vpn)
+                try:    Vpn = Vpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: Vpn = Vpn.replace(symbol, eval(symbol))
+                cnt += len(Vpn)
+                cnt -= len(Mpn)
+                try:    Mpn = Mpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                except: Mpn = Mpn.replace(symbol, eval(symbol))
+                cnt += len(Mpn)
+                
+        if qSymPy:
+            Nn = str(sympy.simplify(Nn))
+            Np = str(sympy.simplify(Np))
+            Vpn = str(sympy.simplify(Vpn))
+            Mpn = str(sympy.simplify(Mpn))
 
-        Nn = Nn.replace('fc',str(fc)).replace('fs',str(fs)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
-        Np = Np.replace('fs',str(fs)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
-        Vpn = Vpn.replace('fc',str(fc)).replace('k',str(k)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
-        Mpn = Mpn.replace('fs',str(fs)).replace('rho',str(rho)).replace('e1',str(e1)).replace('h',str(h)).replace('b',str(b))
-
-        if not qSymPy:
-            elemGrps[i][5] = Nn
-            elemGrps[i][6] = Np
-            elemGrps[i][7] = Vpn
-            elemGrps[i][8] = Mpn
-        else: 
-            elemGrps[i][5] = str(sympy.simplify(Nn)).replace(' ','')
-            elemGrps[i][6] = str(sympy.simplify(Np)).replace(' ','')
-            elemGrps[i][7] = str(sympy.simplify(Vpn)).replace(' ','')
-            elemGrps[i][8] = str(sympy.simplify(Mpn)).replace(' ','')
+        elemGrps[i][5] = splitAndApplyPrecisionToFormula(Nn)
+        elemGrps[i][6] = splitAndApplyPrecisionToFormula(Np)
+        elemGrps[i][7] = splitAndApplyPrecisionToFormula(Vpn)
+        elemGrps[i][8] = splitAndApplyPrecisionToFormula(Mpn)
        
 ################################################################################
 ################################################################################
@@ -1243,7 +1347,7 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
     prop_k  = float(name='k', default=asst['k'], description='Scale factor.')
 
     prop_h = float(name='h', default=asst['h'], description='Height of element (mm).')
-    prop_b = float(name='w', default=asst['b'], description='Width of element (mm).')
+    prop_b = float(name='b', default=asst['b'], description='Width of element (mm).')
 
     prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
     prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
@@ -1338,7 +1442,7 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
     prop_k  = float(name='k', default=asst['k'], description='Scale factor.')
 
     prop_h = float(name='h', default=asst['h'], description='Height of element (mm).')
-    prop_b = float(name='w', default=asst['b'], description='Width of element (mm).')
+    prop_b = float(name='b', default=asst['b'], description='Width of element (mm).')
 
     prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
     prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
