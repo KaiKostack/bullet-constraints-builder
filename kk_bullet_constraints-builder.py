@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.04 #
+# Bullet Constraints Builder v2.05 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -50,37 +50,40 @@ asciiExport = 0              # 0     | Exports all constraint data to an ASCII t
 
 ### Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [
-# 0          1    2           3        4   5       6          7                   8               9       10   11   12   13    14   15    16     17
-# Name       RVP  Mat.preset  Density  CT  BTC     BTT        BTS                 BTB             Stiff.  TPD. TPR. TBD. TBR.  Bev. Scale Facing F.assistant 
-[ "Walls",   1,   "Masonry",  1800,    6,  "10*a", "1*a",     "1000*h**1.2",      "2500*h**1.2",  10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None"],              
-[ "Slabs",   1,   "Concrete", 2400,    6,  "30*a", "a**1.15", "30*a*(1/a)**.333", "25000*h**1.2", 10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
-[ "",        1,   "Concrete", 2400,    6,  "30*a", "a**1.15", "10000*h**1.2",     "25000*h**1.2", 10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"]
+# 0          1    2           3        4   5       6         7                8                9       10   11   12   13    14   15    16     17
+# 0          1    2           3        4   5       6         7         8      9         10     11      12   13   14   15    16   17    18     19
+# Name       RVP  Mat.preset  Density  CT  BTC     BTT       BTS       BTS90  BTB       BTB90  Stiff.  TPD. TPR. TBD. TBR.  Bev. Scale Facing F.assistant 
+[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "1*a",    "0.3*a",  "",    "100*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None"],              
+[ "Walls",   1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "0.7*a",  "",    "270*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
+[ "Slabs",   1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "0.7*a",  "",    "270*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
+[ "Columns", 1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "100*a",  "",    "270*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"],
+[ "",        1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "100*a",  "",    "270*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"]
 ] # Empty name means this group is to be used when element is not part of any element group
 
-### Column descriptions (in order from left to right):
-#
-# 1.  Required Vertex Pairs     | How many vertex pairs between two elements are required to generate a connection.
-#     (Depreciated)             | This can help to ensure there is an actual surface to surface connection between both elements (for at least 3 verts you can expect a shared surface).
-#                               | For two elements from different groups with different RVPs the lower number is decisive.
-# 2.  Material Preset           | Preset name of the physical material to be used from Blender's internal database.
-#                               | See Blender's Rigid Body Tools for a list of available presets.
-# 3.  Material Density          | Custom density value (kg/m^3) to use instead of material preset (0 = disabled).
-# 4.  Connection Type           | Connection type ID for the constraint presets defined by this script, see list below.
-# 5.  Break.Thresh.Compres.     | Real world material compressive breaking threshold in N/mm^2.
-# 6.  Break.Thresh.Tensile      | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
-# 7.  Break.Thresh.Shear        | Real world material shearing breaking threshold in N/mm^2.
-# 8.  Break.Thresh.Bend         | Real world material bending breaking threshold in N/mm^2.
-# 9.  Spring Stiffness          | Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.
-# 10. Tolerance Plast.Def.Dist. | For baking: Allowed tolerance for distance change in percent for plastic deformation (1.00 = 100 %)
-# 11. Tolerance Plast.Def.Rot.  | For baking: Allowed tolerance for angular change in radian for plastic deformation
-# 12. Tolerance Break.Def.Dist. | For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
-# 13. Tolerance Break.Def.Rot.  | For baking: Allowed tolerance for angular change in radian for connection removal
-# 14. Bevel                     | Use beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes)
-# 15. Scale                     | Apply scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes)
-# 16. Facing                    | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
-# 17. Formula Assistant         | Material specific formula assistant with related settings
-#
-# To add further settings each reference to elemGrps should be checked because indices may shift
+### Magic numbers / column descriptions for above element group settings (in order from left to right):
+EGSidxName = 0    # Group Name                | The name of the object group these settings will be used for
+EGSidxRqVP = 1    # Required Vertex Pairs     | How many vertex pairs between two elements are required to generate a connection.
+                  # (Depreciated)             | This can help to ensure there is an actual surface to surface connection between both elements (for at least 3 verts you can expect a shared surface).
+                  #                           | For two elements from different groups with different RVPs the lower number is decisive.
+EGSidxMatP = 2    # Material Preset           | Preset name of the physical material to be used from Blender's internal database.
+                  #                           | See Blender's Rigid Body Tools for a list of available presets.
+EGSidxDens = 3    # Material Density          | Custom density value (kg/m^3) to use instead of material preset (0 = disabled).
+EGSidxCTyp = 4    # Connection Type           | Connection type ID for the constraint presets defined by this script, see list below.
+EGSidxBTC  = 5    # Break.Thresh.Compres.     | Real world material compressive breaking threshold in N/mm^2.
+EGSidxBTT  = 6    # Break.Thresh.Tensile      | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
+EGSidxBTS  = 7    # Break.Thresh.Shear        | Real world material shearing breaking threshold in N/mm^2.
+EGSidxBTS9 = 8    # Break.Thresh.Shear 90°    | Real world material shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2. If undefined other shearing threshold is used.
+EGSidxBTB  = 9    # Break.Thresh.Bend         | Real world material bending breaking threshold in N/mm^2.
+EGSidxBTB9 = 10   # Break.Thresh.Bend 90°     | Real world material bending breaking threshold with h and w swapped (rotated by 90°) in N/mm^2. If undefined other shearing threshold is used.
+EGSidxSStf = 11   # Spring Stiffness          | Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.
+EGSidxTlPD = 12   # Tolerance Plast.Def.Dist. | For baking: Allowed tolerance for distance change in percent for plastic deformation (1.00 = 100 %)
+EGSidxTlPR = 13   # Tolerance Plast.Def.Rot.  | For baking: Allowed tolerance for angular change in radian for plastic deformation
+EGSidxTlBD = 14   # Tolerance Break.Def.Dist. | For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
+EGSidxTlBR = 15   # Tolerance Break.Def.Rot.  | For baking: Allowed tolerance for angular change in radian for connection removal
+EGSidxBevl = 16   # Bevel                     | Use beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes)
+EGSidxScal = 17   # Scale                     | Apply scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes)
+EGSidxFacg = 18   # Facing                    | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
+EGSidxAsst = 19   # Formula Assistant         | Material specific formula assistant with related settings
 
 ### Connection Types:
 connectTypes = [          # Cnt C T S B S T T T T      CT
@@ -186,11 +189,10 @@ pi = 3.1416
 ########################################
 
 # Add formula assistant settings to element groups
-asstIdx = 17
 for elemGrp in elemGrps:
     for formAssist in formulaAssistants:
-        if elemGrp[asstIdx] == formAssist['ID']:
-            elemGrp[asstIdx] = formAssist.copy()
+        if elemGrp[EGSidxAsst] == formAssist['ID']:
+            elemGrp[EGSidxAsst] = formAssist.copy()
             break
 
 # Backup default element groups for reset functionality
@@ -201,7 +203,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 0, 4),
+    "version": (2, 0, 5),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -392,7 +394,7 @@ def getConfigDataFromScene(scene):
         for i in range(len(elemGrpsProp[0])):
             column = []
             for j in range(len(elemGrpsProp)):
-                if j != asstIdx:
+                if j != EGSidxAsst:
                       column.append(elemGrpsProp[j][i])
                 else: column.append(dict(elemGrpsProp[j][i]).copy())
             missingColumns = len(elemGrps[0]) -len(column)
@@ -629,7 +631,7 @@ def clearAllDataFromScene(scene):
 
     ### Revert element scaling
     for k in range(len(objs)):
-        try: scale = elemGrps[objsEGrp[k]][15]  # Try in case elemGrps is from an old BCB version
+        try: scale = elemGrps[objsEGrp[k]][EGSidxScal]  # Try in case elemGrps is from an old BCB version
         except: pass
         else:
             obj = objs[k]
@@ -807,11 +809,11 @@ def monitor_initBuffers(scene):
         # Element group order defines priority for connection type (first preferred over latter) 
         if elemGrpA <= elemGrpB: elemGrp = elemGrpA
         else:                    elemGrp = elemGrpB
-        springStiff = elemGrps[elemGrp][9]
-        tol1dist = elemGrps[elemGrp][10]
-        tol1rot = elemGrps[elemGrp][11]
-        tol2dist = elemGrps[elemGrp][12]
-        tol2rot = elemGrps[elemGrp][13]
+        springStiff = elemGrps[elemGrp][EGSidxSStf]
+        tol1dist = elemGrps[elemGrp][EGSidxTlPD]
+        tol1rot = elemGrps[elemGrp][EGSidxTlPR]
+        tol2dist = elemGrps[elemGrp][EGSidxTlBD]
+        tol2rot = elemGrps[elemGrp][EGSidxTlBR]
         
         # Calculate distance between both elements of the connection
         distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
@@ -1051,7 +1053,7 @@ def combineExpressions():
     props = bpy.context.window_manager.bcb
     i = props.prop_menu_selectedElemGrp
     global elemGrps
-    asst = elemGrps[i][asstIdx]
+    asst = elemGrps[i][EGSidxAsst]
     
     ### Reinforced Concrete (Beams & Columns)
     if props.prop_assistant_menu == "con_rei_beam":
@@ -1134,10 +1136,10 @@ def combineExpressions():
             Vpn = str(sympy.simplify(Vpn))
             Mpn = str(sympy.simplify(Mpn))
 
-        elemGrps[i][5] = splitAndApplyPrecisionToFormula(Nn)
-        elemGrps[i][6] = splitAndApplyPrecisionToFormula(Np)
-        elemGrps[i][7] = splitAndApplyPrecisionToFormula(Vpn)
-        elemGrps[i][8] = splitAndApplyPrecisionToFormula(Mpn)
+        elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
+        elemGrps[i][EGSidxBTT] = splitAndApplyPrecisionToFormula(Np)
+        elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
+        elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
        
     ### Reinforced Concrete (Walls & Slabs)
     elif props.prop_assistant_menu == "con_rei_wall":
@@ -1220,10 +1222,10 @@ def combineExpressions():
             Vpn = str(sympy.simplify(Vpn))
             Mpn = str(sympy.simplify(Mpn))
 
-        elemGrps[i][5] = splitAndApplyPrecisionToFormula(Nn)
-        elemGrps[i][6] = splitAndApplyPrecisionToFormula(Np)
-        elemGrps[i][7] = splitAndApplyPrecisionToFormula(Vpn)
-        elemGrps[i][8] = splitAndApplyPrecisionToFormula(Mpn)
+        elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
+        elemGrps[i][EGSidxBTT] = splitAndApplyPrecisionToFormula(Np)
+        elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
+        elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
        
 ################################################################################
 ################################################################################
@@ -1267,9 +1269,9 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
         props = bpy.context.window_manager.bcb
         i = props.prop_menu_selectedElemGrp
         # Check if stored ID matches the correct assistant type otherwise return
-        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+        if elemGrps[i][EGSidxAsst]['ID'] != self.classID: return
 
-        asst = elemGrps[i][asstIdx]
+        asst = elemGrps[i][EGSidxAsst]
         self.prop_h = asst['h']
         self.prop_w = asst['w']
         self.prop_fs = asst['fs']
@@ -1297,28 +1299,28 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
         i = props.prop_menu_selectedElemGrp
         global elemGrps
         # Check if stored ID matches the correct assistant type otherwise return
-        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+        if elemGrps[i][EGSidxAsst]['ID'] != self.classID: return
 
-        elemGrps[i][asstIdx]['h'] = self.prop_h
-        elemGrps[i][asstIdx]['w'] = self.prop_w
-        elemGrps[i][asstIdx]['fs'] = self.prop_fs
-        elemGrps[i][asstIdx]['fc'] = self.prop_fc
-        elemGrps[i][asstIdx]['c'] = self.prop_c
-        elemGrps[i][asstIdx]['s'] = self.prop_s
-        elemGrps[i][asstIdx]['ds'] = self.prop_ds
-        elemGrps[i][asstIdx]['dl'] = self.prop_dl
-        elemGrps[i][asstIdx]['n'] = self.prop_n
-        elemGrps[i][asstIdx]['k'] = self.prop_k
+        elemGrps[i][EGSidxAsst]['h'] = self.prop_h
+        elemGrps[i][EGSidxAsst]['w'] = self.prop_w
+        elemGrps[i][EGSidxAsst]['fs'] = self.prop_fs
+        elemGrps[i][EGSidxAsst]['fc'] = self.prop_fc
+        elemGrps[i][EGSidxAsst]['c'] = self.prop_c
+        elemGrps[i][EGSidxAsst]['s'] = self.prop_s
+        elemGrps[i][EGSidxAsst]['ds'] = self.prop_ds
+        elemGrps[i][EGSidxAsst]['dl'] = self.prop_dl
+        elemGrps[i][EGSidxAsst]['n'] = self.prop_n
+        elemGrps[i][EGSidxAsst]['k'] = self.prop_k
 
-        elemGrps[i][asstIdx]['Exp:d'] = self.prop_exp_d
-        elemGrps[i][asstIdx]['Exp:e'] = self.prop_exp_e
-        elemGrps[i][asstIdx]['Exp:rho'] = self.prop_exp_rho
-        elemGrps[i][asstIdx]['Exp:y'] = self.prop_exp_y
-        elemGrps[i][asstIdx]['Exp:e1'] = self.prop_exp_e1
-        elemGrps[i][asstIdx]['Exp:N-'] = self.prop_exp_Nn
-        elemGrps[i][asstIdx]['Exp:N+'] = self.prop_exp_Np
-        elemGrps[i][asstIdx]['Exp:V+/-'] = self.prop_exp_Vpn
-        elemGrps[i][asstIdx]['Exp:M+/-'] = self.prop_exp_Mpn
+        elemGrps[i][EGSidxAsst]['Exp:d'] = self.prop_exp_d
+        elemGrps[i][EGSidxAsst]['Exp:e'] = self.prop_exp_e
+        elemGrps[i][EGSidxAsst]['Exp:rho'] = self.prop_exp_rho
+        elemGrps[i][EGSidxAsst]['Exp:y'] = self.prop_exp_y
+        elemGrps[i][EGSidxAsst]['Exp:e1'] = self.prop_exp_e1
+        elemGrps[i][EGSidxAsst]['Exp:N-'] = self.prop_exp_Nn
+        elemGrps[i][EGSidxAsst]['Exp:N+'] = self.prop_exp_Np
+        elemGrps[i][EGSidxAsst]['Exp:V+/-'] = self.prop_exp_Vpn
+        elemGrps[i][EGSidxAsst]['Exp:M+/-'] = self.prop_exp_Mpn
         
 ########################################
 
@@ -1361,9 +1363,9 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
         props = bpy.context.window_manager.bcb
         i = props.prop_menu_selectedElemGrp
         # Check if stored ID matches the correct assistant type otherwise return
-        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+        if elemGrps[i][EGSidxAsst]['ID'] != self.classID: return
 
-        asst = elemGrps[i][asstIdx]
+        asst = elemGrps[i][EGSidxAsst]
         self.prop_h = asst['h']
         self.prop_w = asst['w']
         self.prop_fs = asst['fs']
@@ -1391,28 +1393,28 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
         i = props.prop_menu_selectedElemGrp
         global elemGrps
         # Check if stored ID matches the correct assistant type otherwise return
-        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+        if elemGrps[i][EGSidxAsst]['ID'] != self.classID: return
 
-        elemGrps[i][asstIdx]['h'] = self.prop_h
-        elemGrps[i][asstIdx]['w'] = self.prop_w
-        elemGrps[i][asstIdx]['fs'] = self.prop_fs
-        elemGrps[i][asstIdx]['fc'] = self.prop_fc
-        elemGrps[i][asstIdx]['c'] = self.prop_c
-        elemGrps[i][asstIdx]['s'] = self.prop_s
-        elemGrps[i][asstIdx]['ds'] = self.prop_ds
-        elemGrps[i][asstIdx]['dl'] = self.prop_dl
-        elemGrps[i][asstIdx]['n'] = self.prop_n
-        elemGrps[i][asstIdx]['k'] = self.prop_k
+        elemGrps[i][EGSidxAsst]['h'] = self.prop_h
+        elemGrps[i][EGSidxAsst]['w'] = self.prop_w
+        elemGrps[i][EGSidxAsst]['fs'] = self.prop_fs
+        elemGrps[i][EGSidxAsst]['fc'] = self.prop_fc
+        elemGrps[i][EGSidxAsst]['c'] = self.prop_c
+        elemGrps[i][EGSidxAsst]['s'] = self.prop_s
+        elemGrps[i][EGSidxAsst]['ds'] = self.prop_ds
+        elemGrps[i][EGSidxAsst]['dl'] = self.prop_dl
+        elemGrps[i][EGSidxAsst]['n'] = self.prop_n
+        elemGrps[i][EGSidxAsst]['k'] = self.prop_k
 
-        elemGrps[i][asstIdx]['Exp:d'] = self.prop_exp_d
-        elemGrps[i][asstIdx]['Exp:e'] = self.prop_exp_e
-        elemGrps[i][asstIdx]['Exp:rho'] = self.prop_exp_rho
-        elemGrps[i][asstIdx]['Exp:y'] = self.prop_exp_y
-        elemGrps[i][asstIdx]['Exp:e1'] = self.prop_exp_e1
-        elemGrps[i][asstIdx]['Exp:N-'] = self.prop_exp_Nn
-        elemGrps[i][asstIdx]['Exp:N+'] = self.prop_exp_Np
-        elemGrps[i][asstIdx]['Exp:V+/-'] = self.prop_exp_Vpn
-        elemGrps[i][asstIdx]['Exp:M+/-'] = self.prop_exp_Mpn
+        elemGrps[i][EGSidxAsst]['Exp:d'] = self.prop_exp_d
+        elemGrps[i][EGSidxAsst]['Exp:e'] = self.prop_exp_e
+        elemGrps[i][EGSidxAsst]['Exp:rho'] = self.prop_exp_rho
+        elemGrps[i][EGSidxAsst]['Exp:y'] = self.prop_exp_y
+        elemGrps[i][EGSidxAsst]['Exp:e1'] = self.prop_exp_e1
+        elemGrps[i][EGSidxAsst]['Exp:N-'] = self.prop_exp_Nn
+        elemGrps[i][EGSidxAsst]['Exp:N+'] = self.prop_exp_Np
+        elemGrps[i][EGSidxAsst]['Exp:V+/-'] = self.prop_exp_Vpn
+        elemGrps[i][EGSidxAsst]['Exp:M+/-'] = self.prop_exp_Mpn
 
 ########################################
 
@@ -1455,56 +1457,56 @@ class bcb_props(bpy.types.PropertyGroup):
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
         else: j = 0
-        exec("prop_elemGrp_%d_0" %i +" = string(name='Grp. Name', default=elemGrps[j][0], description='The name of the element group.')")
-        exec("prop_elemGrp_%d_4" %i +" = int(name='Connection Type', default=elemGrps[j][4], min=1, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
+        exec("prop_elemGrp_%d_EGSidxName" %i +" = string(name='Grp. Name', default=elemGrps[j][EGSidxName], description='The name of the element group.')")
+        exec("prop_elemGrp_%d_EGSidxCTyp" %i +" = int(name='Connection Type', default=elemGrps[j][EGSidxCTyp], min=1, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
 
-        exec("prop_elemGrp_%d_5" %i +" = string(name='Compressive', default=elemGrps[j][5], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_6" %i +" = string(name='Tensile', default=elemGrps[j][6], description='Math expression for the material´s real world tensile breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_7" %i +" = string(name='Shear', default=elemGrps[j][7], description='Math expression for the material´s real world shearing breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_8" %i +" = string(name='Bend', default=elemGrps[j][8], description='Math expression for the material´s real world bending breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTC" %i +" = string(name='Compressive', default=elemGrps[j][EGSidxBTC], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTT" %i +" = string(name='Tensile', default=elemGrps[j][EGSidxBTT], description='Math expression for the material´s real world tensile breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTS" %i +" = string(name='Shear', default=elemGrps[j][EGSidxBTS], description='Math expression for the material´s real world shearing breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTS9" %i +" = string(name='Shear 90°', default=elemGrps[j][EGSidxBTS9], description='Math expression for the material´s real world shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTB" %i +" = string(name='Bend', default=elemGrps[j][EGSidxBTB], description='Math expression for the material´s real world bending breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTB9" %i +" = string(name='Bend 90°', default=elemGrps[j][EGSidxBTB9], description='Math expression for the material´s real world bending breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
 
-        exec("prop_elemGrp_%d_9" %i +" = float(name='Spring Stiffness', default=elemGrps[j][9], min=0.0, max=10**20, description='Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.')")
-        exec("prop_elemGrp_%d_1" %i +" = int(name='Req. Vertex Pairs', default=elemGrps[j][1], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
-        exec("prop_elemGrp_%d_2" %i +" = string(name='Mat. Preset', default=elemGrps[j][2], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
-        exec("prop_elemGrp_%d_3" %i +" = float(name='Density', default=elemGrps[j][3], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
-        exec("prop_elemGrp_%d_10" %i +" = float(name='Dist. Tol. Plastic', default=elemGrps[j][10], min=0.0, max=10.0, description='For baking: Allowed tolerance for distance change in percent for plastic deformation (1.00 = 100 %).')")
-        exec("prop_elemGrp_%d_11" %i +" = float(name='Rot. Tol. Plastic', default=elemGrps[j][11], min=0.0, max=pi, description='For baking: Allowed tolerance for angular change in radian for plastic deformation.')")
-        exec("prop_elemGrp_%d_12" %i +" = float(name='Dist. Tol. Break', default=elemGrps[j][12], min=0.0, max=10.0, description='For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).')")
-        exec("prop_elemGrp_%d_13" %i +" = float(name='Rot. Tol. Break', default=elemGrps[j][13], min=0.0, max=pi, description='For baking: Allowed tolerance for angular change in radian for connection removal.')")
-        exec("prop_elemGrp_%d_14" %i +" = bool(name='Bevel', default=elemGrps[j][14], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
-        exec("prop_elemGrp_%d_15" %i +" = float(name='Rescale Factor', default=elemGrps[j][15], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
-        exec("prop_elemGrp_%d_16" %i +" = bool(name='Facing', default=elemGrps[j][16], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
+        exec("prop_elemGrp_%d_EGSidxSStf" %i +" = float(name='Spring Stiffness', default=elemGrps[j][EGSidxSStf], min=0.0, max=10**20, description='Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.')")
+        exec("prop_elemGrp_%d_EGSidxRqVP" %i +" = int(name='Req. Vertex Pairs', default=elemGrps[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
+        exec("prop_elemGrp_%d_EGSidxMatP" %i +" = string(name='Mat. Preset', default=elemGrps[j][EGSidxMatP], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
+        exec("prop_elemGrp_%d_EGSidxDens" %i +" = float(name='Density', default=elemGrps[j][EGSidxDens], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
+        exec("prop_elemGrp_%d_EGSidxTlPD" %i +" = float(name='Dist. Tol. Plastic', default=elemGrps[j][EGSidxTlPD], min=0.0, max=10.0, description='For baking: Allowed tolerance for distance change in percent for plastic deformation (1.00 = 100 %).')")
+        exec("prop_elemGrp_%d_EGSidxTlPR" %i +" = float(name='Rot. Tol. Plastic', default=elemGrps[j][EGSidxTlPR], min=0.0, max=pi, description='For baking: Allowed tolerance for angular change in radian for plastic deformation.')")
+        exec("prop_elemGrp_%d_EGSidxTlBD" %i +" = float(name='Dist. Tol. Break', default=elemGrps[j][EGSidxTlBD], min=0.0, max=10.0, description='For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).')")
+        exec("prop_elemGrp_%d_EGSidxTlBR" %i +" = float(name='Rot. Tol. Break', default=elemGrps[j][EGSidxTlBR], min=0.0, max=pi, description='For baking: Allowed tolerance for angular change in radian for connection removal.')")
+        exec("prop_elemGrp_%d_EGSidxBevl" %i +" = bool(name='Bevel', default=elemGrps[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
+        exec("prop_elemGrp_%d_EGSidxScal" %i +" = float(name='Rescale Factor', default=elemGrps[j][EGSidxScal], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
+        exec("prop_elemGrp_%d_EGSidxFacg" %i +" = bool(name='Facing', default=elemGrps[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
 
     ###### Update menu related properties from global vars
     def props_update_menu(self):
 
         ### Update main class properties
         for i in range(len(elemGrps)):
-            exec("self.prop_elemGrp_%d_0" %i +" = elemGrps[i][0]")
-            exec("self.prop_elemGrp_%d_1" %i +" = elemGrps[i][1]")
-            exec("self.prop_elemGrp_%d_2" %i +" = elemGrps[i][2]")
-            exec("self.prop_elemGrp_%d_3" %i +" = elemGrps[i][3]")
-            exec("self.prop_elemGrp_%d_4" %i +" = elemGrps[i][4]")
-            try: exec("self.prop_elemGrp_%d_5" %i +" = elemGrps[i][5]")
-            except: pass
-            try: exec("self.prop_elemGrp_%d_6" %i +" = elemGrps[i][6]")
-            except: pass
-            try: exec("self.prop_elemGrp_%d_7" %i +" = elemGrps[i][7]")
-            except: pass
-            try: exec("self.prop_elemGrp_%d_8" %i +" = elemGrps[i][8]")
-            except: pass
-            exec("self.prop_elemGrp_%d_9" %i +" = elemGrps[i][9]")
-            exec("self.prop_elemGrp_%d_10" %i +" = elemGrps[i][10]")
-            exec("self.prop_elemGrp_%d_11" %i +" = elemGrps[i][11]")
-            exec("self.prop_elemGrp_%d_12" %i +" = elemGrps[i][12]")
-            exec("self.prop_elemGrp_%d_13" %i +" = elemGrps[i][13]")
-            exec("self.prop_elemGrp_%d_14" %i +" = elemGrps[i][14]")
-            exec("self.prop_elemGrp_%d_15" %i +" = elemGrps[i][15]")
-            exec("self.prop_elemGrp_%d_16" %i +" = elemGrps[i][16]")
+            exec("self.prop_elemGrp_%d_EGSidxName" %i +" = elemGrps[i][EGSidxName]")
+            exec("self.prop_elemGrp_%d_EGSidxRqVP" %i +" = elemGrps[i][EGSidxRqVP]")
+            exec("self.prop_elemGrp_%d_EGSidxMatP" %i +" = elemGrps[i][EGSidxMatP]")
+            exec("self.prop_elemGrp_%d_EGSidxDens" %i +" = elemGrps[i][EGSidxDens]")
+            exec("self.prop_elemGrp_%d_EGSidxCTyp" %i +" = elemGrps[i][EGSidxCTyp]")
+            exec("self.prop_elemGrp_%d_EGSidxBTC" %i +" = elemGrps[i][EGSidxBTC]")
+            exec("self.prop_elemGrp_%d_EGSidxBTT" %i +" = elemGrps[i][EGSidxBTT]")
+            exec("self.prop_elemGrp_%d_EGSidxBTS" %i +" = elemGrps[i][EGSidxBTS]")
+            exec("self.prop_elemGrp_%d_EGSidxBTS9" %i +" = elemGrps[i][EGSidxBTS9]")
+            exec("self.prop_elemGrp_%d_EGSidxBTB" %i +" = elemGrps[i][EGSidxBTB]")
+            exec("self.prop_elemGrp_%d_EGSidxBTB9" %i +" = elemGrps[i][EGSidxBTB9]")
+            exec("self.prop_elemGrp_%d_EGSidxSStf" %i +" = elemGrps[i][EGSidxSStf]")
+            exec("self.prop_elemGrp_%d_EGSidxTlPD" %i +" = elemGrps[i][EGSidxTlPD]")
+            exec("self.prop_elemGrp_%d_EGSidxTlPR" %i +" = elemGrps[i][EGSidxTlPR]")
+            exec("self.prop_elemGrp_%d_EGSidxTlBD" %i +" = elemGrps[i][EGSidxTlBD]")
+            exec("self.prop_elemGrp_%d_EGSidxTlBR" %i +" = elemGrps[i][EGSidxTlBR]")
+            exec("self.prop_elemGrp_%d_EGSidxBevl" %i +" = elemGrps[i][EGSidxBevl]")
+            exec("self.prop_elemGrp_%d_EGSidxScal" %i +" = elemGrps[i][EGSidxScal]")
+            exec("self.prop_elemGrp_%d_EGSidxFacg" %i +" = elemGrps[i][EGSidxFacg]")
         
         # Update fromula assistant submenu according to the chosen element group
         i = self.prop_menu_selectedElemGrp
-        try: self.prop_assistant_menu = elemGrps[i][asstIdx]['ID']
+        try: self.prop_assistant_menu = elemGrps[i][EGSidxAsst]['ID']
         except: self.prop_assistant_menu = "None"
         
         ### Update also the other classes properties
@@ -1531,20 +1533,33 @@ class bcb_props(bpy.types.PropertyGroup):
 
         global elemGrps
         for i in range(len(elemGrps)):
-            elemGrpNew = []
-            for j in range(len(elemGrps[i])):
-                if j != asstIdx:
-                      elemGrpNew.append(eval("self.prop_elemGrp_%d_%d" %(i, j)))
-                else: elemGrpNew.append(elemGrps[i][j])
-            elemGrps[i] = elemGrpNew
+            elemGrps[i][EGSidxName] = eval("self.prop_elemGrp_%d_EGSidxName" %i)
+            elemGrps[i][EGSidxRqVP] = eval("self.prop_elemGrp_%d_EGSidxRqVP" %i)
+            elemGrps[i][EGSidxMatP] = eval("self.prop_elemGrp_%d_EGSidxMatP" %i)
+            elemGrps[i][EGSidxDens] = eval("self.prop_elemGrp_%d_EGSidxDens" %i)
+            elemGrps[i][EGSidxCTyp] = eval("self.prop_elemGrp_%d_EGSidxCTyp" %i)
+            elemGrps[i][EGSidxBTC] = eval("self.prop_elemGrp_%d_EGSidxBTC" %i)
+            elemGrps[i][EGSidxBTT] = eval("self.prop_elemGrp_%d_EGSidxBTT" %i)
+            elemGrps[i][EGSidxBTS] = eval("self.prop_elemGrp_%d_EGSidxBTS" %i)
+            elemGrps[i][EGSidxBTS9] = eval("self.prop_elemGrp_%d_EGSidxBTS9" %i)
+            elemGrps[i][EGSidxBTB] = eval("self.prop_elemGrp_%d_EGSidxBTB" %i)
+            elemGrps[i][EGSidxBTB9] = eval("self.prop_elemGrp_%d_EGSidxBTB9" %i)
+            elemGrps[i][EGSidxSStf] = eval("self.prop_elemGrp_%d_EGSidxSStf" %i)
+            elemGrps[i][EGSidxTlPD] = eval("self.prop_elemGrp_%d_EGSidxTlPD" %i)
+            elemGrps[i][EGSidxTlPR] = eval("self.prop_elemGrp_%d_EGSidxTlPR" %i)
+            elemGrps[i][EGSidxTlBD] = eval("self.prop_elemGrp_%d_EGSidxTlBD" %i)
+            elemGrps[i][EGSidxTlBR] = eval("self.prop_elemGrp_%d_EGSidxTlBR" %i)
+            elemGrps[i][EGSidxBevl] = eval("self.prop_elemGrp_%d_EGSidxBevl" %i)
+            elemGrps[i][EGSidxScal] = eval("self.prop_elemGrp_%d_EGSidxScal" %i)
+            elemGrps[i][EGSidxFacg] = eval("self.prop_elemGrp_%d_EGSidxFacg" %i)
 
         ### If different formula assistant ID from that stored in element group then update with defaults
         i = self.prop_menu_selectedElemGrp
-        if self.prop_assistant_menu != elemGrps[i][asstIdx]['ID']:
+        if self.prop_assistant_menu != elemGrps[i][EGSidxAsst]['ID']:
             # Add formula assistant settings to element group
             for formAssist in formulaAssistants:
                 if self.prop_assistant_menu == formAssist['ID']:
-                    elemGrps[i][asstIdx] = formAssist.copy()
+                    elemGrps[i][EGSidxAsst] = formAssist.copy()
 
         ### Update global vars also from the other classes properties
         props_asst_con_rei_beam = bpy.context.window_manager.bcb_asst_con_rei_beam
@@ -1571,7 +1586,7 @@ class bcb_panel(bpy.types.Panel):
         obj = context.object
         scene = bpy.context.scene
 
-        #print(props_asst_con_rei_beam.prop_h, '\n', elemGrps[props.prop_menu_selectedElemGrp][asstIdx])
+        #print(props_asst_con_rei_beam.prop_h, '\n', elemGrps[props.prop_menu_selectedElemGrp][EGSidxAsst])
 
         row = layout.row()
         if not props.prop_menu_gotData: 
@@ -1674,27 +1689,27 @@ class bcb_panel(bpy.types.Panel):
             if i == props.prop_menu_selectedElemGrp:
                   row = box.box().row()
             else: row = box.row()
-            elemGrp0 = eval("props.prop_elemGrp_%d_0" %i)
-            elemGrp4 = ct = eval("props.prop_elemGrp_%d_4" %i)
+            prop_EGSidxName = eval("props.prop_elemGrp_%d_EGSidxName" %i)
+            prop_EGSidxCTyp = ct = eval("props.prop_elemGrp_%d_EGSidxCTyp" %i)
             try: connectType = connectTypes[ct]
             except: connectType = connectTypes[0]  # In case the connection type is unknown (no constraints)
             if not connectType[2][0]: elemGrp5 = "-"
-            else: elemGrp5 = eval("props.prop_elemGrp_%d_5" %i)
+            else: prop_EGSidxBTC = eval("props.prop_elemGrp_%d_EGSidxBTC" %i)
             if not connectType[2][1]: elemGrp6 = "-"
-            else: elemGrp6 = eval("props.prop_elemGrp_%d_6" %i)
+            else: prop_EGSidxBTT = eval("props.prop_elemGrp_%d_EGSidxBTT" %i)
             if not connectType[2][2]: elemGrp7 = "-"
-            else: elemGrp7 = eval("props.prop_elemGrp_%d_7" %i)
+            else: prop_EGSidxBTS = eval("props.prop_elemGrp_%d_EGSidxBTS" %i)
             if not connectType[2][3]: elemGrp8 = "-"
-            else: elemGrp8 = eval("props.prop_elemGrp_%d_8" %i)
+            else: prop_EGSidxBTB = eval("props.prop_elemGrp_%d_EGSidxBTB" %i)
             split = row.split(percentage=.25, align=False)
-            if elemGrp0 == "": split.label(text="[Def.]")
-            else:              split.label(text=str(elemGrp0))
+            if prop_EGSidxName == "": split.label(text="[Def.]")
+            else:                     split.label(text=str(prop_EGSidxName))
             split2 = split.split(align=False)
-            split2.label(text=str(elemGrp4))
-            split2.label(text=str(elemGrp5))
-            split2.label(text=str(elemGrp6))
-            split2.label(text=str(elemGrp7))
-            split2.label(text=str(elemGrp8))
+            split2.label(text=str(prop_EGSidxCTyp))
+            split2.label(text=str(prop_EGSidxBTC))
+            split2.label(text=str(prop_EGSidxBTT))
+            split2.label(text=str(prop_EGSidxBTS))
+            split2.label(text=str(prop_EGSidxBTB))
         row = box.row()
         row.operator("bcb.up", icon="TRIA_UP")
         row.operator("bcb.down", icon="TRIA_DOWN")
@@ -1703,7 +1718,7 @@ class bcb_panel(bpy.types.Panel):
         
         layout.separator()
         i = props.prop_menu_selectedElemGrp
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_0" %i)
+        row = layout.row(); row.prop(props, "prop_elemGrp_%d_EGSidxName" %i)
 
         ###### Formula assistant box
 
@@ -1782,10 +1797,10 @@ class bcb_panel(bpy.types.Panel):
 
         ###### Element group settings (more)        
 
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_4" %i)
+        row = layout.row(); row.prop(props, "prop_elemGrp_%d_EGSidxCTyp" %i)
         if props.prop_menu_gotData: row.enabled = 0
             
-        ct = eval("props.prop_elemGrp_%d_4" %i)
+        ct = eval("props.prop_elemGrp_%d_EGSidxCTyp" %i)
         try: connectType = connectTypes[ct]
         except: connectType = connectTypes[0]  # In case the connection type is unknown (no constraints)
         box = layout.box();
@@ -1797,60 +1812,60 @@ class bcb_panel(bpy.types.Panel):
         a = h = w = b = s = 1   
 
         row = layout.row()
-        expression = eval("props.prop_elemGrp_%d_5" %i)
+        expression = eval("props.prop_elemGrp_%d_EGSidxBTC" %i)
         try: value = eval(expression)
         except: row.alert = 1; qAlert = 1
         else: qAlert = 0
-        row.prop(props, "prop_elemGrp_%d_5" %i)
+        row.prop(props, "prop_elemGrp_%d_EGSidxBTC" %i)
         if not connectType[2][0]: row.active = 0
         if qAlert: row = layout.row(); row.label(text="Error in expression")
 
         row = layout.row()
-        expression = eval("props.prop_elemGrp_%d_6" %i)
+        expression = eval("props.prop_elemGrp_%d_EGSidxBTT" %i)
         try: value = eval(expression)
         except: row.alert = 1; qAlert = 1
         else: qAlert = 0
-        row.prop(props, "prop_elemGrp_%d_6" %i)
+        row.prop(props, "prop_elemGrp_%d_EGSidxBTT" %i)
         if not connectType[2][1]: row.active = 0
         if qAlert: row = layout.row(); row.label(text="Error in expression")
 
         row = layout.row()
-        expression = eval("props.prop_elemGrp_%d_7" %i)
+        expression = eval("props.prop_elemGrp_%d_EGSidxBTS" %i)
         try: value = eval(expression)
         except: row.alert = 1; qAlert = 1
         else: qAlert = 0
-        row.prop(props, "prop_elemGrp_%d_7" %i)
+        row.prop(props, "prop_elemGrp_%d_EGSidxBTS" %i)
         if not connectType[2][2]: row.active = 0
         if qAlert: row = layout.row(); row.label(text="Error in expression")
 
         row = layout.row()
-        expression = eval("props.prop_elemGrp_%d_8" %i)
+        expression = eval("props.prop_elemGrp_%d_EGSidxBTB" %i)
         try: value = eval(expression)
         except: row.alert = 1; qAlert = 1
         else: qAlert = 0
-        row.prop(props, "prop_elemGrp_%d_8" %i)
+        row.prop(props, "prop_elemGrp_%d_EGSidxBTB" %i)
         if not connectType[2][3]: row.active = 0
         if qAlert: row = layout.row(); row.label(text="Error in expression")
 
         layout.separator()
-        #row = layout.row(); row.prop(props, "prop_elemGrp_%d_1" %i)
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_2" %i)
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_3" %i)
+        #row = layout.row(); row.prop(props, "prop_elemGrp_%d_EGSidxRqVP" %i)
+        row = layout.row(); row.prop(props, "prop_elemGrp_%d_EGSidxMatP" %i)
+        row = layout.row(); row.prop(props, "prop_elemGrp_%d_EGSidxDens" %i)
         
         layout.separator()
         row = layout.row()
         if props.prop_menu_gotData: row.enabled = 0
-        row.prop(props, "prop_elemGrp_%d_15" %i)
+        row.prop(props, "prop_elemGrp_%d_EGSidxScal" %i)
         row = layout.row()
         if props.prop_menu_gotData: row.enabled = 0
-        row.prop(props, "prop_elemGrp_%d_14" %i)
-        elemGrp14 = eval("props.prop_elemGrp_%d_14" %i)
-        elemGrp16 = eval("props.prop_elemGrp_%d_16" %i)
-        if elemGrp14 and not elemGrp16: row.alert = 1
+        row.prop(props, "prop_elemGrp_%d_EGSidxBevl" %i)
+        prop_EGSidxBevl = eval("props.prop_elemGrp_%d_EGSidxBevl" %i)
+        prop_EGSidxFacg = eval("props.prop_elemGrp_%d_EGSidxFacg" %i)
+        if prop_EGSidxBevl and not prop_EGSidxFacg: row.alert = 1
         if props.prop_menu_gotData: row.enabled = 0
-        row.prop(props, "prop_elemGrp_%d_16" %i)
+        row.prop(props, "prop_elemGrp_%d_EGSidxFacg" %i)
         
-        if elemGrp14 and not elemGrp16:
+        if prop_EGSidxBevl and not prop_EGSidxFacg:
             row = layout.row(); row.label(text="Warning: Disabled facing")
             row = layout.row(); row.label(text="makes bevel permanent!")
             
@@ -1860,24 +1875,18 @@ class bcb_panel(bpy.types.Panel):
         box.prop(props, "prop_submenu_advancedE", text="Advanced Element Settings", icon=self.icon(props.prop_submenu_advancedE), emboss = False)
 
         if props.prop_submenu_advancedE:
-            elemGrp9 = eval("props.prop_elemGrp_%d_9" %i)
-            elemGrp10 = eval("props.prop_elemGrp_%d_10" %i)
-            elemGrp11 = eval("props.prop_elemGrp_%d_11" %i)
-            elemGrp12 = eval("props.prop_elemGrp_%d_12" %i)
-            elemGrp13 = eval("props.prop_elemGrp_%d_13" %i)
-            
-            row = box.row(); row.prop(props, "prop_elemGrp_%d_9" %i)
+            row = box.row(); row.prop(props, "prop_elemGrp_%d_EGSidxSStf" %i)
             if not connectType[2][4]: row.active = 0
             row = box.row(); row.label(text="Plastic & Breaking Tolerances:")
             row = box.row()
             split = row.split(percentage=.50, align=False);
-            split.prop(props, "prop_elemGrp_%d_10" %i)
-            split.prop(props, "prop_elemGrp_%d_11" %i)
+            split.prop(props, "prop_elemGrp_%d_EGSidxTlPD" %i)
+            split.prop(props, "prop_elemGrp_%d_EGSidxTlPR" %i)
             if not connectType[2][5]: split.active = 0
             row = box.row()
             split = row.split(percentage=.50, align=False);
-            split.prop(props, "prop_elemGrp_%d_12" %i)
-            split.prop(props, "prop_elemGrp_%d_13" %i)
+            split.prop(props, "prop_elemGrp_%d_EGSidxTlBD" %i)
+            split.prop(props, "prop_elemGrp_%d_EGSidxTlBR" %i)
             if not connectType[2][7]: split.active = 0
             
         ### Update global vars from menu related properties
@@ -2249,7 +2258,7 @@ def createElementGroupIndex(objs):
     for obj in objs:
         objGrpsTmp = []
         for elemGrp in elemGrps:
-            elemGrpName = elemGrp[0]
+            elemGrpName = elemGrp[EGSidxName]
             if elemGrpName in bpy.data.groups:
                 if obj.name in bpy.data.groups[elemGrpName].objects:
                     objGrpsTmp.append(elemGrps.index(elemGrp))
@@ -2260,7 +2269,7 @@ def createElementGroupIndex(objs):
         else: q = 0
         if q:
             for elemGrp in elemGrps:
-                elemGrpName = elemGrp[0]
+                elemGrpName = elemGrp[EGSidxName]
                 if elemGrpName == '':
                     objGrpsTmp = [elemGrps.index(elemGrp)]
                     break
@@ -2399,7 +2408,7 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                             connectsPairDist.append(aDist[j])
                             connectCnt += 1
                             if connectCnt == connectionCountLimit:
-                                if elemGrps[objsEGrp[k]][1] <= 1:
+                                if elemGrps[objsEGrp[k]][EGSidxRqVP] <= 1:
                                     qNextObj = 1
                                     break
                             
@@ -2617,8 +2626,8 @@ def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair):
     for i in range(len(connectsPair)):
         pair = connectsPair[i]
         vertPairCnt = len(connectsPair[i]) /2
-        reqVertexPairsObjA = elemGrps[objsEGrp[objs.index(objs[pair[0]])]][1]
-        reqVertexPairsObjB = elemGrps[objsEGrp[objs.index(objs[pair[1]])]][1]
+        reqVertexPairsObjA = elemGrps[objsEGrp[objs.index(objs[pair[0]])]][EGSidxRqVP]
+        reqVertexPairsObjB = elemGrps[objsEGrp[objs.index(objs[pair[1]])]][EGSidxRqVP]
         if vertPairCnt >= reqVertexPairsObjA and vertPairCnt >= reqVertexPairsObjB:
             connectsPairTmp.append(pair)
             connectCnt += 1
@@ -3124,7 +3133,7 @@ def createConnectionData(objsEGrp, connectsPair):
         # Element group order defines priority for connection type (first preferred over latter) 
         if elemGrpA <= elemGrpB: elemGrp = elemGrpA
         else:                    elemGrp = elemGrpB
-        connectTypeIdx = elemGrps[elemGrp][4]
+        connectTypeIdx = elemGrps[elemGrp][EGSidxCTyp]
         try: connectType = connectTypes[connectTypeIdx]
         except: connectsConsts.append([])  # In case the connection type is unknown (no constraints)
         else:
@@ -3518,16 +3527,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         if elemGrpA <= elemGrpB: elemGrp = elemGrpA
         else:                    elemGrp = elemGrpB
         
-        connectType = elemGrps[elemGrp][4]
-        brkThresExpr1 = elemGrps[elemGrp][5]
-        brkThresExpr2 = elemGrps[elemGrp][6]
-        brkThresExpr3 = elemGrps[elemGrp][7]
-        brkThresExpr4 = elemGrps[elemGrp][8]
-        springStiff = elemGrps[elemGrp][9]
-        tol1dist = elemGrps[elemGrp][10]
-        tol1rot = elemGrps[elemGrp][11]
-        tol2dist = elemGrps[elemGrp][12]
-        tol2rot = elemGrps[elemGrp][13]
+        connectType = elemGrps[elemGrp][EGSidxCTyp]
+        brkThresExpr1 = elemGrps[elemGrp][EGSidxBTC]
+        brkThresExpr2 = elemGrps[elemGrp][EGSidxBTT]
+        brkThresExpr3 = elemGrps[elemGrp][EGSidxBTS]
+        brkThresExpr4 = elemGrps[elemGrp][EGSidxBTB]
+        springStiff = elemGrps[elemGrp][EGSidxSStf]
+        tol1dist = elemGrps[elemGrp][EGSidxTlPD]
+        tol1rot = elemGrps[elemGrp][EGSidxTlPR]
+        tol2dist = elemGrps[elemGrp][EGSidxTlBD]
+        tol2rot = elemGrps[elemGrp][EGSidxTlBR]
         
         if not asciiExport:
             ### Check if full update is necessary (optimization)
@@ -4290,7 +4299,7 @@ def createParentsIfRequired(scene, objs, objsEGrp, childObjs):
     q = 0
     for k in range(len(objs)):
         obj = objs[k]
-        facing = elemGrps[objsEGrp[k]][16]
+        facing = elemGrps[objsEGrp[k]][EGSidxFacg]
         if facing:
             q = 1
             if obj.select:
@@ -4350,7 +4359,7 @@ def applyScale(scene, objs, objsEGrp, childObjs):
     obj = None
     ### Select objects in question
     for k in range(len(objs)):
-        scale = elemGrps[objsEGrp[k]][15]
+        scale = elemGrps[objsEGrp[k]][EGSidxScal]
         if scale != 0 and scale != 1:
             obj = objs[k]
             obj.select = 1
@@ -4362,7 +4371,7 @@ def applyScale(scene, objs, objsEGrp, childObjs):
         for k in range(len(objs)):
             obj = objs[k]
             if obj.select:
-                scale = elemGrps[objsEGrp[k]][15]
+                scale = elemGrps[objsEGrp[k]][EGSidxScal]
                 obj.scale *= scale
                 # For children invert scaling to compensate for indirect scaling through parenting
                 if "bcb_child" in obj.keys():
@@ -4381,7 +4390,7 @@ def applyBevel(scene, objs, objsEGrp, childObjs):
     obj = None
     ### Select objects in question
     for k in range(len(objs)):
-        qBevel = elemGrps[objsEGrp[k]][14]
+        qBevel = elemGrps[objsEGrp[k]][EGSidxBevl]
         if qBevel:
             obj = objs[k]
             obj.select = 1
@@ -4450,8 +4459,8 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                         else:
                             scene.objects[obj["bcb_child"]].select = 1
         
-        materialPreset = elemGrp[2]
-        materialDensity = elemGrp[3]
+        materialPreset = elemGrp[EGSidxMatP]
+        materialDensity = elemGrp[EGSidxDens]
         if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
         else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
     
