@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.00 #
+# Bullet Constraints Builder v2.01 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -48,15 +48,15 @@ initPeriodTimeScale = 0.001  # 0.001 | For baking: Use this time scale for the i
 ### Vars not directly accessible from GUI
 asciiExport = 0              # 0     | Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
 
-# Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
+### Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [
-# 0          1    2           3        4   5       6        7          8          9       10   11   12   13    14   15    16
-# Name       RVP  Mat.preset  Density  CT  BTC     BTT      BTS        BTB        Stiff.  TPD. TPR. TBD. TBR.  Bev. Scale facing
-[ "RC",      1,   "Concrete", 2400,    6,  "25*a", "7.5*a", "115*h*h", "3*h*a",   10**6,  .05, .1,  .1,  .4,   0,   .95,  0      ],  # Defaults to be used when element is not part of any element group
-[ "Walls",   1,   "Masonry",  1800,    6,  "10*a", ".6*a",  "1*h*h",   ".23*h*a", 10**6,  .05, .1,  .1,  .4,   0,   .95,  0      ]
+# 0          1    2           3        4   5       6        7          8          9       10   11   12   13    14   15    16     17
+# Name       RVP  Mat.preset  Density  CT  BTC     BTT      BTS        BTB        Stiff.  TPD. TPR. TBD. TBR.  Bev. Scale Facing F.assistant 
+[ "RC",      1,   "Concrete", 2400,    6,  "25*a", "7.5*a", "115*h*h", "3*h*a",   10**6,  .05, .1,  .1,  .4,   0,   .95,  0,     "con_rei_beam"], # Empty name means this group is to be used when element is not part of any element group
+[ "Walls",   1,   "Masonry",  1800,    6,  "10*a", ".6*a",  "1*h*h",   ".23*h*a", 10**6,  .05, .1,  .1,  .4,   0,   .95,  0,     "None"]              
 ]
 
-# Column descriptions (in order from left to right):
+### Column descriptions (in order from left to right):
 #
 # 1.  Required Vertex Pairs     | How many vertex pairs between two elements are required to generate a connection.
 #     (Depreciated)             | This can help to ensure there is an actual surface to surface connection between both elements (for at least 3 verts you can expect a shared surface).
@@ -77,10 +77,11 @@ elemGrps = [
 # 14. Bevel                     | Use beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes)
 # 15. Scale                     | Apply scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes)
 # 16. Facing                    | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
+# 17. Formula Assistant         | Material specific formula assistant with related settings
 #
 # To add further settings each reference to elemGrps should be checked because indices may shift
 
-# Connection types:
+### Connection Types:
 connectTypes = [          # Cnt C T S B S T T T T      CT
 [ "UNDEFINED",              0, [0,0,0,0,0,1,1,0,0]], # 0. Undefined (reserved)
 [ "1x FIXED",               1, [1,0,0,0,0,1,1,0,0]], # 1. Linear omni-directional + bending breaking threshold
@@ -101,6 +102,74 @@ connectTypes = [          # Cnt C T S B S T T T T      CT
 # To add further connection types changes to following functions are necessary:
 # setConstraintSettings() and bcb_panel() for the UI
 
+### Formula Assistants with defaults (see definitions below for reference):
+formulaAssistants = [
+{"Name":"None", "ID":"None"},
+{"Name":"Reinforced Concrete (Beams & Columns)", "ID":"con_rei_beam",
+ "fs":500, "fc":30, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
+ "h":250, "b":150,  # Testing parameters, will be replaced on build
+ "Exp:d":   " (h-c-dl/2) ",
+ "Exp:e":   " (h-2*c-dl) ",
+ "Exp:rho": " ((dl/2)**2*pi*n/h*b) ",
+ "Exp:y":   " (((ds/2)**2*pi*2)*10/(h-c-dl/2)) ",
+ "Exp:e1":  " ((h-2*c-dl)/h) ",
+ "Exp:N-":  "fc*((h*b)-rho*(h*b))+fs*rho*(h*b)",
+ "Exp:N+":  "fs*rho*(h*b)",
+ "Exp:V+/-": "fs*y*e1*h**2*1.2+(0.15/k*(100*rho*fc)**(1/3))*(h*b)",
+ "Exp:M+/-": "fs*rho*(h*b)/2*e1*h"
+},
+{"Name":"Reinforced Concrete (Walls & Slabs)", "ID":"con_rei_wall",
+ "fs":500, "fc":30, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
+ "h":250, "b":150,  # Testing parameters, will be replaced on build
+ "Exp:d":   " (h-c-dl/2) ",
+ "Exp:e":   " (h-2*c-dl) ",
+ "Exp:rho": " ((dl/2)**2*pi*n/h*b) ",
+ "Exp:y":   " (((ds/2)**2*pi*2)*10/(h-c-dl/2)) ",
+ "Exp:e1":  " ((h-2*c-dl)/h) ",
+ "Exp:N-":  "fc*((h*b)-rho*(h*b))+fs*rho*(h*b)",
+ "Exp:N+":  "fs*rho*(h*b)",
+ "Exp:V+/-": "(0.15/k*(100*rho*fc)**(1/3))*(h*b)",
+ "Exp:M+/-": "fs*rho*(h*b)/2*e1*h"
+}]
+# Material strength values (N/mm²):
+# fs = strength of steel
+# fc = strength of concrete
+#
+# Geometrical values (mm):
+# h = height of element    
+# b = width of element
+# c = concrete cover
+# d = distance between the tensile irons and the opposite concrete surface  h-c-dl/2
+# e = distance between longitudinal irons                                   h-2*c-dl
+# s = distance between stirrups
+# ds = Ø steel stirrup bar
+# dl = Ø steel longitudinal bar
+#
+# Areas (mm²):
+# A = cross area beam, h*b
+# As = total cross area of the sum of all longitudinal steel bars, (dl/2)²*pi
+# asw = total cross area steel stirrup in cm²/m = (ds/2)²*pi*2 (per side one stirrup)*1000/s
+#
+# Coefficients:
+# rho = reinforcement ratio = As/A             (dl/2)²*pi*n/h*b  
+# y = shear coefficient (asw*10/d) (% value)   ((ds/2)²*pi*2)*10/(h-c-dl/2)
+# 1.2 = coefficient for shear carrying capacity
+# e1 = distance between longitudinal irons in relation to the beam height: e/h (% value)   (h-2*c-dl)/h
+# n = number of longitudinal steel bars
+# k = scale factor
+#
+# Formulas for beams & columns:
+# N-   ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
+# N+   ≈ fs * rho * (h*b)   
+# V+ = V- ≈ fs *y * e1*h²* 1,2  +  0.15/ k* ((100*rho*fc)^1/3) *h*b
+# M+ = M- ≈ fs * rho * (h*b)/2* (e1*h)       
+#
+# Formulas for walls & slabs:
+# N-   ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
+# N+   ≈ fs * rho * (h*b)   
+# V+ = V- ≈ 0.15/k* ((100*rho*fc)^1/3) *h*b
+# M+ = M- ≈ fs* rho * (h*b) /2* (e1*h)    
+
 ### Vars for developers
 debug = 0                            # 0     | Enables verbose console output for debugging purposes
 withGUI = 1                          # 1     | Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
@@ -112,6 +181,18 @@ asciiExportName = "BCB_export.txt"   #       | Name of ASCII text file to be exp
 # For monitor event handler
 qRenderAnimation = 0                 # 0     | Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
 
+### Consts
+pi = 3.1416
+
+### Corrections
+# Add formula assistant settings to element groups
+asstIdx = 17
+for elemGrp in elemGrps:
+    for formAssist in formulaAssistants:
+        if elemGrp[asstIdx] == formAssist['ID']:
+            elemGrp[asstIdx] = formAssist.copy()
+            break
+        
 ########################################
 
 elemGrpsBak = elemGrps.copy()
@@ -121,7 +202,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 0, 0),
+    "version": (2, 0, 1),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -129,10 +210,31 @@ bl_info = {
     "tracker_url": "http://kaikostack.com",
     "category": "Animation"}
 
-import bpy, sys, mathutils, time, copy, math, pickle, base64, zlib
+import bpy, sys, platform, mathutils, time, copy, math, pickle, base64, zlib
 from mathutils import Vector
 #import os
 #os.system("cls")
+
+### SymPy detection and import code
+if platform.system() == 'Windows':
+    pythonLibsPath = r"c:\Python34\Lib\site-packages"
+elif platform.system() == 'Linux':
+    pythonLibsPath = r"/home/user/.local/lib/python3.4/site-packages"
+else: print('Unknown platform detected, unable to guess Python path.')
+# Add path to known paths and try to import from there
+if pythonLibsPath not in sys.path: sys.path.append(pythonLibsPath)
+try: import sympy
+except:
+    print("No SymPy module found, continuing without formula simplification feature...")
+    qSymPy = 0
+else:
+    print("SymPy module found.")
+    qSymPy = 1
+# Debug testing code
+#print(str(sympy.simplify("2-x*3-x*x")).replace(' ',''))
+# or
+#x, y, z = sympy.symbols('x y z')
+#print(str(sympy.simplify(2-x*3-x*x)).replace(' ',''))
 
 ################################################################################
 ################################################################################
@@ -208,7 +310,7 @@ def storeConfigDataInScene(scene):
             column.append(elemGrps[j][i])
         elemGrpsInverted.append(column)
     scene["bcb_prop_elemGrps"] = elemGrpsInverted
-
+    
 ################################################################################   
 
 def getConfigDataFromScene(scene):
@@ -289,7 +391,7 @@ def getConfigDataFromScene(scene):
                     column.append(elemGrps[i][ofs +j])
             elemGrpsInverted.append(column)
         elemGrps = elemGrpsInverted
-    
+        
 ################################################################################   
 
 def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect):
@@ -520,38 +622,19 @@ def clearAllDataFromScene(scene):
             obj.scale /= scale
 
     print("Deleting objects...")
-### Original code for object removal (slower):            
-#    ### Select modified elements for deletion from scene 
-#    for parentObj in parentTmpObjs: parentObj.select = 1
-#    ### Select constraint empty objects for deletion from scene
-#    for emptyObj in emptyObjs: emptyObj.select = 1
-#    
-#    ### Delete all selected objects
-#    bpy.ops.object.delete(use_global=True)
-
-#    ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
-#    scene = bpy.context.scene
-#    sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
-#    # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
-#    bpy.context.screen.scene = scene
-#    # Link cameras because in second scene is none and when coming back camera view will losing focus
-#    objCameras = []
-#    for objTemp in scene.objects:
-#        if objTemp.type == 'CAMERA':
-#            sceneTemp.objects.link(objTemp)
-#            objCameras.append(objTemp)
-#    # Switch to new scene
-#    bpy.context.screen.scene = sceneTemp
-
-    ### Delete (unlink) modified elements from scene 
-    for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
-    ### Delete (unlink) constraint empty objects from scene
-    for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
+    ### Select modified elements for deletion from scene 
+    for parentObj in parentTmpObjs: parentObj.select = 1
+    ### Select constraint empty objects for deletion from scene
+    for emptyObj in emptyObjs: emptyObj.select = 1
     
-#    # Switch back to original scene
-#    bpy.context.screen.scene = scene
-#    # Delete second scene
-#    bpy.data.scenes.remove(sceneTemp)
+    ### Delete all selected objects
+    bpy.ops.object.delete(use_global=True)
+
+### Alternative delete function (faster but can cause problems on immediate rebuilding, requires saving and reloading first)
+#    ### Delete (unlink) modified elements from scene 
+#    for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
+#    ### Delete (unlink) constraint empty objects from scene
+#    for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
 
     print("Removing ID properties...")
     
@@ -723,24 +806,24 @@ def monitor_initBuffers(scene):
         angle = quat0.rotation_difference(quat1).angle
         consts = []
         constsBrkTs = []
-        constsSprSt = []
         for const in connectsConsts[d -1]:
             emptyObj = emptyObjs[const]
             consts.append(emptyObj)
             if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
                 # Backup original breaking thresholds
                 constsBrkTs.append(emptyObj.rigid_body_constraint.breaking_threshold)
-                # Backup original spring stiffness
-                constsSprSt.append([emptyObj.rigid_body_constraint.spring_stiffness_x, emptyObj.rigid_body_constraint.spring_stiffness_y, emptyObj.rigid_body_constraint.spring_stiffness_z])
+                # Set tolerance evaluation mode (if plastic or not)
+                if emptyObj.rigid_body_constraint.type == 'GENERIC_SPRING':
+                      mode = 1
+                else: mode = 0
             else:
                 if not qWarning:
                     qWarning = 1
                     print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
                 print("(%s)" %emptyObj.name)
                 constsBrkTs.append(0)
-                constsSprSt.append([0, 0, 0])
-        #                0                1                2         3      4       5            6            7            8            9             10            11           12
-        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, constsSprSt, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, 0])
+        #                0                1                2         3      4       5            6 (unused)  7      8         9        10        11       12
+        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, None, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode])
 
     print("Connections")
         
@@ -758,64 +841,64 @@ def monitor_checkForChange():
         ### If connection is in fixed mode then check if plastic tolerance is reached
         if connect[12] == 0:
             d += 1
-            objA = connect[0][0]
-            objB = connect[1][0]
-            springStiff = connect[7]
-            toleranceDist = connect[8]
-            toleranceRot = connect[9]
-            
-            # Calculate distance between both elements of the connection
-            distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
-            if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
-            else: distanceDif = 1
-            # Calculate angle between two elements
-            quatA = objA.matrix_world.to_quaternion()
-            quatB = objB.matrix_world.to_quaternion()
-            angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
-            # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-            if distanceDif > toleranceDist +(angleDif /3.1416) \
-            or angleDif > toleranceRot:
-                consts = connect[4]
-                for const in consts:
-                    # Enable spring constraints for this connection by setting its stiffness
-                    if const.rigid_body_constraint.type == 'GENERIC_SPRING':
-                        const.rigid_body_constraint.spring_stiffness_x = springStiff
-                        const.rigid_body_constraint.spring_stiffness_y = springStiff
-                        const.rigid_body_constraint.spring_stiffness_z = springStiff
-                    # Disable non-spring constraints for this connection by setting breaking threshold to 0
-                    else:
-                        const.rigid_body_constraint.breaking_threshold = 0
-                # Switch connection to plastic mode
-                connect[12] += 1
-                cntP += 1
+            consts = connect[4]
+            if consts[0].rigid_body_constraint.use_breaking:
+                objA = connect[0][0]
+                objB = connect[1][0]
+                springStiff = connect[7]
+                toleranceDist = connect[8]
+                toleranceRot = connect[9]
+                
+                # Calculate distance between both elements of the connection
+                distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+                if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
+                else: distanceDif = 1
+                # Calculate angle between two elements
+                quatA = objA.matrix_world.to_quaternion()
+                quatB = objB.matrix_world.to_quaternion()
+                angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+                # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
+                if distanceDif > toleranceDist +(angleDif /pi) \
+                or angleDif > toleranceRot:
+                    for const in consts:
+                        # Enable spring constraints for this connection by setting its stiffness
+                        if const.rigid_body_constraint.type == 'GENERIC_SPRING':
+                            const.rigid_body_constraint.enabled = 1
+                        # Disable non-spring constraints for this connection by setting breaking threshold to 0
+                        else:
+                            const.rigid_body_constraint.breaking_threshold = 0
+                    # Switch connection to plastic mode
+                    connect[12] += 1
+                    cntP += 1
 
         ### If connection is in plastic mode then check if breaking tolerance is reached
         if connect[12] == 1:
             e += 1
-            objA = connect[0][0]
-            objB = connect[1][0]
-            toleranceDist = connect[10]
-            toleranceRot = connect[11]
-            
-            # Calculate distance between both elements of the connection
-            distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
-            if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
-            else: distanceDif = 1
-            # Calculate angle between two elements
-            quatA = objA.matrix_world.to_quaternion()
-            quatB = objB.matrix_world.to_quaternion()
-            angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
-            # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-            if distanceDif > toleranceDist +(angleDif /3.1416) \
-            or angleDif > toleranceRot:
-                # Disable all constraints for this connection by setting breaking threshold to 0
-                consts = connect[4]
-                for const in consts:
-                    const.rigid_body_constraint.breaking_threshold = 0
-                # Flag connection as being disconnected
-                connect[12] += 1
-                cntB += 1
-        
+            consts = connect[4]
+            if consts[0].rigid_body_constraint.use_breaking:
+                objA = connect[0][0]
+                objB = connect[1][0]
+                toleranceDist = connect[10]
+                toleranceRot = connect[11]
+                
+                # Calculate distance between both elements of the connection
+                distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+                if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
+                else: distanceDif = 1
+                # Calculate angle between two elements
+                quatA = objA.matrix_world.to_quaternion()
+                quatB = objB.matrix_world.to_quaternion()
+                angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+                # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
+                if distanceDif > toleranceDist +(angleDif /pi) \
+                or angleDif > toleranceRot:
+                    # Disable all constraints for this connection by setting breaking threshold to 0
+                    for const in consts:
+                        const.rigid_body_constraint.breaking_threshold = 0
+                    # Flag connection as being disconnected
+                    connect[12] += 1
+                    cntB += 1
+       
     sys.stdout.write(" connections (intact & plastic)")
     if cntP > 0: sys.stdout.write(" | Plastic: %d" %cntP)
     if cntB > 0: sys.stdout.write(" | Broken: %d" %cntB)
@@ -833,17 +916,11 @@ def monitor_freeBuffers(scene):
     for connect in connects:
         consts = connect[4]
         constsBrkTs = connect[5]
-        constsSprSt = connect[6]
         for i in range(len(consts)):
             emptyObj = consts[i]
             if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
                 # Restore original breaking thresholds
                 emptyObj.rigid_body_constraint.breaking_threshold = constsBrkTs[i]
-                # Restore original spring settings
-                if emptyObj.rigid_body_constraint.type == 'GENERIC_SPRING':
-                    emptyObj.rigid_body_constraint.spring_stiffness_x = constsSprSt[i][0]
-                    emptyObj.rigid_body_constraint.spring_stiffness_y = constsSprSt[i][1]
-                    emptyObj.rigid_body_constraint.spring_stiffness_z = constsSprSt[i][2]
             else:
                 if not qWarning:
                     qWarning = 1
@@ -903,22 +980,134 @@ def estimateClusterRadius(scene):
     else:
         print("Selected objects required for cluster radius estimation.") 
         return 0
- 
+
+################################################################################
+
+def combineExpressions():
+
+    props = bpy.context.window_manager.bcb
+    i = props.prop_menu_selectedElemGrp
+    global elemGrps
+    asst = elemGrps[i][asstIdx]
+
+    ### Reinforced Concrete (Beams & Columns)
+    if props.prop_assistant_menu == "con_rei_beam":
+        fs = asst['fs']
+        fc = asst['fc']
+        c = asst['c']
+        s = asst['s']
+        ds = asst['ds']
+        dl = asst['dl']
+        n = asst['n']
+        k = asst['k']
+        h = asst['h']
+        b = asst['b']
+        if h == 0: h = 'h'
+        if b == 0: b = 'b'
+        
+        d = asst['Exp:d']
+        e = asst['Exp:e']
+        rho = asst['Exp:rho']
+        y = asst['Exp:y']
+        e1 = asst['Exp:e1']
+        Nn = asst['Exp:N-']
+        Np = asst['Exp:N+']
+        Vpn = asst['Exp:V+/-']
+        Mpn = asst['Exp:M+/-']
+        
+        d = d.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
+        e = e.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
+        rho = rho.replace('dl',str(dl)).replace('n',str(n)).replace('pi',str(pi)).replace('h',str(h)).replace('b',str(b))
+        y = y.replace('dl',str(dl)).replace('ds',str(ds)).replace('pi',str(pi)).replace('h',str(h)).replace('c',str(c))
+        e1 = e1.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
+
+        Nn = Nn.replace('fc',str(fc)).replace('fs',str(fs)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
+        Np = Np.replace('fs',str(fs)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
+        Vpn = Vpn.replace('fc',str(fc)).replace('fs',str(fs)).replace('y',str(y)).replace('e1',str(e1)).replace('k',str(k)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
+        Mpn = Mpn.replace('fs',str(fs)).replace('rho',str(rho)).replace('e1',str(e1)).replace('h',str(h)).replace('b',str(b))
+
+        if not qSymPy:
+            elemGrps[i][5] = Nn
+            elemGrps[i][6] = Np
+            elemGrps[i][7] = Vpn
+            elemGrps[i][8] = Mpn
+        else: 
+            elemGrps[i][5] = str(sympy.simplify(Nn)).replace(' ','')
+            elemGrps[i][6] = str(sympy.simplify(Np)).replace(' ','')
+            elemGrps[i][7] = str(sympy.simplify(Vpn)).replace(' ','')
+            elemGrps[i][8] = str(sympy.simplify(Mpn)).replace(' ','')
+       
+    ### Reinforced Concrete (Walls & Slabs)
+    elif props.prop_assistant_menu == "con_rei_wall":
+        fs = asst['fs']
+        fc = asst['fc']
+        c = asst['c']
+        s = asst['s']
+        ds = asst['ds']
+        dl = asst['dl']
+        n = asst['n']
+        k = asst['k']
+        h = asst['h']
+        b = asst['b']
+        if h == 0: h = 'h'
+        if b == 0: b = 'b'
+
+        d = asst['Exp:d']
+        e = asst['Exp:e']
+        rho = asst['Exp:rho']
+        y = asst['Exp:y']
+        e1 = asst['Exp:e1']
+        Nn = asst['Exp:N-']
+        Np = asst['Exp:N+']
+        Vpn = asst['Exp:V+/-']
+        Mpn = asst['Exp:M+/-']
+        
+        d = d.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
+        e = e.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
+        rho = rho.replace('dl',str(dl)).replace('n',str(n)).replace('pi',str(pi)).replace('h',str(h)).replace('b',str(b))
+        y = y.replace('dl',str(dl)).replace('ds',str(ds)).replace('pi',str(pi)).replace('h',str(h)).replace('c',str(c))
+        e1 = e1.replace('dl',str(dl)).replace('h',str(h)).replace('c',str(c))
+
+        Nn = Nn.replace('fc',str(fc)).replace('fs',str(fs)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
+        Np = Np.replace('fs',str(fs)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
+        Vpn = Vpn.replace('fc',str(fc)).replace('k',str(k)).replace('rho',str(rho)).replace('h',str(h)).replace('b',str(b))
+        Mpn = Mpn.replace('fs',str(fs)).replace('rho',str(rho)).replace('e1',str(e1)).replace('h',str(h)).replace('b',str(b))
+
+        if not qSymPy:
+            elemGrps[i][5] = Nn
+            elemGrps[i][6] = Np
+            elemGrps[i][7] = Vpn
+            elemGrps[i][8] = Mpn
+        else: 
+            elemGrps[i][5] = str(sympy.simplify(Nn)).replace(' ','')
+            elemGrps[i][6] = str(sympy.simplify(Np)).replace(' ','')
+            elemGrps[i][7] = str(sympy.simplify(Vpn)).replace(' ','')
+            elemGrps[i][8] = str(sympy.simplify(Mpn)).replace(' ','')
+       
 ################################################################################
 ################################################################################
 
 class bcb_props(bpy.types.PropertyGroup):
+    
     int = bpy.props.IntProperty 
     float = bpy.props.FloatProperty
     bool = bpy.props.BoolProperty
     string = bpy.props.StringProperty
+    enum = bpy.props.EnumProperty
     
+    ###### Create menu related properties from global vars
     prop_menu_gotConfig = int(0)
     prop_menu_gotData = int(0)
-    prop_menu_selectedItem = int(0)
-    prop_menu_advancedG = bool(0)
-    prop_menu_advancedE = bool(0)
+    prop_menu_selectedElemGrp = int(0)
+    prop_submenu_advancedG = bool(0)
+    prop_submenu_advancedE = bool(0)
+    prop_submenu_assistant = bool(0)
 
+    assistant_menu = []  # (ID, Name in menu, "", Index)
+    for i in range(len(formulaAssistants)):
+        assistant_menu.append((formulaAssistants[i]["ID"], formulaAssistants[i]["Name"], "", i))
+    prop_assistant_menu = enum(items=assistant_menu, name="Type of Building Material")
+    
     prop_stepsPerSecond = int(name="Steps Per Second", default=stepsPerSecond, min=1, max=32767, description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
     prop_constraintUseBreaking = bool(name="Enable Breaking", default=constraintUseBreaking, description="Enables breaking for all constraints.")
     prop_connectionCountLimit = int(name="Con. Count Limit", default=connectionCountLimit, min=0, max=10000, description="Maximum count of connections per object pair (0 = disabled).")
@@ -949,15 +1138,17 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("prop_elemGrp_%d_2" %i +" = string(name='Mat. Preset', default=elemGrps[j][2], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
         exec("prop_elemGrp_%d_3" %i +" = float(name='Density', default=elemGrps[j][3], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
         exec("prop_elemGrp_%d_10" %i +" = float(name='Dist. Tol. Plastic', default=elemGrps[j][10], min=0.0, max=10.0, description='For baking: Allowed tolerance for distance change in percent for plastic deformation (1.00 = 100 %).')")
-        exec("prop_elemGrp_%d_11" %i +" = float(name='Rot. Tol. Plastic', default=elemGrps[j][11], min=0.0, max=3.14159, description='For baking: Allowed tolerance for angular change in radian for plastic deformation.')")
+        exec("prop_elemGrp_%d_11" %i +" = float(name='Rot. Tol. Plastic', default=elemGrps[j][11], min=0.0, max=pi, description='For baking: Allowed tolerance for angular change in radian for plastic deformation.')")
         exec("prop_elemGrp_%d_12" %i +" = float(name='Dist. Tol. Break', default=elemGrps[j][12], min=0.0, max=10.0, description='For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).')")
-        exec("prop_elemGrp_%d_13" %i +" = float(name='Rot. Tol. Break', default=elemGrps[j][13], min=0.0, max=3.14159, description='For baking: Allowed tolerance for angular change in radian for connection removal.')")
+        exec("prop_elemGrp_%d_13" %i +" = float(name='Rot. Tol. Break', default=elemGrps[j][13], min=0.0, max=pi, description='For baking: Allowed tolerance for angular change in radian for connection removal.')")
         exec("prop_elemGrp_%d_14" %i +" = bool(name='Bevel', default=elemGrps[j][14], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
         exec("prop_elemGrp_%d_15" %i +" = float(name='Rescale Factor', default=elemGrps[j][15], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
         exec("prop_elemGrp_%d_16" %i +" = bool(name='Facing', default=elemGrps[j][16], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
 
+    ###### Update menu related properties from global vars
     def props_update_menu(self):
-        ### Update menu related properties from global vars
+
+        ### Update main class properties
         for i in range(len(elemGrps)):
             exec("self.prop_elemGrp_%d_0" %i +" = elemGrps[i][0]")
             exec("self.prop_elemGrp_%d_1" %i +" = elemGrps[i][1]")
@@ -980,9 +1171,20 @@ class bcb_props(bpy.types.PropertyGroup):
             exec("self.prop_elemGrp_%d_14" %i +" = elemGrps[i][14]")
             exec("self.prop_elemGrp_%d_15" %i +" = elemGrps[i][15]")
             exec("self.prop_elemGrp_%d_16" %i +" = elemGrps[i][16]")
-           
+        
+        # Update fromula assistant submenu according to the chosen element group
+        i = self.prop_menu_selectedElemGrp
+        try: self.prop_assistant_menu = elemGrps[i][asstIdx]['ID']
+        except: self.prop_assistant_menu = "None"
+        
+        ### Update also the other classes properties
+        props_asst_con_rei_beam = bpy.context.window_manager.bcb_asst_con_rei_beam
+        props_asst_con_rei_wall = bpy.context.window_manager.bcb_asst_con_rei_wall
+        props_asst_con_rei_beam.props_update_menu()
+        props_asst_con_rei_wall.props_update_menu()
+            
+    ###### Update global vars from menu related properties
     def props_update_globals(self):
-        ### Update global vars from menu related properties
         global stepsPerSecond; stepsPerSecond = self.prop_stepsPerSecond
         global constraintUseBreaking; constraintUseBreaking = self.prop_constraintUseBreaking
         global connectionCountLimit; connectionCountLimit = self.prop_connectionCountLimit
@@ -996,13 +1198,217 @@ class bcb_props(bpy.types.PropertyGroup):
         global saveBackups; saveBackups = self.prop_saveBackups
         global initPeriod; initPeriod = self.prop_initPeriod
         global initPeriodTimeScale; initPeriodTimeScale = self.prop_initPeriodTimeScale
+
         global elemGrps
         for i in range(len(elemGrps)):
             elemGrpNew = []
             for j in range(len(elemGrps[i])):
-                elemGrpNew.append(eval("self.prop_elemGrp_%d_%d" %(i, j)))
+                if j != asstIdx:
+                    elemGrpNew.append(eval("self.prop_elemGrp_%d_%d" %(i, j)))
+                else:
+                    elemGrpNew.append(elemGrps[i][j])
             elemGrps[i] = elemGrpNew
 
+        ### If different formula assistant ID from that stored in element group then update with defaults
+        i = self.prop_menu_selectedElemGrp
+        if self.prop_assistant_menu != elemGrps[i][asstIdx]['ID']:
+            print("Copy", self.prop_assistant_menu, elemGrps[i][asstIdx]['ID'])
+            # Add formula assistant settings to element group
+            for formAssist in formulaAssistants:
+                if self.prop_assistant_menu == formAssist['ID']:
+                    elemGrps[i][asstIdx] = formAssist.copy()
+        
+########################################
+
+class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
+    
+    classID = "con_rei_beam"
+    
+    int = bpy.props.IntProperty 
+    float = bpy.props.FloatProperty
+    string = bpy.props.StringProperty
+
+    # Find corresponding formula assistant preset
+    for formAssist in formulaAssistants:
+        if formAssist["ID"] == classID:
+            asst = formAssist
+
+    prop_fs = float(name='fs', default=asst['fs'], description='Breaking strength of reinforcement irons (N/mm^2).')
+    prop_fc = float(name='fc', default=asst['fc'], description='Breaking strength of concrete (N/mm^2).')
+    prop_c  = float(name='c', default=asst['c'], description='Concrete cover thickness above reinforcement (mm).')
+    prop_s  = float(name='s', default=asst['s'], description='Distance between stirrups (mm).')
+    prop_ds = float(name='ds', default=asst['ds'], description='Diameter of steel stirrup bar (mm).')
+    prop_dl = float(name='dl', default=asst['dl'], description='Diameter of steel longitudinal bar (mm).')
+    prop_n    = int(name='n', default=asst['n'], description='Number of longitudinal steel bars.')
+    prop_k  = float(name='k', default=asst['k'], description='Scale factor.')
+
+    prop_h = float(name='h', default=asst['h'], description='Height of element (mm).')
+    prop_b = float(name='w', default=asst['b'], description='Width of element (mm).')
+
+    prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
+    prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
+    prop_exp_rho = string(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
+    prop_exp_y   = string(name='υ (y)', default=asst['Exp:y'], description='Shear coefficient (asw*10/d) (% value).')
+    prop_exp_e1  = string(name='e´ (e1)', default=asst['Exp:e1'], description='Distance between longitudinal irons in relation to the element height: e/h (% value).')
+    prop_exp_Nn  = string(name='N-', default=asst['Exp:N-'], description='Compressive breaking threshold formula.')
+    prop_exp_Np  = string(name='N+', default=asst['Exp:N+'], description='Tensile breaking threshold formula.')
+    prop_exp_Vpn = string(name='V+/-', default=asst['Exp:V+/-'], description='Shearing breaking threshold formula.')
+    prop_exp_Mpn = string(name='M+/-', default=asst['Exp:M+/-'], description='Bending or momentum breaking threshold formula.')
+
+    ###### Update menu related properties from global vars
+    def props_update_menu(self):
+        props = bpy.context.window_manager.bcb
+        i = props.prop_menu_selectedElemGrp
+        # Check if stored ID matches the correct assistant type otherwise return
+        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+
+        asst = elemGrps[i][asstIdx]
+        self.prop_fs = asst['fs']
+        self.prop_fc = asst['fc']
+        self.prop_c = asst['c']
+        self.prop_s = asst['s']
+        self.prop_ds = asst['ds']
+        self.prop_dl = asst['dl']
+        self.prop_n = asst['n']
+        self.prop_k = asst['k']
+        self.prop_h = asst['h']
+        self.prop_b = asst['b']
+
+        self.prop_exp_d = asst['Exp:d']
+        self.prop_exp_e = asst['Exp:e']
+        self.prop_exp_rho = asst['Exp:rho']
+        self.prop_exp_y = asst['Exp:y']
+        self.prop_exp_e1 = asst['Exp:e1']
+        self.prop_exp_Nn = asst['Exp:N-']
+        self.prop_exp_Np = asst['Exp:N+']
+        self.prop_exp_Vpn = asst['Exp:V+/-']
+        self.prop_exp_Mpn = asst['Exp:M+/-']
+        
+    ###### Update global vars from menu related properties
+    def props_update_globals(self):
+        props = bpy.context.window_manager.bcb
+        i = props.prop_menu_selectedElemGrp
+        global elemGrps
+        # Check if stored ID matches the correct assistant type otherwise return
+        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+
+        elemGrps[i][asstIdx]['fs'] = self.prop_fs
+        elemGrps[i][asstIdx]['fc'] = self.prop_fc
+        elemGrps[i][asstIdx]['c'] = self.prop_c
+        elemGrps[i][asstIdx]['s'] = self.prop_s
+        elemGrps[i][asstIdx]['ds'] = self.prop_ds
+        elemGrps[i][asstIdx]['dl'] = self.prop_dl
+        elemGrps[i][asstIdx]['n'] = self.prop_n
+        elemGrps[i][asstIdx]['k'] = self.prop_k
+        elemGrps[i][asstIdx]['h'] = self.prop_h
+        elemGrps[i][asstIdx]['b'] = self.prop_b
+
+        elemGrps[i][asstIdx]['Exp:d'] = self.prop_exp_d
+        elemGrps[i][asstIdx]['Exp:e'] = self.prop_exp_e
+        elemGrps[i][asstIdx]['Exp:rho'] = self.prop_exp_rho
+        elemGrps[i][asstIdx]['Exp:y'] = self.prop_exp_y
+        elemGrps[i][asstIdx]['Exp:e1'] = self.prop_exp_e1
+        elemGrps[i][asstIdx]['Exp:N-'] = self.prop_exp_Nn
+        elemGrps[i][asstIdx]['Exp:N+'] = self.prop_exp_Np
+        elemGrps[i][asstIdx]['Exp:V+/-'] = self.prop_exp_Vpn
+        elemGrps[i][asstIdx]['Exp:M+/-'] = self.prop_exp_Mpn
+        
+########################################
+
+class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
+
+    classID = "con_rei_wall"
+
+    int = bpy.props.IntProperty 
+    float = bpy.props.FloatProperty
+    string = bpy.props.StringProperty
+
+    # Find corresponding formula assistant preset
+    for formAssist in formulaAssistants:
+        if formAssist["ID"] == classID:
+            asst = formAssist
+
+    prop_fs = float(name='fs', default=asst['fs'], description='Breaking strength of reinforcement irons (N/mm^2).')
+    prop_fc = float(name='fc', default=asst['fc'], description='Breaking strength of concrete (N/mm^2).')
+    prop_c  = float(name='c', default=asst['c'], description='Concrete cover thickness above reinforcement (mm).')
+    prop_s  = float(name='s', default=asst['s'], description='Distance between stirrups (mm).')
+    prop_ds = float(name='ds', default=asst['ds'], description='Diameter of steel stirrup bar (mm).')
+    prop_dl = float(name='dl', default=asst['dl'], description='Diameter of steel longitudinal bar (mm).')
+    prop_n    = int(name='n', default=asst['n'], description='Number of longitudinal steel bars.')
+    prop_k  = float(name='k', default=asst['k'], description='Scale factor.')
+
+    prop_h = float(name='h', default=asst['h'], description='Height of element (mm).')
+    prop_b = float(name='w', default=asst['b'], description='Width of element (mm).')
+
+    prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
+    prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
+    prop_exp_rho = string(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
+    prop_exp_y   = string(name='υ (y)', default=asst['Exp:y'], description='Shear coefficient (asw*10/d) (% value).')
+    prop_exp_e1  = string(name='e´ (e1)', default=asst['Exp:e1'], description='Distance between longitudinal irons in relation to the element height: e/h (% value).')
+    prop_exp_Nn  = string(name='N-', default=asst['Exp:N-'], description='Compressive breaking threshold formula.')
+    prop_exp_Np  = string(name='N+', default=asst['Exp:N+'], description='Tensile breaking threshold formula.')
+    prop_exp_Vpn = string(name='V+/-', default=asst['Exp:V+/-'], description='Shearing breaking threshold formula.')
+    prop_exp_Mpn = string(name='M+/-', default=asst['Exp:M+/-'], description='Bending or momentum breaking threshold formula.')
+
+    ###### Update menu related properties from global vars
+    def props_update_menu(self):
+        props = bpy.context.window_manager.bcb
+        i = props.prop_menu_selectedElemGrp
+        # Check if stored ID matches the correct assistant type otherwise return
+        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+
+        asst = elemGrps[i][asstIdx]
+        self.prop_fs = asst['fs']
+        self.prop_fc = asst['fc']
+        self.prop_c = asst['c']
+        self.prop_s = asst['s']
+        self.prop_ds = asst['ds']
+        self.prop_dl = asst['dl']
+        self.prop_n = asst['n']
+        self.prop_k = asst['k']
+        self.prop_h = asst['h']
+        self.prop_b = asst['b']
+
+        self.prop_exp_d = asst['Exp:d']
+        self.prop_exp_e = asst['Exp:e']
+        self.prop_exp_rho = asst['Exp:rho']
+        self.prop_exp_y = asst['Exp:y']
+        self.prop_exp_e1 = asst['Exp:e1']
+        self.prop_exp_Nn = asst['Exp:N-']
+        self.prop_exp_Np = asst['Exp:N+']
+        self.prop_exp_Vpn = asst['Exp:V+/-']
+        self.prop_exp_Mpn = asst['Exp:M+/-']
+        
+    ###### Update global vars from menu related properties
+    def props_update_globals(self):
+        props = bpy.context.window_manager.bcb
+        i = props.prop_menu_selectedElemGrp
+        global elemGrps
+        # Check if stored ID matches the correct assistant type otherwise return
+        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+
+        elemGrps[i][asstIdx]['fs'] = self.prop_fs
+        elemGrps[i][asstIdx]['fc'] = self.prop_fc
+        elemGrps[i][asstIdx]['c'] = self.prop_c
+        elemGrps[i][asstIdx]['s'] = self.prop_s
+        elemGrps[i][asstIdx]['ds'] = self.prop_ds
+        elemGrps[i][asstIdx]['dl'] = self.prop_dl
+        elemGrps[i][asstIdx]['n'] = self.prop_n
+        elemGrps[i][asstIdx]['k'] = self.prop_k
+        elemGrps[i][asstIdx]['h'] = self.prop_h
+        elemGrps[i][asstIdx]['b'] = self.prop_b
+
+        elemGrps[i][asstIdx]['Exp:d'] = self.prop_exp_d
+        elemGrps[i][asstIdx]['Exp:e'] = self.prop_exp_e
+        elemGrps[i][asstIdx]['Exp:rho'] = self.prop_exp_rho
+        elemGrps[i][asstIdx]['Exp:y'] = self.prop_exp_y
+        elemGrps[i][asstIdx]['Exp:e1'] = self.prop_exp_e1
+        elemGrps[i][asstIdx]['Exp:N-'] = self.prop_exp_Nn
+        elemGrps[i][asstIdx]['Exp:N+'] = self.prop_exp_Np
+        elemGrps[i][asstIdx]['Exp:V+/-'] = self.prop_exp_Vpn
+        elemGrps[i][asstIdx]['Exp:M+/-'] = self.prop_exp_Mpn
+
+################################################################################   
            
 class bcb_panel(bpy.types.Panel):
     bl_label = "Bullet Constraints Builder"
@@ -1016,9 +1422,11 @@ class bcb_panel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
+        props_asst_con_rei_beam = context.window_manager.bcb_asst_con_rei_beam
+        props_asst_con_rei_wall = context.window_manager.bcb_asst_con_rei_wall
         obj = context.object
         scene = bpy.context.scene
-        
+
         row = layout.row()
         if not props.prop_menu_gotData: 
             split = row.split(percentage=.85, align=False)
@@ -1055,9 +1463,9 @@ class bcb_panel(bpy.types.Panel):
         
         layout.separator()
         box = layout.box()
-        box.prop(props, "prop_menu_advancedG", text="Advanced Global Settings", icon=self.icon(props.prop_menu_advancedG), emboss = False)
+        box.prop(props, "prop_submenu_advancedG", text="Advanced Global Settings", icon=self.icon(props.prop_submenu_advancedG), emboss = False)
 
-        if props.prop_menu_advancedG:
+        if props.prop_submenu_advancedG:
             row = box.row()
             split = row.split(percentage=.50, align=False)
             split.prop(props, "prop_automaticMode")
@@ -1106,7 +1514,7 @@ class bcb_panel(bpy.types.Panel):
         split2.label(text="SHR")
         split2.label(text="BND")
         for i in range(len(elemGrps)):
-            if i == props.prop_menu_selectedItem:
+            if i == props.prop_menu_selectedElemGrp:
                   row = box.box().row()
             else: row = box.row()
             elemGrp0 = eval("props.prop_elemGrp_%d_0" %i)
@@ -1134,11 +1542,84 @@ class bcb_panel(bpy.types.Panel):
         row.operator("bcb.up", icon="TRIA_UP")
         row.operator("bcb.down", icon="TRIA_DOWN")
         
-        ###### Element group setting
+        ###### Element group settings
         
         layout.separator()
-        i = props.prop_menu_selectedItem
+        i = props.prop_menu_selectedElemGrp
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_0" %i)
+
+        ###### Formula assistant box
+
+        box = layout.box()
+        box.prop(props, "prop_submenu_assistant", text="Formula Assistant", icon=self.icon(props.prop_submenu_assistant), emboss = False)
+
+        if props.prop_submenu_assistant:
+            # Pull-down selector
+            row = box.row(); row.prop(props, "prop_assistant_menu")
+
+            # Debug code to list all properties in console:
+            #i = 0
+            #for prop in props_asst_con_rei_beam.bl_rna.properties:
+            #    if not prop.is_hidden and prop.type != 'POINTER':
+            #        print(i, prop.identifier, prop.is_hidden, prop.type); i += 1
+
+            ### Reinforced Concrete (Beams & Columns)
+            if props.prop_assistant_menu == "con_rei_beam":
+                row = box.split(); row.prop(props_asst_con_rei_beam, "prop_fs")
+                row.prop(props_asst_con_rei_beam, "prop_fc")
+                row = box.split(); row.prop(props_asst_con_rei_beam, "prop_c")
+                row.prop(props_asst_con_rei_beam, "prop_s")
+                row = box.split(); row.prop(props_asst_con_rei_beam, "prop_ds")
+                row.prop(props_asst_con_rei_beam, "prop_dl")
+                row = box.split(); row.prop(props_asst_con_rei_beam, "prop_n")
+                row.prop(props_asst_con_rei_beam, "prop_k")
+                box.separator()
+                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_d")
+                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_e")
+                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_rho")
+                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_y")
+                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_e1")
+                box.separator()
+                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Nn")
+                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Np")
+                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Vpn")
+                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Mpn")
+                box.separator()
+                row = box.split(); row.prop(props_asst_con_rei_beam, "prop_h")
+                row.prop(props_asst_con_rei_beam, "prop_b")
+                
+            ### Reinforced Concrete (Walls & Slabs)
+            if props.prop_assistant_menu == "con_rei_wall":
+                row = box.split(); row.prop(props_asst_con_rei_wall, "prop_fs")
+                row.prop(props_asst_con_rei_wall, "prop_fc")
+                row = box.split(); row.prop(props_asst_con_rei_wall, "prop_c")
+                row.prop(props_asst_con_rei_wall, "prop_s")
+                row = box.split(); row.prop(props_asst_con_rei_wall, "prop_ds")
+                row.prop(props_asst_con_rei_wall, "prop_dl")
+                row = box.split(); row.prop(props_asst_con_rei_wall, "prop_n")
+                row.prop(props_asst_con_rei_wall, "prop_k")
+                box.separator()
+                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_d")
+                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_e")
+                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_rho")
+                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_y")
+                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_e1")
+                box.separator()
+                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Nn")
+                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Np")
+                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Vpn")
+                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Mpn")
+                box.separator()
+                row = box.split(); row.prop(props_asst_con_rei_wall, "prop_h")
+                row.prop(props_asst_con_rei_wall, "prop_b")
+                
+            if props.prop_assistant_menu != "None":
+                row = box.row(); row.operator("bcb.asst_update", icon="PASTEDOWN")
+            
+        layout.separator()
+
+        ###### Element group settings (more)        
+
         row = layout.row(); row.prop(props, "prop_elemGrp_%d_4" %i)
         if props.prop_menu_gotData: row.enabled = 0
             
@@ -1214,9 +1695,9 @@ class bcb_panel(bpy.types.Panel):
         ###### Advanced element group settings box
         
         box = layout.box()
-        box.prop(props, "prop_menu_advancedE", text="Advanced Element Settings", icon=self.icon(props.prop_menu_advancedE), emboss = False)
+        box.prop(props, "prop_submenu_advancedE", text="Advanced Element Settings", icon=self.icon(props.prop_submenu_advancedE), emboss = False)
 
-        if props.prop_menu_advancedE:
+        if props.prop_submenu_advancedE:
             elemGrp9 = eval("props.prop_elemGrp_%d_9" %i)
             elemGrp10 = eval("props.prop_elemGrp_%d_10" %i)
             elemGrp11 = eval("props.prop_elemGrp_%d_11" %i)
@@ -1237,9 +1718,12 @@ class bcb_panel(bpy.types.Panel):
             split.prop(props, "prop_elemGrp_%d_13" %i)
             if not connectType[2][7]: split.active = 0
             
-        # Update global vars from menu related properties
+        ### Update global vars from menu related properties
+        props_asst_con_rei_beam.props_update_globals()
+        props_asst_con_rei_wall.props_update_globals()
         props.props_update_globals()
  
+################################################################################   
          
 class OBJECT_OT_bcb_set_config(bpy.types.Operator):
     bl_idname = "bcb.set_config"
@@ -1252,6 +1736,8 @@ class OBJECT_OT_bcb_set_config(bpy.types.Operator):
         storeConfigDataInScene(scene)
         props.prop_menu_gotConfig = 1
         return{'FINISHED'} 
+
+########################################
 
 class OBJECT_OT_bcb_get_config(bpy.types.Operator):
     bl_idname = "bcb.get_config"
@@ -1272,6 +1758,8 @@ class OBJECT_OT_bcb_get_config(bpy.types.Operator):
             props.prop_menu_gotData = 1
         return{'FINISHED'} 
 
+########################################
+
 class OBJECT_OT_bcb_clear(bpy.types.Operator):
     bl_idname = "bcb.clear"
     bl_label = ""
@@ -1284,6 +1772,8 @@ class OBJECT_OT_bcb_clear(bpy.types.Operator):
         props.prop_menu_gotData = 0
         return{'FINISHED'} 
         
+########################################
+
 class OBJECT_OT_bcb_build(bpy.types.Operator):
     bl_idname = "bcb.build"
     bl_label = "Build"
@@ -1312,6 +1802,8 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
             OBJECT_OT_bcb_clear.execute(self, context)
             if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
         return{'FINISHED'} 
+
+########################################
 
 class OBJECT_OT_bcb_update(bpy.types.Operator):
     bl_idname = "bcb.update"
@@ -1343,6 +1835,8 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
             if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
         return{'FINISHED'} 
 
+########################################
+
 class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
     bl_idname = "bcb.export_ascii"
     bl_label = "Build & Export to Text File"
@@ -1354,6 +1848,8 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
         build()
         asciiExport = 0
         return{'FINISHED'} 
+
+########################################
 
 class OBJECT_OT_bcb_bake(bpy.types.Operator):
     bl_idname = "bcb.bake"
@@ -1387,6 +1883,8 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
             if not automaticMode: OBJECT_OT_bcb_bake.execute(self, context)
         return{'FINISHED'} 
 
+########################################
+
 class OBJECT_OT_bcb_add(bpy.types.Operator):
     bl_idname = "bcb.add"
     bl_label = ""
@@ -1396,13 +1894,15 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
         global elemGrps
         if len(elemGrps) < maxMenuElementGroupItems:
             # Add element group (syncing element group indices happens on execution)
-            elemGrps.append(elemGrps[props.prop_menu_selectedItem])
+            elemGrps.append(elemGrps[props.prop_menu_selectedElemGrp])
             # Update menu selection
-            props.prop_menu_selectedItem = len(elemGrps) -1
+            props.prop_menu_selectedElemGrp = len(elemGrps) -1
         else: self.report({'ERROR'}, "Maximum allowed element group count reached.")
         # Update menu related properties from global vars
         props.props_update_menu()
         return{'FINISHED'} 
+
+########################################
 
 class OBJECT_OT_bcb_del(bpy.types.Operator):
     bl_idname = "bcb.del"
@@ -1414,14 +1914,16 @@ class OBJECT_OT_bcb_del(bpy.types.Operator):
         scene = bpy.context.scene
         if len(elemGrps) > 1:
             # Remove element group (syncing element group indices happens on execution)
-            elemGrps.remove(elemGrps[props.prop_menu_selectedItem])
+            elemGrps.remove(elemGrps[props.prop_menu_selectedElemGrp])
             # Update menu selection
-            if props.prop_menu_selectedItem >= len(elemGrps):
-                props.prop_menu_selectedItem = len(elemGrps) -1
+            if props.prop_menu_selectedElemGrp >= len(elemGrps):
+                props.prop_menu_selectedElemGrp = len(elemGrps) -1
         else: self.report({'ERROR'}, "At least one element group is required.")
         # Update menu related properties from global vars
         props.props_update_menu()
         return{'FINISHED'} 
+
+########################################
 
 class OBJECT_OT_bcb_move_up(bpy.types.Operator):
     bl_idname = "bcb.move_up"
@@ -1431,15 +1933,17 @@ class OBJECT_OT_bcb_move_up(bpy.types.Operator):
         props = context.window_manager.bcb
         global elemGrps
         scene = bpy.context.scene
-        if props.prop_menu_selectedItem > 0:
-            swapItem = props.prop_menu_selectedItem -1
+        if props.prop_menu_selectedElemGrp > 0:
+            swapItem = props.prop_menu_selectedElemGrp -1
             # Swap items (syncing element group indices happens on execution)
-            elemGrps[swapItem], elemGrps[props.prop_menu_selectedItem] = elemGrps[props.prop_menu_selectedItem], elemGrps[swapItem]
+            elemGrps[swapItem], elemGrps[props.prop_menu_selectedElemGrp] = elemGrps[props.prop_menu_selectedElemGrp], elemGrps[swapItem]
             # Also move menu selection
-            props.prop_menu_selectedItem -= 1
+            props.prop_menu_selectedElemGrp -= 1
             # Update menu related properties from global vars
             props.props_update_menu()
         return{'FINISHED'} 
+
+########################################
 
 class OBJECT_OT_bcb_move_down(bpy.types.Operator):
     bl_idname = "bcb.move_down"
@@ -1449,15 +1953,17 @@ class OBJECT_OT_bcb_move_down(bpy.types.Operator):
         props = context.window_manager.bcb
         global elemGrps
         scene = bpy.context.scene
-        if props.prop_menu_selectedItem < len(elemGrps) -1:
-            swapItem = props.prop_menu_selectedItem +1
+        if props.prop_menu_selectedElemGrp < len(elemGrps) -1:
+            swapItem = props.prop_menu_selectedElemGrp +1
             # Swap items (syncing element group indices happens on execution)
-            elemGrps[swapItem], elemGrps[props.prop_menu_selectedItem] = elemGrps[props.prop_menu_selectedItem], elemGrps[swapItem]
+            elemGrps[swapItem], elemGrps[props.prop_menu_selectedElemGrp] = elemGrps[props.prop_menu_selectedElemGrp], elemGrps[swapItem]
             # Also move menu selection
-            props.prop_menu_selectedItem += 1
+            props.prop_menu_selectedElemGrp += 1
             # Update menu related properties from global vars
             props.props_update_menu()
         return{'FINISHED'} 
+
+########################################
 
 class OBJECT_OT_bcb_up(bpy.types.Operator):
     bl_idname = "bcb.up"
@@ -1465,9 +1971,13 @@ class OBJECT_OT_bcb_up(bpy.types.Operator):
     bl_description = "Selects element group from list."
     def execute(self, context):
         props = context.window_manager.bcb
-        if props.prop_menu_selectedItem > 0:
-            props.prop_menu_selectedItem -= 1
+        if props.prop_menu_selectedElemGrp > 0:
+            props.prop_menu_selectedElemGrp -= 1
+            # Update menu related properties from global vars
+            props.props_update_menu()
         return{'FINISHED'} 
+
+########################################
 
 class OBJECT_OT_bcb_down(bpy.types.Operator):
     bl_idname = "bcb.down"
@@ -1475,9 +1985,13 @@ class OBJECT_OT_bcb_down(bpy.types.Operator):
     bl_description = "Selects element group from list."
     def execute(self, context):
         props = context.window_manager.bcb
-        if props.prop_menu_selectedItem < len(elemGrps) -1:
-            props.prop_menu_selectedItem += 1
+        if props.prop_menu_selectedElemGrp < len(elemGrps) -1:
+            props.prop_menu_selectedElemGrp += 1
+            # Update menu related properties from global vars
+            props.props_update_menu()
         return{'FINISHED'} 
+
+########################################
 
 class OBJECT_OT_bcb_reset(bpy.types.Operator):
     bl_idname = "bcb.reset"
@@ -1490,10 +2004,12 @@ class OBJECT_OT_bcb_reset(bpy.types.Operator):
         # Overwrite element group with original backup (syncing element group indices happens on execution)
         elemGrps = elemGrpsBak.copy()
         # Update menu selection
-        props.prop_menu_selectedItem = 0
+        props.prop_menu_selectedElemGrp = 0
         # Update menu related properties from global vars
         props.props_update_menu()
         return{'FINISHED'} 
+
+########################################
 
 class OBJECT_OT_bcb_estimate_cluster_radius(bpy.types.Operator):
     bl_idname = "bcb.estimate_cluster_radius"
@@ -1509,8 +2025,26 @@ class OBJECT_OT_bcb_estimate_cluster_radius(bpy.types.Operator):
             props.props_update_menu()
         return{'FINISHED'}
 
+########################################
+
+class OBJECT_OT_bcb_asst_update(bpy.types.Operator):
+    bl_idname = "bcb.asst_update"
+    bl_label = "Combine Expressions"
+    bl_description = "Combine expressions for constraint breaking threshold calculation."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        ###### Execute expression evaluation
+        combineExpressions()
+        # Update menu related properties from global vars
+        props.props_update_menu()
+        return{'FINISHED'}
+
+########################################
+
 classes = [ \
     bcb_props,
+    bcb_asst_con_rei_beam_props,
+    bcb_asst_con_rei_wall_props,
     bcb_panel,
     OBJECT_OT_bcb_set_config,
     OBJECT_OT_bcb_get_config,
@@ -1526,7 +2060,8 @@ classes = [ \
     OBJECT_OT_bcb_up,
     OBJECT_OT_bcb_down,
     OBJECT_OT_bcb_reset,
-    OBJECT_OT_bcb_estimate_cluster_radius
+    OBJECT_OT_bcb_estimate_cluster_radius,
+    OBJECT_OT_bcb_asst_update
     ]      
           
 ################################################################################   
@@ -2443,10 +2978,10 @@ def createConnectionData(objsEGrp, connectsPair):
 
 ################################################################################   
 
-def BackupLayerSettingsAndActivateNextEmptyLayer(scene):
+def backupLayerSettingsAndActivateNextEmptyLayer(scene):
 
-    ### Find and activate the first empty layer
-    print("Find and activate the first empty layer...")
+    ### Activate the first empty layer
+    print("Activating the first empty layer...")
     
     ### Backup layer settings
     layersBak = []
@@ -2466,6 +3001,53 @@ def BackupLayerSettingsAndActivateNextEmptyLayer(scene):
         # Set new layers
         scene.layers = [bool(q) for q in layersNew]  # Convert array into boolean (required by layers)
         
+    # Return old layers state
+    return layersBak
+    
+########################################
+
+def backupLayerSettingsAndActivateNextLayerWithObj(scene, objToFind):
+
+    ### Activating the first layer with constraint empty object
+    print("Activating the first layer with constraint empty object...")
+    
+    ### Backup layer settings
+    layersBak = []
+    layersNew = []
+    for i in range(20):
+        layersBak.append(int(scene.layers[i]))
+        layersNew.append(0)
+    ### Find and activate the first empty layer
+    qFound = 0
+    for i in range(20):
+        objsOnLayer = [obj for obj in scene.objects if obj.layers[i]]
+        if objToFind in objsOnLayer:
+            layersNew[i] = 1
+            qFound = 1
+            break
+    if qFound:
+        # Set new layers
+        scene.layers = [bool(q) for q in layersNew]  # Convert array into boolean (required by layers)
+        
+    # Return old layers state
+    return layersBak
+
+########################################
+
+def backupLayerSettingsAndActivateAllLayers(scene):
+
+    ### Activate all layers
+    print("Activating all layers...")
+    
+    ### Backup layer settings
+    layersBak = []
+    layersNew = []
+    for i in range(20):
+        layersBak.append(int(scene.layers[i]))
+        layersNew.append(0)
+    # Activate all layers
+    scene.layers = [True for q in scene.layers]
+       
     # Return old layers state
     return layersBak
     
@@ -2649,7 +3231,7 @@ def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, consts
 def getAttribsOfConstraint(objConst):
 
     ### Create a dictionary of all attributes with values from the given constraint empty object    
-    con = bpy.context.object.rigid_body_constraint
+    con = objConst.rigid_body_constraint
     props = {}
     for prop in con.bl_rna.properties:
         if not prop.is_hidden:
@@ -2666,10 +3248,11 @@ def getAttribsOfConstraint(objConst):
 def setAttribsOfConstraint(objConst, props):
 
     ### Overwrite all attributes of the given constraint empty object with the values of the dictionary provided    
-    for prop in props:
-        try: setattr(con, prop.identifier, props[prop.identifier])
-        except: pass
-        
+    con = objConst.rigid_body_constraint    
+    for prop in props.items():
+        try: setattr(con, prop[0], prop[1])
+        except: print("Error: Failed to set attribute:", prop[0], prop[1])
+                
 ########################################
     
 def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, connectsConsts, constsConnect, exportData):
@@ -2743,6 +3326,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             objConst0 = objConst
             qUpdateComplete = 1
             objConst.rotation_mode = 'XYZ'  # Overwrite temporary object to default (Euler)
+
+            cIdx = consts[0]
+            objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+            # This is not nice as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+            # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                 
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
@@ -3199,6 +3787,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = brkThres
                     objConst['BrkThres'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3212,7 +3804,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif i == 1: vec = Vector((0, radius, -radius))
                         elif i == 2: vec = Vector((0, -radius, 0))
                         vec.rotate(objConst.rotation_quaternion)
-                        objConst.location += vec
+                        objConst.location = objConst0.location +vec
                         ### Enable linear spring
                         objConst.rigid_body_constraint.use_spring_x = 1
                         objConst.rigid_body_constraint.use_spring_y = 1
@@ -3221,15 +3813,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         objConst.rigid_body_constraint.spring_damping_y = 1
                         objConst.rigid_body_constraint.spring_damping_z = 1
                         #objConst.rigid_body_constraint.disable_collisions = False
-                    if connectType == 7:  # If spring-only connection type then activate springs from start (no extra plastic activation required)
-                        objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                        objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                        objConst.rigid_body_constraint.spring_stiffness_z = springStiff
-                    else:  # Disable springs on start (requires plastic activation during simulation)
-                        objConst.rigid_body_constraint.spring_stiffness_x = 0
-                        objConst.rigid_body_constraint.spring_stiffness_y = 0
-                        objConst.rigid_body_constraint.spring_stiffness_z = 0
+                    # Set stiffness
+                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    if connectType != 7:
+                        # Disable springs on start (requires plastic activation during simulation)
+                        objConst.rigid_body_constraint.enabled = 0
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         if connectType == 7:
                               exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
@@ -3267,6 +3859,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = brkThres
                     objConst['BrkThres'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3281,7 +3877,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif i == 2: vec = Vector((0, -radius, -radius))
                         elif i == 3: vec = Vector((0, -radius, radius))
                         vec.rotate(objConst.rotation_quaternion)
-                        objConst.location += vec
+                        objConst.location = objConst0.location +vec
                         ### Enable linear spring
                         objConst.rigid_body_constraint.use_spring_x = 1
                         objConst.rigid_body_constraint.use_spring_y = 1
@@ -3290,15 +3886,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         objConst.rigid_body_constraint.spring_damping_y = 1
                         objConst.rigid_body_constraint.spring_damping_z = 1
                         #objConst.rigid_body_constraint.disable_collisions = False
-                    if connectType == 8:  # If spring-only connection type then activate springs from start (no extra plastic activation required)
-                        objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                        objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                        objConst.rigid_body_constraint.spring_stiffness_z = springStiff
-                    else:  # Disable springs on start (requires plastic activation during simulation)
-                        objConst.rigid_body_constraint.spring_stiffness_x = 0
-                        objConst.rigid_body_constraint.spring_stiffness_y = 0
-                        objConst.rigid_body_constraint.spring_stiffness_z = 0
+                    # Set stiffness
+                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    if connectType != 8:
+                        # Disable springs on start (requires plastic activation during simulation)
+                        objConst.rigid_body_constraint.enabled = 0
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         if connectType == 8:
                               exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
@@ -3340,6 +3936,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = brkThres1
                     objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3353,7 +3953,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 1: vec = Vector((0, radius, -radius))
                         elif j == 2: vec = Vector((0, -radius, 0))
                         vec.rotate(objConst.rotation_quaternion)
-                        objConst.location += vec
+                        objConst.location = objConst0.location +vec
                         ### Enable linear spring
                         objConst.rigid_body_constraint.use_spring_x = 1
                         objConst.rigid_body_constraint.use_spring_y = 1
@@ -3378,6 +3978,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3388,6 +3989,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = brkThres2
                     objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3401,7 +4006,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 1: vec = Vector((0, radius, -radius))
                         elif j == 2: vec = Vector((0, -radius, 0))
                         vec.rotate(objConst.rotation_quaternion)
-                        objConst.location += vec
+                        objConst.location = objConst0.location +vec
                         ### Enable linear spring
                         objConst.rigid_body_constraint.use_spring_x = 1
                         objConst.rigid_body_constraint.use_spring_y = 1
@@ -3426,6 +4031,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3436,6 +4042,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = brkThres3
                     objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3449,7 +4059,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 1: vec = Vector((0, radius, -radius))
                         elif j == 2: vec = Vector((0, -radius, 0))
                         vec.rotate(objConst.rotation_quaternion)
-                        objConst.location += vec
+                        objConst.location = objConst0.location +vec
                         ### Enable linear spring
                         objConst.rigid_body_constraint.use_spring_x = 1
                         objConst.rigid_body_constraint.use_spring_y = 1
@@ -3476,6 +4086,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3515,6 +4126,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = brkThres1
                     objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3529,7 +4144,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 2: vec = Vector((0, -radius, -radius))
                         elif j == 3: vec = Vector((0, -radius, radius))
                         vec.rotate(objConst.rotation_quaternion)
-                        objConst.location += vec
+                        objConst.location = objConst0.location +vec
                         ### Enable linear spring
                         objConst.rigid_body_constraint.use_spring_x = 1
                         objConst.rigid_body_constraint.use_spring_y = 1
@@ -3554,6 +4169,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3564,6 +4180,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = brkThres2
                     objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3578,7 +4198,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 2: vec = Vector((0, -radius, -radius))
                         elif j == 3: vec = Vector((0, -radius, radius))
                         vec.rotate(objConst.rotation_quaternion)
-                        objConst.location += vec
+                        objConst.location = objConst0.location +vec
                         ### Enable linear spring
                         objConst.rigid_body_constraint.use_spring_x = 1
                         objConst.rigid_body_constraint.use_spring_y = 1
@@ -3603,6 +4223,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3613,6 +4234,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+                    if asciiExport:
+                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
+                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
+                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                     objConst.rigid_body_constraint.breaking_threshold = brkThres3
                     objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3627,7 +4252,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 2: vec = Vector((0, -radius, -radius))
                         elif j == 3: vec = Vector((0, -radius, radius))
                         vec.rotate(objConst.rotation_quaternion)
-                        objConst.location += vec
+                        objConst.location = objConst0.location +vec
                         ### Enable linear spring
                         objConst.rigid_body_constraint.use_spring_x = 1
                         objConst.rigid_body_constraint.use_spring_y = 1
@@ -3654,6 +4279,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
+                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3911,7 +4537,12 @@ def exportDataToText(exportData):
 #    exportDataStr = base64.decodestring(exportDataStr.encode())  # Convert binary data back from "text" representation
 #    exportDataStr = zlib.decompress(exportDataStr)
 #    exportData = pickle.loads(exportDataStr)  # Use exportDataStr.encode() here when using real ASCII pickle protocol
-#    print(exportData)
+#    #print(exportData)
+#    i = 0
+#    for const in exportData:
+#        if i > 300: bpy.ops.object.empty_add(type='SPHERE', view_align=False, location=const[0], layers=(True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False))
+#        if i > 600: break
+#        i += 1
     # For later import you can use setattr(item[0], item[1])
       
 ################################################################################   
@@ -3988,7 +4619,7 @@ def build():
                         ###### Create actual parents for too small elements
                         if minimumElementSize: makeParentsForTooSmallElementsReal(objs, connectsPairParent)
                         ###### Find and activate first empty layer
-                        layersBak = BackupLayerSettingsAndActivateNextEmptyLayer(scene)
+                        layersBak = backupLayerSettingsAndActivateNextEmptyLayer(scene)
                         ###### Create empty objects (without any data)
                         if not asciiExport:
                             emptyObjs = createEmptyObjs(scene, len(constsConnect))
@@ -4037,8 +4668,14 @@ def build():
             if len(emptyObjs) > 0 and objCntInEGrps > 1:
                 ###### Set general rigid body world settings
                 initGeneralRigidBodyWorldSettings(scene)
+                ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
+                if not asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
                 setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, connectsConsts, constsConnect, exportData)
+                ### Restore old layers state
+                if not asciiExport:
+                    scene.update()  # Required to update empty locations before layer switching
+                    scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
                 ###### Calculate mass for all mesh objects
                 calculateMass(scene, objs, objsEGrp, childObjs)
                 ###### Exporting data into internal ASCII text file
@@ -4074,6 +4711,8 @@ def register():
     for c in classes:
         bpy.utils.register_class(c)
     bpy.types.WindowManager.bcb = bpy.props.PointerProperty(type=bcb_props)
+    bpy.types.WindowManager.bcb_asst_con_rei_beam = bpy.props.PointerProperty(type=bcb_asst_con_rei_beam_props)
+    bpy.types.WindowManager.bcb_asst_con_rei_wall = bpy.props.PointerProperty(type=bcb_asst_con_rei_wall_props)
     # Reinitialize menu for convenience reasons when running from text window
     props = bpy.context.window_manager.bcb
     props.prop_menu_gotConfig = 0
