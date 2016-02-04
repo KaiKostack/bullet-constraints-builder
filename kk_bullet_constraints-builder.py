@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.05 #
+# Bullet Constraints Builder v2.06 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -52,38 +52,38 @@ asciiExport = 0              # 0     | Exports all constraint data to an ASCII t
 elemGrps = [
 # 0          1    2           3        4   5       6         7                8                9       10   11   12   13    14   15    16     17
 # 0          1    2           3        4   5       6         7         8      9         10     11      12   13   14   15    16   17    18     19
-# Name       RVP  Mat.preset  Density  CT  BTC     BTT       BTS       BTS90  BTB       BTB90  Stiff.  TPD. TPR. TBD. TBR.  Bev. Scale Facing F.assistant 
-[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "1*a",    "0.3*a",  "",    "100*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None"],              
-[ "Walls",   1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "0.7*a",  "",    "270*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
-[ "Slabs",   1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "0.7*a",  "",    "270*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
-[ "Columns", 1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "100*a",  "",    "270*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"],
-[ "",        1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "100*a",  "",    "270*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"]
+# Name       RVP  Mat.preset  Density  CT  BTC     BTT       BTS       BTS90  BTB       BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.assistant 
+[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "1*a",    "0.3*a",  "",    "0.4*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None"],              
+[ "Walls",   1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "0.7*a",  "",    "0.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
+[ "Slabs",   1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "0.7*a",  "",    "0.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
+[ "Columns", 1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "100*a",  "",    "0.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"],
+[ "",        1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "100*a",  "",    "0.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 ### Magic numbers / column descriptions for above element group settings (in order from left to right):
-EGSidxName = 0    # Group Name                | The name of the object group these settings will be used for
-EGSidxRqVP = 1    # Required Vertex Pairs     | How many vertex pairs between two elements are required to generate a connection.
-                  # (Depreciated)             | This can help to ensure there is an actual surface to surface connection between both elements (for at least 3 verts you can expect a shared surface).
-                  #                           | For two elements from different groups with different RVPs the lower number is decisive.
-EGSidxMatP = 2    # Material Preset           | Preset name of the physical material to be used from Blender's internal database.
-                  #                           | See Blender's Rigid Body Tools for a list of available presets.
-EGSidxDens = 3    # Material Density          | Custom density value (kg/m^3) to use instead of material preset (0 = disabled).
-EGSidxCTyp = 4    # Connection Type           | Connection type ID for the constraint presets defined by this script, see list below.
-EGSidxBTC  = 5    # Break.Thresh.Compres.     | Real world material compressive breaking threshold in N/mm^2.
-EGSidxBTT  = 6    # Break.Thresh.Tensile      | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
-EGSidxBTS  = 7    # Break.Thresh.Shear        | Real world material shearing breaking threshold in N/mm^2.
-EGSidxBTS9 = 8    # Break.Thresh.Shear 90°    | Real world material shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2. If undefined other shearing threshold is used.
-EGSidxBTB  = 9    # Break.Thresh.Bend         | Real world material bending breaking threshold in N/mm^2.
-EGSidxBTB9 = 10   # Break.Thresh.Bend 90°     | Real world material bending breaking threshold with h and w swapped (rotated by 90°) in N/mm^2. If undefined other shearing threshold is used.
-EGSidxSStf = 11   # Spring Stiffness          | Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.
-EGSidxTlPD = 12   # Tolerance Plast.Def.Dist. | For baking: Allowed tolerance for distance change in percent for plastic deformation (1.00 = 100 %)
-EGSidxTlPR = 13   # Tolerance Plast.Def.Rot.  | For baking: Allowed tolerance for angular change in radian for plastic deformation
-EGSidxTlBD = 14   # Tolerance Break.Def.Dist. | For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %)
-EGSidxTlBR = 15   # Tolerance Break.Def.Rot.  | For baking: Allowed tolerance for angular change in radian for connection removal
-EGSidxBevl = 16   # Bevel                     | Use beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes)
-EGSidxScal = 17   # Scale                     | Apply scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes)
-EGSidxFacg = 18   # Facing                    | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
-EGSidxAsst = 19   # Formula Assistant         | Material specific formula assistant with related settings
+EGSidxName = 0    # Group Name               | The name of the object group these settings will be used for
+EGSidxRqVP = 1    # Required Vertex Pairs    | How many vertex pairs between two elements are required to generate a connection.
+                  # (Depreciated)            | This can help to ensure there is an actual surface to surface connection between both elements (for at least 3 verts you can expect a shared surface).
+                  #                          | For two elements from different groups with different RVPs the lower number is decisive.
+EGSidxMatP = 2    # Material Preset          | Preset name of the physical material to be used from Blender's internal database.
+                  #                          | See Blender's Rigid Body Tools for a list of available presets.
+EGSidxDens = 3    # Material Density         | Custom density value (kg/m^3) to use instead of material preset (0 = disabled).
+EGSidxCTyp = 4    # Connection Type          | Connection type ID for the constraint presets defined by this script, see list below.
+EGSidxBTC  = 5    # Break.Thresh.Compres.    | Real world material compressive breaking threshold in N/mm^2.
+EGSidxBTT  = 6    # Break.Thresh.Tensile     | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
+EGSidxBTS  = 7    # Break.Thresh.Shear       | Real world material shearing breaking threshold in N/mm^2.
+EGSidxBTS9 = 8    # Break.Thresh.Shear 90°   | Real world material shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2. If undefined other shearing threshold is used.
+EGSidxBTB  = 9    # Break.Thresh.Bend        | Real world material bending breaking threshold in N/mm^2.
+EGSidxBTB9 = 10   # Break.Thresh.Bend 90°    | Real world material bending breaking threshold with h and w swapped (rotated by 90°) in N/mm^2. If undefined other shearing threshold is used.
+EGSidxSStf = 11   # Spring Stiffness         | Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.
+EGSidxTl1D = 12   # Tolerance 1st Def.Dist.  | For baking: First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %)
+EGSidxTl1R = 13   # Tolerance 1st Def.Rot.   | For baking: First deformation tolerance limit for angular change in radian for connection removal or plastic deformation
+EGSidxTl2D = 14   # Tolerance 2nd Def.Dist.  | For baking: Second deformation tolerance limit for distance change in percent for connection removal (1.00 = 100 %)
+EGSidxTl2R = 15   # Tolerance 2nd Def.Rot.   | For baking: Second deformation tolerance limit for angular change in radian for connection removal
+EGSidxBevl = 16   # Bevel                    | Use beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes)
+EGSidxScal = 17   # Scale                    | Apply scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes)
+EGSidxFacg = 18   # Facing                   | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
+EGSidxAsst = 19   # Formula Assistant        | Material specific formula assistant with related settings
 
 ### Connection Types:
 connectTypes = [          # Cnt C T S B S T T T T      CT
@@ -203,7 +203,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 0, 5),
+    "version": (2, 0, 6),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -810,10 +810,10 @@ def monitor_initBuffers(scene):
         if elemGrpA <= elemGrpB: elemGrp = elemGrpA
         else:                    elemGrp = elemGrpB
         springStiff = elemGrps[elemGrp][EGSidxSStf]
-        tol1dist = elemGrps[elemGrp][EGSidxTlPD]
-        tol1rot = elemGrps[elemGrp][EGSidxTlPR]
-        tol2dist = elemGrps[elemGrp][EGSidxTlBD]
-        tol2rot = elemGrps[elemGrp][EGSidxTlBR]
+        tol1dist = elemGrps[elemGrp][EGSidxTl1D]
+        tol1rot = elemGrps[elemGrp][EGSidxTl1R]
+        tol2dist = elemGrps[elemGrp][EGSidxTl2D]
+        tol2rot = elemGrps[elemGrp][EGSidxTl2R]
         
         # Calculate distance between both elements of the connection
         distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
@@ -855,7 +855,7 @@ def monitor_checkForChange():
     for connect in connects:
         sys.stdout.write('\r' +"%d & %d" %(d, e))
         
-        ### If connection is in fixed mode then check if plastic tolerance is reached
+        ### If connection is in fixed mode then check if first tolerance is reached
         if connect[12] == 0:
             d += 1
             consts = connect[4]
@@ -888,7 +888,7 @@ def monitor_checkForChange():
                     connect[12] += 1
                     cntP += 1
 
-        ### If connection is in plastic mode then check if breaking tolerance is reached
+        ### If connection is in plastic mode then check if second tolerance is reached
         if connect[12] == 1:
             e += 1
             consts = connect[4]
@@ -1085,7 +1085,7 @@ def combineExpressions():
         Nn = "(" +Nn +")/(h*w)*a"
         Np = "(" +Np +")/(h*w)*a"
         Vpn = "(" +Vpn +")/(h*w)*a"
-        Mpn = "(" +Mpn +")/(h*w)*a"
+        Mpn = "(" +Mpn +")/(h*h*w)*a"
                 
         ### Combine all available expressions with each other      
         symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
@@ -1171,7 +1171,7 @@ def combineExpressions():
         Nn = "(" +Nn +")/(h*w)*a"
         Np = "(" +Np +")/(h*w)*a"
         Vpn = "(" +Vpn +")/(h*w)*a"
-        Mpn = "(" +Mpn +")/(h*w)*a"
+        Mpn = "(" +Mpn +")/(h*h*w)*a"
                 
         ### Combine all available expressions with each other      
         symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
@@ -1471,10 +1471,10 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("prop_elemGrp_%d_EGSidxRqVP" %i +" = int(name='Req. Vertex Pairs', default=elemGrps[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
         exec("prop_elemGrp_%d_EGSidxMatP" %i +" = string(name='Mat. Preset', default=elemGrps[j][EGSidxMatP], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
         exec("prop_elemGrp_%d_EGSidxDens" %i +" = float(name='Density', default=elemGrps[j][EGSidxDens], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
-        exec("prop_elemGrp_%d_EGSidxTlPD" %i +" = float(name='Dist. Tol. Plastic', default=elemGrps[j][EGSidxTlPD], min=0.0, max=10.0, description='For baking: Allowed tolerance for distance change in percent for plastic deformation (1.00 = 100 %).')")
-        exec("prop_elemGrp_%d_EGSidxTlPR" %i +" = float(name='Rot. Tol. Plastic', default=elemGrps[j][EGSidxTlPR], min=0.0, max=pi, description='For baking: Allowed tolerance for angular change in radian for plastic deformation.')")
-        exec("prop_elemGrp_%d_EGSidxTlBD" %i +" = float(name='Dist. Tol. Break', default=elemGrps[j][EGSidxTlBD], min=0.0, max=10.0, description='For baking: Allowed tolerance for distance change in percent for connection removal (1.00 = 100 %).')")
-        exec("prop_elemGrp_%d_EGSidxTlBR" %i +" = float(name='Rot. Tol. Break', default=elemGrps[j][EGSidxTlBR], min=0.0, max=pi, description='For baking: Allowed tolerance for angular change in radian for connection removal.')")
+        exec("prop_elemGrp_%d_EGSidxTl1D" %i +" = float(name='1st Dist. Tol.', default=elemGrps[j][EGSidxTl1D], min=0.0, max=10.0, description='For baking: First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %).')")
+        exec("prop_elemGrp_%d_EGSidxTl1R" %i +" = float(name='1st Rot. Tol.', default=elemGrps[j][EGSidxTl1R], min=0.0, max=pi, description='For baking: First deformation tolerance limit for angular change in radian for connection removal or plastic deformation.')")
+        exec("prop_elemGrp_%d_EGSidxTl2D" %i +" = float(name='2nd Dist. Tol.', default=elemGrps[j][EGSidxTl2D], min=0.0, max=10.0, description='For baking: Second deformation tolerance limit for distance change in percent for connection removal (1.00 = 100 %).')")
+        exec("prop_elemGrp_%d_EGSidxTl2R" %i +" = float(name='2nd Rot. Tol.', default=elemGrps[j][EGSidxTl2R], min=0.0, max=pi, description='For baking: Second deformation tolerance limit for angular change in radian for connection removal.')")
         exec("prop_elemGrp_%d_EGSidxBevl" %i +" = bool(name='Bevel', default=elemGrps[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
         exec("prop_elemGrp_%d_EGSidxScal" %i +" = float(name='Rescale Factor', default=elemGrps[j][EGSidxScal], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
         exec("prop_elemGrp_%d_EGSidxFacg" %i +" = bool(name='Facing', default=elemGrps[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
@@ -1496,10 +1496,10 @@ class bcb_props(bpy.types.PropertyGroup):
             exec("self.prop_elemGrp_%d_EGSidxBTB" %i +" = elemGrps[i][EGSidxBTB]")
             exec("self.prop_elemGrp_%d_EGSidxBTB9" %i +" = elemGrps[i][EGSidxBTB9]")
             exec("self.prop_elemGrp_%d_EGSidxSStf" %i +" = elemGrps[i][EGSidxSStf]")
-            exec("self.prop_elemGrp_%d_EGSidxTlPD" %i +" = elemGrps[i][EGSidxTlPD]")
-            exec("self.prop_elemGrp_%d_EGSidxTlPR" %i +" = elemGrps[i][EGSidxTlPR]")
-            exec("self.prop_elemGrp_%d_EGSidxTlBD" %i +" = elemGrps[i][EGSidxTlBD]")
-            exec("self.prop_elemGrp_%d_EGSidxTlBR" %i +" = elemGrps[i][EGSidxTlBR]")
+            exec("self.prop_elemGrp_%d_EGSidxTl1D" %i +" = elemGrps[i][EGSidxTl1D]")
+            exec("self.prop_elemGrp_%d_EGSidxTl1R" %i +" = elemGrps[i][EGSidxTl1R]")
+            exec("self.prop_elemGrp_%d_EGSidxTl2D" %i +" = elemGrps[i][EGSidxTl2D]")
+            exec("self.prop_elemGrp_%d_EGSidxTl2R" %i +" = elemGrps[i][EGSidxTl2R]")
             exec("self.prop_elemGrp_%d_EGSidxBevl" %i +" = elemGrps[i][EGSidxBevl]")
             exec("self.prop_elemGrp_%d_EGSidxScal" %i +" = elemGrps[i][EGSidxScal]")
             exec("self.prop_elemGrp_%d_EGSidxFacg" %i +" = elemGrps[i][EGSidxFacg]")
@@ -1545,10 +1545,10 @@ class bcb_props(bpy.types.PropertyGroup):
             elemGrps[i][EGSidxBTB] = eval("self.prop_elemGrp_%d_EGSidxBTB" %i)
             elemGrps[i][EGSidxBTB9] = eval("self.prop_elemGrp_%d_EGSidxBTB9" %i)
             elemGrps[i][EGSidxSStf] = eval("self.prop_elemGrp_%d_EGSidxSStf" %i)
-            elemGrps[i][EGSidxTlPD] = eval("self.prop_elemGrp_%d_EGSidxTlPD" %i)
-            elemGrps[i][EGSidxTlPR] = eval("self.prop_elemGrp_%d_EGSidxTlPR" %i)
-            elemGrps[i][EGSidxTlBD] = eval("self.prop_elemGrp_%d_EGSidxTlBD" %i)
-            elemGrps[i][EGSidxTlBR] = eval("self.prop_elemGrp_%d_EGSidxTlBR" %i)
+            elemGrps[i][EGSidxTl1D] = eval("self.prop_elemGrp_%d_EGSidxTl1D" %i)
+            elemGrps[i][EGSidxTl1R] = eval("self.prop_elemGrp_%d_EGSidxTl1R" %i)
+            elemGrps[i][EGSidxTl2D] = eval("self.prop_elemGrp_%d_EGSidxTl2D" %i)
+            elemGrps[i][EGSidxTl2R] = eval("self.prop_elemGrp_%d_EGSidxTl2R" %i)
             elemGrps[i][EGSidxBevl] = eval("self.prop_elemGrp_%d_EGSidxBevl" %i)
             elemGrps[i][EGSidxScal] = eval("self.prop_elemGrp_%d_EGSidxScal" %i)
             elemGrps[i][EGSidxFacg] = eval("self.prop_elemGrp_%d_EGSidxFacg" %i)
@@ -1877,16 +1877,16 @@ class bcb_panel(bpy.types.Panel):
         if props.prop_submenu_advancedE:
             row = box.row(); row.prop(props, "prop_elemGrp_%d_EGSidxSStf" %i)
             if not connectType[2][4]: row.active = 0
-            row = box.row(); row.label(text="Plastic & Breaking Tolerances:")
+            row = box.row(); row.label(text="1st & 2nd Tolerance (Plastic & Breaking):")
             row = box.row()
             split = row.split(percentage=.50, align=False);
-            split.prop(props, "prop_elemGrp_%d_EGSidxTlPD" %i)
-            split.prop(props, "prop_elemGrp_%d_EGSidxTlPR" %i)
+            split.prop(props, "prop_elemGrp_%d_EGSidxTl1D" %i)
+            split.prop(props, "prop_elemGrp_%d_EGSidxTl1R" %i)
             if not connectType[2][5]: split.active = 0
             row = box.row()
             split = row.split(percentage=.50, align=False);
-            split.prop(props, "prop_elemGrp_%d_EGSidxTlBD" %i)
-            split.prop(props, "prop_elemGrp_%d_EGSidxTlBR" %i)
+            split.prop(props, "prop_elemGrp_%d_EGSidxTl2D" %i)
+            split.prop(props, "prop_elemGrp_%d_EGSidxTl2R" %i)
             if not connectType[2][7]: split.active = 0
             
         ### Update global vars from menu related properties
@@ -3533,10 +3533,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         brkThresExpr3 = elemGrps[elemGrp][EGSidxBTS]
         brkThresExpr4 = elemGrps[elemGrp][EGSidxBTB]
         springStiff = elemGrps[elemGrp][EGSidxSStf]
-        tol1dist = elemGrps[elemGrp][EGSidxTlPD]
-        tol1rot = elemGrps[elemGrp][EGSidxTlPR]
-        tol2dist = elemGrps[elemGrp][EGSidxTlBD]
-        tol2rot = elemGrps[elemGrp][EGSidxTlBR]
+        tol1dist = elemGrps[elemGrp][EGSidxTl1D]
+        tol1rot = elemGrps[elemGrp][EGSidxTl1R]
+        tol2dist = elemGrps[elemGrp][EGSidxTl2D]
+        tol2rot = elemGrps[elemGrp][EGSidxTl2R]
         
         if not asciiExport:
             ### Check if full update is necessary (optimization)
@@ -3561,9 +3561,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 
             if   connectType == 1 or connectType == 9 or connectType == 10:
                 correction = 1
-                # Obsolete code (before plastic mode):
-                #if connectType == 9: correction /= 1 +3     # Divided by the count of constraints which are sharing the same degree of freedom
-                #elif connectType == 10: correction /= 1 +4  # Divided by the count of constraints which are sharing the same degree of freedom
                 cIdx = consts[0]
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
@@ -3769,9 +3766,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
                 # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
                 correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value, divided by the count of constraints which are sharing the same degree of freedom
-                # Obsolete code (before plastic mode):
-                #if connectType == 11: correction /= 1 +3    # Divided by the count of constraints which are sharing the same degree of freedom
-                #elif connectType == 12: correction /= 1 +4  # Divided by the count of constraints which are sharing the same degree of freedom
                 ### Calculate orientation between the two elements, imagine a line from center to center
                 dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
                 if alignVertical:
@@ -3876,10 +3870,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
                 correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
                 correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
-                # Obsolete code (before plastic mode):
-                #if connectType == 7: correction /= 3        # Divided by the count of constraints which are sharing the same degree of freedom
-                #elif connectType == 9: correction /= 3 +1   # Divided by the count of constraints which are sharing the same degree of freedom
-                #elif connectType == 11: correction /= 3 +4  # Divided by the count of constraints which are sharing the same degree of freedom
                 radius = geoHeight /2
                 ### Calculate orientation between the two elements, imagine a line from center to center
                 dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
@@ -3943,10 +3933,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
                 correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
                 correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
-                # Obsolete code (before plastic mode):
-                #if connectType == 8: correction /= 4        # Divided by the count of constraints which are sharing the same degree of freedom
-                #elif connectType == 10: correction /= 4 +1  # Divided by the count of constraints which are sharing the same degree of freedom
-                #elif connectType == 12: correction /= 4 +4  # Divided by the count of constraints which are sharing the same degree of freedom
                 radius = geoHeight /2
                 ### Calculate orientation between the two elements, imagine a line from center to center
                 dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
