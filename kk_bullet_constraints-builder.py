@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.02 #
+# Bullet Constraints Builder v2.03 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -50,11 +50,12 @@ asciiExport = 0              # 0     | Exports all constraint data to an ASCII t
 
 ### Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [
-# 0          1    2           3        4   5       6        7          8          9       10   11   12   13    14   15    16     17
-# Name       RVP  Mat.preset  Density  CT  BTC     BTT      BTS        BTB        Stiff.  TPD. TPR. TBD. TBR.  Bev. Scale Facing F.assistant 
-[ "RC",      1,   "Concrete", 2400,    6,  "25*a", "7.5*a", "115*h*h", "3*h*a",   10**6,  .05, .1,  .1,  .4,   0,   .95,  0,     "con_rei_beam"], # Empty name means this group is to be used when element is not part of any element group
-[ "Walls",   1,   "Masonry",  1800,    6,  "10*a", ".6*a",  "1*h*h",   ".23*h*a", 10**6,  .05, .1,  .1,  .4,   0,   .95,  0,     "None"]              
-]
+# 0          1    2           3        4   5       6          7                   8               9       10   11   12   13    14   15    16     17
+# Name       RVP  Mat.preset  Density  CT  BTC     BTT        BTS                 BTB             Stiff.  TPD. TPR. TBD. TBR.  Bev. Scale Facing F.assistant 
+[ "Walls",   1,   "Masonry",  1800,    6,  "10*a", "1*a",     "1000*h**1.2",      "2500*h**1.2",  10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None"],              
+[ "Slabs",   1,   "Concrete", 2400,    6,  "30*a", "a**1.15", "30*a*(1/a)**.333", "25000*h**1.2", 10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
+[ "",        1,   "Concrete", 2400,    6,  "30*a", "a**1.15", "10000*h**1.2",     "25000*h**1.2", 10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"]
+] # Empty name means this group is to be used when element is not part of any element group
 
 ### Column descriptions (in order from left to right):
 #
@@ -107,29 +108,29 @@ formulaAssistants = [
 {"Name":"None", "ID":"None"},
 {"Name":"Reinforced Concrete (Beams & Columns)", "ID":"con_rei_beam",
  "fs":500, "fc":30, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
- "h":250, "b":150,  # Testing parameters, will be replaced on build
+ "h":0, "b":0,  # Testing parameters, will be replaced on build
  "Exp:d":   "h-c-dl/2",
  "Exp:e":   "h-2*c-dl",
  "Exp:rho": "(dl/2)**2*pi*n/(h*b)",
- "Exp:y":   "((ds/2)**2*pi*2)*10/d",
+ "Exp:y":   "((ds/2)**2*pi*2/100*1000/s)*10/d",
  "Exp:e1":  "(h-2*c-dl)/h",
  "Exp:N-":  "fc*((h*b)-rho*(h*b))+fs*rho*(h*b)",
  "Exp:N+":  "fs*rho*(h*b)",
- "Exp:V+/-":"fs*y*e1*h**2*1.2",
- "Exp:M+/-":"fs*rho*(h*b)/2*(e1*h)"
+ "Exp:V+/-":"max(10,fs*y*e1*h**2*1.2)",
+ "Exp:M+/-":"max(10,fs*rho*(h*b)/2*(e1*h))"
 },
 {"Name":"Reinforced Concrete (Walls & Slabs)", "ID":"con_rei_wall",
  "fs":500, "fc":30, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
- "h":250, "b":150,  # Testing parameters, will be replaced on build
+ "h":0, "b":0,  # Testing parameters, will be replaced on build
  "Exp:d":   "h-c-dl/2",
  "Exp:e":   "h-2*c-dl",
  "Exp:rho": "(dl/2)**2*pi*n/(h*b)",
- "Exp:y":   "((ds/2)**2*pi*2)*10/d",
+ "Exp:y":   "((ds/2)**2*pi*2/100*1000/s)*10/d",
  "Exp:e1":  "(h-2*c-dl)/h",
  "Exp:N-":  "fc*((h*b)-rho*(h*b))+fs*rho*(h*b)",
  "Exp:N+":  "fs*rho*(h*b)",
- "Exp:V+/-":"(0.15*k*(100*rho*fc)**(1/3))*(h*b)",
- "Exp:M+/-":"fs*rho*(h*b)/2*(e1*h)"
+ "Exp:V+/-":"max(10,(0.15*k*(100*rho*fc)**(1/3))*(h*b))",
+ "Exp:M+/-":"max(10,fs*rho*(h*b)/2*(e1*h))"
 }]
 # Material strength values (N/mm²):
 # fs = strength of steel
@@ -202,7 +203,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 0, 2),
+    "version": (2, 0, 3),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -287,6 +288,7 @@ def storeConfigDataInScene(scene):
     ### Store menu config data in scene
     if debug: print("Storing menu config data in scene...")
     
+    scene["bcb_version"] = bl_info["version"]
     scene["bcb_prop_stepsPerSecond"] = stepsPerSecond
     scene["bcb_prop_constraintUseBreaking"] = constraintUseBreaking
     scene["bcb_prop_connectionCountLimit"] = connectionCountLimit
@@ -316,8 +318,17 @@ def storeConfigDataInScene(scene):
 def getConfigDataFromScene(scene):
     
     ### Get menu config data from scene
-    print("Getting menu config data from scene...")
-    
+    if debug: print("Getting menu config data from scene...")
+
+    warning = ""
+    if "bcb_version" in scene.keys():
+        versionCfg = scene["bcb_version"]
+        version = bl_info["version"]
+        if versionCfg != version:
+            if versionCfg[0] < version[0]:
+                warning = "Configuration settings from an older BCB version detected which is known to be incompatible with this one.\nTry to clear settings and reconfigure your scene from scratch."
+    else:   warning = "Configuration settings from an older BCB version detected which is known to be incompatible with this one.\nTry to clear settings and reconfigure your scene from scratch."
+
     props = bpy.context.window_manager.bcb
     if "bcb_prop_stepsPerSecond" in scene.keys():
         global stepsPerSecond
@@ -371,6 +382,8 @@ def getConfigDataFromScene(scene):
         global initPeriodTimeScale
         try: initPeriodTimeScale = props.prop_initPeriodTimeScale = scene["bcb_prop_initPeriodTimeScale"]
         except: pass
+
+    if len(warning): return warning
             
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     if "bcb_prop_elemGrps" in scene.keys():
@@ -381,17 +394,19 @@ def getConfigDataFromScene(scene):
         for i in range(len(elemGrpsProp[0])):
             column = []
             for j in range(len(elemGrpsProp)):
-                column.append(elemGrpsProp[j][i])
+                if j != asstIdx:
+                      column.append(elemGrpsProp[j][i])
+                else: column.append(dict(elemGrpsProp[j][i]).copy())
             missingColumns = len(elemGrps[0]) -len(column)
             if missingColumns:
                 print("Error: elemGrp property missing, BCB scene settings are probably outdated.")
                 print("Clear all BCB data, double-check your settings and rebuild constraints.")
                 ofs = len(column)
                 for j in range(missingColumns):
-                    column.append(elemGrps[i][ofs +j])
+                      column.append(elemGrps[i][ofs +j])
             elemGrpsInverted.append(column)
         elemGrps = elemGrpsInverted
-        
+                
 ################################################################################   
 
 def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect):
@@ -516,32 +531,32 @@ def clearAllDataFromScene(scene):
     print("Getting data from scene...")
 
     try: objsEGrp = scene["bcb_objsEGrp"]
-    except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
+    except: objsEGrp = []; print("Warning: bcb_objsEGrp property not found, cleanup may be incomplete.")
 
     try: names = scene["bcb_objs"]
-    except: names = []; print("Error: bcb_objs property not found, cleanup may be incomplete.")
+    except: names = []; print("Warning: bcb_objs property not found, cleanup may be incomplete.")
     objs = []
     for name in names:
         try: objs.append(scnObjs[name])
-        except: print("Error: Object %s missing, cleanup may be incomplete." %name)
+        except: print("Warning: Object %s missing, cleanup may be incomplete." %name)
 
     try: names = scene["bcb_emptyObjs"]
-    except: names = []; print("Error: bcb_emptyObjs property not found, cleanup may be incomplete.")
+    except: names = []; print("Warning: bcb_emptyObjs property not found, cleanup may be incomplete.")
     emptyObjs = []
     for name in names:
         try: emptyObjs.append(scnEmptyObjs[name])
-        except: print("Error: Object %s missing, cleanup may be incomplete." %name)
+        except: print("Warning: Object %s missing, cleanup may be incomplete." %name)
 
     try: names = scene["bcb_childObjs"]
-    except: names = []; print("Error: bcb_childObjs property not found, cleanup may be incomplete.")
+    except: names = []; print("Warning: bcb_childObjs property not found, cleanup may be incomplete.")
     childObjs = []
     for name in names:
         try: childObjs.append(scnObjs[name])
-        except: print("Error: Object %s missing, cleanup may be incomplete." %name)
+        except: print("Warning: Object %s missing, cleanup may be incomplete." %name)
 
     try: connectsPairParent = scene["bcb_connectsPairParent"]
-    except: connectsPairParent = []; print("Error: bcb_connectsPairParent property not found, cleanup may be incomplete.")
-    
+    except: connectsPairParent = []; print("Warning: bcb_connectsPairParent property not found, cleanup may be incomplete.")
+
     ### Backup layer settings and activate all layers
     layersBak = []
     layersNew = []
@@ -601,25 +616,27 @@ def clearAllDataFromScene(scene):
     print("Getting updated data from scene...")
         
     try: names = scene["bcb_objs"]
-    except: names = []; print("Error: bcb_objs property not found, cleanup may be incomplete.")
+    except: names = []; print("Warning: bcb_objs property not found, cleanup may be incomplete.")
     objs = []
     for name in names:
         try: objs.append(scnObjs[name])
-        except: pass #print("Error: Object %s missing, cleanup may be incomplete." %name)
+        except: pass #print("Warning: Object %s missing, cleanup may be incomplete." %name)
 
     try: names = scene["bcb_emptyObjs"]
-    except: names = []; print("Error: bcb_emptyObjs property not found, cleanup may be incomplete.")
+    except: names = []; print("Warning: bcb_emptyObjs property not found, cleanup may be incomplete.")
     emptyObjs = []
     for name in names:
         try: emptyObjs.append(scnEmptyObjs[name])
-        except: pass #print("Error: Object %s missing, cleanup may be incomplete." %name)
+        except: pass #print("Warning: Object %s missing, cleanup may be incomplete." %name)
 
     ### Revert element scaling
     for k in range(len(objs)):
-        obj = objs[k]
-        scale = elemGrps[objsEGrp[k]][15]
-        if scale != 0 and scale != 1:
-            obj.scale /= scale
+        try: scale = elemGrps[objsEGrp[k]][15]  # Try in case elemGrps is from an old BCB version
+        except: pass
+        else:
+            obj = objs[k]
+            if scale != 0 and scale != 1:
+                obj.scale /= scale
 
     print("Deleting objects...")
     ### Select modified elements for deletion from scene 
@@ -646,8 +663,8 @@ def clearAllDataFromScene(scene):
     
     ### Finally remove ID property build data (leaves menu props in place)
     for key in scene.keys():
-        if "bcb_" in key and not "bcb_prop" in key: del scene[key]
-   
+        if "bcb_" in key: del scene[key]
+            
     # Set layers as in original scene
     scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
 
@@ -1015,12 +1032,18 @@ def splitAndApplyPrecisionToFormula(formulaIn):
     else: formulaOut += charLast
     formulaOut = formulaOut.replace('  ',' ')
     formulaOut = formulaOut.strip(' ')
-    ### Apply precision to floats
+
+    ### Apply precision to separated floats
     formulaToSplit = formulaOut; formulaOut = ''
     for term in formulaToSplit.split(' '):
         try: formulaOut += convertFloatToStr(float(term), 4) +' '
         except: formulaOut += term +' '
+    formulaOut = formulaOut.replace('  ',' ')
     formulaOut = formulaOut.strip(' ')
+
+    # Clear all spaces
+    formulaOut = formulaOut.replace(' ','')
+
     return formulaOut
 
 ########################################
@@ -1308,9 +1331,8 @@ class bcb_props(bpy.types.PropertyGroup):
             elemGrpNew = []
             for j in range(len(elemGrps[i])):
                 if j != asstIdx:
-                    elemGrpNew.append(eval("self.prop_elemGrp_%d_%d" %(i, j)))
-                else:
-                    elemGrpNew.append(elemGrps[i][j])
+                      elemGrpNew.append(eval("self.prop_elemGrp_%d_%d" %(i, j)))
+                else: elemGrpNew.append(elemGrps[i][j])
             elemGrps[i] = elemGrpNew
 
         ### If different formula assistant ID from that stored in element group then update with defaults
@@ -1321,7 +1343,13 @@ class bcb_props(bpy.types.PropertyGroup):
             for formAssist in formulaAssistants:
                 if self.prop_assistant_menu == formAssist['ID']:
                     elemGrps[i][asstIdx] = formAssist.copy()
-        
+
+        ### Update global vars also from the other classes properties
+        props_asst_con_rei_beam = bpy.context.window_manager.bcb_asst_con_rei_beam
+        props_asst_con_rei_wall = bpy.context.window_manager.bcb_asst_con_rei_wall
+        props_asst_con_rei_beam.props_update_globals()
+        props_asst_con_rei_wall.props_update_globals()        
+
 ########################################
 
 class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
@@ -1346,8 +1374,8 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
     prop_n    = int(name='n', default=asst['n'], description='Number of longitudinal steel bars.')
     prop_k  = float(name='k', default=asst['k'], description='Scale factor.')
 
-    prop_h = float(name='h', default=asst['h'], description='Height of element (mm).')
-    prop_b = float(name='b', default=asst['b'], description='Width of element (mm).')
+    prop_h = float(name='h', default=asst['h'], description='Height of element (mm). This var is only there for sanity checking the formulas, leave it at 0 to pass it through as variable instead of a fixed number.')
+    prop_b = float(name='b', default=asst['b'], description='Width of element (mm). This var is only there for sanity checking the formulas, leave it at 0 to pass it through as variable instead of a fixed number.')
 
     prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
     prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
@@ -1441,8 +1469,8 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
     prop_n    = int(name='n', default=asst['n'], description='Number of longitudinal steel bars.')
     prop_k  = float(name='k', default=asst['k'], description='Scale factor.')
 
-    prop_h = float(name='h', default=asst['h'], description='Height of element (mm).')
-    prop_b = float(name='b', default=asst['b'], description='Width of element (mm).')
+    prop_h = float(name='h', default=asst['h'], description='Height of element (mm). This var is only there for sanity checking the formulas, leave it at 0 to pass it through as variable instead of a fixed number.')
+    prop_b = float(name='b', default=asst['b'], description='Width of element (mm). This var is only there for sanity checking the formulas, leave it at 0 to pass it through as variable instead of a fixed number.')
 
     prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
     prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
@@ -1537,22 +1565,28 @@ class bcb_panel(bpy.types.Panel):
             split.operator("bcb.build", icon="MOD_SKIN")
             split2 = split.split(align=False)
             if not props.prop_menu_gotConfig:
-                if "bcb_prop_elemGrps" in scene.keys():
-                      split2.operator("bcb.get_config", icon="FILE_REFRESH")
-                else: split2.operator("bcb.set_config", icon="NEW")
-            else:
-                split2.operator("bcb.set_config", icon="NEW")
+                if not "bcb_prop_elemGrps" in scene.keys(): split2.enabled = 0
+                split2.operator("bcb.get_config", icon="FILE_REFRESH")
+            else: split2.operator("bcb.clear", icon="CANCEL")
+
+            row = layout.row()
+            split = row.split(percentage=.85, align=False)
+            split.operator("bcb.bake", icon="REC")
+            split2 = split.split(align=False)
+            split2.operator("bcb.set_config", icon="NEW")
         else:
             split = row.split(percentage=.85, align=False)
             split.operator("bcb.update", icon="FILE_REFRESH")
-            split.operator("bcb.clear", icon="CANCEL")
-        row = layout.row()
-        split = row.split(percentage=.50, align=False)
-        split.operator("bcb.bake", icon="REC")
-        split.prop(props, "prop_stepsPerSecond")
-        
+            split2 = split.split(align=False)
+            split2.operator("bcb.clear", icon="CANCEL")
+
+            row = layout.row()
+            split = row.split(percentage=.85, align=False)
+            split.operator("bcb.bake", icon="REC")
+            split2 = split.split(align=False)
+            split2.operator("bcb.set_config", icon="NEW")
+
         layout.separator()
-        row = layout.row(); row.prop(props, "prop_constraintUseBreaking")
         row = layout.row()
         if props.prop_menu_gotData: row.enabled = 0
         row.prop(props, "prop_searchDistance")
@@ -1570,6 +1604,11 @@ class bcb_panel(bpy.types.Panel):
         box.prop(props, "prop_submenu_advancedG", text="Advanced Global Settings", icon=self.icon(props.prop_submenu_advancedG), emboss = False)
 
         if props.prop_submenu_advancedG:
+            row = box.row()
+            split = row.split(percentage=.50, align=False)
+            split.prop(props, "prop_constraintUseBreaking")
+            split.prop(props, "prop_stepsPerSecond")
+        
             row = box.row()
             split = row.split(percentage=.50, align=False)
             split.prop(props, "prop_automaticMode")
@@ -1688,7 +1727,7 @@ class bcb_panel(bpy.types.Panel):
                 row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Np")
                 row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Vpn")
                 row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Mpn")
-                box.separator()
+                row = box.row(); row.label(text="Parameters for Testing:")
                 row = box.split(); row.prop(props_asst_con_rei_beam, "prop_h")
                 row.prop(props_asst_con_rei_beam, "prop_b")
                 
@@ -1713,7 +1752,7 @@ class bcb_panel(bpy.types.Panel):
                 row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Np")
                 row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Vpn")
                 row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Mpn")
-                box.separator()
+                row = box.row(); row.label(text="Parameters for Testing:")
                 row = box.split(); row.prop(props_asst_con_rei_wall, "prop_h")
                 row.prop(props_asst_con_rei_wall, "prop_b")
                 
@@ -1823,8 +1862,6 @@ class bcb_panel(bpy.types.Panel):
             if not connectType[2][7]: split.active = 0
             
         ### Update global vars from menu related properties
-        props_asst_con_rei_beam.props_update_globals()
-        props_asst_con_rei_wall.props_update_globals()
         props.props_update_globals()
  
 ################################################################################   
@@ -1852,14 +1889,14 @@ class OBJECT_OT_bcb_get_config(bpy.types.Operator):
         scene = bpy.context.scene
         if "bcb_prop_elemGrps" in scene.keys():
             ###### Get menu config data from scene
-            getConfigDataFromScene(scene)
+            warning = getConfigDataFromScene(scene)
+            if warning != None and len(warning): self.report({'ERROR'}, warning)
+            props.prop_menu_gotConfig = 1
+            ###### Get build data from scene
+            #getBuildDataFromScene(scene)
+            if "bcb_objs" in scene.keys(): props.prop_menu_gotData = 1
             # Update menu related properties from global vars
             props.props_update_menu()
-            props.prop_menu_gotConfig = 1
-        if "bcb_objs" in scene.keys():
-            ###### Get menu config data from scene
-            getBuildDataFromScene(scene)
-            props.prop_menu_gotData = 1
         return{'FINISHED'} 
 
 ########################################
@@ -1872,7 +1909,8 @@ class OBJECT_OT_bcb_clear(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         ###### Clear all data from scene and delete also constraint empty objects
-        if "bcb_objs" in scene.keys(): clearAllDataFromScene(scene)
+        if "bcb_prop_elemGrps" in scene.keys(): clearAllDataFromScene(scene)
+        props.prop_menu_gotConfig = 0
         props.prop_menu_gotData = 0
         return{'FINISHED'} 
         
@@ -3397,10 +3435,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 geoContactArea *= geoSurfThick
         
         ### Prepare expression variables
-        a = geoContactArea
-        h = geoHeight
-        w = b = geoWidth 
-        s = geoSurfThick      
+        a = geoContactArea *1000000
+        h = geoHeight *1000
+        w = b = geoWidth *1000
+        s = geoSurfThick *1000
         
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
@@ -3454,7 +3492,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst.rigid_body_constraint.type = 'FIXED'
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3472,7 +3510,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst.rigid_body_constraint.type = 'POINT'
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3491,9 +3529,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst.rigid_body_constraint.type = 'FIXED'
                 try: value = eval(brkThresExpr4)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
+                objConst['BrkThres4'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
                 if asciiExport:
@@ -3505,8 +3543,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.type = 'POINT'
-                objConst.rigid_body_constraint.breaking_threshold = ((( geoContactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr1)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
                 if asciiExport:
@@ -3530,7 +3571,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3563,7 +3604,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 try: value = eval(brkThresExpr2)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3615,7 +3656,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3647,7 +3688,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 try: value = eval(brkThresExpr2)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3683,7 +3724,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 try: value = eval(brkThresExpr3)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3733,7 +3774,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3765,7 +3806,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 try: value = eval(brkThresExpr2)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3797,7 +3838,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 try: value = eval(brkThresExpr3)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3831,7 +3872,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 try: value = eval(brkThresExpr4)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 objConst['BrkThres4'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
@@ -3879,7 +3920,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 objConst.rigid_body_constraint.breaking_threshold = brkThres
                 # Some connection types are designed to use a combination of multiple presets, then an index offset for accessing the right constraints is required
                 if connectType == 9: conIdxOfs = connectTypes[1][1]
@@ -3952,7 +3993,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 # Some connection types are designed to use a combination of multiple presets, then an index offset for accessing the right constraints is required
                 if connectType == 10: conIdxOfs = connectTypes[1][1]
                 elif connectType == 12: conIdxOfs = connectTypes[6][1]
@@ -4021,16 +4062,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres1 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres1 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 try: value = eval(brkThresExpr2)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres2 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres2 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 try: value = eval(brkThresExpr3)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres3 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres3 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 try: value = eval(brkThresExpr4)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres4 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres4 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 # Loop through all constraints of this connection
                 i = -3
                 for j in range(3):
@@ -4211,16 +4252,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres1 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres1 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 try: value = eval(brkThresExpr2)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres2 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres2 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 try: value = eval(brkThresExpr3)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres3 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres3 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 try: value = eval(brkThresExpr4)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres4 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres4 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 # Loop through all constraints of this connection
                 i = -3
                 for j in range(4):
@@ -4557,7 +4598,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
             parentObj.select = 0
             childObj.select = 0
     if len(childObjs) > 0: sys.stdout.write('\r        ')
-            
+
     ### Update masses
     for j in range(len(elemGrps)):
         elemGrp = elemGrps[j]
@@ -4597,6 +4638,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
             bpy.ops.rigidbody.object_settings_copy()
             parentObj.select = 0
             childObj.select = 0
+
     ### Remove child objects from rigid body world (should not be simulated anymore)
     for childObj in childObjs:
         childObj.select
@@ -4784,7 +4826,7 @@ def build():
                 calculateMass(scene, objs, objsEGrp, childObjs)
                 ###### Exporting data into internal ASCII text file
                 if asciiExport: exportDataToText(exportData)
-                    
+            
                 if not asciiExport:
                     # Deselect all objects
                     bpy.ops.object.select_all(action='DESELECT')
