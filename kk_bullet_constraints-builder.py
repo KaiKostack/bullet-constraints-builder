@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.03 #
+# Bullet Constraints Builder v2.04 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -87,7 +87,7 @@ connectTypes = [          # Cnt C T S B S T T T T      CT
 [ "UNDEFINED",              0, [0,0,0,0,0,1,1,0,0]], # 0. Undefined (reserved)
 [ "1x FIXED",               1, [1,0,0,0,0,1,1,0,0]], # 1. Linear omni-directional + bending breaking threshold
 [ "1x POINT",               1, [1,0,0,0,0,1,1,0,0]], # 2. Linear omni-directional breaking threshold
-[ "1x FIXED + 1x POINT",    2, [1,0,0,1,0,1,1,0,0]], # 3. Linear omni-directional and bending breaking thresholds
+[ "1x POINT + 1x FIXED",    2, [1,0,0,1,0,1,1,0,0]], # 3. Linear omni-directional and bending breaking thresholds
 [ "2x GENERIC",             2, [1,1,0,0,0,1,1,0,0]], # 4. Compressive and tensile breaking thresholds
 [ "3x GENERIC",             3, [1,1,0,1,0,1,1,0,0]], # 5. Compressive, tensile + shearing and bending breaking thresholds
 [ "4x GENERIC",             4, [1,1,1,1,0,1,1,0,0]], # 6. Compressive, tensile, shearing and bending breaking thresholds
@@ -107,30 +107,28 @@ connectTypes = [          # Cnt C T S B S T T T T      CT
 formulaAssistants = [
 {"Name":"None", "ID":"None"},
 {"Name":"Reinforced Concrete (Beams & Columns)", "ID":"con_rei_beam",
- "fs":500, "fc":30, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
- "h":0, "b":0,  # Testing parameters, will be replaced on build
+ "h":250, "w":150, "fc":30, "fs":500, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
  "Exp:d":   "h-c-dl/2",
  "Exp:e":   "h-2*c-dl",
- "Exp:rho": "(dl/2)**2*pi*n/(h*b)",
+ "Exp:rho": "(dl/2)**2*pi*n/(h*w)",
  "Exp:y":   "((ds/2)**2*pi*2/100*1000/s)*10/d",
  "Exp:e1":  "(h-2*c-dl)/h",
- "Exp:N-":  "fc*((h*b)-rho*(h*b))+fs*rho*(h*b)",
- "Exp:N+":  "fs*rho*(h*b)",
- "Exp:V+/-":"max(10,fs*y*e1*h**2*1.2)",
- "Exp:M+/-":"max(10,fs*rho*(h*b)/2*(e1*h))"
+ "Exp:N-":  "fc*((h*w)-rho*(h*w))+fs*rho*(h*w)",
+ "Exp:N+":  "fs*rho*(h*w)",
+ "Exp:V+/-":"fs*y*e1*h**2*1.2",
+ "Exp:M+/-":"fs*rho*(h*w)/2*(e1*h)"
 },
 {"Name":"Reinforced Concrete (Walls & Slabs)", "ID":"con_rei_wall",
- "fs":500, "fc":30, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
- "h":0, "b":0,  # Testing parameters, will be replaced on build
+ "h":250, "w":150, "fc":30, "fs":500, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
  "Exp:d":   "h-c-dl/2",
  "Exp:e":   "h-2*c-dl",
- "Exp:rho": "(dl/2)**2*pi*n/(h*b)",
+ "Exp:rho": "(dl/2)**2*pi*n/(h*w)",
  "Exp:y":   "((ds/2)**2*pi*2/100*1000/s)*10/d",
  "Exp:e1":  "(h-2*c-dl)/h",
- "Exp:N-":  "fc*((h*b)-rho*(h*b))+fs*rho*(h*b)",
- "Exp:N+":  "fs*rho*(h*b)",
- "Exp:V+/-":"max(10,(0.15*k*(100*rho*fc)**(1/3))*(h*b))",
- "Exp:M+/-":"max(10,fs*rho*(h*b)/2*(e1*h))"
+ "Exp:N-":  "fc*((h*w)-rho*(h*w))+fs*rho*(h*w)",
+ "Exp:N+":  "fs*rho*(h*w)",
+ "Exp:V+/-":"(0.15*k*(100*rho*fc)**(1/3))*(h*w)",
+ "Exp:M+/-":"fs*rho*(h*w)/2*(e1*h)"
 }]
 # Material strength values (N/mm²):
 # fs = strength of steel
@@ -203,7 +201,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 0, 3),
+    "version": (2, 0, 4),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1054,22 +1052,22 @@ def combineExpressions():
     i = props.prop_menu_selectedElemGrp
     global elemGrps
     asst = elemGrps[i][asstIdx]
-
+    
     ### Reinforced Concrete (Beams & Columns)
     if props.prop_assistant_menu == "con_rei_beam":
-        fs = asst['fs']
+        h = asst['h']
+        w = asst['w']
+        if h == 0: h = 'h'
+        if w == 0: w = 'w'
         fc = asst['fc']
+        fs = asst['fs']
         c = asst['c']
         s = asst['s']
         ds = asst['ds']
         dl = asst['dl']
         n = asst['n']
         k = asst['k']
-        h = asst['h']
-        b = asst['b']
-        if h == 0: h = 'h'
-        if b == 0: b = 'b'
-        
+
         d = " (" +asst['Exp:d'] +") "
         e = " (" +asst['Exp:e'] +") "
         rho = " (" +asst['Exp:rho'] +") "
@@ -1080,7 +1078,15 @@ def combineExpressions():
         Vpn = " (" +asst['Exp:V+/-'] +") "
         Mpn = " (" +asst['Exp:M+/-'] +") "
         
-        symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','b','d','e','y']  # sorted by length
+        ### Normalize result upon 1 mm^2, 'a' should be the only var left over
+        a = 'a'
+        Nn = "(" +Nn +")/(h*w)*a"
+        Np = "(" +Np +")/(h*w)*a"
+        Vpn = "(" +Vpn +")/(h*w)*a"
+        Mpn = "(" +Mpn +")/(h*w)*a"
+                
+        ### Combine all available expressions with each other      
+        symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
         cnt = 0; cntLast = -1
         while cnt != cntLast:
             cntLast = cnt
@@ -1121,7 +1127,7 @@ def combineExpressions():
                 try:    Mpn = Mpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
                 except: Mpn = Mpn.replace(symbol, eval(symbol))
                 cnt += len(Mpn)
-                
+        
         if qSymPy:
             Nn = str(sympy.simplify(Nn))
             Np = str(sympy.simplify(Np))
@@ -1135,18 +1141,18 @@ def combineExpressions():
        
     ### Reinforced Concrete (Walls & Slabs)
     elif props.prop_assistant_menu == "con_rei_wall":
-        fs = asst['fs']
+        h = asst['h']
+        w = asst['w']
+        if h == 0: h = 'h'
+        if w == 0: w = 'w'
         fc = asst['fc']
+        fs = asst['fs']
         c = asst['c']
         s = asst['s']
         ds = asst['ds']
         dl = asst['dl']
         n = asst['n']
         k = asst['k']
-        h = asst['h']
-        b = asst['b']
-        if h == 0: h = 'h'
-        if b == 0: b = 'b'
 
         d = " (" +asst['Exp:d'] +") "
         e = " (" +asst['Exp:e'] +") "
@@ -1158,7 +1164,15 @@ def combineExpressions():
         Vpn = " (" +asst['Exp:V+/-'] +") "
         Mpn = " (" +asst['Exp:M+/-'] +") "
         
-        symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','b','d','e','y']  # sorted by length
+        ### Normalize result upon 1 mm^2, 'a' should be the only var left over
+        a = 'a'
+        Nn = "(" +Nn +")/(h*w)*a"
+        Np = "(" +Np +")/(h*w)*a"
+        Vpn = "(" +Vpn +")/(h*w)*a"
+        Mpn = "(" +Mpn +")/(h*w)*a"
+                
+        ### Combine all available expressions with each other      
+        symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
         cnt = 0; cntLast = -1
         while cnt != cntLast:
             cntLast = cnt
@@ -1199,7 +1213,7 @@ def combineExpressions():
                 try:    Mpn = Mpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
                 except: Mpn = Mpn.replace(symbol, eval(symbol))
                 cnt += len(Mpn)
-                
+        
         if qSymPy:
             Nn = str(sympy.simplify(Nn))
             Np = str(sympy.simplify(Np))
@@ -1213,6 +1227,194 @@ def combineExpressions():
        
 ################################################################################
 ################################################################################
+
+class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
+    
+    classID = "con_rei_beam"
+
+    int = bpy.props.IntProperty 
+    float = bpy.props.FloatProperty
+    string = bpy.props.StringProperty
+
+    # Find corresponding formula assistant preset
+    for formAssist in formulaAssistants:
+        if formAssist["ID"] == classID:
+            asst = formAssist
+
+    prop_h =  float(name='h', default=asst['h'], min=0, max=100000, description='Height of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
+    prop_w =  float(name='w', default=asst['w'], min=0, max=100000, description='Width of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
+    prop_fs = float(name='fs', default=asst['fs'], min=0, max=100000, description='Breaking strength of reinforcement irons (N/mm^2).')
+    prop_fc = float(name='fc', default=asst['fc'], min=0, max=100000, description='Breaking strength of concrete (N/mm^2).')
+    prop_c  = float(name='c', default=asst['c'], min=0, max=100000, description='Concrete cover thickness above reinforcement (mm).')
+    prop_s  = float(name='s', default=asst['s'], min=0, max=100000, description='Distance between stirrups (mm).')
+    prop_ds = float(name='ds', default=asst['ds'], min=0, max=100000, description='Diameter of steel stirrup bar (mm).')
+    prop_dl = float(name='dl', default=asst['dl'], min=0, max=100000, description='Diameter of steel longitudinal bar (mm).')
+    prop_n    = int(name='n', default=asst['n'], min=0, max=100000, description='Number of longitudinal steel bars.')
+    prop_k  = float(name='k', default=asst['k'], min=0, max=100000, description='Scale factor.')
+
+    prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
+    prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
+    prop_exp_rho = string(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
+    prop_exp_y   = string(name='υ (y)', default=asst['Exp:y'], description='Shear coefficient (asw*10/d) (% value).')
+    prop_exp_e1  = string(name='e´ (e1)', default=asst['Exp:e1'], description='Distance between longitudinal irons in relation to the element height: e/h (% value).')
+    prop_exp_Nn  = string(name='N-', default=asst['Exp:N-'], description='Compressive breaking threshold formula.')
+    prop_exp_Np  = string(name='N+', default=asst['Exp:N+'], description='Tensile breaking threshold formula.')
+    prop_exp_Vpn = string(name='V+/-', default=asst['Exp:V+/-'], description='Shearing breaking threshold formula.')
+    prop_exp_Mpn = string(name='M+/-', default=asst['Exp:M+/-'], description='Bending or momentum breaking threshold formula.')
+
+    ###### Update menu related properties from global vars
+    def props_update_menu(self):
+        props = bpy.context.window_manager.bcb
+        i = props.prop_menu_selectedElemGrp
+        # Check if stored ID matches the correct assistant type otherwise return
+        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+
+        asst = elemGrps[i][asstIdx]
+        self.prop_h = asst['h']
+        self.prop_w = asst['w']
+        self.prop_fs = asst['fs']
+        self.prop_fc = asst['fc']
+        self.prop_c = asst['c']
+        self.prop_s = asst['s']
+        self.prop_ds = asst['ds']
+        self.prop_dl = asst['dl']
+        self.prop_n = asst['n']
+        self.prop_k = asst['k']
+
+        self.prop_exp_d = asst['Exp:d']
+        self.prop_exp_e = asst['Exp:e']
+        self.prop_exp_rho = asst['Exp:rho']
+        self.prop_exp_y = asst['Exp:y']
+        self.prop_exp_e1 = asst['Exp:e1']
+        self.prop_exp_Nn = asst['Exp:N-']
+        self.prop_exp_Np = asst['Exp:N+']
+        self.prop_exp_Vpn = asst['Exp:V+/-']
+        self.prop_exp_Mpn = asst['Exp:M+/-']
+        
+    ###### Update global vars from menu related properties
+    def props_update_globals(self):
+        props = bpy.context.window_manager.bcb
+        i = props.prop_menu_selectedElemGrp
+        global elemGrps
+        # Check if stored ID matches the correct assistant type otherwise return
+        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+
+        elemGrps[i][asstIdx]['h'] = self.prop_h
+        elemGrps[i][asstIdx]['w'] = self.prop_w
+        elemGrps[i][asstIdx]['fs'] = self.prop_fs
+        elemGrps[i][asstIdx]['fc'] = self.prop_fc
+        elemGrps[i][asstIdx]['c'] = self.prop_c
+        elemGrps[i][asstIdx]['s'] = self.prop_s
+        elemGrps[i][asstIdx]['ds'] = self.prop_ds
+        elemGrps[i][asstIdx]['dl'] = self.prop_dl
+        elemGrps[i][asstIdx]['n'] = self.prop_n
+        elemGrps[i][asstIdx]['k'] = self.prop_k
+
+        elemGrps[i][asstIdx]['Exp:d'] = self.prop_exp_d
+        elemGrps[i][asstIdx]['Exp:e'] = self.prop_exp_e
+        elemGrps[i][asstIdx]['Exp:rho'] = self.prop_exp_rho
+        elemGrps[i][asstIdx]['Exp:y'] = self.prop_exp_y
+        elemGrps[i][asstIdx]['Exp:e1'] = self.prop_exp_e1
+        elemGrps[i][asstIdx]['Exp:N-'] = self.prop_exp_Nn
+        elemGrps[i][asstIdx]['Exp:N+'] = self.prop_exp_Np
+        elemGrps[i][asstIdx]['Exp:V+/-'] = self.prop_exp_Vpn
+        elemGrps[i][asstIdx]['Exp:M+/-'] = self.prop_exp_Mpn
+        
+########################################
+
+class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
+
+    classID = "con_rei_wall"
+
+    int = bpy.props.IntProperty 
+    float = bpy.props.FloatProperty
+    string = bpy.props.StringProperty
+
+    # Find corresponding formula assistant preset
+    for formAssist in formulaAssistants:
+        if formAssist["ID"] == classID:
+            asst = formAssist
+
+    prop_h =  float(name='h', default=asst['h'], min=0, max=100000, description='Height of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
+    prop_w =  float(name='w', default=asst['w'], min=0, max=100000, description='Width of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
+    prop_fs = float(name='fs', default=asst['fs'], min=0, max=100000, description='Breaking strength of reinforcement irons (N/mm^2).')
+    prop_fc = float(name='fc', default=asst['fc'], min=0, max=100000, description='Breaking strength of concrete (N/mm^2).')
+    prop_c  = float(name='c', default=asst['c'], min=0, max=100000, description='Concrete cover thickness above reinforcement (mm).')
+    prop_s  = float(name='s', default=asst['s'], min=0, max=100000, description='Distance between stirrups (mm).')
+    prop_ds = float(name='ds', default=asst['ds'], min=0, max=100000, description='Diameter of steel stirrup bar (mm).')
+    prop_dl = float(name='dl', default=asst['dl'], min=0, max=100000, description='Diameter of steel longitudinal bar (mm).')
+    prop_n    = int(name='n', default=asst['n'], min=0, max=100000, description='Number of longitudinal steel bars.')
+    prop_k  = float(name='k', default=asst['k'], min=0, max=100000, description='Scale factor.')
+
+    prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
+    prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
+    prop_exp_rho = string(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
+    prop_exp_y   = string(name='υ (y)', default=asst['Exp:y'], description='Shear coefficient (asw*10/d) (% value).')
+    prop_exp_e1  = string(name='e´ (e1)', default=asst['Exp:e1'], description='Distance between longitudinal irons in relation to the element height: e/h (% value).')
+    prop_exp_Nn  = string(name='N-', default=asst['Exp:N-'], description='Compressive breaking threshold formula.')
+    prop_exp_Np  = string(name='N+', default=asst['Exp:N+'], description='Tensile breaking threshold formula.')
+    prop_exp_Vpn = string(name='V+/-', default=asst['Exp:V+/-'], description='Shearing breaking threshold formula.')
+    prop_exp_Mpn = string(name='M+/-', default=asst['Exp:M+/-'], description='Bending or momentum breaking threshold formula.')
+
+    ###### Update menu related properties from global vars
+    def props_update_menu(self):
+        props = bpy.context.window_manager.bcb
+        i = props.prop_menu_selectedElemGrp
+        # Check if stored ID matches the correct assistant type otherwise return
+        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+
+        asst = elemGrps[i][asstIdx]
+        self.prop_h = asst['h']
+        self.prop_w = asst['w']
+        self.prop_fs = asst['fs']
+        self.prop_fc = asst['fc']
+        self.prop_c = asst['c']
+        self.prop_s = asst['s']
+        self.prop_ds = asst['ds']
+        self.prop_dl = asst['dl']
+        self.prop_n = asst['n']
+        self.prop_k = asst['k']
+
+        self.prop_exp_d = asst['Exp:d']
+        self.prop_exp_e = asst['Exp:e']
+        self.prop_exp_rho = asst['Exp:rho']
+        self.prop_exp_y = asst['Exp:y']
+        self.prop_exp_e1 = asst['Exp:e1']
+        self.prop_exp_Nn = asst['Exp:N-']
+        self.prop_exp_Np = asst['Exp:N+']
+        self.prop_exp_Vpn = asst['Exp:V+/-']
+        self.prop_exp_Mpn = asst['Exp:M+/-']
+        
+    ###### Update global vars from menu related properties
+    def props_update_globals(self):
+        props = bpy.context.window_manager.bcb
+        i = props.prop_menu_selectedElemGrp
+        global elemGrps
+        # Check if stored ID matches the correct assistant type otherwise return
+        if elemGrps[i][asstIdx]['ID'] != self.classID: return
+
+        elemGrps[i][asstIdx]['h'] = self.prop_h
+        elemGrps[i][asstIdx]['w'] = self.prop_w
+        elemGrps[i][asstIdx]['fs'] = self.prop_fs
+        elemGrps[i][asstIdx]['fc'] = self.prop_fc
+        elemGrps[i][asstIdx]['c'] = self.prop_c
+        elemGrps[i][asstIdx]['s'] = self.prop_s
+        elemGrps[i][asstIdx]['ds'] = self.prop_ds
+        elemGrps[i][asstIdx]['dl'] = self.prop_dl
+        elemGrps[i][asstIdx]['n'] = self.prop_n
+        elemGrps[i][asstIdx]['k'] = self.prop_k
+
+        elemGrps[i][asstIdx]['Exp:d'] = self.prop_exp_d
+        elemGrps[i][asstIdx]['Exp:e'] = self.prop_exp_e
+        elemGrps[i][asstIdx]['Exp:rho'] = self.prop_exp_rho
+        elemGrps[i][asstIdx]['Exp:y'] = self.prop_exp_y
+        elemGrps[i][asstIdx]['Exp:e1'] = self.prop_exp_e1
+        elemGrps[i][asstIdx]['Exp:N-'] = self.prop_exp_Nn
+        elemGrps[i][asstIdx]['Exp:N+'] = self.prop_exp_Np
+        elemGrps[i][asstIdx]['Exp:V+/-'] = self.prop_exp_Vpn
+        elemGrps[i][asstIdx]['Exp:M+/-'] = self.prop_exp_Mpn
+
+########################################
 
 class bcb_props(bpy.types.PropertyGroup):
     
@@ -1229,6 +1431,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_submenu_advancedG = bool(0)
     prop_submenu_advancedE = bool(0)
     prop_submenu_assistant = bool(0)
+    prop_submenu_assistant_advanced = bool(0, name="Advanced", description="Shows advanced settings and formulas.")
 
     assistant_menu = []  # (ID, Name in menu, "", Index)
     for i in range(len(formulaAssistants)):
@@ -1338,7 +1541,6 @@ class bcb_props(bpy.types.PropertyGroup):
         ### If different formula assistant ID from that stored in element group then update with defaults
         i = self.prop_menu_selectedElemGrp
         if self.prop_assistant_menu != elemGrps[i][asstIdx]['ID']:
-            print("Copy", self.prop_assistant_menu, elemGrps[i][asstIdx]['ID'])
             # Add formula assistant settings to element group
             for formAssist in formulaAssistants:
                 if self.prop_assistant_menu == formAssist['ID']:
@@ -1349,196 +1551,6 @@ class bcb_props(bpy.types.PropertyGroup):
         props_asst_con_rei_wall = bpy.context.window_manager.bcb_asst_con_rei_wall
         props_asst_con_rei_beam.props_update_globals()
         props_asst_con_rei_wall.props_update_globals()        
-
-########################################
-
-class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
-    
-    classID = "con_rei_beam"
-    
-    int = bpy.props.IntProperty 
-    float = bpy.props.FloatProperty
-    string = bpy.props.StringProperty
-
-    # Find corresponding formula assistant preset
-    for formAssist in formulaAssistants:
-        if formAssist["ID"] == classID:
-            asst = formAssist
-
-    prop_fs = float(name='fs', default=asst['fs'], description='Breaking strength of reinforcement irons (N/mm^2).')
-    prop_fc = float(name='fc', default=asst['fc'], description='Breaking strength of concrete (N/mm^2).')
-    prop_c  = float(name='c', default=asst['c'], description='Concrete cover thickness above reinforcement (mm).')
-    prop_s  = float(name='s', default=asst['s'], description='Distance between stirrups (mm).')
-    prop_ds = float(name='ds', default=asst['ds'], description='Diameter of steel stirrup bar (mm).')
-    prop_dl = float(name='dl', default=asst['dl'], description='Diameter of steel longitudinal bar (mm).')
-    prop_n    = int(name='n', default=asst['n'], description='Number of longitudinal steel bars.')
-    prop_k  = float(name='k', default=asst['k'], description='Scale factor.')
-
-    prop_h = float(name='h', default=asst['h'], description='Height of element (mm). This var is only there for sanity checking the formulas, leave it at 0 to pass it through as variable instead of a fixed number.')
-    prop_b = float(name='b', default=asst['b'], description='Width of element (mm). This var is only there for sanity checking the formulas, leave it at 0 to pass it through as variable instead of a fixed number.')
-
-    prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
-    prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
-    prop_exp_rho = string(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
-    prop_exp_y   = string(name='υ (y)', default=asst['Exp:y'], description='Shear coefficient (asw*10/d) (% value).')
-    prop_exp_e1  = string(name='e´ (e1)', default=asst['Exp:e1'], description='Distance between longitudinal irons in relation to the element height: e/h (% value).')
-    prop_exp_Nn  = string(name='N-', default=asst['Exp:N-'], description='Compressive breaking threshold formula.')
-    prop_exp_Np  = string(name='N+', default=asst['Exp:N+'], description='Tensile breaking threshold formula.')
-    prop_exp_Vpn = string(name='V+/-', default=asst['Exp:V+/-'], description='Shearing breaking threshold formula.')
-    prop_exp_Mpn = string(name='M+/-', default=asst['Exp:M+/-'], description='Bending or momentum breaking threshold formula.')
-
-    ###### Update menu related properties from global vars
-    def props_update_menu(self):
-        props = bpy.context.window_manager.bcb
-        i = props.prop_menu_selectedElemGrp
-        # Check if stored ID matches the correct assistant type otherwise return
-        if elemGrps[i][asstIdx]['ID'] != self.classID: return
-
-        asst = elemGrps[i][asstIdx]
-        self.prop_fs = asst['fs']
-        self.prop_fc = asst['fc']
-        self.prop_c = asst['c']
-        self.prop_s = asst['s']
-        self.prop_ds = asst['ds']
-        self.prop_dl = asst['dl']
-        self.prop_n = asst['n']
-        self.prop_k = asst['k']
-        self.prop_h = asst['h']
-        self.prop_b = asst['b']
-
-        self.prop_exp_d = asst['Exp:d']
-        self.prop_exp_e = asst['Exp:e']
-        self.prop_exp_rho = asst['Exp:rho']
-        self.prop_exp_y = asst['Exp:y']
-        self.prop_exp_e1 = asst['Exp:e1']
-        self.prop_exp_Nn = asst['Exp:N-']
-        self.prop_exp_Np = asst['Exp:N+']
-        self.prop_exp_Vpn = asst['Exp:V+/-']
-        self.prop_exp_Mpn = asst['Exp:M+/-']
-        
-    ###### Update global vars from menu related properties
-    def props_update_globals(self):
-        props = bpy.context.window_manager.bcb
-        i = props.prop_menu_selectedElemGrp
-        global elemGrps
-        # Check if stored ID matches the correct assistant type otherwise return
-        if elemGrps[i][asstIdx]['ID'] != self.classID: return
-
-        elemGrps[i][asstIdx]['fs'] = self.prop_fs
-        elemGrps[i][asstIdx]['fc'] = self.prop_fc
-        elemGrps[i][asstIdx]['c'] = self.prop_c
-        elemGrps[i][asstIdx]['s'] = self.prop_s
-        elemGrps[i][asstIdx]['ds'] = self.prop_ds
-        elemGrps[i][asstIdx]['dl'] = self.prop_dl
-        elemGrps[i][asstIdx]['n'] = self.prop_n
-        elemGrps[i][asstIdx]['k'] = self.prop_k
-        elemGrps[i][asstIdx]['h'] = self.prop_h
-        elemGrps[i][asstIdx]['b'] = self.prop_b
-
-        elemGrps[i][asstIdx]['Exp:d'] = self.prop_exp_d
-        elemGrps[i][asstIdx]['Exp:e'] = self.prop_exp_e
-        elemGrps[i][asstIdx]['Exp:rho'] = self.prop_exp_rho
-        elemGrps[i][asstIdx]['Exp:y'] = self.prop_exp_y
-        elemGrps[i][asstIdx]['Exp:e1'] = self.prop_exp_e1
-        elemGrps[i][asstIdx]['Exp:N-'] = self.prop_exp_Nn
-        elemGrps[i][asstIdx]['Exp:N+'] = self.prop_exp_Np
-        elemGrps[i][asstIdx]['Exp:V+/-'] = self.prop_exp_Vpn
-        elemGrps[i][asstIdx]['Exp:M+/-'] = self.prop_exp_Mpn
-        
-########################################
-
-class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
-
-    classID = "con_rei_wall"
-
-    int = bpy.props.IntProperty 
-    float = bpy.props.FloatProperty
-    string = bpy.props.StringProperty
-
-    # Find corresponding formula assistant preset
-    for formAssist in formulaAssistants:
-        if formAssist["ID"] == classID:
-            asst = formAssist
-
-    prop_fs = float(name='fs', default=asst['fs'], description='Breaking strength of reinforcement irons (N/mm^2).')
-    prop_fc = float(name='fc', default=asst['fc'], description='Breaking strength of concrete (N/mm^2).')
-    prop_c  = float(name='c', default=asst['c'], description='Concrete cover thickness above reinforcement (mm).')
-    prop_s  = float(name='s', default=asst['s'], description='Distance between stirrups (mm).')
-    prop_ds = float(name='ds', default=asst['ds'], description='Diameter of steel stirrup bar (mm).')
-    prop_dl = float(name='dl', default=asst['dl'], description='Diameter of steel longitudinal bar (mm).')
-    prop_n    = int(name='n', default=asst['n'], description='Number of longitudinal steel bars.')
-    prop_k  = float(name='k', default=asst['k'], description='Scale factor.')
-
-    prop_h = float(name='h', default=asst['h'], description='Height of element (mm). This var is only there for sanity checking the formulas, leave it at 0 to pass it through as variable instead of a fixed number.')
-    prop_b = float(name='b', default=asst['b'], description='Width of element (mm). This var is only there for sanity checking the formulas, leave it at 0 to pass it through as variable instead of a fixed number.')
-
-    prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
-    prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
-    prop_exp_rho = string(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
-    prop_exp_y   = string(name='υ (y)', default=asst['Exp:y'], description='Shear coefficient (asw*10/d) (% value).')
-    prop_exp_e1  = string(name='e´ (e1)', default=asst['Exp:e1'], description='Distance between longitudinal irons in relation to the element height: e/h (% value).')
-    prop_exp_Nn  = string(name='N-', default=asst['Exp:N-'], description='Compressive breaking threshold formula.')
-    prop_exp_Np  = string(name='N+', default=asst['Exp:N+'], description='Tensile breaking threshold formula.')
-    prop_exp_Vpn = string(name='V+/-', default=asst['Exp:V+/-'], description='Shearing breaking threshold formula.')
-    prop_exp_Mpn = string(name='M+/-', default=asst['Exp:M+/-'], description='Bending or momentum breaking threshold formula.')
-
-    ###### Update menu related properties from global vars
-    def props_update_menu(self):
-        props = bpy.context.window_manager.bcb
-        i = props.prop_menu_selectedElemGrp
-        # Check if stored ID matches the correct assistant type otherwise return
-        if elemGrps[i][asstIdx]['ID'] != self.classID: return
-
-        asst = elemGrps[i][asstIdx]
-        self.prop_fs = asst['fs']
-        self.prop_fc = asst['fc']
-        self.prop_c = asst['c']
-        self.prop_s = asst['s']
-        self.prop_ds = asst['ds']
-        self.prop_dl = asst['dl']
-        self.prop_n = asst['n']
-        self.prop_k = asst['k']
-        self.prop_h = asst['h']
-        self.prop_b = asst['b']
-
-        self.prop_exp_d = asst['Exp:d']
-        self.prop_exp_e = asst['Exp:e']
-        self.prop_exp_rho = asst['Exp:rho']
-        self.prop_exp_y = asst['Exp:y']
-        self.prop_exp_e1 = asst['Exp:e1']
-        self.prop_exp_Nn = asst['Exp:N-']
-        self.prop_exp_Np = asst['Exp:N+']
-        self.prop_exp_Vpn = asst['Exp:V+/-']
-        self.prop_exp_Mpn = asst['Exp:M+/-']
-        
-    ###### Update global vars from menu related properties
-    def props_update_globals(self):
-        props = bpy.context.window_manager.bcb
-        i = props.prop_menu_selectedElemGrp
-        global elemGrps
-        # Check if stored ID matches the correct assistant type otherwise return
-        if elemGrps[i][asstIdx]['ID'] != self.classID: return
-
-        elemGrps[i][asstIdx]['fs'] = self.prop_fs
-        elemGrps[i][asstIdx]['fc'] = self.prop_fc
-        elemGrps[i][asstIdx]['c'] = self.prop_c
-        elemGrps[i][asstIdx]['s'] = self.prop_s
-        elemGrps[i][asstIdx]['ds'] = self.prop_ds
-        elemGrps[i][asstIdx]['dl'] = self.prop_dl
-        elemGrps[i][asstIdx]['n'] = self.prop_n
-        elemGrps[i][asstIdx]['k'] = self.prop_k
-        elemGrps[i][asstIdx]['h'] = self.prop_h
-        elemGrps[i][asstIdx]['b'] = self.prop_b
-
-        elemGrps[i][asstIdx]['Exp:d'] = self.prop_exp_d
-        elemGrps[i][asstIdx]['Exp:e'] = self.prop_exp_e
-        elemGrps[i][asstIdx]['Exp:rho'] = self.prop_exp_rho
-        elemGrps[i][asstIdx]['Exp:y'] = self.prop_exp_y
-        elemGrps[i][asstIdx]['Exp:e1'] = self.prop_exp_e1
-        elemGrps[i][asstIdx]['Exp:N-'] = self.prop_exp_Nn
-        elemGrps[i][asstIdx]['Exp:N+'] = self.prop_exp_Np
-        elemGrps[i][asstIdx]['Exp:V+/-'] = self.prop_exp_Vpn
-        elemGrps[i][asstIdx]['Exp:M+/-'] = self.prop_exp_Mpn
 
 ################################################################################   
            
@@ -1558,6 +1570,8 @@ class bcb_panel(bpy.types.Panel):
         props_asst_con_rei_wall = context.window_manager.bcb_asst_con_rei_wall
         obj = context.object
         scene = bpy.context.scene
+
+        #print(props_asst_con_rei_beam.prop_h, '\n', elemGrps[props.prop_menu_selectedElemGrp][asstIdx])
 
         row = layout.row()
         if not props.prop_menu_gotData: 
@@ -1700,65 +1714,70 @@ class bcb_panel(bpy.types.Panel):
             # Pull-down selector
             row = box.row(); row.prop(props, "prop_assistant_menu")
 
-            # Debug code to list all properties in console:
-            #i = 0
-            #for prop in props_asst_con_rei_beam.bl_rna.properties:
-            #    if not prop.is_hidden and prop.type != 'POINTER':
-            #        print(i, prop.identifier, prop.is_hidden, prop.type); i += 1
-
             ### Reinforced Concrete (Beams & Columns)
             if props.prop_assistant_menu == "con_rei_beam":
-                row = box.split(); row.prop(props_asst_con_rei_beam, "prop_fs")
-                row.prop(props_asst_con_rei_beam, "prop_fc")
+                box.label(text="Strengths of Base Material and Reinforcement:")
+                row = box.split(); row.prop(props_asst_con_rei_beam, "prop_fc")
+                row.prop(props_asst_con_rei_beam, "prop_fs")
+                box.label(text="Geometry Parameters and Coefficients:")
+                row = box.split(); row.prop(props_asst_con_rei_beam, "prop_h")
+                row.prop(props_asst_con_rei_beam, "prop_w")
                 row = box.split(); row.prop(props_asst_con_rei_beam, "prop_c")
                 row.prop(props_asst_con_rei_beam, "prop_s")
                 row = box.split(); row.prop(props_asst_con_rei_beam, "prop_ds")
                 row.prop(props_asst_con_rei_beam, "prop_dl")
                 row = box.split(); row.prop(props_asst_con_rei_beam, "prop_n")
-                row.prop(props_asst_con_rei_beam, "prop_k")
-                box.separator()
+                if props.prop_submenu_assistant_advanced:
+                    row.prop(props_asst_con_rei_beam, "prop_k")
+                else: row.label(text="")
+                box.label(text="Automatic & Manual Input is Allowed Here:")
                 row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_d")
                 row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_e")
                 row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_rho")
                 row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_y")
                 row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_e1")
-                box.separator()
-                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Nn")
-                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Np")
-                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Vpn")
-                row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Mpn")
-                row = box.row(); row.label(text="Parameters for Testing:")
-                row = box.split(); row.prop(props_asst_con_rei_beam, "prop_h")
-                row.prop(props_asst_con_rei_beam, "prop_b")
+                if props.prop_submenu_assistant_advanced:
+                    box.label(text="Breaking Threshold Formulas:")
+                    row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Nn")
+                    row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Np")
+                    row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Vpn")
+                    row = box.row(); row.prop(props_asst_con_rei_beam, "prop_exp_Mpn")
                 
             ### Reinforced Concrete (Walls & Slabs)
             if props.prop_assistant_menu == "con_rei_wall":
-                row = box.split(); row.prop(props_asst_con_rei_wall, "prop_fs")
-                row.prop(props_asst_con_rei_wall, "prop_fc")
+                box.label(text="Strengths of Base Material and Reinforcement:")
+                row = box.split(); row.prop(props_asst_con_rei_wall, "prop_fc")
+                row.prop(props_asst_con_rei_wall, "prop_fs")
+                box.label(text="Geometry Parameters and Coefficients:")
+                row = box.split(); row.prop(props_asst_con_rei_wall, "prop_h")
+                row.prop(props_asst_con_rei_wall, "prop_w")
                 row = box.split(); row.prop(props_asst_con_rei_wall, "prop_c")
                 row.prop(props_asst_con_rei_wall, "prop_s")
                 row = box.split(); row.prop(props_asst_con_rei_wall, "prop_ds")
                 row.prop(props_asst_con_rei_wall, "prop_dl")
                 row = box.split(); row.prop(props_asst_con_rei_wall, "prop_n")
-                row.prop(props_asst_con_rei_wall, "prop_k")
-                box.separator()
+                if props.prop_submenu_assistant_advanced:
+                    row.prop(props_asst_con_rei_wall, "prop_k")
+                else: row.label(text="")
+                box.label(text="Automatic & Manual Input is Allowed Here:")
                 row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_d")
                 row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_e")
                 row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_rho")
                 row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_y")
                 row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_e1")
-                box.separator()
-                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Nn")
-                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Np")
-                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Vpn")
-                row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Mpn")
-                row = box.row(); row.label(text="Parameters for Testing:")
-                row = box.split(); row.prop(props_asst_con_rei_wall, "prop_h")
-                row.prop(props_asst_con_rei_wall, "prop_b")
+                if props.prop_submenu_assistant_advanced:
+                    box.label(text="Breaking Threshold Formulas:")
+                    row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Nn")
+                    row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Np")
+                    row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Vpn")
+                    row = box.row(); row.prop(props_asst_con_rei_wall, "prop_exp_Mpn")
                 
             if props.prop_assistant_menu != "None":
-                row = box.row(); row.operator("bcb.asst_update", icon="PASTEDOWN")
-            
+                split = box.split(percentage=.85, align=False)
+                split.operator("bcb.asst_update", icon="PASTEDOWN")
+                split2 = split.split(align=False)
+                split2.prop(props, "prop_submenu_assistant_advanced")
+                
         layout.separator()
 
         ###### Element group settings (more)        
@@ -2171,8 +2190,8 @@ class OBJECT_OT_bcb_estimate_cluster_radius(bpy.types.Operator):
 
 class OBJECT_OT_bcb_asst_update(bpy.types.Operator):
     bl_idname = "bcb.asst_update"
-    bl_label = "Combine Expressions"
-    bl_description = "Combine expressions for constraint breaking threshold calculation."
+    bl_label = "Evaluate"
+    bl_description = "Combines and evaluates all expressions for constraint breaking threshold calculation."
     def execute(self, context):
         props = context.window_manager.bcb
         ###### Execute expression evaluation
@@ -3396,6 +3415,57 @@ def setAttribsOfConstraint(objConst, props):
         except: print("Error: Failed to set attribute:", prop[0], prop[1])
                 
 ########################################
+
+def setConstParams(objConst, e=None,bt=None,ub=None,dc=None,ct=None,
+    ullx=None,ully=None,ullz=None, llxl=None,llxu=None,llyl=None,llyu=None,llzl=None,llzu=None,
+    ulax=None,ulay=None,ulaz=None, laxl=None,laxu=None,layl=None,layu=None,lazl=None,lazu=None,
+    usx=None,usy=None,usz=None, sdx=None,sdy=None,sdz=None, ssx=None,ssy=None,ssz=None):
+
+    # setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+
+    constData = objConst.rigid_body_constraint
+    
+    # e,bt,ub,dc,ct
+    if e != None: constData.enabled = e
+    if bt != None: constData.breaking_threshold = bt
+    if ub != None: constData.use_breaking = ub
+    if dc != None: constData.disable_collisions = dc
+    if ct != None: constData.type = ct
+
+    # ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu
+    if ullx != None: constData.use_limit_lin_x = ullx
+    if ully != None: constData.use_limit_lin_y = ully
+    if ullz != None: constData.use_limit_lin_z = ullz
+    if llxl != None: constData.limit_lin_x_lower = llxl
+    if llxu != None: constData.limit_lin_x_upper = llxu
+    if llyl != None: constData.limit_lin_y_lower = llyl
+    if llyu != None: constData.limit_lin_y_upper = llyu
+    if llzl != None: constData.limit_lin_z_lower = llzl
+    if llzu != None: constData.limit_lin_z_upper = llzu
+
+    # ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu
+    if ulax != None: constData.use_limit_ang_x = ulax
+    if ulay != None: constData.use_limit_ang_y = ulay
+    if ulaz != None: constData.use_limit_ang_z = ulaz
+    if laxl != None: constData.limit_ang_x_lower = laxl
+    if laxu != None: constData.limit_ang_x_upper = laxu
+    if layl != None: constData.limit_ang_y_lower = layl
+    if layu != None: constData.limit_ang_y_upper = layu
+    if lazl != None: constData.limit_ang_z_lower = lazl
+    if lazu != None: constData.limit_ang_z_upper = lazu
+
+    # usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz
+    if usx != None: constData.use_spring_x = usx
+    if usy != None: constData.use_spring_y = usy
+    if usz != None: constData.use_spring_z = usz
+    if sdx != None: constData.spring_damping_x = sdx
+    if sdy != None: constData.spring_damping_y = sdy
+    if sdz != None: constData.spring_damping_z = sdz
+    if ssx != None: constData.spring_stiffness_x = ssx
+    if ssy != None: constData.spring_stiffness_y = ssy
+    if ssz != None: constData.spring_stiffness_z = ssz
+
+########################################
     
 def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, connectsConsts, constsConnect, exportData):
     
@@ -3437,7 +3507,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         ### Prepare expression variables
         a = geoContactArea *1000000
         h = geoHeight *1000
-        w = b = geoWidth *1000
+        w = geoWidth *1000
         s = geoSurfThick *1000
         
         objA = objs[connectsPair[k][0]]
@@ -3489,14 +3559,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.type = 'FIXED'
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
+                # setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='FIXED')
                 if asciiExport:
                     exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3507,14 +3575,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.type = 'POINT'
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='POINT')
                 if asciiExport:
                     exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3526,14 +3592,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.type = 'FIXED'
-                try: value = eval(brkThresExpr4)
+                try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres4'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='POINT')
                 if asciiExport:
                     exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3542,14 +3606,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.type = 'POINT'
-                try: value = eval(brkThresExpr1)
+                try: value = eval(brkThresExpr4)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='FIXED')
                 if asciiExport:
                     exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
@@ -3572,24 +3634,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
-                    objConst.rigid_body_constraint.type = 'GENERIC'
                     objConst.empty_draw_size = emptyDrawSize
                     ### Lock all directions for the compressive force
                     ### I left Y and Z unlocked because for this CT we have no separate breaking threshold for lateral force, the tensile constraint and its breaking threshold should apply for now
                     ### Also rotational forces should only be carried by the tensile constraint
-                    objConst.rigid_body_constraint.use_limit_lin_x = 1
-                    objConst.rigid_body_constraint.use_limit_lin_y = 0
-                    objConst.rigid_body_constraint.use_limit_lin_z = 0
-                    objConst.rigid_body_constraint.limit_lin_x_lower = 0
-                    objConst.rigid_body_constraint.limit_lin_x_upper = 99999
-                    objConst.rigid_body_constraint.use_limit_ang_x = 0
-                    objConst.rigid_body_constraint.use_limit_ang_y = 0
-                    objConst.rigid_body_constraint.use_limit_ang_z = 0
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0)
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
@@ -3605,32 +3659,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr2)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
-                    objConst.rigid_body_constraint.type = 'GENERIC'
                     objConst.empty_draw_size = emptyDrawSize
                     ### Lock all directions for the tensile force
-                    objConst.rigid_body_constraint.use_limit_lin_x = 1
-                    objConst.rigid_body_constraint.use_limit_lin_y = 1
-                    objConst.rigid_body_constraint.use_limit_lin_z = 1
-                    objConst.rigid_body_constraint.limit_lin_x_lower = -99999
-                    objConst.rigid_body_constraint.limit_lin_x_upper = 0
-                    objConst.rigid_body_constraint.limit_lin_y_lower = 0
-                    objConst.rigid_body_constraint.limit_lin_y_upper = 0
-                    objConst.rigid_body_constraint.limit_lin_z_lower = 0
-                    objConst.rigid_body_constraint.limit_lin_z_upper = 0
-                    objConst.rigid_body_constraint.use_limit_ang_x = 1
-                    objConst.rigid_body_constraint.use_limit_ang_y = 1
-                    objConst.rigid_body_constraint.use_limit_ang_z = 1
-                    objConst.rigid_body_constraint.limit_ang_x_lower = 0
-                    objConst.rigid_body_constraint.limit_ang_x_upper = 0
-                    objConst.rigid_body_constraint.limit_ang_y_lower = 0
-                    objConst.rigid_body_constraint.limit_ang_y_upper = 0
-                    objConst.rigid_body_constraint.limit_ang_z_lower = 0
-                    objConst.rigid_body_constraint.limit_ang_z_upper = 0
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
@@ -3657,23 +3693,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
-                    objConst.rigid_body_constraint.type = 'GENERIC'
                     objConst.empty_draw_size = emptyDrawSize
                     ### Lock direction for compressive force
-                    objConst.rigid_body_constraint.use_limit_lin_x = 1
-                    objConst.rigid_body_constraint.use_limit_lin_y = 0
-                    objConst.rigid_body_constraint.use_limit_lin_z = 0
-                    objConst.rigid_body_constraint.limit_lin_x_lower = 0
-                    objConst.rigid_body_constraint.limit_lin_x_upper = 99999
-                    objConst.rigid_body_constraint.use_limit_ang_x = 0
-                    objConst.rigid_body_constraint.use_limit_ang_y = 0
-                    objConst.rigid_body_constraint.use_limit_ang_z = 0
-                    #objConst.rigid_body_constraint.disable_collisions = False
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0)
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
@@ -3689,27 +3716,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr2)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
-                    objConst.rigid_body_constraint.type = 'GENERIC'
                     objConst.empty_draw_size = emptyDrawSize
                     ### Lock directions for shearing force
-                    objConst.rigid_body_constraint.use_limit_lin_x = 1
-                    objConst.rigid_body_constraint.use_limit_lin_y = 1
-                    objConst.rigid_body_constraint.use_limit_lin_z = 1
-                    objConst.rigid_body_constraint.limit_lin_x_lower = -99999
-                    objConst.rigid_body_constraint.limit_lin_x_upper = 0
-                    objConst.rigid_body_constraint.limit_lin_y_lower = 0
-                    objConst.rigid_body_constraint.limit_lin_y_upper = 0
-                    objConst.rigid_body_constraint.limit_lin_z_lower = 0
-                    objConst.rigid_body_constraint.limit_lin_z_upper = 0
-                    objConst.rigid_body_constraint.use_limit_ang_x = 0
-                    objConst.rigid_body_constraint.use_limit_ang_y = 0
-                    objConst.rigid_body_constraint.use_limit_ang_z = 0
-                    #objConst.rigid_body_constraint.disable_collisions = False
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
@@ -3725,27 +3739,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr3)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
-                    objConst.rigid_body_constraint.type = 'GENERIC'
                     objConst.empty_draw_size = emptyDrawSize
                     ### Lock directions for bending force
-                    objConst.rigid_body_constraint.use_limit_lin_x = 0
-                    objConst.rigid_body_constraint.use_limit_lin_y = 0
-                    objConst.rigid_body_constraint.use_limit_lin_z = 0
-                    objConst.rigid_body_constraint.use_limit_ang_x = 1
-                    objConst.rigid_body_constraint.use_limit_ang_y = 1
-                    objConst.rigid_body_constraint.use_limit_ang_z = 1
-                    objConst.rigid_body_constraint.limit_ang_x_lower = 0 
-                    objConst.rigid_body_constraint.limit_ang_x_upper = 0 
-                    objConst.rigid_body_constraint.limit_ang_y_lower = 0
-                    objConst.rigid_body_constraint.limit_ang_y_upper = 0
-                    objConst.rigid_body_constraint.limit_ang_z_lower = 0
-                    objConst.rigid_body_constraint.limit_ang_z_upper = 0
-                    #objConst.rigid_body_constraint.disable_collisions = False
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
@@ -3775,23 +3776,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
-                    objConst.rigid_body_constraint.type = 'GENERIC'
                     objConst.empty_draw_size = emptyDrawSize
                     ### Lock direction for compressive force
-                    objConst.rigid_body_constraint.use_limit_lin_x = 1
-                    objConst.rigid_body_constraint.use_limit_lin_y = 0
-                    objConst.rigid_body_constraint.use_limit_lin_z = 0
-                    objConst.rigid_body_constraint.limit_lin_x_lower = 0
-                    objConst.rigid_body_constraint.limit_lin_x_upper = 99999
-                    objConst.rigid_body_constraint.use_limit_ang_x = 0
-                    objConst.rigid_body_constraint.use_limit_ang_y = 0
-                    objConst.rigid_body_constraint.use_limit_ang_z = 0
-                    #objConst.rigid_body_constraint.disable_collisions = False
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0)
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
@@ -3807,23 +3799,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr2)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
-                    objConst.rigid_body_constraint.type = 'GENERIC'
                     objConst.empty_draw_size = emptyDrawSize
                     ### Lock direction for tensile force
-                    objConst.rigid_body_constraint.use_limit_lin_x = 1
-                    objConst.rigid_body_constraint.use_limit_lin_y = 0
-                    objConst.rigid_body_constraint.use_limit_lin_z = 0
-                    objConst.rigid_body_constraint.limit_lin_x_lower = -99999
-                    objConst.rigid_body_constraint.limit_lin_x_upper = 0
-                    objConst.rigid_body_constraint.use_limit_ang_x = 0
-                    objConst.rigid_body_constraint.use_limit_ang_y = 0
-                    objConst.rigid_body_constraint.use_limit_ang_z = 0
-                    #objConst.rigid_body_constraint.disable_collisions = False
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0)
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
@@ -3839,25 +3822,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr3)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
-                    objConst.rigid_body_constraint.type = 'GENERIC'
                     objConst.empty_draw_size = emptyDrawSize
                     ### Lock directions for shearing force
-                    objConst.rigid_body_constraint.use_limit_lin_x = 0
-                    objConst.rigid_body_constraint.use_limit_lin_y = 1
-                    objConst.rigid_body_constraint.use_limit_lin_z = 1
-                    objConst.rigid_body_constraint.limit_lin_y_lower = 0
-                    objConst.rigid_body_constraint.limit_lin_y_upper = 0
-                    objConst.rigid_body_constraint.limit_lin_z_lower = 0
-                    objConst.rigid_body_constraint.limit_lin_z_upper = 0
-                    objConst.rigid_body_constraint.use_limit_ang_x = 0
-                    objConst.rigid_body_constraint.use_limit_ang_y = 0
-                    objConst.rigid_body_constraint.use_limit_ang_z = 0
-                    #objConst.rigid_body_constraint.disable_collisions = False
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ct='GENERIC', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
@@ -3873,27 +3845,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr4)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
-                objConst['BrkThres4'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
-                    objConst.rigid_body_constraint.type = 'GENERIC'
                     objConst.empty_draw_size = emptyDrawSize
                     ### Lock directions for bending force
-                    objConst.rigid_body_constraint.use_limit_lin_x = 0
-                    objConst.rigid_body_constraint.use_limit_lin_y = 0
-                    objConst.rigid_body_constraint.use_limit_lin_z = 0
-                    objConst.rigid_body_constraint.use_limit_ang_x = 1
-                    objConst.rigid_body_constraint.use_limit_ang_y = 1
-                    objConst.rigid_body_constraint.use_limit_ang_z = 1
-                    objConst.rigid_body_constraint.limit_ang_x_lower = 0 
-                    objConst.rigid_body_constraint.limit_ang_x_upper = 0 
-                    objConst.rigid_body_constraint.limit_ang_y_lower = 0
-                    objConst.rigid_body_constraint.limit_ang_y_upper = 0
-                    objConst.rigid_body_constraint.limit_ang_z_lower = 0
-                    objConst.rigid_body_constraint.limit_ang_z_upper = 0
-                    #objConst.rigid_body_constraint.disable_collisions = False
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
@@ -3921,7 +3880,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr1)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 # Some connection types are designed to use a combination of multiple presets, then an index offset for accessing the right constraints is required
                 if connectType == 9: conIdxOfs = connectTypes[1][1]
                 elif connectType == 11: conIdxOfs = connectTypes[6][1]
@@ -3936,12 +3896,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
                         # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                         # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = brkThres
-                    objConst['BrkThres'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                    objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
-                        objConst.rigid_body_constraint.type = 'GENERIC_SPRING'
                         objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                         objConst.empty_draw_size = emptyDrawSize
                         ### Rotate constraint matrix
@@ -3951,20 +3909,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         vec.rotate(objConst.rotation_quaternion)
                         objConst.location = objConst0.location +vec
                         ### Enable linear spring
-                        objConst.rigid_body_constraint.use_spring_x = 1
-                        objConst.rigid_body_constraint.use_spring_y = 1
-                        objConst.rigid_body_constraint.use_spring_z = 1
-                        objConst.rigid_body_constraint.spring_damping_x = 1
-                        objConst.rigid_body_constraint.spring_damping_y = 1
-                        objConst.rigid_body_constraint.spring_damping_z = 1
-                        #objConst.rigid_body_constraint.disable_collisions = False
+                        ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                        setConstParams(objConst, ct='GENERIC_SPRING', usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                     # Set stiffness
-                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                     if connectType != 7:
                         # Disable springs on start (requires plastic activation during simulation)
-                        objConst.rigid_body_constraint.enabled = 0
+                        ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                        setConstParams(objConst, e=0)
                     if asciiExport:
                         exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
@@ -4008,12 +3961,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
                         # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                         # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = brkThres
-                    objConst['BrkThres'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                    objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
-                        objConst.rigid_body_constraint.type = 'GENERIC_SPRING'
                         objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                         objConst.empty_draw_size = emptyDrawSize
                         ### Rotate constraint matrix
@@ -4024,20 +3975,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         vec.rotate(objConst.rotation_quaternion)
                         objConst.location = objConst0.location +vec
                         ### Enable linear spring
-                        objConst.rigid_body_constraint.use_spring_x = 1
-                        objConst.rigid_body_constraint.use_spring_y = 1
-                        objConst.rigid_body_constraint.use_spring_z = 1
-                        objConst.rigid_body_constraint.spring_damping_x = 1
-                        objConst.rigid_body_constraint.spring_damping_y = 1
-                        objConst.rigid_body_constraint.spring_damping_z = 1
-                        #objConst.rigid_body_constraint.disable_collisions = False
+                        ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                        setConstParams(objConst, ct='GENERIC_SPRING', usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                     # Set stiffness
-                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                     if connectType != 8:
                         # Disable springs on start (requires plastic activation during simulation)
-                        objConst.rigid_body_constraint.enabled = 0
+                        ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                        setConstParams(objConst, e=0)
                     if asciiExport:
                         exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
@@ -4069,9 +4015,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr3)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres3 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                try: value = eval(brkThresExpr4)
-                except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres4 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 # Loop through all constraints of this connection
                 i = -3
                 for j in range(3):
@@ -4085,12 +4028,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
                         # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                         # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = brkThres1
-                    objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                    objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, bt=brkThres1, ub=constraintUseBreaking)
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
-                        objConst.rigid_body_constraint.type = 'GENERIC_SPRING'
                         objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                         objConst.empty_draw_size = emptyDrawSize
                         ### Rotate constraint matrix
@@ -4099,27 +4040,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 2: vec = Vector((0, -radius, 0))
                         vec.rotate(objConst.rotation_quaternion)
                         objConst.location = objConst0.location +vec
-                        ### Enable linear spring
-                        objConst.rigid_body_constraint.use_spring_x = 1
-                        objConst.rigid_body_constraint.use_spring_y = 1
-                        objConst.rigid_body_constraint.use_spring_z = 1
-                        objConst.rigid_body_constraint.spring_damping_x = 1
-                        objConst.rigid_body_constraint.spring_damping_y = 1
-                        objConst.rigid_body_constraint.spring_damping_z = 1
-                        ### Lock direction for compressive force
-                        objConst.rigid_body_constraint.use_limit_lin_x = 1
-                        objConst.rigid_body_constraint.use_limit_lin_y = 0
-                        objConst.rigid_body_constraint.use_limit_lin_z = 0
-                        objConst.rigid_body_constraint.limit_lin_x_lower = 0
-                        objConst.rigid_body_constraint.limit_lin_x_upper = 99999
-                        objConst.rigid_body_constraint.use_limit_ang_x = 0
-                        objConst.rigid_body_constraint.use_limit_ang_y = 0
-                        objConst.rigid_body_constraint.use_limit_ang_z = 0
-                        #objConst.rigid_body_constraint.disable_collisions = False
+                        ### Lock direction for compressive force and enable linear spring
+                        ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                        setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                     # Set stiffness
-                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
@@ -4138,12 +4064,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
                         # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                         # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = brkThres2
-                    objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                    objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, bt=brkThres2, ub=constraintUseBreaking)
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
-                        objConst.rigid_body_constraint.type = 'GENERIC_SPRING'
                         objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                         objConst.empty_draw_size = emptyDrawSize
                         ### Rotate constraint matrix
@@ -4152,27 +4076,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 2: vec = Vector((0, -radius, 0))
                         vec.rotate(objConst.rotation_quaternion)
                         objConst.location = objConst0.location +vec
-                        ### Enable linear spring
-                        objConst.rigid_body_constraint.use_spring_x = 1
-                        objConst.rigid_body_constraint.use_spring_y = 1
-                        objConst.rigid_body_constraint.use_spring_z = 1
-                        objConst.rigid_body_constraint.spring_damping_x = 1
-                        objConst.rigid_body_constraint.spring_damping_y = 1
-                        objConst.rigid_body_constraint.spring_damping_z = 1
-                        ### Lock direction for tensile force
-                        objConst.rigid_body_constraint.use_limit_lin_x = 1
-                        objConst.rigid_body_constraint.use_limit_lin_y = 0
-                        objConst.rigid_body_constraint.use_limit_lin_z = 0
-                        objConst.rigid_body_constraint.limit_lin_x_lower = -99999
-                        objConst.rigid_body_constraint.limit_lin_x_upper = 0
-                        objConst.rigid_body_constraint.use_limit_ang_x = 0
-                        objConst.rigid_body_constraint.use_limit_ang_y = 0
-                        objConst.rigid_body_constraint.use_limit_ang_z = 0
-                        #objConst.rigid_body_constraint.disable_collisions = False
+                        ### Lock direction for tensile force and enable linear spring
+                        ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                        setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                     # Set stiffness
-                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
@@ -4191,12 +4100,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
                         # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                         # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = brkThres3
-                    objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                    objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, bt=brkThres3, ub=constraintUseBreaking)
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
-                        objConst.rigid_body_constraint.type = 'GENERIC_SPRING'
                         objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                         objConst.empty_draw_size = emptyDrawSize
                         ### Rotate constraint matrix
@@ -4205,29 +4112,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 2: vec = Vector((0, -radius, 0))
                         vec.rotate(objConst.rotation_quaternion)
                         objConst.location = objConst0.location +vec
-                        ### Enable linear spring
-                        objConst.rigid_body_constraint.use_spring_x = 1
-                        objConst.rigid_body_constraint.use_spring_y = 1
-                        objConst.rigid_body_constraint.use_spring_z = 1
-                        objConst.rigid_body_constraint.spring_damping_x = 1
-                        objConst.rigid_body_constraint.spring_damping_y = 1
-                        objConst.rigid_body_constraint.spring_damping_z = 1
-                        ### Lock directions for shearing force
-                        objConst.rigid_body_constraint.use_limit_lin_x = 0
-                        objConst.rigid_body_constraint.use_limit_lin_y = 1
-                        objConst.rigid_body_constraint.use_limit_lin_z = 1
-                        objConst.rigid_body_constraint.limit_lin_y_lower = 0
-                        objConst.rigid_body_constraint.limit_lin_y_upper = 0
-                        objConst.rigid_body_constraint.limit_lin_z_lower = 0
-                        objConst.rigid_body_constraint.limit_lin_z_upper = 0
-                        objConst.rigid_body_constraint.use_limit_ang_x = 0
-                        objConst.rigid_body_constraint.use_limit_ang_y = 0
-                        objConst.rigid_body_constraint.use_limit_ang_z = 0
-                        #objConst.rigid_body_constraint.disable_collisions = False
+                        ### Lock directions for shearing force and enable linear spring
+                        ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                        setConstParams(objConst, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                     # Set stiffness
-                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
@@ -4259,9 +4149,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 try: value = eval(brkThresExpr3)
                 except: print("\rError: Expression could not be evaluated:", expression); value = 0
                 brkThres3 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                try: value = eval(brkThresExpr4)
-                except: print("\rError: Expression could not be evaluated:", expression); value = 0
-                brkThres4 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 # Loop through all constraints of this connection
                 i = -3
                 for j in range(4):
@@ -4275,12 +4162,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
                         # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                         # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = brkThres1
-                    objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                    objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, bt=brkThres1, ub=constraintUseBreaking)
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
-                        objConst.rigid_body_constraint.type = 'GENERIC_SPRING'
                         objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                         objConst.empty_draw_size = emptyDrawSize
                         ### Rotate constraint matrix
@@ -4290,27 +4175,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 3: vec = Vector((0, -radius, radius))
                         vec.rotate(objConst.rotation_quaternion)
                         objConst.location = objConst0.location +vec
-                        ### Enable linear spring
-                        objConst.rigid_body_constraint.use_spring_x = 1
-                        objConst.rigid_body_constraint.use_spring_y = 1
-                        objConst.rigid_body_constraint.use_spring_z = 1
-                        objConst.rigid_body_constraint.spring_damping_x = 1
-                        objConst.rigid_body_constraint.spring_damping_y = 1
-                        objConst.rigid_body_constraint.spring_damping_z = 1
-                        ### Lock direction for compressive force
-                        objConst.rigid_body_constraint.use_limit_lin_x = 1
-                        objConst.rigid_body_constraint.use_limit_lin_y = 0
-                        objConst.rigid_body_constraint.use_limit_lin_z = 0
-                        objConst.rigid_body_constraint.limit_lin_x_lower = 0
-                        objConst.rigid_body_constraint.limit_lin_x_upper = 99999
-                        objConst.rigid_body_constraint.use_limit_ang_x = 0
-                        objConst.rigid_body_constraint.use_limit_ang_y = 0
-                        objConst.rigid_body_constraint.use_limit_ang_z = 0
-                        #objConst.rigid_body_constraint.disable_collisions = False
+                        ### Lock direction for compressive force and enable linear spring
+                        ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                        setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                     # Set stiffness
-                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
@@ -4329,12 +4199,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
                         # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                         # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = brkThres2
-                    objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                    objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, bt=brkThres2, ub=constraintUseBreaking)
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
-                        objConst.rigid_body_constraint.type = 'GENERIC_SPRING'
                         objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                         objConst.empty_draw_size = emptyDrawSize
                         ### Rotate constraint matrix
@@ -4344,27 +4212,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 3: vec = Vector((0, -radius, radius))
                         vec.rotate(objConst.rotation_quaternion)
                         objConst.location = objConst0.location +vec
-                        ### Enable linear spring
-                        objConst.rigid_body_constraint.use_spring_x = 1
-                        objConst.rigid_body_constraint.use_spring_y = 1
-                        objConst.rigid_body_constraint.use_spring_z = 1
-                        objConst.rigid_body_constraint.spring_damping_x = 1
-                        objConst.rigid_body_constraint.spring_damping_y = 1
-                        objConst.rigid_body_constraint.spring_damping_z = 1
-                        ### Lock direction for tensile force
-                        objConst.rigid_body_constraint.use_limit_lin_x = 1
-                        objConst.rigid_body_constraint.use_limit_lin_y = 0
-                        objConst.rigid_body_constraint.use_limit_lin_z = 0
-                        objConst.rigid_body_constraint.limit_lin_x_lower = -99999
-                        objConst.rigid_body_constraint.limit_lin_x_upper = 0
-                        objConst.rigid_body_constraint.use_limit_ang_x = 0
-                        objConst.rigid_body_constraint.use_limit_ang_y = 0
-                        objConst.rigid_body_constraint.use_limit_ang_z = 0
-                        #objConst.rigid_body_constraint.disable_collisions = False
+                        ### Lock direction for tensile force and enable linear spring
+                        ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                        setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                     # Set stiffness
-                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
@@ -4383,12 +4236,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
                         # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                         # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = brkThres3
-                    objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
-                    objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, bt=brkThres3, ub=constraintUseBreaking)
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
-                        objConst.rigid_body_constraint.type = 'GENERIC_SPRING'
                         objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                         objConst.empty_draw_size = emptyDrawSize
                         ### Rotate constraint matrix
@@ -4398,29 +4249,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                         elif j == 3: vec = Vector((0, -radius, radius))
                         vec.rotate(objConst.rotation_quaternion)
                         objConst.location = objConst0.location +vec
-                        ### Enable linear spring
-                        objConst.rigid_body_constraint.use_spring_x = 1
-                        objConst.rigid_body_constraint.use_spring_y = 1
-                        objConst.rigid_body_constraint.use_spring_z = 1
-                        objConst.rigid_body_constraint.spring_damping_x = 1
-                        objConst.rigid_body_constraint.spring_damping_y = 1
-                        objConst.rigid_body_constraint.spring_damping_z = 1
-                        ### Lock directions for shearing force
-                        objConst.rigid_body_constraint.use_limit_lin_x = 0
-                        objConst.rigid_body_constraint.use_limit_lin_y = 1
-                        objConst.rigid_body_constraint.use_limit_lin_z = 1
-                        objConst.rigid_body_constraint.limit_lin_y_lower = 0
-                        objConst.rigid_body_constraint.limit_lin_y_upper = 0
-                        objConst.rigid_body_constraint.limit_lin_z_lower = 0
-                        objConst.rigid_body_constraint.limit_lin_z_upper = 0
-                        objConst.rigid_body_constraint.use_limit_ang_x = 0
-                        objConst.rigid_body_constraint.use_limit_ang_y = 0
-                        objConst.rigid_body_constraint.use_limit_ang_z = 0
-                        #objConst.rigid_body_constraint.disable_collisions = False
+                        ### Lock directions for shearing force and enable linear spring
+                        ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                        setConstParams(objConst, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                     # Set stiffness
-                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
