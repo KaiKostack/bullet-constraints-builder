@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v1.83 #
+# Bullet Constraints Builder v2.00 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -50,13 +50,10 @@ asciiExport = 0              # 0     | Exports all constraint data to an ASCII t
 
 # Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
 elemGrps = [
-# 0          1    2           3        4   5    6    7    8    9       10   11   12   13    14   15    16
-# Name       RVP  Mat.preset  Density  CT  BTC  BTT  BTS  BTB  Stiff.  TPD. TPR. TBD. TBR.  Bev. Scale facing
-[ "",        1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  .05, .1,  .1,  .4,   0,   .95,  0      ],   # Defaults to be used when element is not part of any element group
-[ "Columns", 1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  .05, .1,  .1,  .4,   0,   .95,  0      ],
-[ "Girders", 1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  .05, .1,  .1,  .4,   0,   .95,  0      ],
-[ "Walls",   1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  .05, .1,  .1,  .4,   0,   .95,  0      ],
-[ "Slabs",   1,   "Concrete", 0,       6,  30,  9,   9,   3,   10**6,  .05, .1,  .1,  .4,   0,   .95,  0      ]
+# 0          1    2           3        4   5       6        7          8          9       10   11   12   13    14   15    16
+# Name       RVP  Mat.preset  Density  CT  BTC     BTT      BTS        BTB        Stiff.  TPD. TPR. TBD. TBR.  Bev. Scale facing
+[ "RC",      1,   "Concrete", 2400,    6,  "25*a", "7.5*a", "115*h*h", "3*h*a",   10**6,  .05, .1,  .1,  .4,   0,   .95,  0      ],  # Defaults to be used when element is not part of any element group
+[ "Walls",   1,   "Masonry",  1800,    6,  "10*a", ".6*a",  "1*h*h",   ".23*h*a", 10**6,  .05, .1,  .1,  .4,   0,   .95,  0      ]
 ]
 
 # Column descriptions (in order from left to right):
@@ -124,7 +121,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (1, 8, 3),
+    "version": (2, 0, 0),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -152,19 +149,34 @@ def logDataToFile(data, pathName):
 ########################################
 
 def makeListsPickleFriendly(listOld):
-    listNew = []
-    for sub in listOld:
-        # Check if sub is a list, isinstance(sub, list) doesn't work on ID property lists
-        try: test = len(sub)
-        # If it fails it is no list
-        except: listNew.append(sub)
-        # If it is a list
+    listNew1 = []
+    for sub1 in listOld:
+        try: test = len(sub1)                    # Check if sub is a list, isinstance(sub, list) doesn't work on ID property lists
+        except: listNew1.append(sub1); continue  # If it fails it is no list (and also no vector)
         else:
-            sublistNew = []
-            for item in sub:
-                sublistNew.append(item)
-            listNew.append(sublistNew)
-    return listNew
+            if isinstance(sub1, str):            # It could still be a string so check that as well
+                listNew1.append(sub1); continue  
+        listNew2 = []
+        for sub2 in sub1:
+            try: test = len(sub2)                    # Check if sub is a list, isinstance(sub, list) doesn't work on ID property lists
+            except: listNew2.append(sub2); continue  # If it fails it is no list (and also no vector)
+            else:
+                if isinstance(sub2, str):            # It could still be a string so check that as well
+                    listNew2.append(sub2); continue  
+            listNew3 = []
+            for sub3 in sub2:
+                try: test = len(sub3)                    # Check if sub is a list, isinstance(sub, list) doesn't work on ID property lists
+                except: listNew3.append(sub3); continue  # If it fails it is no list (and also no vector)
+                else:
+                    if isinstance(sub3, str):            # It could still be a string so check that as well
+                        listNew3.append(sub3); continue  
+                listNew4 = []
+                for sub4 in sub3:
+                    listNew4.append(sub4)
+                listNew3.append(listNew4)
+            listNew2.append(listNew3)
+        listNew1.append(listNew2)
+    return listNew1
 
 ################################################################################
 
@@ -280,7 +292,7 @@ def getConfigDataFromScene(scene):
     
 ################################################################################   
 
-def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect):
+def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect):
     
     ### Store build data in scene
     print("Storing build data in scene...")
@@ -299,8 +311,8 @@ def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsP
         scene["bcb_connectsPairParent"] = connectsPairParent
     if connectsLoc != None:
         scene["bcb_connectsLoc"] = connectsLoc
-    if connectsArea != None:
-        scene["bcb_connectsArea"] = connectsArea
+    if connectsGeo != None:
+        scene["bcb_connectsGeo"] = connectsGeo
     if connectsConsts != None:
         scene["bcb_connectsConsts"] = connectsConsts
     if constsConnect != None:
@@ -355,8 +367,8 @@ def getBuildDataFromScene(scene):
     try: connectsLoc = scene["bcb_connectsLoc"]
     except: connectsLoc = []; print("Error: bcb_connectsLoc property not found, rebuilding constraints is required.")
 
-    try: connectsArea = scene["bcb_connectsArea"]
-    except: connectsArea = []; print("Error: bcb_connectsArea property not found, rebuilding constraints is required.")
+    try: connectsGeo = scene["bcb_connectsGeo"]
+    except: connectsGeo = []; print("Error: bcb_connectsGeo property not found, rebuilding constraints is required.")
 
     try: connectsConsts = scene["bcb_connectsConsts"]
     except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
@@ -373,7 +385,7 @@ def getBuildDataFromScene(scene):
         log.append(makeListsPickleFriendly(connectsPair))
         log.append(makeListsPickleFriendly(connectsPairParent))
         log.append(makeListsPickleFriendly(connectsLoc))
-        log.append(makeListsPickleFriendly(connectsArea))
+        log.append(makeListsPickleFriendly(connectsGeo))
         log.append(makeListsPickleFriendly(connectsConsts))
         log.append(makeListsPickleFriendly(constsConnect))
         logDataToFile(log, logPath +r"\log_bcb_keys.txt")
@@ -381,7 +393,7 @@ def getBuildDataFromScene(scene):
         log.append([obj.name for obj in bpy.context.scene.objects])
         logDataToFile(log, logPath +r"\log_bcb_scene.txt")
         
-    return objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect
+    return objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect
 
 ################################################################################   
 
@@ -508,13 +520,38 @@ def clearAllDataFromScene(scene):
             obj.scale /= scale
 
     print("Deleting objects...")
-    ### Select modified elements for deletion from scene 
-    for parentObj in parentTmpObjs: parentObj.select = 1
-    ### Select constraint empty objects for deletion from scene
-    for emptyObj in emptyObjs: emptyObj.select = 1
+### Original code for object removal (slower):            
+#    ### Select modified elements for deletion from scene 
+#    for parentObj in parentTmpObjs: parentObj.select = 1
+#    ### Select constraint empty objects for deletion from scene
+#    for emptyObj in emptyObjs: emptyObj.select = 1
+#    
+#    ### Delete all selected objects
+#    bpy.ops.object.delete(use_global=True)
+
+#    ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
+#    scene = bpy.context.scene
+#    sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+#    # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
+#    bpy.context.screen.scene = scene
+#    # Link cameras because in second scene is none and when coming back camera view will losing focus
+#    objCameras = []
+#    for objTemp in scene.objects:
+#        if objTemp.type == 'CAMERA':
+#            sceneTemp.objects.link(objTemp)
+#            objCameras.append(objTemp)
+#    # Switch to new scene
+#    bpy.context.screen.scene = sceneTemp
+
+    ### Delete (unlink) modified elements from scene 
+    for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
+    ### Delete (unlink) constraint empty objects from scene
+    for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
     
-    ### Delete all selected objects
-    bpy.ops.object.delete(use_global=True)
+#    # Switch back to original scene
+#    bpy.context.screen.scene = scene
+#    # Delete second scene
+#    bpy.data.scenes.remove(sceneTemp)
 
     print("Removing ID properties...")
     
@@ -686,24 +723,24 @@ def monitor_initBuffers(scene):
         angle = quat0.rotation_difference(quat1).angle
         consts = []
         constsBrkTs = []
+        constsSprSt = []
         for const in connectsConsts[d -1]:
             emptyObj = emptyObjs[const]
             consts.append(emptyObj)
             if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
                 # Backup original breaking thresholds
                 constsBrkTs.append(emptyObj.rigid_body_constraint.breaking_threshold)
-                # Set tolerance evaluation mode (if plastic or not)
-                if emptyObj.rigid_body_constraint.type == 'GENERIC_SPRING':
-                      mode = 1
-                else: mode = 0
+                # Backup original spring stiffness
+                constsSprSt.append([emptyObj.rigid_body_constraint.spring_stiffness_x, emptyObj.rigid_body_constraint.spring_stiffness_y, emptyObj.rigid_body_constraint.spring_stiffness_z])
             else:
                 if not qWarning:
                     qWarning = 1
                     print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
                 print("(%s)" %emptyObj.name)
                 constsBrkTs.append(0)
-        #                0                1                2         3      4       5            6 (unused)  7      8         9        10        11       12
-        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, None, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode])
+                constsSprSt.append([0, 0, 0])
+        #                0                1                2         3      4       5            6            7            8            9             10            11           12
+        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsBrkTs, constsSprSt, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, 0])
 
     print("Connections")
         
@@ -721,64 +758,64 @@ def monitor_checkForChange():
         ### If connection is in fixed mode then check if plastic tolerance is reached
         if connect[12] == 0:
             d += 1
-            consts = connect[4]
-            if consts[0].rigid_body_constraint.use_breaking:
-                objA = connect[0][0]
-                objB = connect[1][0]
-                springStiff = connect[7]
-                toleranceDist = connect[8]
-                toleranceRot = connect[9]
-                
-                # Calculate distance between both elements of the connection
-                distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
-                if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
-                else: distanceDif = 1
-                # Calculate angle between two elements
-                quatA = objA.matrix_world.to_quaternion()
-                quatB = objB.matrix_world.to_quaternion()
-                angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
-                # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-                if distanceDif > toleranceDist +(angleDif /3.1416) \
-                or angleDif > toleranceRot:
-                    for const in consts:
-                        # Enable spring constraints for this connection by setting its stiffness
-                        if const.rigid_body_constraint.type == 'GENERIC_SPRING':
-                            const.rigid_body_constraint.enabled = 1
-                        # Disable non-spring constraints for this connection by setting breaking threshold to 0
-                        else:
-                            const.rigid_body_constraint.breaking_threshold = 0
-                    # Switch connection to plastic mode
-                    connect[12] += 1
-                    cntP += 1
+            objA = connect[0][0]
+            objB = connect[1][0]
+            springStiff = connect[7]
+            toleranceDist = connect[8]
+            toleranceRot = connect[9]
+            
+            # Calculate distance between both elements of the connection
+            distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+            if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
+            else: distanceDif = 1
+            # Calculate angle between two elements
+            quatA = objA.matrix_world.to_quaternion()
+            quatB = objB.matrix_world.to_quaternion()
+            angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+            # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
+            if distanceDif > toleranceDist +(angleDif /3.1416) \
+            or angleDif > toleranceRot:
+                consts = connect[4]
+                for const in consts:
+                    # Enable spring constraints for this connection by setting its stiffness
+                    if const.rigid_body_constraint.type == 'GENERIC_SPRING':
+                        const.rigid_body_constraint.spring_stiffness_x = springStiff
+                        const.rigid_body_constraint.spring_stiffness_y = springStiff
+                        const.rigid_body_constraint.spring_stiffness_z = springStiff
+                    # Disable non-spring constraints for this connection by setting breaking threshold to 0
+                    else:
+                        const.rigid_body_constraint.breaking_threshold = 0
+                # Switch connection to plastic mode
+                connect[12] += 1
+                cntP += 1
 
         ### If connection is in plastic mode then check if breaking tolerance is reached
         if connect[12] == 1:
             e += 1
-            consts = connect[4]
-            if consts[0].rigid_body_constraint.use_breaking:
-                objA = connect[0][0]
-                objB = connect[1][0]
-                toleranceDist = connect[10]
-                toleranceRot = connect[11]
-                
-                # Calculate distance between both elements of the connection
-                distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
-                if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
-                else: distanceDif = 1
-                # Calculate angle between two elements
-                quatA = objA.matrix_world.to_quaternion()
-                quatB = objB.matrix_world.to_quaternion()
-                angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
-                # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-                if distanceDif > toleranceDist +(angleDif /3.1416) \
-                or angleDif > toleranceRot:
-                    # Disable all constraints for this connection by setting breaking threshold to 0
-                    for const in consts:
-                        const.rigid_body_constraint.breaking_threshold = 0
-                    # Flag connection as being disconnected
-                    connect[12] += 1
-                    cntB += 1
-       
+            objA = connect[0][0]
+            objB = connect[1][0]
+            toleranceDist = connect[10]
+            toleranceRot = connect[11]
+            
+            # Calculate distance between both elements of the connection
+            distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+            if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
+            else: distanceDif = 1
+            # Calculate angle between two elements
+            quatA = objA.matrix_world.to_quaternion()
+            quatB = objB.matrix_world.to_quaternion()
+            angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+            # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
+            if distanceDif > toleranceDist +(angleDif /3.1416) \
+            or angleDif > toleranceRot:
+                # Disable all constraints for this connection by setting breaking threshold to 0
+                consts = connect[4]
+                for const in consts:
+                    const.rigid_body_constraint.breaking_threshold = 0
+                # Flag connection as being disconnected
+                connect[12] += 1
+                cntB += 1
+        
     sys.stdout.write(" connections (intact & plastic)")
     if cntP > 0: sys.stdout.write(" | Plastic: %d" %cntP)
     if cntB > 0: sys.stdout.write(" | Broken: %d" %cntB)
@@ -796,11 +833,17 @@ def monitor_freeBuffers(scene):
     for connect in connects:
         consts = connect[4]
         constsBrkTs = connect[5]
+        constsSprSt = connect[6]
         for i in range(len(consts)):
             emptyObj = consts[i]
             if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
                 # Restore original breaking thresholds
                 emptyObj.rigid_body_constraint.breaking_threshold = constsBrkTs[i]
+                # Restore original spring settings
+                if emptyObj.rigid_body_constraint.type == 'GENERIC_SPRING':
+                    emptyObj.rigid_body_constraint.spring_stiffness_x = constsSprSt[i][0]
+                    emptyObj.rigid_body_constraint.spring_stiffness_y = constsSprSt[i][1]
+                    emptyObj.rigid_body_constraint.spring_stiffness_z = constsSprSt[i][2]
             else:
                 if not qWarning:
                     qWarning = 1
@@ -895,10 +938,12 @@ class bcb_props(bpy.types.PropertyGroup):
         else: j = 0
         exec("prop_elemGrp_%d_0" %i +" = string(name='Grp. Name', default=elemGrps[j][0], description='The name of the element group.')")
         exec("prop_elemGrp_%d_4" %i +" = int(name='Connection Type', default=elemGrps[j][4], min=1, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
-        exec("prop_elemGrp_%d_5" %i +" = float(name='Compressive', default=elemGrps[j][5], min=0.0, max=10000, description='Real world material compressive breaking threshold in N/mm^2.')")
-        exec("prop_elemGrp_%d_6" %i +" = float(name='Tensile', default=elemGrps[j][6], min=0.0, max=10000, description='Real world material tensile breaking threshold in N/mm^2.')")
-        exec("prop_elemGrp_%d_7" %i +" = float(name='Shear', default=elemGrps[j][7], min=0.0, max=10000, description='Real world material shearing breaking threshold in N/mm^2.')")
-        exec("prop_elemGrp_%d_8" %i +" = float(name='Bend', default=elemGrps[j][8], min=0.0, max=10000, description='Real world material bending breaking threshold in N/mm^2.')")
+
+        exec("prop_elemGrp_%d_5" %i +" = string(name='Compressive', default=elemGrps[j][5], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_6" %i +" = string(name='Tensile', default=elemGrps[j][6], description='Math expression for the material´s real world tensile breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_7" %i +" = string(name='Shear', default=elemGrps[j][7], description='Math expression for the material´s real world shearing breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_8" %i +" = string(name='Bend', default=elemGrps[j][8], description='Math expression for the material´s real world bending breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+
         exec("prop_elemGrp_%d_9" %i +" = float(name='Spring Stiffness', default=elemGrps[j][9], min=0.0, max=10**20, description='Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.')")
         exec("prop_elemGrp_%d_1" %i +" = int(name='Req. Vertex Pairs', default=elemGrps[j][1], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
         exec("prop_elemGrp_%d_2" %i +" = string(name='Mat. Preset', default=elemGrps[j][2], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
@@ -919,10 +964,14 @@ class bcb_props(bpy.types.PropertyGroup):
             exec("self.prop_elemGrp_%d_2" %i +" = elemGrps[i][2]")
             exec("self.prop_elemGrp_%d_3" %i +" = elemGrps[i][3]")
             exec("self.prop_elemGrp_%d_4" %i +" = elemGrps[i][4]")
-            exec("self.prop_elemGrp_%d_5" %i +" = elemGrps[i][5]")
-            exec("self.prop_elemGrp_%d_6" %i +" = elemGrps[i][6]")
-            exec("self.prop_elemGrp_%d_7" %i +" = elemGrps[i][7]")
-            exec("self.prop_elemGrp_%d_8" %i +" = elemGrps[i][8]")
+            try: exec("self.prop_elemGrp_%d_5" %i +" = elemGrps[i][5]")
+            except: pass
+            try: exec("self.prop_elemGrp_%d_6" %i +" = elemGrps[i][6]")
+            except: pass
+            try: exec("self.prop_elemGrp_%d_7" %i +" = elemGrps[i][7]")
+            except: pass
+            try: exec("self.prop_elemGrp_%d_8" %i +" = elemGrps[i][8]")
+            except: pass
             exec("self.prop_elemGrp_%d_9" %i +" = elemGrps[i][9]")
             exec("self.prop_elemGrp_%d_10" %i +" = elemGrps[i][10]")
             exec("self.prop_elemGrp_%d_11" %i +" = elemGrps[i][11]")
@@ -1098,16 +1147,47 @@ class bcb_panel(bpy.types.Panel):
         except: connectType = connectTypes[0]  # In case the connection type is unknown (no constraints)
         box = layout.box();
         box.label(text=connectType[0])
-        
+
         row = layout.row(); row.label(text="Breaking Thresholds:")
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_5" %i)
+
+        # Prepare possible expression variables
+        a = h = w = b = s = 1   
+
+        row = layout.row()
+        expression = eval("props.prop_elemGrp_%d_5" %i)
+        try: value = eval(expression)
+        except: row.alert = 1; qAlert = 1
+        else: qAlert = 0
+        row.prop(props, "prop_elemGrp_%d_5" %i)
         if not connectType[2][0]: row.active = 0
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_6" %i)
+        if qAlert: row = layout.row(); row.label(text="Error in expression")
+
+        row = layout.row()
+        expression = eval("props.prop_elemGrp_%d_6" %i)
+        try: value = eval(expression)
+        except: row.alert = 1; qAlert = 1
+        else: qAlert = 0
+        row.prop(props, "prop_elemGrp_%d_6" %i)
         if not connectType[2][1]: row.active = 0
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_7" %i)
+        if qAlert: row = layout.row(); row.label(text="Error in expression")
+
+        row = layout.row()
+        expression = eval("props.prop_elemGrp_%d_7" %i)
+        try: value = eval(expression)
+        except: row.alert = 1; qAlert = 1
+        else: qAlert = 0
+        row.prop(props, "prop_elemGrp_%d_7" %i)
         if not connectType[2][2]: row.active = 0
-        row = layout.row(); row.prop(props, "prop_elemGrp_%d_8" %i)
+        if qAlert: row = layout.row(); row.label(text="Error in expression")
+
+        row = layout.row()
+        expression = eval("props.prop_elemGrp_%d_8" %i)
+        try: value = eval(expression)
+        except: row.alert = 1; qAlert = 1
+        else: qAlert = 0
+        row.prop(props, "prop_elemGrp_%d_8" %i)
         if not connectType[2][3]: row.active = 0
+        if qAlert: row = layout.row(); row.label(text="Error in expression")
 
         layout.separator()
         #row = layout.row(); row.prop(props, "prop_elemGrp_%d_1" %i)
@@ -1469,6 +1549,7 @@ def createElementGroupIndex(objs):
 
     ### Create a list about which object belongs to which element group
     objsEGrp = []
+    cnt = 0
     for obj in objs:
         objGrpsTmp = []
         for elemGrp in elemGrps:
@@ -1487,9 +1568,12 @@ def createElementGroupIndex(objs):
                 if elemGrpName == '':
                     objGrpsTmp = [elemGrps.index(elemGrp)]
                     break
-        objsEGrp.append(objGrpsTmp[0])
-        
-    return objsEGrp
+        if len(objGrpsTmp) > 0:
+              objsEGrp.append(objGrpsTmp[0])
+              cnt += 1
+        else: objsEGrp.append(0)
+
+    return objsEGrp, cnt
 
 ########################################
 
@@ -1874,21 +1958,22 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=
             overlapAreaY = overlapX *overlapZ
             overlapAreaZ = overlapX *overlapY
             # Add up all contact areas
-            contactArea = overlapAreaX +overlapAreaY +overlapAreaZ
+            geoContactArea = overlapAreaX +overlapAreaY +overlapAreaZ
 
         ### Or calculate contact area based on predefined custom thickness
         else:
-            contactArea = overlapX +overlapY +overlapZ
+            geoContactArea = overlapX +overlapY +overlapZ
             # This should actually be:
-            # contactArea = (overlapX +overlapY +overlapZ) *nonManifoldThickness
+            # geoContactArea = (overlapX +overlapY +overlapZ) *nonManifoldThickness
             # For updating possibility this last operation is postponed to setConstraintSettings()
 
-    else: contactArea = 0
+    else: geoContactArea = 0
             
     ### Find out element thickness to be used for bending threshold calculation 
-    bendingThickness = [overlapX, overlapY, overlapZ]
-    bendingThickness.sort()
-    bendingThickness = bendingThickness[1]   # First item = mostly 0, second item = thickness, third item = width 
+    geo = [overlapX, overlapY, overlapZ]
+    geo.sort()
+    geoHeight = geo[1]   # First item = mostly 0, second item = thickness, third item = width 
+    geoWidth = geo[2]
     
     ### Use center of contact area boundary box as constraints location
     centerX = max(bbAMin[0],bbBMin[0]) +(overlapX /2)
@@ -1897,7 +1982,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=
     center = Vector((centerX, centerY, centerZ))
     #center = (bbACenter +bbBCenter) /2     # Debug: Place constraints at the center of both elements like in bashi's addon
 
-    return contactArea, bendingThickness, center 
+    return geoContactArea, geoHeight, geoWidth, center 
 
 ########################################
 
@@ -1906,19 +1991,20 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair):
     ### Calculate contact area for all connections
     print("Calculating contact area for connections...")
     
-    connectsArea = []
+    connectsGeo = []
     connectsLoc = []
     for k in range(len(connectsPair)):
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
         
         ###### Calculate contact area for a single pair of objects
-        contactArea, bendingThickness, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
+        geoContactArea, geoHeight, geoWidth, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
         
-        connectsArea.append([contactArea, bendingThickness, 0])
+        # Geometry array: {'a':area, 'h':height, 'w':width, 's':geoSurfThick}
+        connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0])
         connectsLoc.append(center)
         
-    return connectsArea, connectsLoc
+    return connectsGeo, connectsLoc
 
 ################################################################################   
 
@@ -1942,7 +2028,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
     bpy.context.screen.scene = sceneTemp
 
     ### Main calculation loop
-    connectsArea = []
+    connectsGeo = []
     connectsLoc = []
     connectsPair_len = len(connectsPair)
     for k in range(connectsPair_len):
@@ -1987,10 +2073,11 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
             #print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
 
             ###### Calculate contact area for a single pair of objects
-            contactArea, bendingThickness, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=1)
-            surfaceThickness = nonManifoldThickness
+            geoContactArea, geoHeight, geoWidth, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=1)
+            geoSurfThick = nonManifoldThickness
             
-            connectsArea.append([contactArea, bendingThickness, surfaceThickness])
+            # Geometry array: {'a':area, 'h':height, 'w':width, 's':geoSurfThick}
+            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoSurfThick])
             connectsLoc.append(center)
 
         ###### If both meshes are manifold continue with regular boolean based approach
@@ -2050,9 +2137,10 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 bbMin, bbMax, center = boundaryBox(objIntersect, 1)
                 
                 ### Find out element thickness to be used for bending threshold calculation (the diameter of the intersection mesh should be sufficient for now)
-                bendingThickness = list(objIntersect.dimensions)
-                bendingThickness.sort()
-                bendingThickness = bendingThickness[1]   # First item = mostly 0, second item = thickness, third item = width 
+                geo = list(objIntersect.dimensions)
+                geo.sort()
+                geoHeight = geo[1]   # First item = mostly 0, second item = thickness, third item = width 
+                geoWidth = geo[2]
                 
                 ### Add displacement modifier to intersection mesh
                 objIntersect.modifiers.new(name="Displace_BCB", type='DISPLACE')
@@ -2083,19 +2171,20 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 surfaceBoolIntersectRemDisp = 0
                 for poly in me_intersect_remDisp.polygons: surfaceBoolIntersectRemDisp += poly.area
 #                ### The contact area is half the difference of both surface areas
-#                contactArea = (surfaceDisp -surfaceBoolUnion) /2
+#                geoContactArea = (surfaceDisp -surfaceBoolUnion) /2
                 ### The contact area is half the surface area of the intersection mesh without displacement
-                contactArea = surfaceBoolIntersectRemDisp /2
-                contactArea *= correction
-                if contactArea < 0: print('Error on boolean operation, contact area negative:', objA.name, objB.name)
+                geoContactArea = surfaceBoolIntersectRemDisp /2
+                geoContactArea *= correction
+                if geoContactArea < 0: print('Error on boolean operation, contact area negative:', objA.name, objB.name)
                 
                 # Unlink new object from second scene
                 sceneTemp.objects.unlink(objIntersect)
                 
             # If intersection mesh has no geometry then invalidate connection
             else:
-                contactArea = 0
-                bendingThickness = 0
+                geoContactArea = 0
+                geoHeight = 0
+                geoWidth = 0
                 center = Vector((0, 0, 0))
             
             # Remove modifiers from original object again
@@ -2116,7 +2205,8 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 # Switch to new scene
                 bpy.context.screen.scene = sceneTemp
         
-            connectsArea.append([contactArea, bendingThickness, 0])
+            # Geometry array: {'a':area, 'h':height, 'w':width, 's':geoSurfThick}
+            connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0])
             connectsLoc.append(center)
                 
     # Switch back to original scene
@@ -2125,7 +2215,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
     bpy.data.scenes.remove(sceneTemp)
                 
     print()
-    return connectsArea, connectsLoc
+    return connectsGeo, connectsLoc
 
 ################################################################################   
 
@@ -2149,7 +2239,7 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
     bpy.context.screen.scene = sceneTemp
 
     ### Main calculation loop
-    connectsArea = []
+    connectsGeo = []
     connectsLoc = []
     connectsPair_len = len(connectsPair)
     for k in range(connectsPair_len):
@@ -2168,8 +2258,9 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
         try: sceneTemp.objects.link(objB)
         except: pass
 
-        contactAreas = []
-        bendingThicknesses = []
+        geoContactAreas = []
+        geoHeights = []
+        geoWidths = []
         centers = []
         
         # Do this for both elements of the pair
@@ -2230,41 +2321,46 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
 #                bbMin, bbMax, center = boundaryBox(objIntersect, 1)
                 
                 ### Find out element thickness to be used for bending threshold calculation (the diameter of the intersection mesh should be sufficient for now)
-                bendingThickness = list(objIntersect.dimensions)
-                bendingThickness.sort()
-                bendingThickness = bendingThickness[1]   # First item = mostly 0, second item = thickness, third item = width 
+                geo = list(objIntersect.dimensions)
+                geo.sort()
+                geoHeight = geoHeight[1]   # First item = mostly 0, second item = thickness, third item = width 
+                geoWidth = geoHeight[2]
                                 
                 ### Calculate surface area
-                contactArea = 0
-                for poly in me_intersect.polygons: contactArea += poly.area
+                geoContactArea = 0
+                for poly in me_intersect.polygons: geoContactArea += poly.area
                 
                 # Unlink new object from second scene
                 sceneTemp.objects.unlink(objIntersect)
             
             # If intersection mesh has no geometry then invalidate connection
-            if len(me_intersect.vertices) == 0 or contactArea == 0:
-                contactArea = 0
-                bendingThickness = 0
+            if len(me_intersect.vertices) == 0 or geoContactArea == 0:
+                geoContactArea = 0
+                geoHeight = 0
+                geoWidth = 0
                 center = Vector((0, 0, 0))
             
-            contactAreas.append(contactArea)
-            bendingThicknesses.append(bendingThickness)
+            geoContactAreas.append(geoContactArea)
+            geoHeights.append(geoHeight)
+            geoWidths.append(geoWidth)
             centers.append(center)
             
         # Use the larger value as contact area because it is likely to be the cross-section of one element, overlapping surfaces of the partner element will most likely being masked out
-        if contactAreas[0] >= contactAreas[1]: idx = 0
-        if contactAreas[0] < contactAreas[1]: idx = 1
-        contactArea = contactAreas[idx]
-        bendingThickness = bendingThicknesses[idx]
+        if geoContactAreas[0] >= geoContactAreas[1]: idx = 0
+        if geoContactAreas[0] < geoContactAreas[1]: idx = 1
+        geoContactArea = geoContactAreas[idx]
+        geoHeight = geoHeights[idx]
+        geoWidth = geoWidths[idx]
         center = centers[idx]
 
         ###### If both intersection meshes have no geometry then calculate a contact area estimation based on boundary boxes intersection and a user defined thickness
-        if contactArea == 0:
-            # Todo: Here the boolean approach could be used as a fallback, for now surfaceThickness is not used
+        if geoContactArea == 0:
+            # Todo: Here the boolean approach could be used as a fallback, for now geoSurfThick is not used
             ###### Calculate contact area for a single pair of objects
-            contactArea, bendingThickness, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
+            geoContactArea, geoHeight, geoWidth, center = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
         
-        connectsArea.append([contactArea, bendingThickness, 0])
+        # Geometry array: {'a':area, 'h':height, 'w':width, 's':geoSurfThick}
+        connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0])
         connectsLoc.append(center)
 
 #        # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
@@ -2286,33 +2382,33 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
     bpy.data.scenes.remove(sceneTemp)
                 
     print()
-    return connectsArea, connectsLoc
+    return connectsGeo, connectsLoc
 
 ################################################################################   
 
-def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsArea, connectsLoc):
+def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connectsLoc):
     
     ### Delete connections with zero contact area
     if debug: print("Deleting connections with zero contact area...")
     
     connectsPairTmp = []
-    connectsAreaTmp = []
+    connectsGeoTmp = []
     connectsLocTmp = []
     connectCntOld = len(connectsPair)
     connectCnt = 0
     minimumArea = searchDistance**2
     for i in range(len(connectsPair)):
-        if connectsArea[i][0] > minimumArea:
+        if connectsGeo[i][0] > minimumArea:
             connectsPairTmp.append(connectsPair[i])
-            connectsAreaTmp.append(connectsArea[i])
+            connectsGeoTmp.append(connectsGeo[i])
             connectsLocTmp.append(connectsLoc[i])
             connectCnt += 1
     connectsPair = connectsPairTmp
-    connectsArea = connectsAreaTmp
+    connectsGeo = connectsGeoTmp
     connectsLoc = connectsLocTmp
     
     print("Connections skipped due to zero contact area:", connectCntOld -connectCnt)
-    return connectsPair, connectsArea, connectsLoc
+    return connectsPair, connectsGeo, connectsLoc
 
 ################################################################################   
 
@@ -2347,10 +2443,10 @@ def createConnectionData(objsEGrp, connectsPair):
 
 ################################################################################   
 
-def backupLayerSettingsAndActivateNextEmptyLayer(scene):
+def BackupLayerSettingsAndActivateNextEmptyLayer(scene):
 
-    ### Activate the first empty layer
-    print("Activating the first empty layer...")
+    ### Find and activate the first empty layer
+    print("Find and activate the first empty layer...")
     
     ### Backup layer settings
     layersBak = []
@@ -2370,53 +2466,6 @@ def backupLayerSettingsAndActivateNextEmptyLayer(scene):
         # Set new layers
         scene.layers = [bool(q) for q in layersNew]  # Convert array into boolean (required by layers)
         
-    # Return old layers state
-    return layersBak
-    
-########################################
-
-def backupLayerSettingsAndActivateNextLayerWithObj(scene, objToFind):
-
-    ### Activating the first layer with constraint empty object
-    print("Activating the first layer with constraint empty object...")
-    
-    ### Backup layer settings
-    layersBak = []
-    layersNew = []
-    for i in range(20):
-        layersBak.append(int(scene.layers[i]))
-        layersNew.append(0)
-    ### Find and activate the first empty layer
-    qFound = 0
-    for i in range(20):
-        objsOnLayer = [obj for obj in scene.objects if obj.layers[i]]
-        if objToFind in objsOnLayer:
-            layersNew[i] = 1
-            qFound = 1
-            break
-    if qFound:
-        # Set new layers
-        scene.layers = [bool(q) for q in layersNew]  # Convert array into boolean (required by layers)
-        
-    # Return old layers state
-    return layersBak
-
-########################################
-
-def backupLayerSettingsAndActivateAllLayers(scene):
-
-    ### Activate all layers
-    print("Activating all layers...")
-    
-    ### Backup layer settings
-    layersBak = []
-    layersNew = []
-    for i in range(20):
-        layersBak.append(int(scene.layers[i]))
-        layersNew.append(0)
-    # Activate all layers
-    scene.layers = [True for q in scene.layers]
-       
     # Return old layers state
     return layersBak
     
@@ -2600,7 +2649,7 @@ def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, consts
 def getAttribsOfConstraint(objConst):
 
     ### Create a dictionary of all attributes with values from the given constraint empty object    
-    con = objConst.rigid_body_constraint
+    con = bpy.context.object.rigid_body_constraint
     props = {}
     for prop in con.bl_rna.properties:
         if not prop.is_hidden:
@@ -2617,15 +2666,13 @@ def getAttribsOfConstraint(objConst):
 def setAttribsOfConstraint(objConst, props):
 
     ### Overwrite all attributes of the given constraint empty object with the values of the dictionary provided    
-    con = objConst.rigid_body_constraint    
-    for prop in props.items():
-        try: setattr(con, prop[0], prop[1])
-        except: print("Error: Failed to set attribute:", prop[0], prop[1])
-                
+    for prop in props:
+        try: setattr(con, prop.identifier, props[prop.identifier])
+        except: pass
+        
 ########################################
     
-    
-def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect, exportData):
+def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, connectsConsts, constsConnect, exportData):
     
     ### Set constraint settings
     print("Adding main constraint settings... (%d)" %len(connectsPair))
@@ -2648,17 +2695,25 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         bpy.context.window_manager.progress_update(k /len(connectsPair))
         
         consts = connectsConsts[k]
-        contactArea = connectsArea[k][0]
-        bendingThickness = connectsArea[k][1]
+        # Geometry array: {'a':area, 'h':height, 'w':width, 's':geoSurfThick}
+        geoContactArea = connectsGeo[k][0]
+        geoHeight = connectsGeo[k][1]
+        geoWidth = connectsGeo[k][2]
+        geoSurfThick = connectsGeo[k][3]
         if not asciiExport:
             # Store value as ID property for debug purposes
-            for idx in consts: emptyObjs[idx]['ContactArea'] = contactArea
+            for idx in consts: emptyObjs[idx]['ContactArea'] = geoContactArea
         
-        # Postponed contactArea calculation step from calculateContactAreaBasedOnBoundaryBoxesForPair() is being done now (update hack, could be better organized)
+        # Postponed geoContactArea calculation step from calculateContactAreaBasedOnBoundaryBoxesForPair() is being done now (update hack, could be better organized)
         if useAccurateArea:
-            surfaceThickness = connectsArea[k][2]
-            if surfaceThickness > 0:
-                contactArea *= surfaceThickness
+            if geoSurfThick > 0:
+                geoContactArea *= geoSurfThick
+        
+        ### Prepare expression variables
+        a = geoContactArea
+        h = geoHeight
+        w = b = geoWidth 
+        s = geoSurfThick      
         
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
@@ -2669,10 +2724,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
         else:                    elemGrp = elemGrpB
         
         connectType = elemGrps[elemGrp][4]
-        breakThres1 = elemGrps[elemGrp][5]
-        breakThres2 = elemGrps[elemGrp][6]
-        breakThres3 = elemGrps[elemGrp][7]
-        breakThres4 = elemGrps[elemGrp][8]
+        brkThresExpr1 = elemGrps[elemGrp][5]
+        brkThresExpr2 = elemGrps[elemGrp][6]
+        brkThresExpr3 = elemGrps[elemGrp][7]
+        brkThresExpr4 = elemGrps[elemGrp][8]
         springStiff = elemGrps[elemGrp][9]
         tol1dist = elemGrps[elemGrp][10]
         tol1rot = elemGrps[elemGrp][11]
@@ -2688,7 +2743,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
             objConst0 = objConst
             qUpdateComplete = 1
             objConst.rotation_mode = 'XYZ'  # Overwrite temporary object to default (Euler)
-            
+                
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
         
@@ -2705,8 +2760,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.type = 'FIXED'
-                objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr1)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
                 if asciiExport:
@@ -2714,13 +2772,17 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     exportData[cIdx].append(getAttribsOfConstraint(objConst))
                     
             elif connectType == 2:
+                correction = 1
                 cIdx = consts[0]
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.type = 'POINT'
-                objConst.rigid_body_constraint.breaking_threshold = (( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale
-                objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr1)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
                 if asciiExport:
@@ -2735,8 +2797,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.type = 'FIXED'
-                objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres1'] = breakThres4   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr4)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
                 if asciiExport:
@@ -2748,8 +2813,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
                 objConst.rigid_body_constraint.type = 'POINT'
-                objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres2'] = breakThres1   # Store value as ID property for debug purposes
+                objConst.rigid_body_constraint.breaking_threshold = ((( geoContactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 objConst.empty_draw_size = emptyDrawSize
                 if asciiExport:
@@ -2771,8 +2836,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr1)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -2801,8 +2869,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr2)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -2850,8 +2921,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr1)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -2879,8 +2953,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr2)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -2912,8 +2989,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.breaking_threshold = ((( (contactArea *bendingThickness) *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres3'] = breakThres4   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr3)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -2959,8 +3039,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr1)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -2988,8 +3071,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr2)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -3017,8 +3103,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.breaking_threshold = ((( contactArea *1000000 *breakThres3 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres3'] = breakThres3   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr3)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -3048,8 +3137,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 if not asciiExport:
                     objConst = emptyObjs[cIdx]
                 else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                objConst.rigid_body_constraint.breaking_threshold = ((( (contactArea *bendingThickness) *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                objConst['BrkThres4'] = breakThres4   # Store value as ID property for debug purposes
+                try: value = eval(brkThresExpr4)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
+                objConst['BrkThres4'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                 objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -3087,13 +3179,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 #if connectType == 7: correction /= 3        # Divided by the count of constraints which are sharing the same degree of freedom
                 #elif connectType == 9: correction /= 3 +1   # Divided by the count of constraints which are sharing the same degree of freedom
                 #elif connectType == 11: correction /= 3 +4  # Divided by the count of constraints which are sharing the same degree of freedom
-                radius = bendingThickness /2
+                radius = geoHeight /2
                 ### Calculate orientation between the two elements, imagine a line from center to center
                 dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
                 if alignVertical:
                     # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-                constBreakThres = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                try: value = eval(brkThresExpr1)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                objConst.rigid_body_constraint.breaking_threshold = brkThres
                 # Some connection types are designed to use a combination of multiple presets, then an index offset for accessing the right constraints is required
                 if connectType == 9: conIdxOfs = connectTypes[1][1]
                 elif connectType == 11: conIdxOfs = connectTypes[6][1]
@@ -3104,12 +3199,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                    if asciiExport:
-                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
-                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = constBreakThres
-                    objConst['BrkThres'] = breakThres1   # Store value as ID property for debug purposes
+                    objConst.rigid_body_constraint.breaking_threshold = brkThres
+                    objConst['BrkThres'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
@@ -3130,15 +3221,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_damping_y = 1
                         objConst.rigid_body_constraint.spring_damping_z = 1
                         #objConst.rigid_body_constraint.disable_collisions = False
-                    # Set stiffness
-                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
-                    if connectType != 7:
-                        # Disable springs on start (requires plastic activation during simulation)
-                        objConst.rigid_body_constraint.enabled = 0
+                    if connectType == 7:  # If spring-only connection type then activate springs from start (no extra plastic activation required)
+                        objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                        objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                        objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    else:  # Disable springs on start (requires plastic activation during simulation)
+                        objConst.rigid_body_constraint.spring_stiffness_x = 0
+                        objConst.rigid_body_constraint.spring_stiffness_y = 0
+                        objConst.rigid_body_constraint.spring_stiffness_z = 0
                     if asciiExport:
-                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         if connectType == 7:
                               exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
@@ -3157,13 +3248,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 #if connectType == 8: correction /= 4        # Divided by the count of constraints which are sharing the same degree of freedom
                 #elif connectType == 10: correction /= 4 +1  # Divided by the count of constraints which are sharing the same degree of freedom
                 #elif connectType == 12: correction /= 4 +4  # Divided by the count of constraints which are sharing the same degree of freedom
-                radius = bendingThickness /2
+                radius = geoHeight /2
                 ### Calculate orientation between the two elements, imagine a line from center to center
                 dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
                 if alignVertical:
                     # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-                constBreakThres = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                try: value = eval(brkThresExpr1)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 # Some connection types are designed to use a combination of multiple presets, then an index offset for accessing the right constraints is required
                 if connectType == 10: conIdxOfs = connectTypes[1][1]
                 elif connectType == 12: conIdxOfs = connectTypes[6][1]
@@ -3174,12 +3267,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                    if asciiExport:
-                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
-                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = constBreakThres
-                    objConst['BrkThres'] = breakThres1   # Store value as ID property for debug purposes
+                    objConst.rigid_body_constraint.breaking_threshold = brkThres
+                    objConst['BrkThres'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
@@ -3201,15 +3290,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                         objConst.rigid_body_constraint.spring_damping_y = 1
                         objConst.rigid_body_constraint.spring_damping_z = 1
                         #objConst.rigid_body_constraint.disable_collisions = False
-                    # Set stiffness
-                    objConst.rigid_body_constraint.spring_stiffness_x = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_y = springStiff
-                    objConst.rigid_body_constraint.spring_stiffness_z = springStiff
-                    if connectType != 8:
-                        # Disable springs on start (requires plastic activation during simulation)
-                        objConst.rigid_body_constraint.enabled = 0
+                    if connectType == 8:  # If spring-only connection type then activate springs from start (no extra plastic activation required)
+                        objConst.rigid_body_constraint.spring_stiffness_x = springStiff
+                        objConst.rigid_body_constraint.spring_stiffness_y = springStiff
+                        objConst.rigid_body_constraint.spring_stiffness_z = springStiff
+                    else:  # Disable springs on start (requires plastic activation during simulation)
+                        objConst.rigid_body_constraint.spring_stiffness_x = 0
+                        objConst.rigid_body_constraint.spring_stiffness_y = 0
+                        objConst.rigid_body_constraint.spring_stiffness_z = 0
                     if asciiExport:
-                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         if connectType == 8:
                               exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
@@ -3224,16 +3313,24 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
                 correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
                 correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
-                radius = bendingThickness /2
+                radius = geoHeight /2
                 ### Calculate orientation between the two elements, imagine a line from center to center
                 dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
                 if alignVertical:
                     # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-                constBreakThres1 = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                constBreakThres2 = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                constBreakThres3 = ((( contactArea *1000000 *breakThres3 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                constBreakThres4 = ((( (contactArea *bendingThickness) *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                try: value = eval(brkThresExpr1)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres1 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                try: value = eval(brkThresExpr2)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres2 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                try: value = eval(brkThresExpr3)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres3 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                try: value = eval(brkThresExpr4)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres4 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 # Loop through all constraints of this connection
                 i = -3
                 for j in range(3):
@@ -3243,12 +3340,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                    if asciiExport:
-                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
-                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = constBreakThres1
-                    objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
+                    objConst.rigid_body_constraint.breaking_threshold = brkThres1
+                    objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
@@ -3285,7 +3378,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3296,12 +3388,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                    if asciiExport:
-                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
-                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = constBreakThres2
-                    objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
+                    objConst.rigid_body_constraint.breaking_threshold = brkThres2
+                    objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
@@ -3338,7 +3426,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3349,12 +3436,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                    if asciiExport:
-                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
-                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = constBreakThres3
-                    objConst['BrkThres3'] = breakThres3   # Store value as ID property for debug purposes
+                    objConst.rigid_body_constraint.breaking_threshold = brkThres3
+                    objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
@@ -3393,7 +3476,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3406,16 +3488,24 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                 # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
                 correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
                 correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
-                radius = bendingThickness /2
+                radius = geoHeight /2
                 ### Calculate orientation between the two elements, imagine a line from center to center
                 dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
                 if alignVertical:
                     # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                     dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-                constBreakThres1 = ((( contactArea *1000000 *breakThres1 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                constBreakThres2 = ((( contactArea *1000000 *breakThres2 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                constBreakThres3 = ((( contactArea *1000000 *breakThres3 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-                constBreakThres4 = ((( (contactArea *bendingThickness) *1000000 *breakThres4 ) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                try: value = eval(brkThresExpr1)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres1 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                try: value = eval(brkThresExpr2)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres2 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                try: value = eval(brkThresExpr3)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres3 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                try: value = eval(brkThresExpr4)
+                except: print("\rError: Expression could not be evaluated:", expression); value = 0
+                brkThres4 = (((value *1000000) /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
                 # Loop through all constraints of this connection
                 i = -3
                 for j in range(4):
@@ -3425,12 +3515,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                    if asciiExport:
-                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
-                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = constBreakThres1
-                    objConst['BrkThres1'] = breakThres1   # Store value as ID property for debug purposes
+                    objConst.rigid_body_constraint.breaking_threshold = brkThres1
+                    objConst['BrkThres1'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
@@ -3468,7 +3554,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation to that vector
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3479,12 +3564,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                    if asciiExport:
-                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
-                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = constBreakThres2
-                    objConst['BrkThres2'] = breakThres2   # Store value as ID property for debug purposes
+                    objConst.rigid_body_constraint.breaking_threshold = brkThres2
+                    objConst['BrkThres2'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
@@ -3522,7 +3603,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3533,12 +3613,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     if not asciiExport:
                         objConst = emptyObjs[cIdx]
                     else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                    if asciiExport:
-                        objConst.location = Vector(exportData[cIdx][0])  # Move temporary constraint empty object to correct location
-                        # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                        # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                    objConst.rigid_body_constraint.breaking_threshold = constBreakThres3
-                    objConst['BrkThres3'] = breakThres3   # Store value as ID property for debug purposes
+                    objConst.rigid_body_constraint.breaking_threshold = brkThres3
+                    objConst['BrkThres3'] = objConst.rigid_body_constraint.breaking_threshold   # Store value as ID property for debug purposes
                     objConst.rigid_body_constraint.use_breaking = constraintUseBreaking
                     if qUpdateComplete:
                         objConst.rotation_mode = 'QUATERNION'
@@ -3578,7 +3654,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea,
                     # Align constraint rotation like above
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                     if asciiExport:
-                        exportData[cIdx][0] = objConst.location.to_tuple()
                         exportData[cIdx].append(["TOLERANCE", tol1dist, tol1rot])
                         exportData[cIdx].append(["PLASTIC", tol2dist, tol2rot])
                         exportData[cIdx].append(objConst.rotation_mode)
@@ -3836,12 +3911,7 @@ def exportDataToText(exportData):
 #    exportDataStr = base64.decodestring(exportDataStr.encode())  # Convert binary data back from "text" representation
 #    exportDataStr = zlib.decompress(exportDataStr)
 #    exportData = pickle.loads(exportDataStr)  # Use exportDataStr.encode() here when using real ASCII pickle protocol
-#    #print(exportData)
-#    i = 0
-#    for const in exportData:
-#        if i > 300: bpy.ops.object.empty_add(type='SPHERE', view_align=False, location=const[0], layers=(True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False))
-#        if i > 600: break
-#        i += 1
+#    print(exportData)
     # For later import you can use setattr(item[0], item[1])
       
 ################################################################################   
@@ -3871,78 +3941,82 @@ def build():
             ###### Create object lists of selected objects
             childObjs = []
             objs, emptyObjs = gatherObjects(scene)
-            objsEGrp = createElementGroupIndex(objs)
+            objsEGrp, objCntInEGrps = createElementGroupIndex(objs)
             
-            # Remove instancing from objects
-            bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
-            # Apply scale factor of all objects (to make sure volume and mass calculation are correct)
-            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-            
+            #############################
+            ###### Prepare connection map
             if len(objs) > 1:
-                #############################
-                ###### Prepare connection map
-                time_start_connections = time.time()
+                if objCntInEGrps > 1:
+                    time_start_connections = time.time()
+
+                    # Remove instancing from objects
+                    bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
+                    # Apply scale factor of all objects (to make sure volume and mass calculation are correct)
+                    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
                 
-                ###### Find connections by vertex pairs
-                #connectsPair, connectsPairDist = findConnectionsByVertexPairs(objs, objsEGrp)
-                ###### Find connections by boundary box intersection and skip connections whose elements are too small and store them for later parenting
-                connectsPair, connectsPairDist = findConnectionsByBoundaryBoxIntersection(objs)
-                ###### Delete connections whose elements are too small and make them parents instead
-                if minimumElementSize: connectsPair, connectsPairParent = deleteConnectionsWithTooSmallElementsAndParentThemInstead(objs, connectsPair, connectsPairDist)
-                else: connectsPairParent = []
-                ###### Delete connections with too few connected vertices
-                #connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
-                ###### Calculate contact area for all connections
-                if useAccurateArea:
-                    #connectsArea, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
-                    connectsArea, connectsLoc = calculateContactAreaBasedOnMaskingForAll(objs, connectsPair)
-                else:
-                    connectsArea, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair)
-                ###### Delete connections with zero contact area
-                connectsPair, connectsArea, connectsLoc = deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsArea, connectsLoc)
-                ###### Create connection data
-                connectsPair, connectsConsts, constsConnect = createConnectionData(objsEGrp, connectsPair)
-                
-                print('-- Time: %0.2f s\n' %(time.time()-time_start_connections))
-                
-                #########################                        
-                ###### Main building part
-                if len(constsConnect) > 0:
-                    time_start_building = time.time()
-                    
-                    ###### Scale elements by custom scale factor and make separate collision object for that
-                    applyScale(scene, objs, objsEGrp, childObjs)
-                    ###### Bevel elements and make separate collision object for that
-                    applyBevel(scene, objs, objsEGrp, childObjs)
-                    ###### Create actual parents for too small elements
-                    if minimumElementSize: makeParentsForTooSmallElementsReal(objs, connectsPairParent)
-                    ###### Find and activate first empty layer
-                    layersBak = backupLayerSettingsAndActivateNextEmptyLayer(scene)
-                    ###### Create empty objects (without any data)
-                    if not asciiExport:
-                        emptyObjs = createEmptyObjs(scene, len(constsConnect))
+                    ###### Find connections by vertex pairs
+                    #connectsPair, connectsPairDist = findConnectionsByVertexPairs(objs, objsEGrp)
+                    ###### Find connections by boundary box intersection and skip connections whose elements are too small and store them for later parenting
+                    connectsPair, connectsPairDist = findConnectionsByBoundaryBoxIntersection(objs)
+                    ###### Delete connections whose elements are too small and make them parents instead
+                    if minimumElementSize: connectsPair, connectsPairParent = deleteConnectionsWithTooSmallElementsAndParentThemInstead(objs, connectsPair, connectsPairDist)
+                    else: connectsPairParent = []
+                    ###### Delete connections with too few connected vertices
+                    #connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
+                    ###### Calculate contact area for all connections
+                    if useAccurateArea:
+                        #connectsGeo, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
+                        connectsGeo, connectsLoc = calculateContactAreaBasedOnMaskingForAll(objs, connectsPair)
                     else:
-                        emptyObjs = [None for i in range(len(constsConnect))]
-                        exportData = [[] for i in range(len(emptyObjs))]  # if this is the case emptyObjs is filled with an empty array on None
-                    ###### Bundling close empties into clusters, merge locations and count connections per cluster
-                    if clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
-                    ###### Add constraint base settings to empties
-                    addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect, exportData)
-                    # Restore old layers state
-                    scene.update()  # Required to update empty locations before layer switching
-                    scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
-                    ###### Store build data in scene
-                    if not asciiExport: storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect)
+                        connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair)
+                    ###### Delete connections with zero contact area
+                    connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connectsLoc)
+                    ###### Create connection data
+                    connectsPair, connectsConsts, constsConnect = createConnectionData(objsEGrp, connectsPair)
                     
-                    print('-- Time: %0.2f s\n' %(time.time()-time_start_building))
+                    print('-- Time: %0.2f s\n' %(time.time()-time_start_connections))
+                    
+                    #########################                        
+                    ###### Main building part
+                    if len(constsConnect) > 0:
+                        time_start_building = time.time()
+                        
+                        ###### Scale elements by custom scale factor and make separate collision object for that
+                        applyScale(scene, objs, objsEGrp, childObjs)
+                        ###### Bevel elements and make separate collision object for that
+                        applyBevel(scene, objs, objsEGrp, childObjs)
+                        ###### Create actual parents for too small elements
+                        if minimumElementSize: makeParentsForTooSmallElementsReal(objs, connectsPairParent)
+                        ###### Find and activate first empty layer
+                        layersBak = BackupLayerSettingsAndActivateNextEmptyLayer(scene)
+                        ###### Create empty objects (without any data)
+                        if not asciiExport:
+                            emptyObjs = createEmptyObjs(scene, len(constsConnect))
+                        else:
+                            emptyObjs = [None for i in range(len(constsConnect))]
+                            exportData = [[] for i in range(len(emptyObjs))]  # if this is the case emptyObjs is filled with an empty array on None
+                        ###### Bundling close empties into clusters, merge locations and count connections per cluster
+                        if clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
+                        ###### Add constraint base settings to empties
+                        addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsLoc, constsConnect, exportData)
+                        # Restore old layers state
+                        scene.update()  # Required to update empty locations before layer switching
+                        scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
+                        ###### Store build data in scene
+                        if not asciiExport: storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect)
+                        
+                        print('-- Time: %0.2f s\n' %(time.time()-time_start_building))
+                    
+                    ###### No connections found   
+                    else:
+                        print('No connections found. Probably the search distance is too small.')       
                 
-                ###########################
-                ###### No connections found   
+                ###### No element assigned to element group found
                 else:
-                    print('No connections found. Probably the search distance is too small.')       
-            
-            #####################
-            ###### No input found   
+                    print('Please make sure that at least two mesh objects are assigned to element groups.')       
+                    print('Nothing done.')       
+
+            ###### No selected input found   
             else:
                 print('Please select at least two mesh objects to connect.')       
                 print('Nothing done.')       
@@ -3954,23 +4028,17 @@ def build():
             ###### Store menu config data in scene
             storeConfigDataInScene(scene)
             ###### Get temp data from scene
-            if not asciiExport: objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsArea, connectsConsts, constsConnect = getBuildDataFromScene(scene)
+            if not asciiExport: objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect = getBuildDataFromScene(scene)
             ###### Create fresh element group index to make sure the data is still valid (reordering in menu invalidates it for instance)
-            objsEGrp = createElementGroupIndex(objs)
+            objsEGrp, objCntInEGrps = createElementGroupIndex(objs)
             ###### Store build data in scene
             storeBuildDataInScene(scene, None, objsEGrp, None, None, None, None, None, None, None, None)
                             
-            if len(emptyObjs) > 0:
+            if len(emptyObjs) > 0 and objCntInEGrps > 1:
                 ###### Set general rigid body world settings
                 initGeneralRigidBodyWorldSettings(scene)
-                ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
-                if not asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
-                setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsArea, connectsConsts, constsConnect, exportData)
-                ### Restore old layers state
-                if not asciiExport:
-                    scene.update()  # Required to update empty locations before layer switching
-                    scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
+                setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, connectsConsts, constsConnect, exportData)
                 ###### Calculate mass for all mesh objects
                 calculateMass(scene, objs, objsEGrp, childObjs)
                 ###### Exporting data into internal ASCII text file
@@ -3986,13 +4054,11 @@ def build():
                 print('Constraints:', len(emptyObjs), '| Elements:', len(objs), '| Children:', len(childObjs))
                 print('Done.')
 
-            #####################
             ###### No input found   
             else:
                 print('Neither mesh objects to connect nor constraint empties for updating selected.')       
                 print('Nothing done.')
                      
-    ####################################
     ###### No RigidBodyWorld group found   
     else:
         print('No "RigidBodyWorld" group found in scene. Please create rigid bodies first.')       
