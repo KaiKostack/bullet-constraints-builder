@@ -3874,6 +3874,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             ### Second constraint
+            correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -3945,6 +3946,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             ### Third constraint
+            correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -4036,6 +4038,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             ### Fourth constraint
+            correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -4519,6 +4522,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
+            correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
+            
             ### Fifth constraint
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
