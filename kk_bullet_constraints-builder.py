@@ -824,6 +824,8 @@ def monitor_eventHandler(scene):
         bpy.ops.ptcache.bake_from_cache(contextFix)
         # Free all monitor related data
         monitor_freeBuffers(scene)
+        # Go back to start frame
+        scene.frame_current = scene.frame_start
         # Continue with further automatic mode steps
         if automaticMode:
             automaticModeAfterStop()
@@ -2200,8 +2202,6 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
 def automaticModeAfterStop():
     if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
     OBJECT_OT_bcb_clear.execute(None, bpy.context)
-    # Go to start frame for cache data removal
-    bpy.context.scene.frame_current = bpy.context.scene.frame_start
     if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
 
 ########################################
