@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.06 #
+# Bullet Constraints Builder v2.07 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -205,7 +205,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 0, 6),
+    "version": (2, 0, 7),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -764,7 +764,7 @@ def monitor_eventHandler(scene):
     ### What to do on start frame
     if not "bcb_monitor" in bpy.app.driver_namespace:
         print("Initializing buffers...")
-        
+
         ###### Function
         monitor_initBuffers(scene)
 
@@ -809,12 +809,24 @@ def monitor_eventHandler(scene):
             
     ### Check if last frame is reached
     if scene.frame_current == scene.frame_end:
-        # Stop animation playback
         if bpy.context.screen.is_animation_playing:
+            # Stop animation playback
             bpy.ops.screen.animation_play()
-            print('\nTime: %0.2f s' %(time.time()-time_start))
+
+    ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
+    if not bpy.context.screen.is_animation_playing:
+        print('Removing BCB monitor event handler.')
+        for i in range( len( bpy.app.handlers.frame_change_pre ) ):
+             bpy.app.handlers.frame_change_pre.pop()
+        # Convert animation point cache to fixed bake data 
+        contextFix = bpy.context.copy()
+        contextFix['point_cache'] = scene.rigidbody_world.point_cache
+        bpy.ops.ptcache.bake_from_cache(contextFix)
         # Free all monitor related data
         monitor_freeBuffers(scene)
+        # Continue with further automatic mode steps
+        if automaticMode:
+            automaticModeAfterStop()
             
 ################################################################################
 
@@ -1705,7 +1717,6 @@ class bcb_panel(bpy.types.Panel):
         props_asst_con_rei_wall = context.window_manager.bcb_asst_con_rei_wall
         obj = context.object
         scene = bpy.context.scene
-
         #print(props_asst_con_rei_beam.prop_h, '\n', elemGrps[props.prop_menu_selectedElemGrp][EGSidxAsst])
 
         row = layout.row()
@@ -2107,13 +2118,6 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
         ###### Execute main building process from scratch
         build()
         props.prop_menu_gotData = 1
-        ### For automatic mode autorun the next step
-        if automaticMode:
-            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
-            OBJECT_OT_bcb_bake.execute(self, context)
-            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
-            OBJECT_OT_bcb_clear.execute(self, context)
-            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
         return{'FINISHED'} 
 
 ########################################
@@ -2139,13 +2143,6 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
         build()
         # Update menu related properties from global vars
         props.props_update_menu()
-        ### For automatic mode autorun the next step
-        if automaticMode:
-            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
-            OBJECT_OT_bcb_bake.execute(self, context)
-            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
-            OBJECT_OT_bcb_clear.execute(self, context)
-            if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
         return{'FINISHED'} 
 
 ########################################
@@ -2176,6 +2173,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
             print('Init BCB monitor event handler.')
             # Free old monitor data if still in memory (can happen if user stops baking before finished)
             monitor_freeBuffers(scene)
+            # Prepare event handler
             bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
             ### Free previous bake data
             contextFix = bpy.context.copy()
@@ -2185,17 +2183,26 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
             if "RigidBodyWorld" in bpy.data.groups:
                 obj = bpy.data.groups["RigidBodyWorld"].objects[0]
                 obj.location = obj.location
-            # Invoke baking
-            bpy.ops.ptcache.bake(contextFix, bake=True)
-            print('Removing BCB monitor event handler.')
-            for i in range( len( bpy.app.handlers.frame_change_pre ) ):
-                 bpy.app.handlers.frame_change_pre.pop()
+            # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
+            #bpy.ops.ptcache.bake(contextFix, bake=True)
+            # Start animation playback and by that the baking process
+            if not bpy.context.screen.is_animation_playing:
+                bpy.ops.screen.animation_play()
         ### Otherwise build constraints if required
         else:
             OBJECT_OT_bcb_build.execute(self, context)
             # Skip baking for automatic mode as it is already called in bcb.build
             if not automaticMode: OBJECT_OT_bcb_bake.execute(self, context)
         return{'FINISHED'} 
+
+########################################
+
+def automaticModeAfterStop():
+    if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
+    OBJECT_OT_bcb_clear.execute(None, bpy.context)
+    # Go to start frame for cache data removal
+    bpy.context.scene.frame_current = bpy.context.scene.frame_start
+    if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
 
 ########################################
 
