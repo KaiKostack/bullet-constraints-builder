@@ -53,11 +53,11 @@ asciiExport = 0              # 0     | Exports all constraint data to an ASCII t
 elemGrps = [
 # 0          1    2           3        4   5       6         7         8      9         10     11      12   13   14   15    16   17    18     19
 # Name       RVP  Mat.preset  Density  CT  BTC     BTT       BTS       BTS90  BTB       BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.assistant 
-[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "1*a",    "0.3*a",  "",    "0.4*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None"],              
-[ "Walls",   1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "0.7*a",  "",    "0.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
-[ "Slabs",   1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "0.7*a",  "",    "0.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
-[ "Columns", 1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "100*a",  "",    "0.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"],
-[ "",        1,   "Concrete", 2400,    6,  "32*a", "2.2*a",  "100*a",  "",    "0.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"]
+[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "2*a",    "0.3*a",  "",    "0.6*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None"],              
+[ "Walls",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
+[ "Slabs",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
+[ "Columns", 1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"],
+[ "",        1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 ### Magic numbers / column descriptions for above element group settings (in order from left to right):
