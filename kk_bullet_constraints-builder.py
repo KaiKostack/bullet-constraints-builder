@@ -177,6 +177,7 @@ formulaAssistants = [
 debug = 0                            # 0     | Enables verbose console output for debugging purposes
 withGUI = 1                          # 1     | Enable graphical user interface, after pressing the "Run Script" button the menu panel should appear
 logPath = r"/tmp"                    #       | Path to log files if debugging is enabled
+commandStop = r"/tmp/bcb-stop"       #       | For very large simulations Blender can become unresponsive on baking, in this case you can create this file to make the BCB aware you want to stop
 maxMenuElementGroupItems = 100       # 100   | Maximum allowed element group entries in menu 
 emptyDrawSize = 0.25                 # 0.25  | Display size of constraint empty objects as radius in meters
 asciiExportName = "BCB_export.txt"   #       | Name of ASCII text file to be exported
@@ -213,7 +214,7 @@ bl_info = {
     "tracker_url": "http://kaikostack.com",
     "category": "Animation"}
 
-import bpy, sys, platform, mathutils, time, copy, math, pickle, base64, zlib
+import bpy, sys, os, platform, mathutils, time, copy, math, pickle, base64, zlib
 from mathutils import Vector
 #import os
 #os.system("cls")
@@ -765,6 +766,10 @@ def monitor_eventHandler(scene):
     if not "bcb_monitor" in bpy.app.driver_namespace:
         print("Initializing buffers...")
 
+        # Store start time
+        if not "bcb_time" in bpy.app.driver_namespace:
+            bpy.app.driver_namespace["bcb_time"] = time.time()
+
         ###### Function
         monitor_initBuffers(scene)
 
@@ -786,9 +791,11 @@ def monitor_eventHandler(scene):
                         
     ################################
     ### What to do AFTER start frame
-    else:
-        print("Frame:", scene.frame_current, " ")
-        
+    elif scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
+        time_last = bpy.app.driver_namespace["bcb_time"]
+        sys.stdout.write("Frame: %d -- Time: %0.2f s" %(scene.frame_current, time.time() -time_last))
+        bpy.app.driver_namespace["bcb_time"] = time.time()
+    
         ###### Function
         monitor_checkForChange(scene)
 
@@ -808,10 +815,13 @@ def monitor_eventHandler(scene):
                         obj.layers = [False,False,False,False,False, False,False,False,False,False, False,False,False,False,False, False,False,False,False,True]
             
     ### Check if last frame is reached
-    if scene.frame_current == scene.frame_end:
+    if scene.frame_current == scene.frame_end or os.path.isfile(commandStop):
         if bpy.context.screen.is_animation_playing:
             # Stop animation playback
             bpy.ops.screen.animation_play()
+            if os.path.isfile(commandStop):
+                print("Baking stopped by user through external file command.")
+                os.remove(commandStop)
 
     ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
     if not bpy.context.screen.is_animation_playing:
@@ -935,7 +945,6 @@ def monitor_checkForChange(scene):
     connects = bpy.app.driver_namespace["bcb_monitor"]
     d = 0; e = 0; cntP = 0; cntB = 0
     for connect in connects:
-        sys.stdout.write('\r' +"%d & %d" %(d, e))
 
         ### If connection is in fixed mode then check if first tolerance is reached
         if connect[12] == 0:
@@ -1006,7 +1015,7 @@ def monitor_checkForChange(scene):
                     const = consts[i]
                     const.rigid_body_constraint.use_breaking = constsUseBrk[i]
            
-    sys.stdout.write(" connections (intact & plastic)")
+    sys.stdout.write(" -- Con.: %di & %dp" %(d, e))
     if cntP > 0: sys.stdout.write(" | Plastic: %d" %cntP)
     if cntB > 0: sys.stdout.write(" | Broken: %d" %cntB)
     print()
@@ -2172,7 +2181,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         scene = bpy.context.scene
         ### Only start baking when we have constraints set
         if props.prop_menu_gotData:
-            print('Init BCB monitor event handler.')
+            print('\nInit BCB monitor event handler.')
             # Free old monitor data if still in memory (can happen if user stops baking before finished)
             monitor_freeBuffers(scene)
             # Prepare event handler
@@ -2193,8 +2202,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         ### Otherwise build constraints if required
         else:
             OBJECT_OT_bcb_build.execute(self, context)
-            # Skip baking for automatic mode as it is already called in bcb.build
-            if not automaticMode: OBJECT_OT_bcb_bake.execute(self, context)
+            OBJECT_OT_bcb_bake.execute(self, context)
         return{'FINISHED'} 
 
 ########################################
@@ -2414,7 +2422,9 @@ def createElementGroupIndex(objs):
                 if obj.name in bpy.data.groups[elemGrpName].objects:
                     objGrpsTmp.append(elemGrps.index(elemGrp))
         if len(objGrpsTmp) > 1:
-            print("\nWarning: Object %s belongs to more than one element group, defaults are used." %obj.name)
+            sys.stdout.write("Warning: Object %s belongs to more than one element group, defaults are used. Element groups:" %obj.name)
+            for idx in objGrpsTmp: sys.stdout.write(" #%d %s" %(idx, elemGrps[idx][EGSidxName]))
+            print()
             q = 1
         elif len(objGrpsTmp) == 0: q = 1
         else: q = 0
