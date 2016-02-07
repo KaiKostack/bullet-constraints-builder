@@ -3550,13 +3550,6 @@ def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsConsts, con
     ### Add base constraint settings to empties
     print("Adding base constraint settings to empties... (%d)" %len(emptyObjs))
     
-    ### Naming of the constraints according to their connection participation
-    for k in range(len(connectsPair)):
-        i = 1
-        for idx in connectsConsts[k]:
-            emptyObjs[idx].name = "Con.%03d.%d" %(k, i)
-            i += 1
-
     ### Add further settings
     for k in range(len(emptyObjs)):
         sys.stdout.write('\r' +"%d" %k)
@@ -3573,6 +3566,15 @@ def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsConsts, con
         else:
             export(exData, loc=connectsLoc[l].to_tuple(), obj1=objs[connectsPair[l][0]].name, obj2=objs[connectsPair[l][1]].name)
               
+    ### Naming of the constraints according to their connection participation
+    for k in range(len(connectsPair)):
+        i = 1
+        for cIdx in connectsConsts[k]:
+            name = "Con.%03d.%d" %(k, i)
+            if not asciiExport: emptyObjs[cIdx].name = name
+            else:               export(exData, idx=cIdx, name=name)
+            i += 1
+            
     print()
                 
 ################################################################################   
@@ -3737,10 +3739,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         geoSurfThick = connectsGeo[k][3]
         geoAxis = connectsGeo[k][4]
 
-        if not asciiExport:
-            # Store value as ID property for debug purposes
-            for idx in consts: emptyObjs[idx]['ContactArea'] = geoContactArea
-        
         ### Postponed geoContactArea calculation step from calculateContactAreaBasedOnBoundaryBoxesForPair() is being done now (update hack, could be better organized)
         if useAccurateArea:
             if geoSurfThick > 0:
@@ -3774,6 +3772,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         tol2rot = elemGrps[elemGrp][EGSidxTl2R]
         
         if not asciiExport:
+            # Store value as ID property for debug purposes
+            for idx in consts: emptyObjs[idx]['ContactArea'] = geoContactArea
             ### Check if full update is necessary (optimization)
             objConst0 = emptyObjs[consts[0]]
             if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == connectType: qUpdateComplete = 0
@@ -3782,7 +3782,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             objConst0 = objConst
             qUpdateComplete = 1
             objConst.rotation_mode = 'XYZ'  # Overwrite temporary object to default (Euler)
-
+            
             cIdx = consts[0]
             objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
             # This is not nice as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
@@ -3804,7 +3804,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='FIXED')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
                 
         elif connectType == 2:
@@ -3819,7 +3819,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='POINT')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             
         elif connectType == 3:
@@ -3835,7 +3835,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='POINT')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             ### Second constraint
             cIdx = consts[cInc]; cInc += 1
@@ -3848,7 +3848,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='FIXED')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
         
         elif connectType == 4:
@@ -3881,7 +3881,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation to that vector
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             ### Second constraint
             correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
@@ -3902,7 +3902,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             
         elif connectType == 5:
@@ -3933,7 +3933,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation to that vector
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             ### Second constraint
             cIdx = consts[cInc]; cInc += 1
@@ -3953,7 +3953,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             ### Third constraint
             correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
@@ -3974,7 +3974,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             
         elif connectType == 6 or connectType == 11 or connectType == 12:
@@ -4005,7 +4005,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation to that vector
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             ### Second constraint
             cIdx = consts[cInc]; cInc += 1
@@ -4025,7 +4025,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             ### Third constraint
             cIdx = consts[cInc]; cInc += 1
@@ -4045,7 +4045,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             ### Fourth constraint
             correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
@@ -4066,7 +4066,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             
         if connectType == 7 or connectType == 9 or connectType == 11:
@@ -4118,7 +4118,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, e=0)
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, name=1, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
                     if connectType == 7:
                            export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
                     else:  export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC_OFF", tol2dist, tol2rot])
@@ -4171,7 +4171,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, e=0)
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, name=1, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
                     if connectType == 8:
                            export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
                     else:  export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC_OFF", tol2dist, tol2rot])
@@ -4228,7 +4228,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, name=1, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
                 ### Second constraint
                 cIdx = consts[cInc]; cInc += 1
@@ -4259,7 +4259,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, name=1, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
                 ### Third constraint
                 cIdx = consts[cInc]; cInc += 1
@@ -4290,7 +4290,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, name=1, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
 
         elif connectType == 14:
@@ -4346,7 +4346,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, name=1, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
                 ### Second constraint
                 cIdx = consts[cInc]; cInc += 1
@@ -4378,7 +4378,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, name=1, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
                 ### Third constraint
                 cIdx = consts[cInc]; cInc += 1
@@ -4410,7 +4410,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, name=1, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
 
 
@@ -4443,7 +4443,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation to that vector
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Second constraint
@@ -4464,7 +4464,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Third constraint
@@ -4507,7 +4507,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Fourth constraint
@@ -4529,7 +4529,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
@@ -4574,7 +4574,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Sixth constraint
@@ -4596,7 +4596,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, name=1, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
            
     if asciiExport:
