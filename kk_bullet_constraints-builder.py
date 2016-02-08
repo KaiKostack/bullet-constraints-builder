@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.08 #
+# Bullet Constraints Builder v2.09 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -45,6 +45,9 @@ saveBackups = 0              # 0     | Enables saving of a backup .blend file af
 timeScalePeriod = 0          # 0     | For baking: Use a different time scale for an initial period of the simulation until this many frames has passed (0 = disabled)
 timeScalePeriodValue = 0.001 # 0.001 | For baking: Use this time scale for the initial period of the simulation, after that it is switching back to default time scale and updating breaking thresholds accordingly during runtime
 warmUpPeriod = 20            # 20    | For baking: Disables breakability of constraints for an initial period of the simulation (frames). This is to prevent structural damage caused by the gravity impulse on start
+progrWeak = 0                # 0     | Enables progressive weakening of all breaking thresholds by the specified factor per frame (starts not until timeScalePeriod and warmUpPeriod have passed). This can be used to enforce the certain collapse of a building structure after a while.
+progrWeakLimit = 10          # 10    | For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.
+progrWeakStartFact = 1       # 1     | Start weakening factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a regular update.
 
 ### Vars not directly accessible from GUI
 asciiExport = 0              # 0     | Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
@@ -206,7 +209,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 0, 8),
+    "version": (2, 0, 9),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -359,6 +362,9 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_timeScalePeriod"] = timeScalePeriod
     scene["bcb_prop_timeScalePeriodValue"] = timeScalePeriodValue 
     scene["bcb_prop_warmUpPeriod"] = warmUpPeriod
+    scene["bcb_prop_progrWeak"] = progrWeak
+    scene["bcb_prop_progrWeakLimit"] = progrWeakLimit
+    scene["bcb_prop_progrWeakStartFact"] = progrWeakStartFact
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     #scene["bcb_prop_elemGrps"] = elemGrps
@@ -442,6 +448,18 @@ def getConfigDataFromScene(scene):
     if "bcb_prop_warmUpPeriod" in scene.keys():
         global warmUpPeriod
         try: warmUpPeriod = props.prop_warmUpPeriod = scene["bcb_prop_warmUpPeriod"]
+        except: pass
+    if "bcb_prop_progrWeak" in scene.keys():
+        global progrWeak
+        try: progrWeak = props.prop_progrWeak = scene["bcb_prop_progrWeak"]
+        except: pass
+    if "bcb_prop_progrWeakLimit" in scene.keys():
+        global progrWeakLimit
+        try: progrWeakLimit = props.prop_progrWeakLimit = scene["bcb_prop_progrWeakLimit"]
+        except: pass
+    if "bcb_prop_progrWeakStartFact" in scene.keys():
+        global progrWeakStartFact
+        try: progrWeakStartFact = props.prop_progrWeakStartFact = scene["bcb_prop_progrWeakStartFact"]
         except: pass
 
     if len(warning): return warning
@@ -767,12 +785,12 @@ def monitor_eventHandler(scene):
         print("Initializing buffers...")
 
         # Store start time
-        if not "bcb_time" in bpy.app.driver_namespace:
-            bpy.app.driver_namespace["bcb_time"] = time.time()
-
+        bpy.app.driver_namespace["bcb_time"] = time.time()
+        
         ###### Function
         monitor_initBuffers(scene)
 
+        ### Time scale correction with rebuild
         if timeScalePeriod:
             # Backup original time scale
             bpy.app.driver_namespace["bcb_monitor_originalTimeScale"] = scene.rigidbody_world.time_scale
@@ -788,17 +806,43 @@ def monitor_eventHandler(scene):
                 scene.rigidbody_world.time_scale = timeScalePeriodValue
                 ###### Execute update of all existing constraints with new time scale
                 build()
-                        
+
+        ### Init weakening
+        if progrWeak:
+            bpy.app.driver_namespace["bcb_progrWeakCurrent"] = 1
+            bpy.app.driver_namespace["bcb_progrWeakTmp"] = progrWeak
+        if progrWeakStartFact != 1:
+            progressiveWeakening(scene, progrWeakStartFact)
+                                            
     ################################
     ### What to do AFTER start frame
     elif scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
         time_last = bpy.app.driver_namespace["bcb_time"]
-        sys.stdout.write("Frame: %d -- Time: %0.2f s" %(scene.frame_current, time.time() -time_last))
+        sys.stdout.write("Frm: %d - T: %0.2f s" %(scene.frame_current, time.time() -time_last))
         bpy.app.driver_namespace["bcb_time"] = time.time()
+        if progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"]:
+            progrWeakCurrent = bpy.app.driver_namespace["bcb_progrWeakCurrent"]
+            sys.stdout.write(" - Wk: %0.3fx" %(progrWeakCurrent *progrWeakStartFact))
     
         ###### Function
-        monitor_checkForChange(scene)
-
+        cntBroken = monitor_checkForChange(scene)
+        
+        ### Apply progressive weakening factor
+        if progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"] \
+        and (not timeScalePeriod or (timeScalePeriod and scene.frame_current > scene.frame_start +timeScalePeriod)) \
+        and (not warmUpPeriod or (warmUpPeriod and scene.frame_current > scene.frame_start +warmUpPeriod)):
+            if cntBroken < progrWeakLimit:
+                # Weaken further only if no new connections are broken
+                if cntBroken == 0:
+                    progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
+                    ###### Weakening function
+                    progressiveWeakening(scene, 1 -progrWeakTmp)
+                    progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
+                    bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
+            else:
+                print("Weakening limit exceeded, weakening disabled from now on.")
+                bpy.app.driver_namespace["bcb_progrWeakTmp"] = 0
+        
         ### Check if intial time period frame is reached then switch time scale and update all constraint settings
         if timeScalePeriod:
             if scene.frame_current == scene.frame_start +timeScalePeriod:
@@ -911,6 +955,7 @@ def monitor_initBuffers(scene):
         consts = []
         constsEnabled = []
         constsUseBrk = []
+        constsBrkThres = []
         for const in connectsConsts[d -1]:
             emptyObj = emptyObjs[const]
             consts.append(emptyObj)
@@ -918,6 +963,7 @@ def monitor_initBuffers(scene):
                 # Backup original settings
                 constsEnabled.append(emptyObj.rigid_body_constraint.enabled)
                 constsUseBrk.append(emptyObj.rigid_body_constraint.use_breaking)
+                constsBrkThres.append(emptyObj.rigid_body_constraint.breaking_threshold)
                 # Disable breakability for warm up time
                 if warmUpPeriod: emptyObj.rigid_body_constraint.use_breaking = 0
                 # Set tolerance evaluation mode (if plastic or not)
@@ -931,8 +977,9 @@ def monitor_initBuffers(scene):
                 print("(%s)" %emptyObj.name)
                 constsEnabled.append(0)
                 constsUseBrk.append(0)
-        #                0                1                2         3      4       5              6             7            8         9        10        11       12
-        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsEnabled, constsUseBrk, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode])
+                constsBrkThres.append(0)
+        #                0                1                2         3      4       5              6             7            8         9        10        11       12    13
+        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsEnabled, constsUseBrk, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode, constsBrkThres])
 
     print("Connections")
         
@@ -1015,11 +1062,26 @@ def monitor_checkForChange(scene):
                     const = consts[i]
                     const.rigid_body_constraint.use_breaking = constsUseBrk[i]
            
-    sys.stdout.write(" -- Con.: %di & %dp" %(d, e))
-    if cntP > 0: sys.stdout.write(" | Plastic: %d" %cntP)
-    if cntB > 0: sys.stdout.write(" | Broken: %d" %cntB)
+    sys.stdout.write(" - Con: %di & %dp" %(d, e))
+    if cntP > 0: sys.stdout.write(" | Plst: %d" %cntP)
+    if cntB > 0: sys.stdout.write(" | Brk: %d" %cntB)
     print()
+
+    return cntB
                 
+################################################################################
+
+def progressiveWeakening(scene, progrWeakVar):
+
+    if debug: print("Calling progressiveWeakening")
+
+    connects = bpy.app.driver_namespace["bcb_monitor"]
+    for connect in connects:
+        consts = connect[4]
+        constsUseBrk = connect[6]
+        for const in consts:
+            const.rigid_body_constraint.breaking_threshold *= progrWeakVar
+            
 ################################################################################
 
 def monitor_freeBuffers(scene):
@@ -1035,12 +1097,14 @@ def monitor_freeBuffers(scene):
             consts = connect[4]
             constsEnabled = connect[5]
             constsUseBrk = connect[6]
+            constsBrkThres = connect[13]
             for i in range(len(consts)):
                 const = consts[i]
                 if const.rigid_body_constraint != None and const.rigid_body_constraint.object1 != None:
                     # Restore original settings
                     const.rigid_body_constraint.enabled = constsEnabled[i]
                     const.rigid_body_constraint.use_breaking = constsUseBrk[i]
+                    const.rigid_body_constraint.breaking_threshold = constsBrkThres[i]
                 else:
                     if not qWarning:
                         qWarning = 1
@@ -1595,6 +1659,9 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_timeScalePeriod = int(name="Time Scale Period", default=timeScalePeriod, min=0, max=10000, description="For baking: Use a different time scale for an initial period of the simulation until this many frames has passed (0 = disabled).")
     prop_timeScalePeriodValue = float(name="Initial Time Scale", default=timeScalePeriodValue, min=0.0, max=100, description="For baking: Use this time scale for the initial period of the simulation, after that it is switching back to default time scale and updating breaking thresholds accordingly during runtime.")
     prop_warmUpPeriod = int(name="Warm Up Period", default=warmUpPeriod, min=0, max=10000, description="For baking: Disables breakability of constraints for an initial period of the simulation (frames). This is to prevent structural damage caused by the gravity impulse on start.")
+    prop_progrWeak = float(name="Progr. Weakening", default=progrWeak, min=0.0, max=1.0, description="Enables progressive weakening of all breaking thresholds by the specified factor per frame (starts not until timeScalePeriod and warmUpPeriod have passed). This can be used to enforce the certain collapse of a building structure after a while.")
+    prop_progrWeakLimit = int(name="Progr. Weak. Limit", default=progrWeakLimit, min=0, max=10000, description="For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.")
+    prop_progrWeakStartFact = float(name="Start Weakening", default=progrWeakStartFact, min=0.0, max=1.0, description="Start weakening factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update.")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
@@ -1673,6 +1740,9 @@ class bcb_props(bpy.types.PropertyGroup):
         global timeScalePeriod; timeScalePeriod = self.prop_timeScalePeriod
         global timeScalePeriodValue; timeScalePeriodValue = self.prop_timeScalePeriodValue
         global warmUpPeriod; warmUpPeriod = self.prop_warmUpPeriod
+        global progrWeak; progrWeak = self.prop_progrWeak
+        global progrWeakLimit; progrWeakLimit = self.prop_progrWeakLimit
+        global progrWeakStartFact; progrWeakStartFact = self.prop_progrWeakStartFact
 
         global elemGrps
         for i in range(len(elemGrps)):
@@ -1799,12 +1869,15 @@ class bcb_panel(bpy.types.Panel):
 #            row = box.row()
 #            if not props.prop_useAccurateArea: row.enabled = 0
 #            row.prop(props, "prop_nonManifoldThickness")
-
             row = box.row(); row.prop(props, "prop_warmUpPeriod")
+            box.separator()
             row = box.row(); row.prop(props, "prop_timeScalePeriod")
             row = box.row(); row.prop(props, "prop_timeScalePeriodValue")
             if props.prop_timeScalePeriod == 0: row.enabled = 0
-            
+            row = box.row(); row.prop(props, "prop_progrWeak")
+            row = box.row(); row.prop(props, "prop_progrWeakLimit")
+            if props.prop_progrWeak == 0: row.enabled = 0
+            row = box.row(); row.prop(props, "prop_progrWeakStartFact")
             box.separator()
             row = box.row(); row.operator("bcb.export_ascii", icon="EXPORT")
         
