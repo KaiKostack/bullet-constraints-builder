@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.07 #
+# Bullet Constraints Builder v2.08 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -44,7 +44,7 @@ automaticMode = 0            # 0     | Enables a fully automated workflow for ex
 saveBackups = 0              # 0     | Enables saving of a backup .blend file after each step for automatic mode, whereby the name of the new .blend ends with `_BCB´
 timeScalePeriod = 0          # 0     | For baking: Use a different time scale for an initial period of the simulation until this many frames has passed (0 = disabled)
 timeScalePeriodValue = 0.001 # 0.001 | For baking: Use this time scale for the initial period of the simulation, after that it is switching back to default time scale and updating breaking thresholds accordingly during runtime
-warmUpPeriod = 5             # 5     | For baking: Disables breakability of constraints for an initial period of the simulation (frames). This is to prevent structural damage caused by the gravity impulse on start
+warmUpPeriod = 20            # 20    | For baking: Disables breakability of constraints for an initial period of the simulation (frames). This is to prevent structural damage caused by the gravity impulse on start
 
 ### Vars not directly accessible from GUI
 asciiExport = 0              # 0     | Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
@@ -162,14 +162,14 @@ formulaAssistants = [
 # k = scale factor
 #
 # Formulas for beams & columns:
-# N-   ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
-# N+   ≈ fs * rho * (h*b)   
+# N-      ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
+# N+      ≈ fs * rho * (h*b)   
 # V+ = V- ≈ fs *y * e1*h²* 1,2  +  0.15/ k* ((100*rho*fc)^1/3) *h*b
 # M+ = M- ≈ fs * rho * (h*b)/2* (e1*h)       
 #
 # Formulas for walls & slabs:
-# N-   ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
-# N+   ≈ fs * rho * (h*b)   
+# N-      ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
+# N+      ≈ fs * rho * (h*b)   
 # V+ = V- ≈ 0.15/k* ((100*rho*fc)^1/3) *h*b
 # M+ = M- ≈ fs* rho * (h*b) /2* (e1*h)    
 
@@ -206,7 +206,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 0, 7),
+    "version": (2, 0, 8),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1949,7 +1949,7 @@ class bcb_panel(bpy.types.Panel):
         box = layout.box();
         box.label(text=connectType[0])
 
-        row = layout.row(); row.label(text="Breaking Thresholds:")
+        row = layout.row(); row.label(text="Breaking Thresholds in N/mm² or MPa:")
 
         # Prepare possible expression variables
         a = h = w = b = s = 1   
@@ -4532,7 +4532,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
-            correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
+            correction = 1   # Rotational thresholds for generic constraints don't need a correctional factor
+            # Uncertain, seems not to be true in all cases:
+            #correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
             
             ### Fifth constraint
             cIdx = consts[cInc]; cInc += 1
