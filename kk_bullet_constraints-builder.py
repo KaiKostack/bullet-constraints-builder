@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.10 #
+# Bullet Constraints Builder v2.11 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -56,11 +56,11 @@ asciiExport = 0              # 0     | Exports all constraint data to an ASCII t
 elemGrps = [
 # 0          1    2           3        4   5       6         7         8      9         10     11      12   13   14   15    16   17    18     19
 # Name       RVP  Mat.preset  Density  CT  BTC     BTT       BTS       BTS90  BTB       BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.assistant 
-[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "2*a",    "0.3*a",  "",    "0.6*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None"],              
-[ "Walls",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
-[ "Slabs",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],              
+[ "",        1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"],
 [ "Columns", 1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"],
-[ "",        1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"]
+[ "Walls",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],
+[ "Slabs",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],
+[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "2*a",    "0.3*a",  "",    "0.6*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None"]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 ### Magic numbers / column descriptions for above element group settings (in order from left to right):
@@ -105,7 +105,8 @@ connectTypes = [          # Cnt C T S B S T T T T      CT
 [ "4x GENERIC + 4x SPRING", 8, [1,1,1,1,1,1,1,1,1]], # 12. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
 [ "3 x 3x SPRING",          9, [1,1,1,0,1,0,0,1,1]], # 13. Compressive, tensile and shearing breaking thresholds with plastic deformability
 [ "3 x 4x SPRING",         12, [1,1,1,0,1,0,0,1,1]], # 14. Compressive, tensile and shearing breaking thresholds with plastic deformability
-[ "6x GENERIC",             6, [1,1,1,1,0,1,1,0,0]]  # 15. Compressive, tensile, shearing XY and bending XY breaking thresholds
+[ "6x GENERIC",             6, [1,1,1,1,0,1,1,0,0]], # 15. Compressive, tensile, shearing XY and bending XY breaking thresholds
+[ "7x GENERIC",             7, [1,1,1,1,0,1,1,0,0]]  # 16. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds
 ]
 # To add further connection types changes to following functions are necessary:
 # setConstraintSettings() and bcb_panel() for the UI
@@ -209,7 +210,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 1, 0),
+    "version": (2, 1, 1),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1231,7 +1232,7 @@ def combineExpressions():
     ### Reinforced Concrete (Beams & Columns)
     if props.prop_assistant_menu == "con_rei_beam":
         # Switch connection type to the recommended type
-        elemGrps[i][EGSidxCTyp] = 15  # 6 x Generic
+        elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
         # Prepare also a height and width swapped (90° rotated) formula for shear and moment thresholds
         for qHWswapped in range(2):
             if not qHWswapped:
@@ -1336,7 +1337,7 @@ def combineExpressions():
     ### Reinforced Concrete (Walls & Slabs)
     elif props.prop_assistant_menu == "con_rei_wall":
         # Switch connection type to the recommended type
-        elemGrps[i][EGSidxCTyp] = 15  # 6 x Generic
+        elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
         # Prepare also a height and width swapped (90° rotated) formula for shear and moment thresholds
         for qHWswapped in range(2):
             if not qHWswapped:
@@ -4535,7 +4536,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
 
 
-        if connectType == 15:
+        if connectType == 15 or connectType == 16:
             # Correction multiplier for breaking thresholds
             # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
             # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
@@ -4653,6 +4654,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Uncertain, seems not to be true in all cases:
             #correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
             
+        if connectType == 15:
             ### Fifth constraint
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
@@ -4710,6 +4712,91 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+            # Align constraint rotation like above
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            if asciiExport:
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+
+        if connectType == 16:
+            ### Fifth constraint
+            cIdx = consts[cInc]; cInc += 1
+            if not asciiExport:
+                objConst = emptyObjs[cIdx]
+            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            value = brkThresExprB
+            if brkThresExprB9 != -1:
+                value1 = value
+                value = brkThresExprB9
+                value2 = value
+                values = [value1, value2]
+                values.sort()
+                value = values[0]  # Find and use smaller value (to be used along h axis)
+            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            if qUpdateComplete:
+                objConst.rotation_mode = 'QUATERNION'
+                ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
+                matInv = objConst.rotation_quaternion.to_matrix().inverted()
+                if geoAxis == 1:   vecAxis = Vector((1, 0, 0))
+                elif geoAxis == 2: vecAxis = Vector((0, 1, 0))
+                else:              vecAxis = Vector((0, 0, 1))
+                # Leave out x axis as we know it is only for compressive and tensile force
+                vec = Vector((0, 1, 0)) *matInv
+                angY = vecAxis.angle(vec, 0)
+                vec = Vector((0, 0, 1)) *matInv
+                angZ = vecAxis.angle(vec, 0)
+                angSorted = [[pi2 -abs(angY -pi2), 2], [pi2 -abs(angZ -pi2), 3]]
+                angSorted.sort(reverse=False)
+                constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
+                ### Lock directions accordingly to axis
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                if constAxisToLock == 2:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                elif constAxisToLock == 3: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+            # Align constraint rotation like above
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            if asciiExport:
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+
+            ### Sixth constraint
+            cIdx = consts[cInc]; cInc += 1
+            if not asciiExport:
+                objConst = emptyObjs[cIdx]
+            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            if brkThresExprB9 != -1:
+                value = values[1]  # Find and use larger value (to be used along w axis)
+                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            if qUpdateComplete:
+                objConst.rotation_mode = 'QUATERNION'
+                ### Lock directions accordingly to axis
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+            # Align constraint rotation like above
+            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            if asciiExport:
+                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+
+            ### Seventh constraint
+            cIdx = consts[cInc]; cInc += 1
+            if not asciiExport:
+                objConst = emptyObjs[cIdx]
+            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            value = values[0] *.01  # Use the smaller value from either standard or 90° bending thresholds as base for torsion (1 %)
+            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            if qUpdateComplete:
+                objConst.rotation_mode = 'QUATERNION'
+                ### Lock directions accordingly to axis
+                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
