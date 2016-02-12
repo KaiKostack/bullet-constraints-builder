@@ -3848,25 +3848,64 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         else:
             connectType = elemGrps[elemGrpB][EGSidxCTyp]
             elemGrp = elemGrpB
-        ### Use always the weaker of both thresholds for every degree of freedom
-        if elemGrps[elemGrpA][EGSidxBTC] <= elemGrps[elemGrpB][EGSidxBTC]:
-              brkThresExprC = elemGrps[elemGrpA][EGSidxBTC]
-        else: brkThresExprC = elemGrps[elemGrpB][EGSidxBTC]
-        if elemGrps[elemGrpA][EGSidxBTT] <= elemGrps[elemGrpB][EGSidxBTT]:
-              brkThresExprT = elemGrps[elemGrpA][EGSidxBTT]
-        else: brkThresExprT = elemGrps[elemGrpB][EGSidxBTT]
-        if elemGrps[elemGrpA][EGSidxBTS] <= elemGrps[elemGrpB][EGSidxBTS]:
-              brkThresExprS = elemGrps[elemGrpA][EGSidxBTS]
-        else: brkThresExprS = elemGrps[elemGrpB][EGSidxBTS]
-        if elemGrps[elemGrpA][EGSidxBTS9] <= elemGrps[elemGrpB][EGSidxBTS9]:
-              brkThresExprS9 = elemGrps[elemGrpA][EGSidxBTS9]
-        else: brkThresExprS9 = elemGrps[elemGrpB][EGSidxBTS9]
-        if elemGrps[elemGrpA][EGSidxBTB] <= elemGrps[elemGrpB][EGSidxBTB]:
-              brkThresExprB = elemGrps[elemGrpA][EGSidxBTB]
-        else: brkThresExprB = elemGrps[elemGrpB][EGSidxBTB]
-        if elemGrps[elemGrpA][EGSidxBTB9] <= elemGrps[elemGrpB][EGSidxBTB9]:
-              brkThresExprB9 = elemGrps[elemGrpA][EGSidxBTB9]
-        else: brkThresExprB9 = elemGrps[elemGrpB][EGSidxBTB9]
+
+        ### Evaluate and Use always the weaker of both thresholds for every degree of freedom
+        try: brkThresExprC_A = eval(elemGrps[elemGrpA][EGSidxBTC])
+        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTC]); brkThresExprC_A = 0
+        try: brkThresExprC_B = eval(elemGrps[elemGrpB][EGSidxBTC])
+        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTC]); brkThresExprC_B = 0
+        if brkThresExprC_A <= brkThresExprC_B: brkThresExprC = brkThresExprC_A
+        else:                                  brkThresExprC = brkThresExprC_B
+
+        try: brkThresExprT_A = eval(elemGrps[elemGrpA][EGSidxBTT])
+        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTT]); brkThresExprT_A = 0
+        try: brkThresExprT_B = eval(elemGrps[elemGrpB][EGSidxBTT])
+        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTT]); brkThresExprT_B = 0
+        if brkThresExprT_A <= brkThresExprT_B: brkThresExprT = brkThresExprT_A
+        else:                                  brkThresExprT = brkThresExprT_B
+
+        try: brkThresExprS_A = eval(elemGrps[elemGrpA][EGSidxBTS])
+        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTS]); brkThresExprS_A = 0
+        try: brkThresExprS_B = eval(elemGrps[elemGrpB][EGSidxBTS])
+        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTS]); brkThresExprS_B = 0
+        if brkThresExprS_A <= brkThresExprS_B: brkThresExprS = brkThresExprS_A
+        else:                                  brkThresExprS = brkThresExprS_B
+
+        if len(elemGrps[elemGrpA][EGSidxBTS9]):  # Can also have zero-size string if not used
+            try: brkThresExprS9_A = eval(elemGrps[elemGrpA][EGSidxBTS9])
+            except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTS9]); brkThresExprS9_A = 0
+        else: brkThresExprS9_A = -1
+        if len(elemGrps[elemGrpB][EGSidxBTS9]):  # Can also have zero-size string if not used
+            try: brkThresExprS9_B = eval(elemGrps[elemGrpB][EGSidxBTS9])
+            except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTS9]); brkThresExprS9_B = 0
+        else: brkThresExprS9_B = -1
+        if brkThresExprS9_A != -1 and brkThresExprS9_B == -1: brkThresExprS9 = brkThresExprS9_A
+        if brkThresExprS9_A == -1 and brkThresExprS9_B != -1: brkThresExprS9 = brkThresExprS9_B
+        else:    
+            if brkThresExprS9_A <= brkThresExprS9_B: brkThresExprS9 = brkThresExprS9_A
+            else:                                    brkThresExprS9 = brkThresExprS9_B
+
+        try: brkThresExprB_A = eval(elemGrps[elemGrpA][EGSidxBTB])
+        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTB]); brkThresExprB_A = 0
+        try: brkThresExprB_B = eval(elemGrps[elemGrpB][EGSidxBTB])
+        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTB]); brkThresExprB_B = 0
+        if brkThresExprB_A <= brkThresExprB_B: brkThresExprB = brkThresExprB_A
+        else:                                  brkThresExprB = brkThresExprB_B
+
+        if len(elemGrps[elemGrpA][EGSidxBTB9]):  # Can also have zero-size string if not used
+            try: brkThresExprB9_A = eval(elemGrps[elemGrpA][EGSidxBTB9])
+            except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTB9]); brkThresExprB9_A = 0
+        else: brkThresExprB9_A = -1
+        if len(elemGrps[elemGrpB][EGSidxBTB9]):  # Can also have zero-size string if not used
+            try: brkThresExprB9_B = eval(elemGrps[elemGrpB][EGSidxBTB9])
+            except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTB9]); brkThresExprB9_B = 0
+        else: brkThresExprB9_B = -1
+        if brkThresExprB9_A != -1 and brkThresExprB9_B == -1: brkThresExprB9 = brkThresExprB9_A
+        if brkThresExprB9_A == -1 and brkThresExprB9_B != -1: brkThresExprB9 = brkThresExprB9_B
+        else:    
+            if brkThresExprB9_A <= brkThresExprB9_B: brkThresExprB9 = brkThresExprB9_A
+            else:                                    brkThresExprB9 = brkThresExprB9_B
+
         springStiff = elemGrps[elemGrp][EGSidxSStf]
         
         if not asciiExport:
@@ -3901,8 +3940,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             # setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='FIXED')
@@ -3916,8 +3954,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='POINT')
@@ -3932,8 +3969,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='POINT')
@@ -3945,8 +3981,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprB)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprB); value = 0
+            value = brkThresExprB
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='FIXED')
@@ -3969,8 +4004,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -3992,8 +4026,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprT)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprT); value = 0
+            value = brkThresExprT
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4023,8 +4056,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4043,8 +4075,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprT)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprT); value = 0
+            value = brkThresExprT
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4064,8 +4095,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprS)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprS); value = 0
+            value = brkThresExprS
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4095,8 +4125,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4115,8 +4144,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprT)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprT); value = 0
+            value = brkThresExprT
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4135,8 +4163,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprS)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprS); value = 0
+            value = brkThresExprS
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4156,8 +4183,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprB)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprB); value = 0
+            value = brkThresExprB
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4184,8 +4210,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4238,8 +4263,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             # Loop through all constraints of this connection
             for i in range(4):
@@ -4291,14 +4315,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres1 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            try: value = eval(brkThresExprT)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprT); value = 0
+            value = brkThresExprT
             brkThres2 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            try: value = eval(brkThresExprS)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprS); value = 0
+            value = brkThresExprS
             brkThres3 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             # Loop through all constraints of this connection
             for j in range(3):
@@ -4408,14 +4429,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres1 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            try: value = eval(brkThresExprT)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprT); value = 0
+            value = brkThresExprT
             brkThres2 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            try: value = eval(brkThresExprS)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprS); value = 0
+            value = brkThresExprS
             brkThres3 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             # Loop through all constraints of this connection
             for j in range(4):
@@ -4533,8 +4551,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprC)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprC); value = 0
+            value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4554,8 +4571,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprT)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprT); value = 0
+            value = brkThresExprT
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4575,12 +4591,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprS)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprS); value = 0
-            if len(brkThresExprS9):
+            value = brkThresExprS
+            if brkThresExprS9 != -1:
                 value1 = value
-                try: value = eval(brkThresExprS9)
-                except: print("\rError: Expression could not be evaluated:", brkThresExprS9); value = 0
+                value = brkThresExprS9
                 value2 = value
                 values = [value1, value2]
                 values.sort()
@@ -4618,7 +4632,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            if len(brkThresExprS9):
+            if brkThresExprS9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
@@ -4644,12 +4658,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            try: value = eval(brkThresExprB)
-            except: print("\rError: Expression could not be evaluated:", brkThresExprB); value = 0
-            if len(brkThresExprB9):
+            value = brkThresExprB
+            if brkThresExprB9 != -1:
                 value1 = value
-                try: value = eval(brkThresExprB9)
-                except: print("\rError: Expression could not be evaluated:", brkThresExprB9); value = 0
+                value = brkThresExprB9
                 value2 = value
                 values = [value1, value2]
                 values.sort()
@@ -4687,7 +4699,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            if len(brkThresExprB9):
+            if brkThresExprB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
