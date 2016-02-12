@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.09 #
+# Bullet Constraints Builder v2.10 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -47,12 +47,12 @@ timeScalePeriodValue = 0.001 # 0.001 | For baking: Use this time scale for the i
 warmUpPeriod = 20            # 20    | For baking: Disables breakability of constraints for an initial period of the simulation (frames). This is to prevent structural damage caused by the gravity impulse on start
 progrWeak = 0                # 0     | Enables progressive weakening of all breaking thresholds by the specified factor per frame (starts not until timeScalePeriod and warmUpPeriod have passed). This can be used to enforce the certain collapse of a building structure after a while.
 progrWeakLimit = 10          # 10    | For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.
-progrWeakStartFact = 1       # 1     | Start weakening factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a regular update.
+progrWeakStartFact = 1       # 1     | Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a regular update.
 
 ### Vars not directly accessible from GUI
 asciiExport = 0              # 0     | Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
 
-### Customizable element groups list (for elements of different conflicting groups priority is defined by the list's order)
+### Customizable element groups list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
 elemGrps = [
 # 0          1    2           3        4   5       6         7         8      9         10     11      12   13   14   15    16   17    18     19
 # Name       RVP  Mat.preset  Density  CT  BTC     BTT       BTS       BTS90  BTB       BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.assistant 
@@ -209,7 +209,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 0, 9),
+    "version": (2, 1, 0),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -937,9 +937,11 @@ def monitor_initBuffers(scene):
         elemGrpA = objsEGrp[pair[0]]
         elemGrpB = objsEGrp[pair[1]]
         
-        # Element group order defines priority for connection type (first preferred over latter) 
-        if elemGrpA <= elemGrpB: elemGrp = elemGrpA
-        else:                    elemGrp = elemGrpB
+        ### Use the connection type with the greater count of constraints for connection between different element groups
+        ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+        if connectTypes[elemGrps[elemGrpA][EGSidxCTyp]][1] >= connectTypes[elemGrps[elemGrpB][EGSidxCTyp]][1]:
+              elemGrp = elemGrpA
+        else: elemGrp = elemGrpB
         springStiff = elemGrps[elemGrp][EGSidxSStf]
         tol1dist = elemGrps[elemGrp][EGSidxTl1D]
         tol1rot = elemGrps[elemGrp][EGSidxTl1R]
@@ -1076,11 +1078,15 @@ def progressiveWeakening(scene, progrWeakVar):
     if debug: print("Calling progressiveWeakening")
 
     connects = bpy.app.driver_namespace["bcb_monitor"]
+    i = 0
     for connect in connects:
+        sys.stdout.write("\r%d" %i)
         consts = connect[4]
         constsUseBrk = connect[6]
         for const in consts:
             const.rigid_body_constraint.breaking_threshold *= progrWeakVar
+        i += 1
+    sys.stdout.write("\r")
             
 ################################################################################
 
@@ -1661,7 +1667,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_warmUpPeriod = int(name="Warm Up Period", default=warmUpPeriod, min=0, max=10000, description="For baking: Disables breakability of constraints for an initial period of the simulation (frames). This is to prevent structural damage caused by the gravity impulse on start.")
     prop_progrWeak = float(name="Progr. Weakening", default=progrWeak, min=0.0, max=1.0, description="Enables progressive weakening of all breaking thresholds by the specified factor per frame (starts not until timeScalePeriod and warmUpPeriod have passed). This can be used to enforce the certain collapse of a building structure after a while.")
     prop_progrWeakLimit = int(name="Progr. Weak. Limit", default=progrWeakLimit, min=0, max=10000, description="For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.")
-    prop_progrWeakStartFact = float(name="Start Weakening", default=progrWeakStartFact, min=0.0, max=1.0, description="Start weakening factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update.")
+    prop_progrWeakStartFact = float(name="Start Weakness", default=progrWeakStartFact, min=0.0, max=1.0, description="Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update.")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
@@ -2330,7 +2336,7 @@ class OBJECT_OT_bcb_del(bpy.types.Operator):
 class OBJECT_OT_bcb_move_up(bpy.types.Operator):
     bl_idname = "bcb.move_up"
     bl_label = ""
-    bl_description = "Moves element group in list (the order defines priority for conflicting connection settings)."
+    bl_description = "Moves element group in list."
     def execute(self, context):
         props = context.window_manager.bcb
         global elemGrps
@@ -2350,7 +2356,7 @@ class OBJECT_OT_bcb_move_up(bpy.types.Operator):
 class OBJECT_OT_bcb_move_down(bpy.types.Operator):
     bl_idname = "bcb.move_down"
     bl_label = ""
-    bl_description = "Moves element group in list (the order defines priority for conflicting connection settings)."
+    bl_description = "Moves element group in list."
     def execute(self, context):
         props = context.window_manager.bcb
         global elemGrps
@@ -3375,12 +3381,19 @@ def createConnectionData(objsEGrp, connectsPair):
         ### Count constraints by connection type preset
         elemGrpA = objsEGrp[pair[0]]
         elemGrpB = objsEGrp[pair[1]]
-        # Element group order defines priority for connection type (first preferred over latter) 
-        if elemGrpA <= elemGrpB: elemGrp = elemGrpA
-        else:                    elemGrp = elemGrpB
-        connectTypeIdx = elemGrps[elemGrp][EGSidxCTyp]
-        try: connectType = connectTypes[connectTypeIdx]
-        except: connectsConsts.append([])  # In case the connection type is unknown (no constraints)
+        ### First check if connection type is valid for both groups
+        connectTypeIdxA = elemGrps[elemGrpA][EGSidxCTyp]
+        try: connectTypeA = connectTypes[connectTypeIdxA]
+        except: connectTypeA = [None, 0]
+        connectTypeIdxB = elemGrps[elemGrpB][EGSidxCTyp]
+        try: connectTypeB = connectTypes[connectTypeIdxB]
+        except: connectTypeB = [None, 0]
+        ### Use the connection type with the greater count of constraints for connection between different element groups
+        ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+        if connectTypeA[1] >= connectTypeB[1]:
+              connectType = connectTypeA
+        else: connectType = connectTypeB
+        if connectType[0] == None: connectsConsts.append([])  # In case the connection type is unknown (no constraints)
         else:
             items = []
             for j in range(connectType[1]):
@@ -3827,22 +3840,34 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         objB = objs[connectsPair[k][1]]
         elemGrpA = objsEGrp[objs.index(objA)]
         elemGrpB = objsEGrp[objs.index(objB)]
-        # Element group order defines priority for connection type (first preferred over latter) 
-        if elemGrpA <= elemGrpB: elemGrp = elemGrpA
-        else:                    elemGrp = elemGrpB
-        
-        connectType = elemGrps[elemGrp][EGSidxCTyp]
-        brkThresExprC = elemGrps[elemGrp][EGSidxBTC]
-        brkThresExprT = elemGrps[elemGrp][EGSidxBTT]
-        brkThresExprS = elemGrps[elemGrp][EGSidxBTS]
-        brkThresExprS9 = elemGrps[elemGrp][EGSidxBTS9]
-        brkThresExprB = elemGrps[elemGrp][EGSidxBTB]
-        brkThresExprB9 = elemGrps[elemGrp][EGSidxBTB9]
+        ### Use the connection type with the greater count of constraints for connection between different element groups
+        ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+        if connectTypes[elemGrps[elemGrpA][EGSidxCTyp]][1] >= connectTypes[elemGrps[elemGrpB][EGSidxCTyp]][1]:
+            connectType = elemGrps[elemGrpA][EGSidxCTyp]
+            elemGrp = elemGrpA
+        else:
+            connectType = elemGrps[elemGrpB][EGSidxCTyp]
+            elemGrp = elemGrpB
+        ### Use always the weaker of both thresholds for every degree of freedom
+        if elemGrps[elemGrpA][EGSidxBTC] <= elemGrps[elemGrpB][EGSidxBTC]:
+              brkThresExprC = elemGrps[elemGrpA][EGSidxBTC]
+        else: brkThresExprC = elemGrps[elemGrpB][EGSidxBTC]
+        if elemGrps[elemGrpA][EGSidxBTT] <= elemGrps[elemGrpB][EGSidxBTT]:
+              brkThresExprT = elemGrps[elemGrpA][EGSidxBTT]
+        else: brkThresExprT = elemGrps[elemGrpB][EGSidxBTT]
+        if elemGrps[elemGrpA][EGSidxBTS] <= elemGrps[elemGrpB][EGSidxBTS]:
+              brkThresExprS = elemGrps[elemGrpA][EGSidxBTS]
+        else: brkThresExprS = elemGrps[elemGrpB][EGSidxBTS]
+        if elemGrps[elemGrpA][EGSidxBTS9] <= elemGrps[elemGrpB][EGSidxBTS9]:
+              brkThresExprS9 = elemGrps[elemGrpA][EGSidxBTS9]
+        else: brkThresExprS9 = elemGrps[elemGrpB][EGSidxBTS9]
+        if elemGrps[elemGrpA][EGSidxBTB] <= elemGrps[elemGrpB][EGSidxBTB]:
+              brkThresExprB = elemGrps[elemGrpA][EGSidxBTB]
+        else: brkThresExprB = elemGrps[elemGrpB][EGSidxBTB]
+        if elemGrps[elemGrpA][EGSidxBTB9] <= elemGrps[elemGrpB][EGSidxBTB9]:
+              brkThresExprB9 = elemGrps[elemGrpA][EGSidxBTB9]
+        else: brkThresExprB9 = elemGrps[elemGrpB][EGSidxBTB9]
         springStiff = elemGrps[elemGrp][EGSidxSStf]
-        tol1dist = elemGrps[elemGrp][EGSidxTl1D]
-        tol1rot = elemGrps[elemGrp][EGSidxTl1R]
-        tol2dist = elemGrps[elemGrp][EGSidxTl2D]
-        tol2rot = elemGrps[elemGrp][EGSidxTl2R]
         
         if not asciiExport:
             # Store value as ID property for debug purposes
@@ -3852,6 +3877,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == connectType: qUpdateComplete = 0
             else: objConst0['ConnectType'] = connectType; qUpdateComplete = 1
         else:
+            tol1dist = elemGrps[elemGrp][EGSidxTl1D]
+            tol1rot = elemGrps[elemGrp][EGSidxTl1R]
+            tol2dist = elemGrps[elemGrp][EGSidxTl2D]
+            tol2rot = elemGrps[elemGrp][EGSidxTl2R]
+
             objConst0 = objConst
             qUpdateComplete = 1
             objConst.rotation_mode = 'XYZ'  # Overwrite temporary object to default (Euler)
