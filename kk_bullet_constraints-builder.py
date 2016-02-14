@@ -1446,35 +1446,35 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
     
     classID = "con_rei_beam"
 
-    int = bpy.props.IntProperty 
-    float = bpy.props.FloatProperty
-    string = bpy.props.StringProperty
+    int_ = bpy.props.IntProperty 
+    float_ = bpy.props.FloatProperty
+    string_ = bpy.props.StringProperty
 
     # Find corresponding formula assistant preset
     for formAssist in formulaAssistants:
         if formAssist["ID"] == classID:
             asst = formAssist
 
-    prop_h =  float(name='h', default=asst['h'], min=0, max=100000, description='Height of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
-    prop_w =  float(name='w', default=asst['w'], min=0, max=100000, description='Width of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
-    prop_fs = float(name='fs', default=asst['fs'], min=0, max=100000, description='Breaking strength of reinforcement irons (N/mm^2).')
-    prop_fc = float(name='fc', default=asst['fc'], min=0, max=100000, description='Breaking strength of concrete (N/mm^2).')
-    prop_c  = float(name='c', default=asst['c'], min=0, max=100000, description='Concrete cover thickness above reinforcement (mm).')
-    prop_s  = float(name='s', default=asst['s'], min=0, max=100000, description='Distance between stirrups (mm).')
-    prop_ds = float(name='ds', default=asst['ds'], min=0, max=100000, description='Diameter of steel stirrup bar (mm).')
-    prop_dl = float(name='dl', default=asst['dl'], min=0, max=100000, description='Diameter of steel longitudinal bar (mm).')
-    prop_n    = int(name='n', default=asst['n'], min=0, max=100000, description='Number of longitudinal steel bars.')
-    prop_k  = float(name='k', default=asst['k'], min=0, max=100000, description='Scale factor.')
+    prop_h =  float_(name='h', default=asst['h'], min=0, max=100000, description='Height of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
+    prop_w =  float_(name='w', default=asst['w'], min=0, max=100000, description='Width of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
+    prop_fs = float_(name='fs', default=asst['fs'], min=0, max=100000, description='Breaking strength of reinforcement irons (N/mm^2).')
+    prop_fc = float_(name='fc', default=asst['fc'], min=0, max=100000, description='Breaking strength of concrete (N/mm^2).')
+    prop_c  = float_(name='c', default=asst['c'], min=0, max=100000, description='Concrete cover thickness above reinforcement (mm).')
+    prop_s  = float_(name='s', default=asst['s'], min=0, max=100000, description='Distance between stirrups (mm).')
+    prop_ds = float_(name='ds', default=asst['ds'], min=0, max=100000, description='Diameter of steel stirrup bar (mm).')
+    prop_dl = float_(name='dl', default=asst['dl'], min=0, max=100000, description='Diameter of steel longitudinal bar (mm).')
+    prop_n    = int_(name='n', default=asst['n'], min=0, max=100000, description='Number of longitudinal steel bars.')
+    prop_k  = float_(name='k', default=asst['k'], min=0, max=100000, description='Scale factor.')
 
-    prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
-    prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
-    prop_exp_rho = string(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
-    prop_exp_y   = string(name='υ (y)', default=asst['Exp:y'], description='Shear coefficient (asw*10/d) (% value).')
-    prop_exp_e1  = string(name='e´ (e1)', default=asst['Exp:e1'], description='Distance between longitudinal irons in relation to the element height: e/h (% value).')
-    prop_exp_Nn  = string(name='N-', default=asst['Exp:N-'], description='Compressive breaking threshold formula.')
-    prop_exp_Np  = string(name='N+', default=asst['Exp:N+'], description='Tensile breaking threshold formula.')
-    prop_exp_Vpn = string(name='V+/-', default=asst['Exp:V+/-'], description='Shearing breaking threshold formula.')
-    prop_exp_Mpn = string(name='M+/-', default=asst['Exp:M+/-'], description='Bending or momentum breaking threshold formula.')
+    prop_exp_d   = string_(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
+    prop_exp_e   = string_(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
+    prop_exp_rho = string_(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
+    prop_exp_y   = string_(name='υ (y)', default=asst['Exp:y'], description='Shear coefficient (asw*10/d) (% value).')
+    prop_exp_e1  = string_(name='e´ (e1)', default=asst['Exp:e1'], description='Distance between longitudinal irons in relation to the element height: e/h (% value).')
+    prop_exp_Nn  = string_(name='N-', default=asst['Exp:N-'], description='Compressive breaking threshold formula.')
+    prop_exp_Np  = string_(name='N+', default=asst['Exp:N+'], description='Tensile breaking threshold formula.')
+    prop_exp_Vpn = string_(name='V+/-', default=asst['Exp:V+/-'], description='Shearing breaking threshold formula.')
+    prop_exp_Mpn = string_(name='M+/-', default=asst['Exp:M+/-'], description='Bending or momentum breaking threshold formula.')
 
     ###### Update menu related properties from global vars
     def props_update_menu(self):
@@ -1540,35 +1540,35 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
 
     classID = "con_rei_wall"
 
-    int = bpy.props.IntProperty 
-    float = bpy.props.FloatProperty
-    string = bpy.props.StringProperty
+    int_ = bpy.props.IntProperty 
+    float_ = bpy.props.FloatProperty
+    string_ = bpy.props.StringProperty
 
     # Find corresponding formula assistant preset
     for formAssist in formulaAssistants:
         if formAssist["ID"] == classID:
             asst = formAssist
 
-    prop_h =  float(name='h', default=asst['h'], min=0, max=100000, description='Height of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
-    prop_w =  float(name='w', default=asst['w'], min=0, max=100000, description='Width of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
-    prop_fs = float(name='fs', default=asst['fs'], min=0, max=100000, description='Breaking strength of reinforcement irons (N/mm^2).')
-    prop_fc = float(name='fc', default=asst['fc'], min=0, max=100000, description='Breaking strength of concrete (N/mm^2).')
-    prop_c  = float(name='c', default=asst['c'], min=0, max=100000, description='Concrete cover thickness above reinforcement (mm).')
-    prop_s  = float(name='s', default=asst['s'], min=0, max=100000, description='Distance between stirrups (mm).')
-    prop_ds = float(name='ds', default=asst['ds'], min=0, max=100000, description='Diameter of steel stirrup bar (mm).')
-    prop_dl = float(name='dl', default=asst['dl'], min=0, max=100000, description='Diameter of steel longitudinal bar (mm).')
-    prop_n    = int(name='n', default=asst['n'], min=0, max=100000, description='Number of longitudinal steel bars.')
-    prop_k  = float(name='k', default=asst['k'], min=0, max=100000, description='Scale factor.')
+    prop_h =  float_(name='h', default=asst['h'], min=0, max=100000, description='Height of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
+    prop_w =  float_(name='w', default=asst['w'], min=0, max=100000, description='Width of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
+    prop_fs = float_(name='fs', default=asst['fs'], min=0, max=100000, description='Breaking strength of reinforcement irons (N/mm^2).')
+    prop_fc = float_(name='fc', default=asst['fc'], min=0, max=100000, description='Breaking strength of concrete (N/mm^2).')
+    prop_c  = float_(name='c', default=asst['c'], min=0, max=100000, description='Concrete cover thickness above reinforcement (mm).')
+    prop_s  = float_(name='s', default=asst['s'], min=0, max=100000, description='Distance between stirrups (mm).')
+    prop_ds = float_(name='ds', default=asst['ds'], min=0, max=100000, description='Diameter of steel stirrup bar (mm).')
+    prop_dl = float_(name='dl', default=asst['dl'], min=0, max=100000, description='Diameter of steel longitudinal bar (mm).')
+    prop_n    = int_(name='n', default=asst['n'], min=0, max=100000, description='Number of longitudinal steel bars.')
+    prop_k  = float_(name='k', default=asst['k'], min=0, max=100000, description='Scale factor.')
 
-    prop_exp_d   = string(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
-    prop_exp_e   = string(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
-    prop_exp_rho = string(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
-    prop_exp_y   = string(name='υ (y)', default=asst['Exp:y'], description='Shear coefficient (asw*10/d) (% value).')
-    prop_exp_e1  = string(name='e´ (e1)', default=asst['Exp:e1'], description='Distance between longitudinal irons in relation to the element height: e/h (% value).')
-    prop_exp_Nn  = string(name='N-', default=asst['Exp:N-'], description='Compressive breaking threshold formula.')
-    prop_exp_Np  = string(name='N+', default=asst['Exp:N+'], description='Tensile breaking threshold formula.')
-    prop_exp_Vpn = string(name='V+/-', default=asst['Exp:V+/-'], description='Shearing breaking threshold formula.')
-    prop_exp_Mpn = string(name='M+/-', default=asst['Exp:M+/-'], description='Bending or momentum breaking threshold formula.')
+    prop_exp_d   = string_(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
+    prop_exp_e   = string_(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
+    prop_exp_rho = string_(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
+    prop_exp_y   = string_(name='υ (y)', default=asst['Exp:y'], description='Shear coefficient (asw*10/d) (% value).')
+    prop_exp_e1  = string_(name='e´ (e1)', default=asst['Exp:e1'], description='Distance between longitudinal irons in relation to the element height: e/h (% value).')
+    prop_exp_Nn  = string_(name='N-', default=asst['Exp:N-'], description='Compressive breaking threshold formula.')
+    prop_exp_Np  = string_(name='N+', default=asst['Exp:N+'], description='Tensile breaking threshold formula.')
+    prop_exp_Vpn = string_(name='V+/-', default=asst['Exp:V+/-'], description='Shearing breaking threshold formula.')
+    prop_exp_Mpn = string_(name='M+/-', default=asst['Exp:M+/-'], description='Bending or momentum breaking threshold formula.')
 
     ###### Update menu related properties from global vars
     def props_update_menu(self):
@@ -1632,68 +1632,71 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
 
 class bcb_props(bpy.types.PropertyGroup):
     
-    int = bpy.props.IntProperty 
-    float = bpy.props.FloatProperty
-    bool = bpy.props.BoolProperty
-    string = bpy.props.StringProperty
-    enum = bpy.props.EnumProperty
+    int_ = bpy.props.IntProperty 
+    float_ = bpy.props.FloatProperty
+    bool_ = bpy.props.BoolProperty
+    string_ = bpy.props.StringProperty
+    enum_ = bpy.props.EnumProperty
     
     ###### Create menu related properties from global vars
-    prop_menu_gotConfig = int(0)
-    prop_menu_gotData = int(0)
-    prop_menu_selectedElemGrp = int(0)
-    prop_submenu_advancedG = bool(0)
-    prop_submenu_advancedE = bool(0)
-    prop_submenu_assistant = bool(0)
-    prop_submenu_assistant_advanced = bool(0, name="Advanced", description="Shows advanced settings and formulas.")
+    prop_menu_gotConfig = int_(0)
+    prop_menu_gotData = int_(0)
+    prop_menu_selectedElemGrp = int_(0)
+    prop_submenu_advancedG = bool_(0)
+    prop_submenu_advancedE = bool_(0)
+    prop_submenu_assistant = bool_(0)
+    prop_submenu_assistant_advanced = bool_(0, name="Advanced", description="Shows advanced settings and formulas.")
 
     assistant_menu = []  # (ID, Name in menu, "", Index)
     for i in range(len(formulaAssistants)):
         assistant_menu.append((formulaAssistants[i]["ID"], formulaAssistants[i]["Name"], "", i))
-    prop_assistant_menu = enum(items=assistant_menu, name="Type of Building Material")
+    #prop_assistant_menu = enum_(items=assistant_menu, name="Type of Building Material")
     
-    prop_stepsPerSecond = int(name="Steps Per Second", default=stepsPerSecond, min=1, max=32767, description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
-    prop_constraintUseBreaking = bool(name="Enable Breaking", default=constraintUseBreaking, description="Enables breaking for all constraints.")
-    prop_connectionCountLimit = int(name="Con. Count Limit", default=connectionCountLimit, min=0, max=10000, description="Maximum count of connections per object pair (0 = disabled).")
-    prop_searchDistance = float(name="Search Distance", default=searchDistance, min=0.0, max=1000, description="Search distance to neighbor geometry.")
-    prop_clusterRadius = float(name="Cluster Radius", default=clusterRadius, min=0.0, max=1000, description="Radius for bundling close constraints into clusters (0 = clusters disabled).")
-    prop_alignVertical = float(name="Vertical Alignment", default=alignVertical, min=0.0, max=1.0, description="Enables a vertical alignment multiplier for connection type 4 or above instead of using unweighted center to center orientation (0 = disabled, 1 = fully vertical).")
-    prop_useAccurateArea = bool(name="Accur. Contact Area Calculation", default=useAccurateArea , description="Enables accurate contact area calculation using booleans for the cost of an slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.")
-    prop_nonManifoldThickness = float(name="Non-solid Thickness", default=nonManifoldThickness, min=0.0, max=10, description="Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.")
-    prop_minimumElementSize = float(name="Min. Element Size", default=minimumElementSize, min=0.0, max=10, description="Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.")
-    prop_automaticMode = bool(name="Automatic Mode", default=automaticMode, description="Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore. After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene.")
-    prop_saveBackups = bool(name="Backup", default=saveBackups, description="Enables saving of a backup .blend file after each step for automatic mode, whereby the name of the new .blend ends with `_BCB´.")
-    prop_timeScalePeriod = int(name="Time Scale Period", default=timeScalePeriod, min=0, max=10000, description="For baking: Use a different time scale for an initial period of the simulation until this many frames has passed (0 = disabled).")
-    prop_timeScalePeriodValue = float(name="Initial Time Scale", default=timeScalePeriodValue, min=0.0, max=100, description="For baking: Use this time scale for the initial period of the simulation, after that it is switching back to default time scale and updating breaking thresholds accordingly during runtime.")
-    prop_warmUpPeriod = int(name="Warm Up Period", default=warmUpPeriod, min=0, max=10000, description="For baking: Disables breakability of constraints for an initial period of the simulation (frames). This is to prevent structural damage caused by the gravity impulse on start.")
-    prop_progrWeak = float(name="Progr. Weakening", default=progrWeak, min=0.0, max=1.0, description="Enables progressive weakening of all breaking thresholds by the specified factor per frame (starts not until timeScalePeriod and warmUpPeriod have passed). This can be used to enforce the certain collapse of a building structure after a while.")
-    prop_progrWeakLimit = int(name="Progr. Weak. Limit", default=progrWeakLimit, min=0, max=10000, description="For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.")
-    prop_progrWeakStartFact = float(name="Start Weakness", default=progrWeakStartFact, min=0.0, max=1.0, description="Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update.")
+    prop_stepsPerSecond = int_(name="Steps Per Second", default=stepsPerSecond, min=1, max=32767, description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
+    prop_constraintUseBreaking = bool_(name="Enable Breaking", default=constraintUseBreaking, description="Enables breaking for all constraints.")
+    prop_connectionCountLimit = int_(name="Con. Count Limit", default=connectionCountLimit, min=0, max=10000, description="Maximum count of connections per object pair (0 = disabled).")
+    prop_searchDistance = float_(name="Search Distance", default=searchDistance, min=0.0, max=1000, description="Search distance to neighbor geometry.")
+    prop_clusterRadius = float_(name="Cluster Radius", default=clusterRadius, min=0.0, max=1000, description="Radius for bundling close constraints into clusters (0 = clusters disabled).")
+    prop_alignVertical = float_(name="Vertical Alignment", default=alignVertical, min=0.0, max=1.0, description="Enables a vertical alignment multiplier for connection type 4 or above instead of using unweighted center to center orientation (0 = disabled, 1 = fully vertical).")
+    prop_useAccurateArea = bool_(name="Accur. Contact Area Calculation", default=useAccurateArea , description="Enables accurate contact area calculation using booleans for the cost of an slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.")
+    prop_nonManifoldThickness = float_(name="Non-solid Thickness", default=nonManifoldThickness, min=0.0, max=10, description="Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.")
+    prop_minimumElementSize = float_(name="Min. Element Size", default=minimumElementSize, min=0.0, max=10, description="Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.")
+    prop_automaticMode = bool_(name="Automatic Mode", default=automaticMode, description="Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore. After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene.")
+    prop_saveBackups = bool_(name="Backup", default=saveBackups, description="Enables saving of a backup .blend file after each step for automatic mode, whereby the name of the new .blend ends with `_BCB´.")
+    prop_timeScalePeriod = int_(name="Time Scale Period", default=timeScalePeriod, min=0, max=10000, description="For baking: Use a different time scale for an initial period of the simulation until this many frames has passed (0 = disabled).")
+    prop_timeScalePeriodValue = float_(name="Initial Time Scale", default=timeScalePeriodValue, min=0.0, max=100, description="For baking: Use this time scale for the initial period of the simulation, after that it is switching back to default time scale and updating breaking thresholds accordingly during runtime.")
+    prop_warmUpPeriod = int_(name="Warm Up Period", default=warmUpPeriod, min=0, max=10000, description="For baking: Disables breakability of constraints for an initial period of the simulation (frames). This is to prevent structural damage caused by the gravity impulse on start.")
+    prop_progrWeak = float_(name="Progr. Weakening", default=progrWeak, min=0.0, max=1.0, description="Enables progressive weakening of all breaking thresholds by the specified factor per frame (starts not until timeScalePeriod and warmUpPeriod have passed). This can be used to enforce the certain collapse of a building structure after a while.")
+    prop_progrWeakLimit = int_(name="Progr. Weak. Limit", default=progrWeakLimit, min=0, max=10000, description="For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.")
+    prop_progrWeakStartFact = float_(name="Start Weakness", default=progrWeakStartFact, min=0.0, max=1.0, description="Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update.")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
         else: j = 0
-        exec("prop_elemGrp_%d_EGSidxName" %i +" = string(name='Grp. Name', default=elemGrps[j][EGSidxName], description='The name of the element group.')")
-        exec("prop_elemGrp_%d_EGSidxCTyp" %i +" = int(name='Connection Type', default=elemGrps[j][EGSidxCTyp], min=1, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
+        exec("prop_elemGrp_%d_EGSidxName" %i +" = string_(name='Grp. Name', default=elemGrps[j][EGSidxName], description='The name of the element group.')")
+        exec("prop_elemGrp_%d_EGSidxCTyp" %i +" = int_(name='Connection Type', default=elemGrps[j][EGSidxCTyp], min=1, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
 
-        exec("prop_elemGrp_%d_EGSidxBTC" %i +" = string(name='Compressive', default=elemGrps[j][EGSidxBTC], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_EGSidxBTT" %i +" = string(name='Tensile', default=elemGrps[j][EGSidxBTT], description='Math expression for the material´s real world tensile breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_EGSidxBTS" %i +" = string(name='Shear', default=elemGrps[j][EGSidxBTS], description='Math expression for the material´s real world shearing breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_EGSidxBTS9" %i +" = string(name='Shear 90°', default=elemGrps[j][EGSidxBTS9], description='Math expression for the material´s real world shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_EGSidxBTB" %i +" = string(name='Bend', default=elemGrps[j][EGSidxBTB], description='Math expression for the material´s real world bending breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_EGSidxBTB9" %i +" = string(name='Bend 90°', default=elemGrps[j][EGSidxBTB9], description='Math expression for the material´s real world bending breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTC" %i +" = string_(name='Compressive', default=elemGrps[j][EGSidxBTC], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTT" %i +" = string_(name='Tensile', default=elemGrps[j][EGSidxBTT], description='Math expression for the material´s real world tensile breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTS" %i +" = string_(name='Shear', default=elemGrps[j][EGSidxBTS], description='Math expression for the material´s real world shearing breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTS9" %i +" = string_(name='Shear 90°', default=elemGrps[j][EGSidxBTS9], description='Math expression for the material´s real world shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTB" %i +" = string_(name='Bend', default=elemGrps[j][EGSidxBTB], description='Math expression for the material´s real world bending breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTB9" %i +" = string_(name='Bend 90°', default=elemGrps[j][EGSidxBTB9], description='Math expression for the material´s real world bending breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
 
-        exec("prop_elemGrp_%d_EGSidxSStf" %i +" = float(name='Spring Stiffness', default=elemGrps[j][EGSidxSStf], min=0.0, max=10**20, description='Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.')")
-        exec("prop_elemGrp_%d_EGSidxRqVP" %i +" = int(name='Req. Vertex Pairs', default=elemGrps[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
-        exec("prop_elemGrp_%d_EGSidxMatP" %i +" = string(name='Mat. Preset', default=elemGrps[j][EGSidxMatP], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
-        exec("prop_elemGrp_%d_EGSidxDens" %i +" = float(name='Density', default=elemGrps[j][EGSidxDens], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
-        exec("prop_elemGrp_%d_EGSidxTl1D" %i +" = float(name='1st Dist. Tol.', default=elemGrps[j][EGSidxTl1D], min=0.0, max=10.0, description='For baking: First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %).')")
-        exec("prop_elemGrp_%d_EGSidxTl1R" %i +" = float(name='1st Rot. Tol.', default=elemGrps[j][EGSidxTl1R], min=0.0, max=pi, description='For baking: First deformation tolerance limit for angular change in radian for connection removal or plastic deformation.')")
-        exec("prop_elemGrp_%d_EGSidxTl2D" %i +" = float(name='2nd Dist. Tol.', default=elemGrps[j][EGSidxTl2D], min=0.0, max=10.0, description='For baking: Second deformation tolerance limit for distance change in percent for connection removal (1.00 = 100 %).')")
-        exec("prop_elemGrp_%d_EGSidxTl2R" %i +" = float(name='2nd Rot. Tol.', default=elemGrps[j][EGSidxTl2R], min=0.0, max=pi, description='For baking: Second deformation tolerance limit for angular change in radian for connection removal.')")
-        exec("prop_elemGrp_%d_EGSidxBevl" %i +" = bool(name='Bevel', default=elemGrps[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
-        exec("prop_elemGrp_%d_EGSidxScal" %i +" = float(name='Rescale Factor', default=elemGrps[j][EGSidxScal], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
-        exec("prop_elemGrp_%d_EGSidxFacg" %i +" = bool(name='Facing', default=elemGrps[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
+        exec("prop_elemGrp_%d_EGSidxSStf" %i +" = float_(name='Spring Stiffness', default=elemGrps[j][EGSidxSStf], min=0.0, max=10**20, description='Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.')")
+        exec("prop_elemGrp_%d_EGSidxRqVP" %i +" = int_(name='Req. Vertex Pairs', default=elemGrps[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
+        exec("prop_elemGrp_%d_EGSidxMatP" %i +" = string_(name='Mat. Preset', default=elemGrps[j][EGSidxMatP], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
+        exec("prop_elemGrp_%d_EGSidxDens" %i +" = float_(name='Density', default=elemGrps[j][EGSidxDens], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
+        exec("prop_elemGrp_%d_EGSidxTl1D" %i +" = float_(name='1st Dist. Tol.', default=elemGrps[j][EGSidxTl1D], min=0.0, max=10.0, description='For baking: First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %).')")
+        exec("prop_elemGrp_%d_EGSidxTl1R" %i +" = float_(name='1st Rot. Tol.', default=elemGrps[j][EGSidxTl1R], min=0.0, max=pi, description='For baking: First deformation tolerance limit for angular change in radian for connection removal or plastic deformation.')")
+        exec("prop_elemGrp_%d_EGSidxTl2D" %i +" = float_(name='2nd Dist. Tol.', default=elemGrps[j][EGSidxTl2D], min=0.0, max=10.0, description='For baking: Second deformation tolerance limit for distance change in percent for connection removal (1.00 = 100 %).')")
+        exec("prop_elemGrp_%d_EGSidxTl2R" %i +" = float_(name='2nd Rot. Tol.', default=elemGrps[j][EGSidxTl2R], min=0.0, max=pi, description='For baking: Second deformation tolerance limit for angular change in radian for connection removal.')")
+        exec("prop_elemGrp_%d_EGSidxBevl" %i +" = bool_(name='Bevel', default=elemGrps[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
+        exec("prop_elemGrp_%d_EGSidxScal" %i +" = float_(name='Rescale Factor', default=elemGrps[j][EGSidxScal], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
+        exec("prop_elemGrp_%d_EGSidxFacg" %i +" = bool_(name='Facing', default=elemGrps[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
+
+        # Update fromula assistant submenu according to the chosen element group
+        exec("prop_assistant_menu = enum_(name='Type of Building Material', items=assistant_menu, default=elemGrps[j][EGSidxAsst]['ID'])")
 
     ###### Update menu related properties from global vars
     def props_update_menu(self):
@@ -2136,7 +2139,7 @@ class bcb_panel(bpy.types.Panel):
             
         ### Update global vars from menu related properties
         props.props_update_globals()
- 
+        
 ################################################################################   
          
 class OBJECT_OT_bcb_set_config(bpy.types.Operator):
