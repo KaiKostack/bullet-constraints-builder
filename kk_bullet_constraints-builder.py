@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.12 #
+# Bullet Constraints Builder v2.13 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -89,24 +89,26 @@ EGSidxFacg = 18   # Facing                   | Generate an addional layer of ele
 EGSidxAsst = 19   # Formula Assistant        | Material specific formula assistant with related settings
 
 ### Connection Types:
-connectTypes = [          # Cnt C T S B S T T T T      CT
-[ "UNDEFINED",              0, [0,0,0,0,0,1,1,0,0]], # 0. Undefined (reserved)
-[ "1x FIXED",               1, [1,0,0,0,0,1,1,0,0]], # 1. Linear omni-directional + bending breaking threshold
-[ "1x POINT",               1, [1,0,0,0,0,1,1,0,0]], # 2. Linear omni-directional breaking threshold
-[ "1x POINT + 1x FIXED",    2, [1,0,0,1,0,1,1,0,0]], # 3. Linear omni-directional and bending breaking thresholds
-[ "2x GENERIC",             2, [1,1,0,0,0,1,1,0,0]], # 4. Compressive and tensile breaking thresholds
-[ "3x GENERIC",             3, [1,1,0,1,0,1,1,0,0]], # 5. Compressive, tensile + shearing and bending breaking thresholds
-[ "4x GENERIC",             4, [1,1,1,1,0,1,1,0,0]], # 6. Compressive, tensile, shearing and bending breaking thresholds
-[ "3x SPRING",              3, [1,0,0,0,1,0,0,1,1]], # 7. Linear omni-directional breaking threshold with plastic deformability
-[ "4x SPRING",              4, [1,0,0,0,1,0,0,1,1]], # 8. Linear omni-directional breaking threshold with plastic deformability
-[ "1x FIXED + 3x SPRING",   4, [1,0,0,0,1,1,1,1,1]], # 9. Linear omni-directional + bending breaking threshold with plastic deformability
-[ "1x FIXED + 4x SPRING",   5, [1,0,0,0,1,1,1,1,1]], # 10. Linear omni-directional + bending breaking threshold with plastic deformability
-[ "4x GENERIC + 3x SPRING", 7, [1,1,1,1,1,1,1,1,1]], # 11. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
-[ "4x GENERIC + 4x SPRING", 8, [1,1,1,1,1,1,1,1,1]], # 12. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
-[ "3 x 3x SPRING",          9, [1,1,1,0,1,0,0,1,1]], # 13. Compressive, tensile and shearing breaking thresholds with plastic deformability
-[ "3 x 4x SPRING",         12, [1,1,1,0,1,0,0,1,1]], # 14. Compressive, tensile and shearing breaking thresholds with plastic deformability
-[ "6x GENERIC",             6, [1,1,1,1,0,1,1,0,0]], # 15. Compressive, tensile, shearing XY and bending XY breaking thresholds
-[ "7x GENERIC",             7, [1,1,1,1,0,1,1,0,0]]  # 16. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds
+connectTypes = [           # Cnt C T S B S T T T T      CT
+[ "UNDEFINED",               0, [0,0,0,0,0,1,1,0,0]], # 0. Undefined (reserved)
+[ "1x FIXED",                1, [1,0,0,0,0,1,1,0,0]], # 1. Linear omni-directional + bending breaking threshold
+[ "1x POINT",                1, [1,0,0,0,0,1,1,0,0]], # 2. Linear omni-directional breaking threshold
+[ "1x POINT + 1x FIXED",     2, [1,0,0,1,0,1,1,0,0]], # 3. Linear omni-directional and bending breaking thresholds
+[ "2x GENERIC",              2, [1,1,0,0,0,1,1,0,0]], # 4. Compressive and tensile breaking thresholds
+[ "3x GENERIC",              3, [1,1,0,1,0,1,1,0,0]], # 5. Compressive, tensile + shearing and bending breaking thresholds
+[ "4x GENERIC",              4, [1,1,1,1,0,1,1,0,0]], # 6. Compressive, tensile, shearing and bending breaking thresholds
+[ "3x SPRING",               3, [1,0,0,0,1,0,0,1,1]], # 7. Linear omni-directional breaking threshold with plastic deformability
+[ "4x SPRING",               4, [1,0,0,0,1,0,0,1,1]], # 8. Linear omni-directional breaking threshold with plastic deformability
+[ "1x FIXED + 3x SPRING",    4, [1,0,0,0,1,1,1,1,1]], # 9. Linear omni-directional + bending breaking threshold with plastic deformability
+[ "1x FIXED + 4x SPRING",    5, [1,0,0,0,1,1,1,1,1]], # 10. Linear omni-directional + bending breaking threshold with plastic deformability
+[ "4x GENERIC + 3x SPRING",  7, [1,1,1,1,1,1,1,1,1]], # 11. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
+[ "4x GENERIC + 4x SPRING",  8, [1,1,1,1,1,1,1,1,1]], # 12. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
+[ "3 x 3x SPRING",           9, [1,1,1,0,1,0,0,1,1]], # 13. Compressive, tensile and shearing breaking thresholds with plastic deformability
+[ "3 x 4x SPRING",          12, [1,1,1,0,1,0,0,1,1]], # 14. Compressive, tensile and shearing breaking thresholds with plastic deformability
+[ "6x GENERIC",              6, [1,1,1,1,0,1,1,0,0]], # 15. Compressive, tensile, shearing XY and bending XY breaking thresholds
+[ "7x GENERIC",              7, [1,1,1,1,0,1,1,0,0]], # 16. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds
+[ "6x GENERIC + 3x SPRING",  9, [1,1,1,1,0,1,1,0,0]], # 17. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability
+[ "7x GENERIC + 3x SPRING", 10, [1,1,1,1,0,1,1,0,0]]  # 18. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability
 ]
 # To add further connection types changes to following functions are necessary:
 # setConstraintSettings() and bcb_panel() for the UI
@@ -210,7 +212,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 1, 2),
+    "version": (2, 1, 3),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -938,9 +940,9 @@ def monitor_initBuffers(scene):
         elemGrpA = objsEGrp[pair[0]]
         elemGrpB = objsEGrp[pair[1]]
         
-        ### Use the connection type with the greater count of constraints for connection between different element groups
+        ### Use the connection type with the smaller count of constraints for connection between different element groups
         ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-        if connectTypes[elemGrps[elemGrpA][EGSidxCTyp]][1] >= connectTypes[elemGrps[elemGrpB][EGSidxCTyp]][1]:
+        if connectTypes[elemGrps[elemGrpA][EGSidxCTyp]][1] <= connectTypes[elemGrps[elemGrpB][EGSidxCTyp]][1]:
               elemGrp = elemGrpA
         else: elemGrp = elemGrpB
         springStiff = elemGrps[elemGrp][EGSidxSStf]
@@ -3392,9 +3394,9 @@ def createConnectionData(objsEGrp, connectsPair):
         connectTypeIdxB = elemGrps[elemGrpB][EGSidxCTyp]
         try: connectTypeB = connectTypes[connectTypeIdxB]
         except: connectTypeB = [None, 0]
-        ### Use the connection type with the greater count of constraints for connection between different element groups
+        ### Use the connection type with the smaller count of constraints for connection between different element groups
         ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-        if connectTypeA[1] >= connectTypeB[1]:
+        if connectTypeA[1] <= connectTypeB[1]:
               connectType = connectTypeA
         else: connectType = connectTypeB
         if connectType[0] == None: connectsConsts.append([])  # In case the connection type is unknown (no constraints)
@@ -3845,9 +3847,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         objB = objs[connectsPair[k][1]]
         elemGrpA = objsEGrp[objs.index(objA)]
         elemGrpB = objsEGrp[objs.index(objB)]
-        ### Use the connection type with the greater count of constraints for connection between different element groups
+        ### Use the connection type with the smaller count of constraints for connection between different element groups
         ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-        if connectTypes[elemGrps[elemGrpA][EGSidxCTyp]][1] >= connectTypes[elemGrps[elemGrpB][EGSidxCTyp]][1]:
+        if connectTypes[elemGrps[elemGrpA][EGSidxCTyp]][1] <= connectTypes[elemGrps[elemGrpB][EGSidxCTyp]][1]:
             CT = elemGrps[elemGrpA][EGSidxCTyp]
             elemGrp = elemGrpA
         else:
@@ -3949,7 +3951,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         #       1x POINT + 1x FIXED; Linear omni-directional, bending breaking thresholds
 
         # Compressive:
-        #   if CT == 4 or CT == 5 or CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16:
+        #   if CT == 4 or CT == 5 or CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18:
         #       1x GENERIC; Compressive threshold
 
         # Tensile + Shearing:
@@ -3957,19 +3959,19 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         #       1x GENERIC; Tensile + bending (3D)
         #   if CT == 5:
         #       2x GENERIC; Tensile + shearing (3D), bending (3D) breaking thresholds
-        #   if CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16:
+        #   if CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18:
         #       3x GENERIC; Tensile constraint (1D) breaking thresholds
         #   if CT == 6 or CT == 11 or CT == 12:
         #       1x GENERIC; Shearing (2D), bending (2D) breaking thresholds
-        #   if CT == 15 or CT == 16:
+        #   if CT == 15 or CT == 16 or CT == 17 or CT == 18:
         #       2x GENERIC; Shearing (1D) breaking thresholds
-        #   if CT == 15:
+        #   if CT == 15 or CT == 17:
         #       2x GENERIC; Bending + torsion (1D) breaking thresholds
-        #   if CT == 16:
+        #   if CT == 16 or CT == 18:
         #       3x GENERIC; Bending (1D), torsion (1D) breaking thresholds
         
         # Springs (additional):
-        #   if CT == 7 or CT == 9 or CT == 11:
+        #   if CT == 7 or CT == 9 or CT == 11 or CT == 17 or CT == 18:
         #       3x SPRING; Circular placed for plastic deformability
         #   if CT == 8 or CT == 10 or CT == 12:
         #       4x SPRING; Circular placed for plastic deformability
@@ -4043,8 +4045,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
         
         ### 1x GENERIC; Compressive threshold
-        if CT == 4 or CT == 5 or CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16:
-            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+        if CT == 4 or CT == 5 or CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18:
             ### Calculate orientation between the two elements, imagine a line from center to center
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
             if alignVertical:
@@ -4052,6 +4053,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
 
             ### First constraint
+            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -4076,7 +4078,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         ### 1x GENERIC; Tensile (3D)
         if CT == 4:
             ### Second constraint
-            correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
+            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -4099,6 +4101,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         ### 2x GENERIC; Tensile + shearing (3D), bending (3D) breaking thresholds
         if CT == 5:
             ### Tensile + shearing constraint (3D)
+            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -4119,7 +4122,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Bending constraint (3D)
-            correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
+            correction = 1
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -4140,8 +4143,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             
         ### 3x GENERIC; Tensile constraint (1D) breaking thresholds
-        if CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16:
+        if CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18:
             ### Tensile constraint (1D)
+            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -4164,6 +4168,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         ### 3x GENERIC; Tensile constraint (1D) breaking thresholds
         if CT == 6 or CT == 11 or CT == 12:
             ### Shearing constraint (2D)
+            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -4184,7 +4189,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Bending constraint (3D)
-            correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
+            correction = 1
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -4205,7 +4210,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
         ### 2x GENERIC; Shearing (1D) breaking thresholds
-        if CT == 15 or CT == 16:
+        if CT == 15 or CT == 16 or CT == 17 or CT == 18:
+            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+
             ### Calculate orientation between the two elements, imagine a line from center to center
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
             if alignVertical:
@@ -4274,13 +4281,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if asciiExport:
                 export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
-
-            correction = 1   # Rotational thresholds for generic constraints don't need a correctional factor
-            # Uncertain, seems not to be true in all cases:
-            #correction = 1.33   # Rotational thresholds for generic constraints have a different correctional value (around a factor of 0.751)
             
         ### 2x GENERIC; Bending + torsion (1D) breaking thresholds
-        if CT == 15:
+        if CT == 15 or CT == 17:
+            correction = 1
+
             ### Bending with torsion constraint #1
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
@@ -4345,7 +4350,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
         ### 3x GENERIC; Bending (1D), torsion (1D) breaking thresholds
-        if CT == 16:
+        if CT == 16 or CT == 18:
+            correction = 1
+
             ### Bending without torsion constraint #1
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
@@ -4414,16 +4421,22 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            #value = values[0] *.01  # Use the smaller value from either standard or 90° bending thresholds as base for torsion (1 %)
-            value = brkThresExprS
-            if brkThresExprS9 != -1:
-                value1 = value
-                value = brkThresExprS9
-                value2 = value
-                values = [value1, value2]
-                values.sort()
-                value = values[0]  # Find and use smaller value (to be used along h axis)
-            value /= 2  # Use half of the smaller shearing breaking thresholds for torsion
+
+            try: value = values[0]  # Use the smaller value from either standard or 90° bending thresholds as base for torsion
+            except: pass
+#            value *= .01  # Use 1% of the bending thresholds for torsion 
+            value *= .1  # Use 10% of the bending thresholds for torsion 
+
+#            value = brkThresExprS
+#            if brkThresExprS9 != -1:
+#                value1 = value
+#                value = brkThresExprS9
+#                value2 = value
+#                values = [value1, value2]
+#                values.sort()
+#                value = values[0]  # Find and use smaller value (to be used along h axis)
+#            value /= 2  # Use half of the smaller shearing breaking thresholds for torsion
+
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
@@ -4442,7 +4455,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         ###### Springs (additional)
 
         ### 3x SPRING; Circular placed for plastic deformability
-        if CT == 7 or CT == 9 or CT == 11:
+        if CT == 7 or CT == 9 or CT == 11 or CT == 17 or CT == 18:
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
@@ -4492,9 +4505,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 
         ### 4x SPRING; Circular placed for plastic deformability
         if CT == 8 or CT == 10 or CT == 12:
-            # Correction multiplier for breaking thresholds
-            # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
-            # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
@@ -4547,9 +4557,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 
         ### 3 x 3x SPRING; Compressive (1D), tensile (1D), shearing (2D) breaking thresholds; circular placed for plastic deformability
         if CT == 13:
-            # Correction multiplier for breaking thresholds
-            # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
-            # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
@@ -4665,9 +4672,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 
         ### 3 x 4x SPRING; Compressive (1D), tensile (1D), shearing (2D) breaking thresholds; circular placed for plastic deformability
         if CT == 14:
-            # Correction multiplier for breaking thresholds
-            # For now this is a hack as it appears that generic constraints need a significant higher breaking thresholds compared to fixed or point constraints for bearing same force (like 10 instead of 4.5)
-            # It's not yet clear how to resolve the issue, this needs definitely more research. First tests indicated it could be an precision problem as with extremely high simulation step and iteration rates it could be resolved, but for large structures this isn't really an option.
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
