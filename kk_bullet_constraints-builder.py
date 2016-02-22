@@ -107,8 +107,8 @@ connectTypes = [           # Cnt C T S B S T T T T      CT
 [ "3 x 4x SPRING",          12, [1,1,1,0,1,0,0,1,1]], # 14. Compressive, tensile and shearing breaking thresholds with plastic deformability
 [ "6x GENERIC",              6, [1,1,1,1,0,1,1,0,0]], # 15. Compressive, tensile, shearing XY and bending XY breaking thresholds
 [ "7x GENERIC",              7, [1,1,1,1,0,1,1,0,0]], # 16. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds
-[ "6x GENERIC + 3x SPRING",  9, [1,1,1,1,0,1,1,0,0]], # 17. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability
-[ "7x GENERIC + 3x SPRING", 10, [1,1,1,1,0,1,1,0,0]]  # 18. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability
+[ "6x GENERIC + 3x SPRING",  9, [1,1,1,1,1,1,1,1,1]], # 17. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability
+[ "7x GENERIC + 3x SPRING", 10, [1,1,1,1,1,1,1,1,1]]  # 18. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability
 ]
 # To add further connection types changes to following functions are necessary:
 # setConstraintSettings() and bcb_panel() for the UI
@@ -2308,7 +2308,7 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
         global elemGrps
         if len(elemGrps) < maxMenuElementGroupItems:
             # Add element group (syncing element group indices happens on execution)
-            elemGrps.append(elemGrps[props.prop_menu_selectedElemGrp])
+            elemGrps.append(elemGrps[props.prop_menu_selectedElemGrp].copy())
             # Update menu selection
             props.prop_menu_selectedElemGrp = len(elemGrps) -1
         else: self.report({'ERROR'}, "Maximum allowed element group count reached.")
