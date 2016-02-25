@@ -3886,8 +3886,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             try: brkThresExprS9_B = eval(elemGrps[elemGrpB][EGSidxBTS9])
             except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTS9]); brkThresExprS9_B = 0
         else: brkThresExprS9_B = -1
-        if brkThresExprS9_A != -1 and brkThresExprS9_B == -1: brkThresExprS9 = brkThresExprS9_A
-        if brkThresExprS9_A == -1 and brkThresExprS9_B != -1: brkThresExprS9 = brkThresExprS9_B
+        if brkThresExprS9_A == -1 or brkThresExprS9_B == -1: brkThresExprS9 = -1
         else:    
             if brkThresExprS9_A <= brkThresExprS9_B: brkThresExprS9 = brkThresExprS9_A
             else:                                    brkThresExprS9 = brkThresExprS9_B
@@ -3907,8 +3906,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             try: brkThresExprB9_B = eval(elemGrps[elemGrpB][EGSidxBTB9])
             except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTB9]); brkThresExprB9_B = 0
         else: brkThresExprB9_B = -1
-        if brkThresExprB9_A != -1 and brkThresExprB9_B == -1: brkThresExprB9 = brkThresExprB9_A
-        if brkThresExprB9_A == -1 and brkThresExprB9_B != -1: brkThresExprB9 = brkThresExprB9_B
+        if brkThresExprB9_A == -1 or brkThresExprB9_B == -1: brkThresExprB9 = -1
         else:    
             if brkThresExprB9_A <= brkThresExprB9_B: brkThresExprB9 = brkThresExprB9_A
             else:                                    brkThresExprB9 = brkThresExprB9_B
