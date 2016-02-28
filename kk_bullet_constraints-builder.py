@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.13 #
+# Bullet Constraints Builder v2.14 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -212,7 +212,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 1, 3),
+    "version": (2, 1, 4),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -4955,6 +4955,8 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
     if len(childObjs) > 0: sys.stdout.write('\r        ')
 
     ### Update masses
+    
+    objsRevertScale = []
     for j in range(len(elemGrps)):
         elemGrp = elemGrps[j]
         
@@ -4962,22 +4964,35 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         bpy.ops.object.select_all(action='DESELECT')
         
         for k in range(len(objs)):
+            try: scale = elemGrps[objsEGrp[k]][EGSidxScal]  # Try in case elemGrps is from an old BCB version
+            except: qScale = 0
+            else: qScale = 1
             if j == objsEGrp[k]:
                 obj = objs[k]
                 if obj != None:
                     if obj.rigid_body != None:
-                        if not "bcb_child" in obj.keys():
-                            obj.select = 1
-                        else:
-                            scene.objects[obj["bcb_child"]].select = 1
+                        if "bcb_child" in obj.keys():
+                            obj = scene.objects[obj["bcb_child"]]
+                        obj.select = 1
+                        # Temporarily revert element scaling for mass calculation
+                        if qScale:
+                            if scale != 0 and scale != 1:
+                                obj.scale /= scale
+                                objsRevertScale.append([obj, scale])
         
         materialPreset = elemGrp[EGSidxMatP]
         materialDensity = elemGrp[EGSidxDens]
         if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
         else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
-    
+
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
+
+    ### Reapply element scaling after mass calculation
+    for objScale in objsRevertScale:
+        obj = objScale[0]
+        scale = objScale[1]
+        obj.scale *= scale
 
     ### Copy rigid body settings (and mass) from children back to their parents and remove children from rigid body world
     i = 0
