@@ -1795,7 +1795,8 @@ class bcb_props(bpy.types.PropertyGroup):
 ################################################################################   
            
 class bcb_panel(bpy.types.Panel):
-    bl_label = "Bullet Constraints Builder"
+    ver = bl_info["version"]
+    bl_label = "Bullet Constraints Builder v%d.%d%d" %(ver[0], ver[1], ver[2]) 
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
 
