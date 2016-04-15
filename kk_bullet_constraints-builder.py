@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.14 #
+# Bullet Constraints Builder v2.15 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -48,6 +48,7 @@ warmUpPeriod = 20            # 20    | For baking: Disables breakability of cons
 progrWeak = 0                # 0     | Enables progressive weakening of all breaking thresholds by the specified factor per frame (starts not until timeScalePeriod and warmUpPeriod have passed). This can be used to enforce the certain collapse of a building structure after a while.
 progrWeakLimit = 10          # 10    | For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.
 progrWeakStartFact = 1       # 1     | Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a regular update.
+snapToAreaOrient = 1         # 1     | Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method).
 
 ### Vars not directly accessible from GUI
 asciiExport = 0              # 0     | Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
@@ -212,7 +213,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 1, 4),
+    "version": (2, 1, 5),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -368,6 +369,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_progrWeak"] = progrWeak
     scene["bcb_prop_progrWeakLimit"] = progrWeakLimit
     scene["bcb_prop_progrWeakStartFact"] = progrWeakStartFact
+    scene["bcb_prop_snapToAreaOrient"] = snapToAreaOrient
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     #scene["bcb_prop_elemGrps"] = elemGrps
@@ -463,6 +465,10 @@ def getConfigDataFromScene(scene):
     if "bcb_prop_progrWeakStartFact" in scene.keys():
         global progrWeakStartFact
         try: progrWeakStartFact = props.prop_progrWeakStartFact = scene["bcb_prop_progrWeakStartFact"]
+        except: pass
+    if "bcb_prop_snapToAreaOrient" in scene.keys():
+        global snapToAreaOrient
+        try: snapToAreaOrient = props.prop_snapToAreaOrient = scene["bcb_prop_snapToAreaOrient"]
         except: pass
 
     if len(warning): return warning
@@ -1671,6 +1677,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_progrWeak = float_(name="Progr. Weakening", default=progrWeak, min=0.0, max=1.0, description="Enables progressive weakening of all breaking thresholds by the specified factor per frame (starts not until timeScalePeriod and warmUpPeriod have passed). This can be used to enforce the certain collapse of a building structure after a while.")
     prop_progrWeakLimit = int_(name="Progr. Weak. Limit", default=progrWeakLimit, min=0, max=10000, description="For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.")
     prop_progrWeakStartFact = float_(name="Start Weakness", default=progrWeakStartFact, min=0.0, max=1.0, description="Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update.")
+    prop_snapToAreaOrient = bool_(name="90° Axis Snapping for Const. Orient.", default=snapToAreaOrient, description="Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method).")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
@@ -1755,6 +1762,7 @@ class bcb_props(bpy.types.PropertyGroup):
         global progrWeak; progrWeak = self.prop_progrWeak
         global progrWeakLimit; progrWeakLimit = self.prop_progrWeakLimit
         global progrWeakStartFact; progrWeakStartFact = self.prop_progrWeakStartFact
+        global snapToAreaOrient; snapToAreaOrient = self.prop_snapToAreaOrient
 
         global elemGrps
         for i in range(len(elemGrps)):
@@ -1867,14 +1875,13 @@ class bcb_panel(bpy.types.Panel):
             split = row.split(percentage=.50, align=False)
             split.prop(props, "prop_automaticMode")
             split.prop(props, "prop_saveBackups")
-            
-            row = box.row(); row.prop(props, "prop_alignVertical")
+            box.separator()
+
+            row = box.row(); row.prop(props, "prop_snapToAreaOrient")
             row = box.row()
-            if props.prop_menu_gotData: row.enabled = 0
-            row.prop(props, "prop_connectionCountLimit")
-            row = box.row()
-            if props.prop_menu_gotData: row.enabled = 0
-            row.prop(props, "prop_minimumElementSize")
+            if props.prop_snapToAreaOrient: row.enabled = 0
+            row.prop(props, "prop_alignVertical")
+            box.separator()
 
             row = box.row()
             if props.prop_menu_gotData: row.enabled = 0
@@ -1882,11 +1889,20 @@ class bcb_panel(bpy.types.Panel):
 #            row = box.row()
 #            if not props.prop_useAccurateArea: row.enabled = 0
 #            row.prop(props, "prop_nonManifoldThickness")
+            row = box.row()
+            if props.prop_menu_gotData: row.enabled = 0
+            row.prop(props, "prop_connectionCountLimit")
+            row = box.row()
+            if props.prop_menu_gotData: row.enabled = 0
+            row.prop(props, "prop_minimumElementSize")
+
             row = box.row(); row.prop(props, "prop_warmUpPeriod")
             box.separator()
             row = box.row(); row.prop(props, "prop_timeScalePeriod")
             row = box.row(); row.prop(props, "prop_timeScalePeriodValue")
             if props.prop_timeScalePeriod == 0: row.enabled = 0
+            box.separator()
+
             row = box.row(); row.prop(props, "prop_progrWeak")
             row = box.row(); row.prop(props, "prop_progrWeakLimit")
             if props.prop_progrWeak == 0: row.enabled = 0
@@ -2927,7 +2943,6 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=
     geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
     geoHeight = geo[1]  # First item = mostly 0, second item = thickness, third item = width 
     geoWidth = geo[2]
-    geoAxis = geoAxis[1]
     
     ### Use center of contact area boundary box as constraints location
     centerX = max(bbAMin[0],bbBMin[0]) +(overlapX /2)
@@ -2954,8 +2969,8 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair):
         ###### Calculate contact area for a single pair of objects
         geoContactArea, geoHeight, geoWidth, center, geoAxis = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
         
-        # Geometry array: {'a':area, 'h':height, 'w':width, 's':geoSurfThick, 'axis':heightAxis}
-        connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0, geoAxis])
+        # Geometry array: [area, height, width, surfThick, axisThick, axisHeight, axisWidth]
+        connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0, geoAxis[0], geoAxis[1], geoAxis[2]])
         connectsLoc.append(center)
         
     return connectsGeo, connectsLoc
@@ -3030,8 +3045,8 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
             geoContactArea, geoHeight, geoWidth, center, geoAxis = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=1)
             geoSurfThick = nonManifoldThickness
             
-            # Geometry array: {'a':area, 'h':height, 'w':width, 's':geoSurfThick, 'axis':heightAxis}
-            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoSurfThick, geoAxis])
+            # Geometry array: [area, height, width, surfThick, axisThick, axisHeight, axisWidth]
+            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoSurfThick, geoAxis[0], geoAxis[1], geoAxis[2]])
             connectsLoc.append(center)
 
         ###### If both meshes are manifold continue with regular boolean based approach
@@ -3096,7 +3111,6 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
                 geoHeight = geo[1]   # First item = mostly 0, second item = thickness, third item = width 
                 geoWidth = geo[2]
-                geoAxis = geoAxis[1]
 
                 ### Add displacement modifier to intersection mesh
                 objIntersect.modifiers.new(name="Displace_BCB", type='DISPLACE')
@@ -3141,7 +3155,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 geoContactArea = 0
                 geoHeight = 0
                 geoWidth = 0
-                geoAxis = 0
+                geoAxis = [1, 2, 3]
                 center = Vector((0, 0, 0))
 
             # Remove modifiers from original object again
@@ -3162,8 +3176,8 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 # Switch to new scene
                 bpy.context.screen.scene = sceneTemp
         
-            # Geometry array: {'a':area, 'h':height, 'w':width, 's':geoSurfThick, 'axis':heightAxis}
-            connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0, geoAxis])
+            # Geometry array: [area, height, width, surfThick, axisThick, axisHeight, axisWidth]
+            connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0, geoAxis[0], geoAxis[1], geoAxis[2]])
             connectsLoc.append(center)
                 
     # Switch back to original scene
@@ -3284,8 +3298,7 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
                 geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
                 geoHeight = geo[1]   # First item = mostly 0, second item = thickness, third item = width 
                 geoWidth = geo[2]
-                geoAxis = geoAxis[1]
-                                
+
                 ### Calculate surface area
                 geoContactArea = 0
                 for poly in me_intersect.polygons: geoContactArea += poly.area
@@ -3298,7 +3311,7 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
                 geoContactArea = 0
                 geoHeight = 0
                 geoWidth = 0
-                geoAxis = 0
+                geoAxis = [1, 2, 3]
                 center = Vector((0, 0, 0))
             
             geoContactAreas.append(geoContactArea)
@@ -3322,8 +3335,8 @@ def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
             ###### Calculate contact area for a single pair of objects
             geoContactArea, geoHeight, geoWidth, center, geoAxis = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
         
-        # Geometry array: {'a':area, 'h':height, 'w':width, 's':geoSurfThick, 'axis':heightAxis}
-        connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0, geoAxis])
+        # Geometry array: [area, height, width, surfThick, axisThick, axisHeight, axisWidth]
+        connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0, geoAxis[0], geoAxis[1], geoAxis[2]])
         connectsLoc.append(center)
 
 #        # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
@@ -3825,13 +3838,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         bpy.context.window_manager.progress_update(k /len(connectsPair))
         
         consts = connectsConsts[k]
-        # Geometry array: {'a':area, 'h':height, 'w':width, 's':geoSurfThick, 'axis':heightAxis}
+        # Geometry array: [area, height, width, surfThick, axisThick, axisHeight, axisWidth]
         # Height is always smaller than width
         geoContactArea = connectsGeo[k][0]
         geoHeight = connectsGeo[k][1]
         geoWidth = connectsGeo[k][2]
         geoSurfThick = connectsGeo[k][3]
-        geoAxis = connectsGeo[k][4]
+        geoAxisThick = connectsGeo[k][4]
+        geoAxisHeight = connectsGeo[k][5]
+        geoAxisWidth = connectsGeo[k][6]
 
         ### Postponed geoContactArea calculation step from calculateContactAreaBasedOnBoundaryBoxesForPair() is being done now (update hack, could be better organized)
         if useAccurateArea:
@@ -3936,6 +3951,19 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # This is not nice as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
             # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
         centerLoc = objConst0.location.copy()
+
+        ### Calculate orientation between the two elements
+        if snapToAreaOrient:
+            # Use contact area for orientation (axis closest to thickness)
+            if geoAxisThick == 1:   dirVec = Vector((1, 0, 0))
+            elif geoAxisThick == 2: dirVec = Vector((0, 1, 0))
+            elif geoAxisThick == 3: dirVec = Vector((0, 0, 1))
+        else:
+            # Center to center orientation
+            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+            if alignVertical:
+                # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
+                dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
                 
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
@@ -4045,12 +4073,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         
         ### 1x GENERIC; Compressive threshold
         if CT == 4 or CT == 5 or CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18:
-            ### Calculate orientation between the two elements, imagine a line from center to center
-            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
-            if alignVertical:
-                # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
-                dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-
             ### First constraint
             correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cIdx = consts[cInc]; cInc += 1
@@ -4211,13 +4233,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         ### 2x GENERIC; Shearing (1D) breaking thresholds
         if CT == 15 or CT == 16 or CT == 17 or CT == 18:
             correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-
-            ### Calculate orientation between the two elements, imagine a line from center to center
-            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
-            if alignVertical:
-                # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
-                dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
-
             ### Shearing constraint #1
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
@@ -4238,9 +4253,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst.rotation_mode = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
                 matInv = objConst.rotation_quaternion.to_matrix().inverted()
-                if geoAxis == 1:   vecAxis = Vector((1, 0, 0))
-                elif geoAxis == 2: vecAxis = Vector((0, 1, 0))
-                else:              vecAxis = Vector((0, 0, 1))
+                if geoAxisHeight == 1:   vecAxis = Vector((1, 0, 0))
+                elif geoAxisHeight == 2: vecAxis = Vector((0, 1, 0))
+                else:                    vecAxis = Vector((0, 0, 1))
                 # Leave out x axis as we know it is only for compressive and tensile force
                 vec = Vector((0, 1, 0)) *matInv
                 angY = vecAxis.angle(vec, 0)
@@ -4305,9 +4320,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst.rotation_mode = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
                 matInv = objConst.rotation_quaternion.to_matrix().inverted()
-                if geoAxis == 1:   vecAxis = Vector((1, 0, 0))
-                elif geoAxis == 2: vecAxis = Vector((0, 1, 0))
-                else:              vecAxis = Vector((0, 0, 1))
+                if geoAxisHeight == 1:   vecAxis = Vector((1, 0, 0))
+                elif geoAxisHeight == 2: vecAxis = Vector((0, 1, 0))
+                else:                    vecAxis = Vector((0, 0, 1))
                 # Leave out x axis as we know it is only for compressive and tensile force
                 vec = Vector((0, 1, 0)) *matInv
                 angY = vecAxis.angle(vec, 0)
@@ -4372,9 +4387,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst.rotation_mode = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
                 matInv = objConst.rotation_quaternion.to_matrix().inverted()
-                if geoAxis == 1:   vecAxis = Vector((1, 0, 0))
-                elif geoAxis == 2: vecAxis = Vector((0, 1, 0))
-                else:              vecAxis = Vector((0, 0, 1))
+                if geoAxisHeight == 1:   vecAxis = Vector((1, 0, 0))
+                elif geoAxisHeight == 2: vecAxis = Vector((0, 1, 0))
+                else:                    vecAxis = Vector((0, 0, 1))
                 # Leave out x axis as we know it is only for compressive and tensile force
                 vec = Vector((0, 1, 0)) *matInv
                 angY = vecAxis.angle(vec, 0)
@@ -4458,14 +4473,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
-            ### Calculate orientation between the two elements, imagine a line from center to center
-            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
-            if alignVertical:
-                # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
-                dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
             value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            # Loop through all constraints of this connection
+            ### Loop through all constraints of this connection
             for i in range(3):
                 cIdx = consts[cInc]; cInc += 1
                 if not asciiExport:
@@ -4507,14 +4517,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
-            ### Calculate orientation between the two elements, imagine a line from center to center
-            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
-            if alignVertical:
-                # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
-                dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
             value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            # Loop through all constraints of this connection
+            ### Loop through all constraints of this connection
             for i in range(4):
                 cIdx = consts[cInc]; cInc += 1
                 if not asciiExport:
@@ -4559,11 +4564,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
-            ### Calculate orientation between the two elements, imagine a line from center to center
-            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
-            if alignVertical:
-                # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
-                dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
             value = brkThresExprC
             brkThres1 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             value = brkThresExprT
@@ -4674,11 +4674,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
-            ### Calculate orientation between the two elements, imagine a line from center to center
-            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()   # Use actual locations (taking parent relationships into account)
-            if alignVertical:
-                # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
-                dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
             value = brkThresExprC
             brkThres1 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
             value = brkThresExprT
