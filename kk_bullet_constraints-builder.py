@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.15 #
+# Bullet Constraints Builder v2.16 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -213,7 +213,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 1, 5),
+    "version": (2, 1, 6),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -3069,6 +3069,13 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
             modA_bool = objA.modifiers["Boolean_BCB"]
             ### Create a boolean intersection mesh (for center point calculation)
             modA_bool.operation = 'INTERSECT'
+#            try: modA_bool.use_bmesh = 1  # Try to enable bmesh based boolean if possible
+#            except: pass
+#            else:
+#                try: modA_bool.use_bmesh_connect_regions = 0  # Disable this for bmesh to avoid long malformed faces
+#                except: pass
+#                try: modA_bool.threshold = 0.2  # Not sure what kind of threshold this is but 0 or 1 led to bad results including the full original mesh
+#                except: pass                    # (If connection centers are lying on element centers, that's a sign for a bad boolean operation)
             modA_bool.object = objB
             ### Perform boolean operation and in case result is corrupt try again with small changes in displacement size
             searchDistanceMinimum = searchDistance *0.9   # Lowest limit for retrying until we accept that no solution can be found
@@ -3081,7 +3088,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 sceneTemp.update()
                 if modA_disp.strength < searchDistanceMinimum: qNoSolution = 1; break
             if qNoSolution: print('Error on boolean operation, mesh problems detected:', objA.name, objB.name); halt
-            
+                
             # If intersection mesh has geometry then continue calculation
             if len(me_intersect.vertices) > 0:
                 
@@ -3097,6 +3104,9 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 objIntersect = bpy.data.objects.new("BCB Temp Object", me_intersect)
                 bpy.context.scene.objects.link(objIntersect)
                 objIntersect.matrix_world = objA.matrix_world
+                # Apply transforms so that local axes are matching world space axes (important for constraint orientation)
+                objIntersect.select = 1
+                bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
                 
                 ### Calculate center of intersection mesh based on its boundary box (throws ugly "group # is unclassified!" warnings)
 #                objIntersect.select = 1
@@ -3111,7 +3121,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
                 geoHeight = geo[1]   # First item = mostly 0, second item = thickness, third item = width 
                 geoWidth = geo[2]
-
+                
                 ### Add displacement modifier to intersection mesh
                 objIntersect.modifiers.new(name="Displace_BCB", type='DISPLACE')
                 modIntersect_disp = objIntersect.modifiers["Displace_BCB"]
@@ -3157,7 +3167,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 geoWidth = 0
                 geoAxis = [1, 2, 3]
                 center = Vector((0, 0, 0))
-
+            
             # Remove modifiers from original object again
             objA.modifiers.remove(modA_bool)
             objA.modifiers.remove(modA_disp)
@@ -3175,183 +3185,11 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                     sceneTemp.objects.link(obj)
                 # Switch to new scene
                 bpy.context.screen.scene = sceneTemp
-        
+            
             # Geometry array: [area, height, width, surfThick, axisThick, axisHeight, axisWidth]
             connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0, geoAxis[0], geoAxis[1], geoAxis[2]])
             connectsLoc.append(center)
                 
-    # Switch back to original scene
-    bpy.context.screen.scene = scene
-    # Delete second scene
-    bpy.data.scenes.remove(sceneTemp)
-                
-    print()
-    return connectsGeo, connectsLoc
-
-################################################################################   
-
-def calculateContactAreaBasedOnMaskingForAll(objs, connectsPair):
-    
-    ### Calculate contact area for all connections
-    print("Calculating contact area for connections... (%d)" %len(connectsPair))
-        
-    ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
-    scene = bpy.context.scene
-    sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
-    # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
-    bpy.context.screen.scene = scene
-    # Link cameras because in second scene is none and when coming back camera view will losing focus
-    objCameras = []
-    for objTemp in scene.objects:
-        if objTemp.type == 'CAMERA':
-            sceneTemp.objects.link(objTemp)
-            objCameras.append(objTemp)
-    # Switch to new scene
-    bpy.context.screen.scene = sceneTemp
-
-    ### Main calculation loop
-    connectsGeo = []
-    connectsLoc = []
-    connectsPair_len = len(connectsPair)
-    for k in range(connectsPair_len):
-        sys.stdout.write('\r' +"%d " %k)
-        # Update progress bar
-        bpy.context.window_manager.progress_update(k /connectsPair_len)
-
-        objA = objs[connectsPair[k][0]]
-        objB = objs[connectsPair[k][1]]
-        objA.select = 0
-        objB.select = 0
-            
-        # Link objects we're working on to second scene (we try because of the object unlink workaround)
-        try: sceneTemp.objects.link(objA)
-        except: pass
-        try: sceneTemp.objects.link(objB)
-        except: pass
-
-        geoContactAreas = []
-        geoHeights = []
-        geoWidths = []
-        centers = []
-        geoAxes = []
-        
-        # Do this for both elements of the pair
-        for obj in [objA, objB]:
-            bpy.context.scene.objects.active = obj
-            if obj == objA: objPartner = objB
-            else:           objPartner = objA
-                        
-            ### Create vertex group for masking
-            bpy.context.scene.objects.active = obj
-            bpy.ops.object.vertex_group_add()
-            vgrp = bpy.context.scene.objects.active.vertex_groups[-1:][0]
-            vgrp.name = "Distance_Mask"
-            # Set vertex weights to 1 
-            vgrp.add(list(range(len(obj.data.vertices))), 1, 'REPLACE')
-
-            ### Add Vertex Weight Proximity modifier
-            bpy.ops.object.modifier_add(type='VERTEX_WEIGHT_PROXIMITY')
-            mod = bpy.context.scene.objects.active.modifiers[-1:][0]
-            mod.name = "VertexWeightProximity_BCB"
-            mod.vertex_group = "Distance_Mask"
-            mod.proximity_mode = 'GEOMETRY'
-            mod.proximity_geometry = {'FACE'}
-            mod.falloff_type = 'STEP'
-            mod.max_dist = 0
-            mod.min_dist = searchDistance
-            mod.target = objPartner
-            
-            ### Add Mask modifier
-            bpy.ops.object.modifier_add(type='MASK')
-            mod = bpy.context.scene.objects.active.modifiers[-1:][0]
-            mod.name = "Mask_BCB"
-            mod.vertex_group = "Distance_Mask"
-
-            # Make modified mesh real
-            me_intersect = bpy.context.scene.objects.active.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-
-            # Remove BCB modifiers from original object
-            bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
-            bpy.context.scene.objects.active.modifiers.remove(bpy.context.scene.objects.active.modifiers[-1:][0])
-            # Remove BCB vertex group from all original objects
-            bpy.ops.object.vertex_group_remove()
-           
-            # If intersection mesh has geometry then continue calculation
-            if len(me_intersect.vertices) > 0:
-                
-                ### Calculate center point for the intersection mesh
-                # Create a new object for the mesh
-                objIntersect = bpy.data.objects.new("BCB Temp Object", me_intersect)
-                bpy.context.scene.objects.link(objIntersect)
-                objIntersect.matrix_world = bpy.context.scene.objects.active.matrix_world
-                
-                ### Calculate center of intersection mesh based on its boundary box (throws ugly "group # is unclassified!" warnings)
-                objIntersect.select = 1
-                bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS')
-                center = objIntersect.matrix_world.to_translation()
-#                ### Calculate center of intersection mesh based on its boundary box (alternative code, slower but no warnings)
-#                bbMin, bbMax, center = boundaryBox(objIntersect, 1)
-                
-                ### Find out element thickness to be used for bending threshold calculation (the diameter of the intersection mesh should be sufficient for now)
-                geo = list(objIntersect.dimensions)
-                geoAxis = [1, 2, 3]
-                geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
-                geoHeight = geo[1]   # First item = mostly 0, second item = thickness, third item = width 
-                geoWidth = geo[2]
-
-                ### Calculate surface area
-                geoContactArea = 0
-                for poly in me_intersect.polygons: geoContactArea += poly.area
-                
-                # Unlink new object from second scene
-                sceneTemp.objects.unlink(objIntersect)
-            
-            # If intersection mesh has no geometry then invalidate connection
-            if len(me_intersect.vertices) == 0 or geoContactArea == 0:
-                geoContactArea = 0
-                geoHeight = 0
-                geoWidth = 0
-                geoAxis = [1, 2, 3]
-                center = Vector((0, 0, 0))
-            
-            geoContactAreas.append(geoContactArea)
-            geoHeights.append(geoHeight)
-            geoWidths.append(geoWidth)
-            centers.append(center)
-            geoAxes.append(geoAxis)
-            
-        # Use the larger value as contact area because it is likely to be the cross-section of one element, overlapping surfaces of the partner element will most likely being masked out
-        if geoContactAreas[0] >= geoContactAreas[1]: idx = 0
-        if geoContactAreas[0] < geoContactAreas[1]: idx = 1
-        geoContactArea = geoContactAreas[idx]
-        geoHeight = geoHeights[idx]
-        geoWidth = geoWidths[idx]
-        center = centers[idx]
-        geoAxis = geoAxes[idx]
-
-        ###### If both intersection meshes have no geometry then calculate a contact area estimation based on boundary boxes intersection and a user defined thickness
-        if geoContactArea == 0:
-            # Todo: Here the boolean approach could be used as a fallback, for now geoSurfThick is not used
-            ###### Calculate contact area for a single pair of objects
-            geoContactArea, geoHeight, geoWidth, center, geoAxis = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
-        
-        # Geometry array: [area, height, width, surfThick, axisThick, axisHeight, axisWidth]
-        connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0, geoAxis[0], geoAxis[1], geoAxis[2]])
-        connectsLoc.append(center)
-
-#        # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
-#        sceneTemp.objects.unlink(objA)
-#        sceneTemp.objects.unlink(objB)
-        # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
-        if k %200 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
-            bpy.data.scenes.remove(sceneTemp)
-            sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
-            # Link cameras because in second scene is none and when coming back camera view will losing focus
-            for obj in objCameras:
-                sceneTemp.objects.link(obj)
-            # Switch to new scene
-            bpy.context.screen.scene = sceneTemp
-
     # Switch back to original scene
     bpy.context.screen.scene = scene
     # Delete second scene
@@ -5090,8 +4928,7 @@ def build():
                     #connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
                     ###### Calculate contact area for all connections
                     if useAccurateArea:
-                        #connectsGeo, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
-                        connectsGeo, connectsLoc = calculateContactAreaBasedOnMaskingForAll(objs, connectsPair)
+                        connectsGeo, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
                     else:
                         connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair)
                     ###### Delete connections with zero contact area
