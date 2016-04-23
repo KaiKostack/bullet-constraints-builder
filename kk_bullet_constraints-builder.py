@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.16 #
+# Bullet Constraints Builder v2.17 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -213,7 +213,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 1, 6),
+    "version": (2, 1, 7),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -3791,14 +3791,19 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         centerLoc = objConst0.location.copy()
 
         ### Calculate orientation between the two elements
+        # Center to center orientation
+        dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
         if snapToAreaOrient:
             # Use contact area for orientation (axis closest to thickness)
-            if geoAxisThick == 1:   dirVec = Vector((1, 0, 0))
-            elif geoAxisThick == 2: dirVec = Vector((0, 1, 0))
-            elif geoAxisThick == 3: dirVec = Vector((0, 0, 1))
+            if geoAxisThick == 1:   dirVecNew = Vector((1, 0, 0))
+            elif geoAxisThick == 2: dirVecNew = Vector((0, 1, 0))
+            elif geoAxisThick == 3: dirVecNew = Vector((0, 0, 1))
+            # Take direction into account too and negate axis if necessary
+            if dirVec[0] < 0: dirVecNew[0] = -dirVecNew[0]
+            if dirVec[1] < 0: dirVecNew[1] = -dirVecNew[1]
+            if dirVec[2] < 0: dirVecNew[2] = -dirVecNew[2]
+            dirVec = dirVecNew
         else:
-            # Center to center orientation
-            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
             if alignVertical:
                 # Reduce X and Y components by factor of alignVertical (should be < 1 to make horizontal connections still possible)
                 dirVec = Vector((dirVec[0] *(1 -alignVertical), dirVec[1] *(1 -alignVertical), dirVec[2]))
