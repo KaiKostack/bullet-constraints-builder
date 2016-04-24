@@ -2325,7 +2325,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
 def automaticModeAfterStop():
     if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
     OBJECT_OT_bcb_clear.execute(None, bpy.context)
-    if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
+    if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('_BCB-bake.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
         
 ########################################
 
