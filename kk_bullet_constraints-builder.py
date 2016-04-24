@@ -726,35 +726,48 @@ def clearAllDataFromScene(scene):
             if scale != 0 and scale != 1:
                 obj.scale /= scale
 
+    print("Removing ID properties...")
+    
+    ### Clear object properties
+    for obj in objs:
+        for key in obj.keys(): del obj[key]
+
+    ### Remove ID property build data (leaves menu props in place)
+    for key in scene.keys():
+        if "bcb_" in key: del scene[key]
+
     print("Deleting objects...")
+
     ### Select modified elements for deletion from scene 
     for parentObj in parentTmpObjs: parentObj.select = 1
     ### Select constraint empty objects for deletion from scene
     for emptyObj in emptyObjs: emptyObj.select = 1
     
+    if automaticMode and saveBackups:
+        ### Quick and dirty delete function (faster but can cause problems on immediate rebuilding, requires saving and reloading first)
+        # Delete (unlink) modified elements from scene 
+        for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
+        # Delete (unlink) constraint empty objects from scene
+        for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
+        # Save file
+        bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
+        print("Bake blend saved. (You can terminate Blender now if you don't want to wait for")
+        print("the slow Depsgraph to finish, just reloading the blend file can be faster.)") 
+        ### Bring back unlinked objects for regular deletion now
+        # Link modified elements back to scene
+        for parentObj in parentTmpObjs: scene.objects.link(parentObj)
+        # Link constraint empty objects back to scene
+        for emptyObj in emptyObjs: scene.objects.link(emptyObj)
+
     ### Delete all selected objects
     bpy.ops.object.delete(use_global=True)
-
-### Alternative delete function (faster but can cause problems on immediate rebuilding, requires saving and reloading first)
-#    ### Delete (unlink) modified elements from scene 
-#    for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
-#    ### Delete (unlink) constraint empty objects from scene
-#    for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
-
-    print("Removing ID properties...")
-    
-    ### Revert selection back to original state and clear ID properties from objects
-    for obj in objs:
-        obj.select = 1
-        # Clear object properties
-        for key in obj.keys(): del obj[key]
-    
-    ### Finally remove ID property build data (leaves menu props in place)
-    for key in scene.keys():
-        if "bcb_" in key: del scene[key]
             
     # Set layers as in original scene
     scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
+
+    ### Revert selection back to original state and clear ID properties from objects
+    for obj in objs:
+        obj.select = 1
 
     print('\nTime: %0.2f s' %(time.time()-time_start))
     print('Done.')
@@ -2313,7 +2326,7 @@ def automaticModeAfterStop():
     if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
     OBJECT_OT_bcb_clear.execute(None, bpy.context)
     if saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
-
+        
 ########################################
 
 class OBJECT_OT_bcb_add(bpy.types.Operator):
