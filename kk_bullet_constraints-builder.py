@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.17 #
+# Bullet Constraints Builder v2.18 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -213,7 +213,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 1, 7),
+    "version": (2, 1, 8),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1288,7 +1288,7 @@ def combineExpressions():
             Nn = "(" +Nn +")/(h*w)*a"
             Np = "(" +Np +")/(h*w)*a"
             Vpn = "(" +Vpn +")/(h*w)*a"
-            Mpn = "(" +Mpn +")/(h*h*w)*a"
+            Mpn = "(" +Mpn +")/(h*w)*a"
 
             ### Combine all available expressions with each other      
             symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
@@ -1393,7 +1393,7 @@ def combineExpressions():
             Nn = "(" +Nn +")/(h*w)*a"
             Np = "(" +Np +")/(h*w)*a"
             Vpn = "(" +Vpn +")/(h*w)*a"
-            Mpn = "(" +Mpn +")/(h*h*w)*a"
+            Mpn = "(" +Mpn +")/(h*w)*a"
 
             ### Combine all available expressions with each other      
             symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
