@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.18 #
+# Bullet Constraints Builder v2.19 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -213,7 +213,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 1, 8),
+    "version": (2, 1, 9),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1288,7 +1288,7 @@ def combineExpressions():
             Nn = "(" +Nn +")/(h*w)*a"
             Np = "(" +Np +")/(h*w)*a"
             Vpn = "(" +Vpn +")/(h*w)*a"
-            Mpn = "(" +Mpn +")/(h*w)*a"
+            Mpn = "(" +Mpn +")/(h*w)/1000*a"  # Divide also by 1000 to convert Nmm to Nm
 
             ### Combine all available expressions with each other      
             symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
@@ -1393,7 +1393,7 @@ def combineExpressions():
             Nn = "(" +Nn +")/(h*w)*a"
             Np = "(" +Np +")/(h*w)*a"
             Vpn = "(" +Vpn +")/(h*w)*a"
-            Mpn = "(" +Mpn +")/(h*w)*a"
+            Mpn = "(" +Mpn +")/(h*w)/1000*a"  # Divide also by 1000 to convert Nmm to Nm
 
             ### Combine all available expressions with each other      
             symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
@@ -2064,7 +2064,7 @@ class bcb_panel(bpy.types.Panel):
         box = layout.box();
         box.label(text=connectType[0])
 
-        row = layout.row(); row.label(text="Breaking Thresholds in N/mm² or MPa:")
+        row = layout.row(); row.label(text="Breaking Thresholds in [N or Nm] *a (mm²):")
 
         # Prepare possible expression variables
         a = h = w = b = s = 1   
@@ -3704,12 +3704,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if geoSurfThick > 0:
                 geoContactArea *= geoSurfThick
         
-        ### Prepare expression variables
-        a = geoContactArea *1000000
-        h = geoHeight *1000
-        w = geoWidth *1000
-        s = geoSurfThick *1000
-        
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
         elemGrpA = objsEGrp[objs.index(objA)]
@@ -3779,7 +3773,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else:                                    brkThresExprB9 = brkThresExprB9_B
 
         springStiff = elemGrps[elemGrp][EGSidxSStf]
-        
+
+        ### Prepare expression variables and convert m to mm
+        a = geoContactArea *1000000
+        h = geoHeight *1000
+        w = geoWidth *1000
+        s = geoSurfThick *1000
+            
         if not asciiExport:
             # Store value as ID property for debug purposes
             for idx in consts: emptyObjs[idx]['ContactArea'] = geoContactArea
