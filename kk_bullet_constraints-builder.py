@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.19 #
+# Bullet Constraints Builder v2.20 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -55,13 +55,13 @@ asciiExport = 0              # 0     | Exports all constraint data to an ASCII t
 
 ### Customizable element groups list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
 elemGrps = [
-# 0          1    2           3        4   5       6         7         8      9         10     11      12   13   14   15    16   17    18     19
-# Name       RVP  Mat.preset  Density  CT  BTC     BTT       BTS       BTS90  BTB       BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.assistant 
-[ "",        1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"],
-[ "Columns", 1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam"],
-[ "Walls",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],
-[ "Slabs",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.9*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall"],
-[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "2*a",    "0.3*a",  "",    "0.6*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None"]
+# 0          1    2           3        4   5       6         7         8      9         10     11      12   13   14   15    16   17    18     19              20
+# Name       RVP  Mat.preset  Density  CT  BTC     BTT       BTS       BTS90  BTB       BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.Assist.+Data  Cyl
+[ "",        1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.5*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
+[ "Columns", 1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.5*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
+[ "Walls",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.5*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
+[ "Slabs",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.5*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
+[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "2*a",    "0.3*a",  "",    "0.5*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None",         0 ]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 ### Magic numbers / column descriptions for above element group settings (in order from left to right):
@@ -88,6 +88,7 @@ EGSidxBevl = 16   # Bevel                    | Use beveling for elements to avoi
 EGSidxScal = 17   # Scale                    | Apply scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes)
 EGSidxFacg = 18   # Facing                   | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
 EGSidxAsst = 19   # Formula Assistant        | Material specific formula assistant with related settings
+EGSidxCyln = 20   # Cylindrical Shape        | Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns.
 
 ### Connection Types:
 connectTypes = [           # Cnt C T S B S T T T T      CT
@@ -213,7 +214,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 1, 9),
+    "version": (2, 2, 0),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1716,6 +1717,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("prop_elemGrp_%d_EGSidxBevl" %i +" = bool_(name='Bevel', default=elemGrps[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
         exec("prop_elemGrp_%d_EGSidxScal" %i +" = float_(name='Rescale Factor', default=elemGrps[j][EGSidxScal], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
         exec("prop_elemGrp_%d_EGSidxFacg" %i +" = bool_(name='Facing', default=elemGrps[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
+        exec("prop_elemGrp_%d_EGSidxCyln" %i +" = bool_(name='Cylindric Shape', default=elemGrps[j][EGSidxCyln], description='Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns.')")
 
         # Update fromula assistant submenu according to the chosen element group
         exec("prop_assistant_menu = enum_(name='Type of Building Material', items=assistant_menu, default=elemGrps[j][EGSidxAsst]['ID'])")
@@ -1744,6 +1746,7 @@ class bcb_props(bpy.types.PropertyGroup):
             exec("self.prop_elemGrp_%d_EGSidxBevl" %i +" = elemGrps[i][EGSidxBevl]")
             exec("self.prop_elemGrp_%d_EGSidxScal" %i +" = elemGrps[i][EGSidxScal]")
             exec("self.prop_elemGrp_%d_EGSidxFacg" %i +" = elemGrps[i][EGSidxFacg]")
+            exec("self.prop_elemGrp_%d_EGSidxCyln" %i +" = elemGrps[i][EGSidxCyln]")
         
         # Update fromula assistant submenu according to the chosen element group
         i = self.prop_menu_selectedElemGrp
@@ -1798,6 +1801,7 @@ class bcb_props(bpy.types.PropertyGroup):
             elemGrps[i][EGSidxBevl] = eval("self.prop_elemGrp_%d_EGSidxBevl" %i)
             elemGrps[i][EGSidxScal] = eval("self.prop_elemGrp_%d_EGSidxScal" %i)
             elemGrps[i][EGSidxFacg] = eval("self.prop_elemGrp_%d_EGSidxFacg" %i)
+            elemGrps[i][EGSidxCyln] = eval("self.prop_elemGrp_%d_EGSidxCyln" %i)
 
         ### If different formula assistant ID from that stored in element group then update with defaults
         i = self.prop_menu_selectedElemGrp
@@ -2136,6 +2140,7 @@ class bcb_panel(bpy.types.Panel):
         row = layout.row()
         if props.prop_menu_gotData: row.enabled = 0
         row.prop(props, "prop_elemGrp_%d_EGSidxScal" %i)
+        row = layout.row(); row.prop(props, "prop_elemGrp_%d_EGSidxCyln" %i)
         row = layout.row()
         if props.prop_menu_gotData: row.enabled = 0
         row.prop(props, "prop_elemGrp_%d_EGSidxBevl" %i)
@@ -3703,11 +3708,21 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         if useAccurateArea:
             if geoSurfThick > 0:
                 geoContactArea *= geoSurfThick
-        
+
+        ### Prepare expression variables and convert m to mm
+        a = geoContactArea *1000000
+        h = geoHeight *1000
+        w = geoWidth *1000
+        s = geoSurfThick *1000
+                
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
         elemGrpA = objsEGrp[objs.index(objA)]
         elemGrpB = objsEGrp[objs.index(objB)]
+
+        # Area correction calculation for cylinders (*pi/4)
+        if elemGrps[elemGrpA][EGSidxCyln] or elemGrps[elemGrpB][EGSidxCyln]: a *= 0.7854
+
         ### Use the connection type with the smaller count of constraints for connection between different element groups
         ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
         if connectTypes[elemGrps[elemGrpA][EGSidxCTyp]][1] <= connectTypes[elemGrps[elemGrpB][EGSidxCTyp]][1]:
@@ -3774,12 +3789,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 
         springStiff = elemGrps[elemGrp][EGSidxSStf]
 
-        ### Prepare expression variables and convert m to mm
-        a = geoContactArea *1000000
-        h = geoHeight *1000
-        w = geoWidth *1000
-        s = geoSurfThick *1000
-            
         if not asciiExport:
             # Store value as ID property for debug purposes
             for idx in consts: emptyObjs[idx]['ContactArea'] = geoContactArea
