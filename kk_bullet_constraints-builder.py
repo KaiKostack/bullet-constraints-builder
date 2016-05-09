@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.20 #
+# Bullet Constraints Builder v2.21 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -214,7 +214,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 2, 0),
+    "version": (2, 2, 1),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -480,7 +480,9 @@ def getConfigDataFromScene(scene):
         try: elemGrpsProp = scene["bcb_prop_elemGrps"]
         except: pass
         elemGrpsInverted = []
-        for i in range(len(elemGrpsProp[0])):
+        grpCnt = len(elemGrps)
+        grpPropCnt = len(elemGrpsProp[0])
+        for i in range(grpPropCnt):
             column = []
             for j in range(len(elemGrpsProp)):
                 if j != EGSidxAsst:
@@ -490,11 +492,21 @@ def getConfigDataFromScene(scene):
             if missingColumns:
                 print("Error: elemGrp property missing, BCB scene settings are probably outdated.")
                 print("Clear all BCB data, double-check your settings and rebuild constraints.")
+                # Find default group or use first one
+                k = 0
+                for l in range(grpCnt):
+                    if elemGrps[l][EGSidxName] == '': k = l
+                # Fill in missing data from found group
                 ofs = len(column)
                 for j in range(missingColumns):
-                      column.append(elemGrps[i][ofs +j])
+                    column.append(elemGrps[k][ofs +j])
             elemGrpsInverted.append(column)
         elemGrps = elemGrpsInverted
+
+        if debug:
+            print("LOADED:", len(elemGrps), len(elemGrps[0]))
+            for i in range(grpPropCnt):
+                print(i, elemGrps[i][0], elemGrps[i][20])
                 
 ################################################################################   
 
