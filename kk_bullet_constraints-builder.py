@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.21 #
+# Bullet Constraints Builder v2.22 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -128,7 +128,7 @@ formulaAssistants = [
  "Exp:N-":  "fc*((h*w)-rho*(h*w))+fs*rho*(h*w)",
  "Exp:N+":  "fs*rho*(h*w)",
  "Exp:V+/-":"fs*y*e1*h**2*1.2",
- "Exp:M+/-":"fs*rho*(h*w)/2*(e1*h)"
+ "Exp:M+/-":"(fc*(1-rho)+2*(fs*rho))*(h*w) /4*(e1*h)/1000"
 },
 {"Name":"Reinforced Concrete (Walls & Slabs)", "ID":"con_rei_wall",
  "h":250, "w":150, "fc":30, "fs":500, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
@@ -140,7 +140,7 @@ formulaAssistants = [
  "Exp:N-":  "fc*((h*w)-rho*(h*w))+fs*rho*(h*w)",
  "Exp:N+":  "fs*rho*(h*w)",
  "Exp:V+/-":"(0.15*k*(100*rho*fc)**(1/3))*(h*w)",
- "Exp:M+/-":"fs*rho*(h*w)/2*(e1*h)"
+ "Exp:M+/-":"(fc*(1-rho)+2*(fs*rho))*(h*w) /4*(e1*h)/1000"
 }]
 # Material strength values (N/mm²):
 # fs = strength of steel
@@ -173,13 +173,13 @@ formulaAssistants = [
 # N-      ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
 # N+      ≈ fs * rho * (h*b)   
 # V+ = V- ≈ fs *y * e1*h²* 1,2  +  0.15/ k* ((100*rho*fc)^1/3) *h*b
-# M+ = M- ≈ fs * rho * (h*b)/2* (e1*h)       
+# M+ = M- ≈ (fc*(1-rho)+2*(fs*rho))*(h*w) /4*(e1*h)
 #
 # Formulas for walls & slabs:
 # N-      ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
 # N+      ≈ fs * rho * (h*b)   
 # V+ = V- ≈ 0.15/k* ((100*rho*fc)^1/3) *h*b
-# M+ = M- ≈ fs* rho * (h*b) /2* (e1*h)    
+# M+ = M- ≈ (fc*(1-rho)+2*(fs*rho))*(h*w) /4*(e1*h)
 
 ### Vars for developers
 debug = 0                            # 0     | Enables verbose console output for debugging purposes
@@ -214,7 +214,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 2, 1),
+    "version": (2, 2, 2),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1301,7 +1301,7 @@ def combineExpressions():
             Nn = "(" +Nn +")/(h*w)*a"
             Np = "(" +Np +")/(h*w)*a"
             Vpn = "(" +Vpn +")/(h*w)*a"
-            Mpn = "(" +Mpn +")/(h*w)/1000*a"  # Divide also by 1000 to convert Nmm to Nm
+            Mpn = "(" +Mpn +")/(h*w)*a"
 
             ### Combine all available expressions with each other      
             symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
@@ -1406,7 +1406,7 @@ def combineExpressions():
             Nn = "(" +Nn +")/(h*w)*a"
             Np = "(" +Np +")/(h*w)*a"
             Vpn = "(" +Vpn +")/(h*w)*a"
-            Mpn = "(" +Mpn +")/(h*w)/1000*a"  # Divide also by 1000 to convert Nmm to Nm
+            Mpn = "(" +Mpn +")/(h*w)*a"  # Divide also by 1000 to convert Nmm to Nm
 
             ### Combine all available expressions with each other      
             symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
