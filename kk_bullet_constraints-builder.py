@@ -128,7 +128,7 @@ formulaAssistants = [
  "Exp:N-":  "fc*((h*w)-rho*(h*w))+fs*rho*(h*w)",
  "Exp:N+":  "fs*rho*(h*w)",
  "Exp:V+/-":"fs*y*e1*h**2*1.2",
- "Exp:M+/-":"(fc*(1-rho)+2*(fs*rho))*(h*w) /4*(e1*h)/1000"
+ "Exp:M+/-":"(fc*(1-rho)/4+fs*rho*e1)*(h*w)*h/2/1000"
 },
 {"Name":"Reinforced Concrete (Walls & Slabs)", "ID":"con_rei_wall",
  "h":250, "w":150, "fc":30, "fs":500, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
@@ -140,7 +140,7 @@ formulaAssistants = [
  "Exp:N-":  "fc*((h*w)-rho*(h*w))+fs*rho*(h*w)",
  "Exp:N+":  "fs*rho*(h*w)",
  "Exp:V+/-":"(0.15*k*(100*rho*fc)**(1/3))*(h*w)",
- "Exp:M+/-":"(fc*(1-rho)+2*(fs*rho))*(h*w) /4*(e1*h)/1000"
+ "Exp:M+/-":"(fc*(1-rho)/4+fs*rho*e1)*(h*w)*h/2/1000"
 }]
 # Material strength values (N/mm²):
 # fs = strength of steel
@@ -179,7 +179,7 @@ formulaAssistants = [
 # N-      ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
 # N+      ≈ fs * rho * (h*b)   
 # V+ = V- ≈ 0.15/k* ((100*rho*fc)^1/3) *h*b
-# M+ = M- ≈ (fc*(1-rho)+2*(fs*rho))*(h*w) /4*(e1*h)
+# M+ = M- ≈ (fc*(1-rho)/4 + fs*rho*e1)*(h*w)*h /2 /1000
 
 ### Vars for developers
 debug = 0                            # 0     | Enables verbose console output for debugging purposes
@@ -1406,7 +1406,7 @@ def combineExpressions():
             Nn = "(" +Nn +")/(h*w)*a"
             Np = "(" +Np +")/(h*w)*a"
             Vpn = "(" +Vpn +")/(h*w)*a"
-            Mpn = "(" +Mpn +")/(h*w)*a"  # Divide also by 1000 to convert Nmm to Nm
+            Mpn = "(" +Mpn +")/(h*w)*a"
 
             ### Combine all available expressions with each other      
             symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
