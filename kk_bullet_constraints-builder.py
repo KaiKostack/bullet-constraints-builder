@@ -3645,8 +3645,8 @@ def setConstParams(objConst, a=None,h=None,w=None,x=None, e=None,bt=None,ub=None
     #objConst.empty_draw_size = emptyDrawSize
     if a != None:
         objConst.empty_draw_size = .502  # Scale size slightly larger to make lines visible over solid elements
-        #h_ = h /1000; w_ = w /1000           # Original dimensions of the connection area
-        h_ = (a /w) /1000; w_ = (a /h) /1000  # Derive h and w from a for diagnostic purposes so that strong deviations of a are visible
+        #h_ = h /1000; w_ = w /1000      # Original dimensions of the connection area
+        h_ = (((a /w) -h)/2+h) /1000; w_ = (((a /h) -w)/2+w) /1000  # Derive h and w from a for diagnostic purposes so that strong deviations of a are visible
         # The BCB has a convention for the geometry dimensions of elements: smaller axis = thickness/height, larger axis = width
         # But h and w can be swapped depending on the calculated thresholds, if that's the case then x = 1
         if x == 1: w_, h_ = h_, w_  # Swap items if needed
