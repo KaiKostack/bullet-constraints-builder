@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.22 #
+# Bullet Constraints Builder v2.23 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -214,7 +214,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 2, 2),
+    "version": (2, 2, 3),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -3377,7 +3377,7 @@ def createEmptyObjs(scene, constCnt):
     ### Create first object
     objConst = bpy.data.objects.new('Constraint', None)
     bpy.context.scene.objects.link(objConst)
-    objConst.empty_draw_type = 'SPHERE'
+    objConst.empty_draw_type = 'CUBE'
     bpy.context.scene.objects.active = objConst
     bpy.ops.rigidbody.constraint_add()
 
@@ -3529,14 +3529,13 @@ def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsConsts, con
         sys.stdout.write('\r' +"%d" %k)
         # Update progress bar
         bpy.context.window_manager.progress_update(k /len(emptyObjs))
-                
+
         l = constsConnect[k]
         if not asciiExport:
             objConst = emptyObjs[k]
             objConst.location = connectsLoc[l]
             objConst.rigid_body_constraint.object1 = objs[connectsPair[l][0]]
             objConst.rigid_body_constraint.object2 = objs[connectsPair[l][1]]
-            objConst.empty_draw_size = emptyDrawSize
         else:
             export(exData, loc=connectsLoc[l].to_tuple(), obj1=objs[connectsPair[l][0]].name, obj2=objs[connectsPair[l][1]].name)
               
@@ -3632,22 +3631,35 @@ def export(exData, idx=None, objC=None, name=None, loc=None, obj1=None, obj2=Non
                 
 ########################################
 
-def setConstParams(objConst, e=None,bt=None,ub=None,dc=None,ct=None,
+def setConstParams(objConst, a=None,h=None,w=None,x=None, e=None,bt=None,ub=None,dc=None,ct=None,
     ullx=None,ully=None,ullz=None, llxl=None,llxu=None,llyl=None,llyu=None,llzl=None,llzu=None,
     ulax=None,ulay=None,ulaz=None, laxl=None,laxu=None,layl=None,layu=None,lazl=None,lazu=None,
     usx=None,usy=None,usz=None, sdx=None,sdy=None,sdz=None, ssx=None,ssy=None,ssz=None):
 
-    # setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+    # setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
 
     constData = objConst.rigid_body_constraint
     
-    # e,bt,ub,dc,ct
+    # Draw size
+    #objConst.object.empty_draw_type = 'CUBE'  # This is set before duplication for performance reasons
+    #objConst.empty_draw_size = emptyDrawSize
+    if a != None:
+        objConst.empty_draw_size = .502  # Scale size slightly larger to make lines visible over solid elements
+        #h_ = h /1000; w_ = w /1000           # Original dimensions of the connection area
+        h_ = (a /w) /1000; w_ = (a /h) /1000  # Derive h and w from a for diagnostic purposes so that strong deviations of a are visible
+        # The BCB has a convention for the geometry dimensions of elements: smaller axis = thickness/height, larger axis = width
+        # But h and w can be swapped depending on the calculated thresholds, if that's the case then x = 1
+        if x == 1: w_, h_ = h_, w_  # Swap items if needed
+        objConst.scale = Vector((0, h_, w_))  # Scale the cube to the dimensions of the connection area
+
+    # s,e,bt,ub,dc,ct
     if e != None: constData.enabled = e
     if bt != None: constData.breaking_threshold = bt
     if ub != None: constData.use_breaking = ub
     if dc != None: constData.disable_collisions = dc
     if ct != None: constData.type = ct
 
+    # Limits Linear
     # ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu
     if ullx != None: constData.use_limit_lin_x = ullx
     if ully != None: constData.use_limit_lin_y = ully
@@ -3659,6 +3671,7 @@ def setConstParams(objConst, e=None,bt=None,ub=None,dc=None,ct=None,
     if llzl != None: constData.limit_lin_z_lower = llzl
     if llzu != None: constData.limit_lin_z_upper = llzu
 
+    # Limits Angular
     # ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu
     if ulax != None: constData.use_limit_ang_x = ulax
     if ulay != None: constData.use_limit_ang_y = ulay
@@ -3670,6 +3683,7 @@ def setConstParams(objConst, e=None,bt=None,ub=None,dc=None,ct=None,
     if lazl != None: constData.limit_ang_z_lower = lazl
     if lazu != None: constData.limit_ang_z_upper = lazu
 
+    # Spring
     # usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz
     if usx != None: constData.use_spring_x = usx
     if usy != None: constData.use_spring_y = usy
@@ -3726,6 +3740,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         h = geoHeight *1000
         w = geoWidth *1000
         s = geoSurfThick *1000
+        x = 0   # Flag if h and w are swapped (to be set later)
                 
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
@@ -3897,7 +3912,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            # setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            # setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='FIXED')
             if asciiExport:
                 export(exData, idx=cIdx, objC=objConst, attr=1)
@@ -3912,7 +3927,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='POINT')
             if asciiExport:
                 export(exData, idx=cIdx, objC=objConst, attr=1)
@@ -3929,7 +3944,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='POINT')
             if asciiExport:
                 export(exData, idx=cIdx, objC=objConst, attr=1)
@@ -3942,7 +3957,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprB
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='FIXED')
             if asciiExport:
                 export(exData, idx=cIdx, objC=objConst, attr=1)
@@ -3958,14 +3973,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprC
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock all directions for the compressive force
                 ### I left Y and Z unlocked because for this CT we have no separate breaking threshold for lateral force, the tensile constraint and its breaking threshold should apply for now
                 ### Also rotational forces should only be carried by the tensile constraint
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation to that vector
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -3983,12 +3998,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprT
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock all directions for the tensile force
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4006,12 +4021,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprT
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions for shearing force
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4027,12 +4042,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprS
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions for bending force
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4040,7 +4055,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             
-        ### 3x GENERIC; Tensile constraint (1D) breaking thresholds
+        ### 3x GENERIC; Tensile constraint (1D) breaking threshold
         if CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18:
             ### Tensile constraint (1D)
             correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
@@ -4050,12 +4065,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprT
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock direction for tensile force
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4063,7 +4078,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
-        ### 3x GENERIC; Tensile constraint (1D) breaking thresholds
+        ### 3x GENERIC; Shearing constraint (2D), bending constraint (3D) breaking thresholds
         if CT == 6 or CT == 11 or CT == 12:
             ### Shearing constraint (2D)
             correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
@@ -4073,12 +4088,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprS
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions for shearing force
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ct='GENERIC', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4094,12 +4109,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprB
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions for bending force
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4124,7 +4139,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
@@ -4142,9 +4157,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 angSorted.sort(reverse=False)
                 constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 2:   setConstParams(objConst, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
                 elif constAxisToLock == 3: setConstParams(objConst, ct='GENERIC', ully=0,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                if constAxisToLock == 3: x = 1
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
@@ -4159,12 +4175,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if brkThresExprS9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
                 elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ully=0,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation like above
@@ -4191,7 +4207,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
@@ -4209,9 +4225,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 angSorted.sort(reverse=False)
                 constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 2:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 3: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 3: x = 1
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
@@ -4226,12 +4243,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if brkThresExprB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
@@ -4258,7 +4275,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
@@ -4276,9 +4293,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 angSorted.sort(reverse=False)
                 constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 2:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 3: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 3: x = 1
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
@@ -4293,12 +4311,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if brkThresExprB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
@@ -4329,12 +4347,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 #            value /= 2  # Use half of the smaller shearing breaking thresholds for torsion
 
             brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
-            ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+            ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
@@ -4362,7 +4380,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -4374,14 +4392,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     vec.rotate(objConst.rotation_quaternion)
                     objConst.location = centerLoc +vec
                     ### Enable linear spring
-                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, ct='GENERIC_SPRING', usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                 if CT != 7:
                     # Disable springs on start (requires plastic activation during simulation)
-                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, e=0)
                 if asciiExport:
                     export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
@@ -4406,7 +4424,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -4419,14 +4437,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     vec.rotate(objConst.rotation_quaternion)
                     objConst.location = centerLoc +vec
                     ### Enable linear spring
-                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, ct='GENERIC_SPRING', usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                 if CT != 8:
                     # Disable springs on start (requires plastic activation during simulation)
-                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, e=0)
                 if asciiExport:
                     export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
@@ -4459,7 +4477,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, bt=brkThres1, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -4471,10 +4489,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     vec.rotate(objConst.rotation_quaternion)
                     objConst.location = centerLoc +vec
                     ### Lock direction for compressive force and enable linear spring
-                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4491,7 +4509,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, bt=brkThres2, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -4503,10 +4521,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     vec.rotate(objConst.rotation_quaternion)
                     objConst.location = centerLoc +vec
                     ### Lock direction for tensile force and enable linear spring
-                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4523,7 +4541,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, bt=brkThres3, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -4535,10 +4553,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     vec.rotate(objConst.rotation_quaternion)
                     objConst.location = centerLoc +vec
                     ### Lock directions for shearing force and enable linear spring
-                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4569,7 +4587,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, bt=brkThres1, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -4582,10 +4600,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     vec.rotate(objConst.rotation_quaternion)
                     objConst.location = centerLoc +vec
                     ### Lock direction for compressive force and enable linear spring
-                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4602,7 +4620,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, bt=brkThres2, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -4615,10 +4633,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     vec.rotate(objConst.rotation_quaternion)
                     objConst.location = centerLoc +vec
                     ### Lock direction for tensile force and enable linear spring
-                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4635,7 +4653,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, bt=brkThres3, ub=constraintUseBreaking)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
@@ -4648,17 +4666,24 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     vec.rotate(objConst.rotation_quaternion)
                     objConst.location = centerLoc +vec
                     ### Lock directions for shearing force and enable linear spring
-                    ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                    ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, usx=1,usy=1,usz=1, sdx=1,sdy=1,sdz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 setConstParams(objConst, ssx=springStiff,ssy=springStiff,ssz=springStiff)
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
                     export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
-           
+
+        if not asciiExport:
+            ### Add settings for drawing
+            for cIdx in consts:
+                objConst = emptyObjs[cIdx]
+                ###### setConstParams(objConst, a,h,w,x, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
+                setConstParams(objConst, a=a,h=h,w=w,x=x)
+
     if asciiExport:
         # Remove constraint settings from temporary empty object
         bpy.ops.rigidbody.constraint_remove()
