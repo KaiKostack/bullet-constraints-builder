@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.24 #
+# Bullet Constraints Builder v2.25 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -214,7 +214,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 2, 4),
+    "version": (2, 2, 5),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -4148,9 +4148,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 angY = vecAxis.angle(vec, 0)
                 vec = Vector((0, 0, 1)) *matInv
                 angZ = vecAxis.angle(vec, 0)
-                angSorted = [[pi2 -abs(angY -pi2), 2], [pi2 -abs(angZ -pi2), 3]]
-                angSorted.sort(reverse=False)
-                constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
+                if angY != angZ:
+                    angSorted = [[pi2 -abs(angY -pi2), 2], [pi2 -abs(angZ -pi2), 3]]
+                    angSorted.sort(reverse=False)
+                    constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
+                else:  # Gimbal lock special case when normal X axis aligns to global Z axis, not nice but will do for now
+                    dirEul = dirVec.to_track_quat('X','Z').to_euler()
+                    if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
+                    else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 2:   setConstParams(objConst, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
@@ -4215,9 +4220,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 angY = vecAxis.angle(vec, 0)
                 vec = Vector((0, 0, 1)) *matInv
                 angZ = vecAxis.angle(vec, 0)
-                angSorted = [[pi2 -abs(angY -pi2), 2], [pi2 -abs(angZ -pi2), 3]]
-                angSorted.sort(reverse=False)
-                constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
+                if angY != angZ:
+                    angSorted = [[pi2 -abs(angY -pi2), 2], [pi2 -abs(angZ -pi2), 3]]
+                    angSorted.sort(reverse=False)
+                    constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
+                else:  # Gimbal lock special case when normal X axis aligns to global Z axis, not nice but will do for now
+                    dirEul = dirVec.to_track_quat('X','Z').to_euler()
+                    if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
+                    else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 2:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
@@ -4282,9 +4292,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 angY = vecAxis.angle(vec, 0)
                 vec = Vector((0, 0, 1)) *matInv
                 angZ = vecAxis.angle(vec, 0)
-                angSorted = [[pi2 -abs(angY -pi2), 2], [pi2 -abs(angZ -pi2), 3]]
-                angSorted.sort(reverse=False)
-                constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
+                if angY != angZ:
+                    angSorted = [[pi2 -abs(angY -pi2), 2], [pi2 -abs(angZ -pi2), 3]]
+                    angSorted.sort(reverse=False)
+                    constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
+                else:  # Gimbal lock special case when normal X axis aligns to global Z axis, not nice but will do for now
+                    dirEul = dirVec.to_track_quat('X','Z').to_euler()
+                    if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
+                    else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                 if constAxisToLock == 2:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
