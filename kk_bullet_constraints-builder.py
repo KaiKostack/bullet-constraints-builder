@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.26 #
+# Bullet Constraints Builder v2.27 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -214,7 +214,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 2, 6),
+    "version": (2, 2, 7),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -3642,7 +3642,6 @@ def setConstParams(objConst, axs=None,e=None,bt=None,ub=None,dc=None,ct=None,
     
     # Draw size
     #objConst.object.empty_draw_type = 'CUBE'  # This is set before duplication for performance reasons
-    #objConst.empty_draw_size = emptyDrawSize
     if axs != None:
         objConst.empty_draw_size = .502  # Scale size slightly larger to make lines visible over solid elements
         objConst.scale = axs  # Scale the cube to the dimensions of the connection area
@@ -4685,28 +4684,33 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
 
         if not asciiExport:
-            ### Calculate and add settings for drawing
-            yt = 0; zt = 0
-            for cIdx in consts:
-                constData = emptyObjs[cIdx].rigid_body_constraint
-                if constData.type == 'GENERIC' or constData.type == 'GENERIC_SPRING':
-                    # Use shearing thresholds as base for empty scaling
-                    if constData.use_limit_lin_y: yl = constData.breaking_threshold
-                    if constData.use_limit_lin_z: zl = constData.breaking_threshold
-                    # Use bending thresholds as base for empty scaling (reminder: axis swapped)
-                    if constData.use_limit_ang_y: za = constData.breaking_threshold
-                    if constData.use_limit_ang_z: ya = constData.breaking_threshold
-            if yl > 0 and zl > 0: aspect = yl /zl
-            else: aspect = 1
-            if aspect == 1:
-                if ya > 0 and za > 0: aspect = ya /za
+            if CT > 3:
+                ### Calculate settings for drawing of directional constraints
+                yl = 0; zl = 0; ya = 0; za = 0
+                for cIdx in consts:
+                    constData = emptyObjs[cIdx].rigid_body_constraint
+                    if constData.type == 'GENERIC' or constData.type == 'GENERIC_SPRING':
+                        # Use shearing thresholds as base for empty scaling
+                        if constData.use_limit_lin_y: yl = constData.breaking_threshold
+                        if constData.use_limit_lin_z: zl = constData.breaking_threshold
+                        # Use bending thresholds as base for empty scaling (reminder: axis swapped)
+                        if constData.use_limit_ang_y: za = constData.breaking_threshold
+                        if constData.use_limit_ang_z: ya = constData.breaking_threshold
+                if yl > 0 and zl > 0: aspect = yl /zl
                 else: aspect = 1
-            if aspect < 1: aspect = (h /w)
-            if aspect > 1: aspect = (w /h)
-            #if aspect >= 1: aspect = (w /h)  # Alternative for CTs without differentiated shearing/bending axis: can lead to flipped orientations
-            side = (a /aspect)**.5  # Calculate original dimensions from actual contact area
-            side /= 1000  # mm to m
-            axs = Vector((0, side *aspect, side))
+                if aspect == 1:
+                    if ya > 0 and za > 0: aspect = ya /za
+                    else: aspect = 1
+                if aspect < 1: aspect = (h /w)
+                if aspect > 1: aspect = (w /h)
+                #if aspect >= 1: aspect = (w /h)  # Alternative for CTs without differentiated shearing/bending axis: can lead to flipped orientations
+                side = (a /aspect)**.5  # Calculate original dimensions from actual contact area
+                side /= 1000  # mm to m
+                axs = Vector((0, side *aspect, side))
+            else:
+                # Use standard size for drawing of non-directional constraints
+                axs = Vector((emptyDrawSize, emptyDrawSize, emptyDrawSize))
+            # Add settings for drawing    
             for cIdx in consts:
                 objConst = emptyObjs[cIdx]
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
