@@ -3663,17 +3663,23 @@ def build_fm():
     print()
     print("Creating fracture modifier mesh from BCB data...")
     time_start = time.time()
-    # Deselect all objects
-    bpy.ops.object.select_all(action='DESELECT')
+
+    scene = bpy.context.scene
 
     s = bpy.data.texts["BCB_export.txt"].as_string()
     o = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
 
     # Create object to use the fracture modifier on
-    bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), layers=(False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False))
+    bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0))
     ob = bpy.context.scene.objects.active
     ob.name = "BCB_export"
     ob.data.name = "BCB_export"
+
+    layersBak = [int(q) for q in scene.layers]   # Backup scene layer settings
+    scene.layers = [True for q in scene.layers]  # Activate all scene layers
+
+    # Deselect all objects
+    bpy.ops.object.select_all(action='DESELECT')
 
     # Add fracture modifier
     bpy.ops.object.modifier_add(type='FRACTURE')
@@ -3847,6 +3853,8 @@ def build_fm():
         bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
         obParent.select = 0
         bpy.context.scene.objects.active = ob
+
+    scene.layers = [bool(q) for q in layersBak]  # Revert scene layer settings from backup
 
     print('-- Time total: %0.2f s' %(time.time()-time_start))
     print()
