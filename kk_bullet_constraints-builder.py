@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.28 #
+# Bullet Constraints Builder v2.29 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -214,7 +214,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 2, 8),
+    "version": (2, 2, 9),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1895,7 +1895,10 @@ class bcb_panel(bpy.types.Panel):
         box.prop(props, "prop_submenu_advancedG", text="Advanced Global Settings", icon=self.icon(props.prop_submenu_advancedG), emboss = False)
 
         if props.prop_submenu_advancedG:
-            row = box.row(); row.operator("bcb.export_ascii", icon="EXPORT")
+            row = box.row()
+            split = row.split(percentage=.50, align=False)
+            split.operator("bcb.export_ascii", icon="EXPORT")
+            split.operator("bcb.export_ascii_fm", icon="EXPORT")
             box.separator()
 
             row = box.row()
@@ -2293,7 +2296,7 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
 
 class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
     bl_idname = "bcb.export_ascii"
-    bl_label = "Build & Export to Text File"
+    bl_label = "Export to Text"
     bl_description = "Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment)."
     def execute(self, context):
         global asciiExport
@@ -2301,6 +2304,27 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
         ###### Execute main building process from scratch
         build()
         asciiExport = 0
+        return{'FINISHED'} 
+
+########################################
+
+class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
+    bl_idname = "bcb.export_ascii_fm"
+    bl_label = "Export to FM"
+    bl_description = "Exports all constraint data to the Fracture Modifier (special Blender version required). WARNING: This feature is experimental and results of the FM can vary, use with care!"
+    def execute(self, context):
+        scene = bpy.context.scene
+        global asciiExport
+        asciiExport = 1
+        ###### Execute main building process from scratch
+        build()
+        asciiExport = 0
+        build_fm()
+        bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"])
+        ### Free previous bake data
+        contextFix = bpy.context.copy()
+        contextFix['point_cache'] = scene.rigidbody_world.point_cache
+        bpy.ops.ptcache.free_bake(contextFix)
         return{'FINISHED'} 
 
 ########################################
@@ -2514,6 +2538,7 @@ classes = [ \
     OBJECT_OT_bcb_build,
     OBJECT_OT_bcb_update,
     OBJECT_OT_bcb_export_ascii,
+    OBJECT_OT_bcb_export_ascii_fm,
     OBJECT_OT_bcb_bake,
     OBJECT_OT_bcb_add,
     OBJECT_OT_bcb_del,
@@ -3629,7 +3654,206 @@ def export(exData, idx=None, objC=None, name=None, loc=None, obj1=None, obj2=Non
     #     If spring constraint: It will be detached
 
     return exData
+
+########################################
+
+def build_fm():
+
+    ### Exports all constraint data to the Fracture Modifier (special Blender version required).
+    print()
+    print("Creating fracture modifier mesh from BCB data...")
+    time_start = time.time()
+    # Deselect all objects
+    bpy.ops.object.select_all(action='DESELECT')
+
+    s = bpy.data.texts["BCB_export.txt"].as_string()
+    o = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
+
+    # Create object to use the fracture modifier on
+    bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), layers=(False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False))
+    ob = bpy.context.scene.objects.active
+    ob.name = "BCB_export"
+    ob.data.name = "BCB_export"
+
+    # Add fracture modifier
+    bpy.ops.object.modifier_add(type='FRACTURE')
+    ob.modifiers["Fracture"].fracture_mode = 'EXTERNAL'
+    md = ob.modifiers["Fracture"]
+
+    obParent = None
+    count = len(o)
+    indexmap = dict()
+    j = 0
+    for i in range(count):
+        ob1 = o[i][2]
+        ob2 = o[i][3]
+        if not ob1 in indexmap.keys():
+            try: obb1 = bpy.context.scene.objects[ob1]
+            except: pass
+            else:
+                indexmap[ob1] = md.mesh_islands.new(obb1)
+                #indexmap[ob1].rigidbody.use_margin = True
+                #if obb1.rigid_body.type == 'PASSIVE':
+                #    indexmap[ob1].rigidbody.kinematic=True
+                #    indexmap[ob1].rigidbody.type='ACTIVE'
+                if obParent == None and obb1.parent: obParent = obb1.parent
+                obb1.select = True
                 
+        if not ob2 in indexmap.keys():
+            try: obb2 = bpy.context.scene.objects[ob2]
+            except: pass
+            else:
+                indexmap[ob2] = md.mesh_islands.new(obb2)
+                #indexmap[ob2].rigidbody.use_margin = True
+                #if obb2.rigid_body.type == 'PASSIVE':
+                #    indexmap[ob2].rigidbody.kinematic=True
+                #    indexmap[ob2].rigidbody.type='ACTIVE'
+                if obParent == None and obb2.parent: obParent = obb2.parent
+                obb2.select = True
+
+    print('Time mesh islands: %0.2f s' %(time.time()-time_start))
+    time_const = time.time()
+
+    plastic_on = 0
+    plastic_off = 0
+    noplastic = 0
+    for i in range(count):
+        #print("CONSTRAINT", i)
+        #print(o[i])
+        prop_index = 0
+        j = 0
+        name = o[i][j]
+        j += 1
+        
+        # 0 - empty.location
+        pos = mathutils.Vector(o[i][j])
+        j += 1
+        
+        # 1 - obj1.name
+        # 2 - obj2.name
+        ob1 = o[i][j]
+        ob2 = o[i][j+1]
+        j += 2
+        
+        # 3 - [ ["TOLERANCE", tol1dist, tol1rot] ]
+        if o[i][j] is not None and len(o[i][j]) == 3 and o[i][j][0] in {"TOLERANCE"}:
+            breaking_distance = o[i][j][1]
+            breaking_angle = o[i][j][2]
+            #j += 1
+        else:
+            breaking_distance = -1
+            breaking_angle = -1
+        j += 1
+        
+        # 4 - [ ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot] ]
+        if o[i][j] is not None and len(o[i][j]) == 3 and o[i][j][0] in {"PLASTIC", "PLASTIC_OFF"}: #ugh, variable length ?
+            plastic_distance = o[i][j][1]
+            plastic_angle = o[i][j][2]
+            
+            if o[i][j][0] == "PLASTIC": 
+                plastic = True
+                plastic_on += 1
+            else:
+                plastic = False
+                plastic_off += 1
+            #j += 1
+        else:
+            plastic_distance = -1
+            plastic_angle = -1
+            plastic = False
+            noplastic += 1
+        j += 1    
+        
+        # 5 - [empty.rotation_mode]
+        # 6 - [empty.rotation_quaternion]
+        if o[i][j] == "QUATERNION": # euler ?
+            rot = mathutils.Quaternion(o[i][j+1])
+            #j += 2
+        else:
+            rot = mathutils.Quaternion((1.0, 0.0, 0.0, 0.0))
+        j += 2
+                
+        # 7 - empty.rigid_body_constraint (dictionary of attributes)
+        props = o[i][j]
+        prop_index = j
+        
+        #peek the type...
+        type = props["type"]
+        if type != "GENERIC_SPRING":
+            noplastic -= 1
+        
+        #ok first check whether the mi exists
+        #via is object in group (else its double)
+        try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], type)
+        except: pass
+        else:
+            con.location = pos # ob.matrix_world *pos
+            #rot.rotate(ob.matrix_world)
+            con.rotation = rot
+            con.plastic = plastic
+            con.breaking_distance = breaking_distance
+            con.breaking_angle = breaking_angle
+            con.plastic_distance = plastic_distance
+            con.plastic_angle = plastic_angle
+            con.name = name
+               
+            for p in props.items():
+                if p[0] not in {"name","type", "object1", "object2"}:
+                    #print("Set: ", p[0], p[1])
+                    setattr(con, p[0], p[1])
+            
+            #con.id = props["name"]
+            #if con.type == 'GENERIC_SPRING':
+            #    con.spring_stiffness_x = 1000000
+            #    con.spring_stiffness_y = 1000000
+            #    con.spring_stiffness_z = 1000000
+            #con.enabled = True
+            
+            #con.breaking_threshold = con.breaking_threshold * 150.0 / 200.0 
+            #con.breaking_angle = math.radians(con.breaking_angle)
+            #con.plastic_angle = math.radians(con.plastic_angle)
+            #con.plastic_angle *= 0.5
+            #con.breaking_angle *= 0.5
+            #con.breaking_threshold *= 0.5
+            #con.breaking_angle = math.radians(5.0)
+            #con.breaking_distance = 0.1
+            #con.plastic = False
+            
+    #        ind = prop_index+1
+    #        if len(o[i][ind]) == 3 and o[i][ind][0] == "BREAK":
+    #            con.breaking_distance = o[i][ind][1] # this is normed to 0...1, odd... why not absolute ?
+    #            con.breaking_angle = o[i][ind][2] * math.pi
+
+    #clumsy, but could work: disable plastic globally, when no plastic has been found at all
+    #if plastic_on == 0 and plastic_off == 0:
+    #    for i in range(count):
+    #        md.mesh_constraints[i].plastic_angle = -1
+    #        md.mesh_constraints[i].plastic_distance = -1
+    
+    print('Time constraints: %0.2f s' %(time.time()-time_const))
+    
+    #bpy.ops.object.fracture_refresh()
+    bpy.context.scene.objects.active = None
+    ob.select = False
+    
+    bpy.ops.object.delete(use_global=True)
+
+    # Apply parent if one has been found earlier
+    if obParent != None:
+        ob.select = 1
+        obParent.select = 1
+        bpy.context.scene.objects.active = obParent
+        print("Parenting", ob.name, "to", obParent.name, "...")
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        obParent.select = 0
+        bpy.context.scene.objects.active = ob
+
+    print('-- Time total: %0.2f s' %(time.time()-time_start))
+    print()
+    print('Imported: %d Plastic ON,  %d Plastic OFF,  %d NOPLASTIC' % (plastic_on, plastic_off, noplastic))
+    print('Done.')
+    print()
+
 ########################################
 
 def setConstParams(objConst, axs=None,e=None,bt=None,ub=None,dc=None,ct=None,
