@@ -49,6 +49,7 @@ progrWeak = 0                # 0     | Enables progressive weakening of all brea
 progrWeakLimit = 10          # 10    | For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.
 progrWeakStartFact = 1       # 1     | Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a regular update.
 snapToAreaOrient = 1         # 1     | Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method).
+disableCollision = 1         # 1     | Disables collisions between connected elements until breach.
 
 ### Vars not directly accessible from GUI
 asciiExport = 0              # 0     | Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
@@ -371,6 +372,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_progrWeakLimit"] = progrWeakLimit
     scene["bcb_prop_progrWeakStartFact"] = progrWeakStartFact
     scene["bcb_prop_snapToAreaOrient"] = snapToAreaOrient
+    scene["bcb_prop_disableCollision"] = disableCollision
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     #scene["bcb_prop_elemGrps"] = elemGrps
@@ -470,6 +472,10 @@ def getConfigDataFromScene(scene):
     if "bcb_prop_snapToAreaOrient" in scene.keys():
         global snapToAreaOrient
         try: snapToAreaOrient = props.prop_snapToAreaOrient = scene["bcb_prop_snapToAreaOrient"]
+        except: pass
+    if "bcb_prop_disableCollision" in scene.keys():
+        global disableCollision
+        try: disableCollision = props.prop_disableCollision = scene["bcb_prop_disableCollision"]
         except: pass
 
     if len(warning): return warning
@@ -1704,6 +1710,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_progrWeakLimit = int_(name="Progr. Weak. Limit", default=progrWeakLimit, min=0, max=10000, description="For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.")
     prop_progrWeakStartFact = float_(name="Start Weakness", default=progrWeakStartFact, min=0.0, max=1.0, description="Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update.")
     prop_snapToAreaOrient = bool_(name="90° Axis Snapping for Const. Orient.", default=snapToAreaOrient, description="Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method).")
+    prop_disableCollision = bool_(name="Disable Collisions", default=disableCollision, description="Disables collisions between connected elements until breach.")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
@@ -1791,6 +1798,7 @@ class bcb_props(bpy.types.PropertyGroup):
         global progrWeakLimit; progrWeakLimit = self.prop_progrWeakLimit
         global progrWeakStartFact; progrWeakStartFact = self.prop_progrWeakStartFact
         global snapToAreaOrient; snapToAreaOrient = self.prop_snapToAreaOrient
+        global disableCollision; disableCollision = self.prop_disableCollision
 
         global elemGrps
         for i in range(len(elemGrps)):
@@ -1901,11 +1909,13 @@ class bcb_panel(bpy.types.Panel):
             split.operator("bcb.export_ascii_fm", icon="EXPORT")
             box.separator()
 
+            row = box.row(); row.prop(props, "prop_stepsPerSecond")
+
             row = box.row()
             split = row.split(percentage=.50, align=False)
             split.prop(props, "prop_constraintUseBreaking")
-            split.prop(props, "prop_stepsPerSecond")
-        
+            split.prop(props, "prop_disableCollision")
+       
             row = box.row()
             split = row.split(percentage=.50, align=False)
             split.prop(props, "prop_automaticMode")
@@ -1942,7 +1952,7 @@ class bcb_panel(bpy.types.Panel):
             row = box.row(); row.prop(props, "prop_progrWeakLimit")
             if props.prop_progrWeak == 0: row.enabled = 0
             row = box.row(); row.prop(props, "prop_progrWeakStartFact")
-        
+            
         ###### Element groups box
         
         layout.separator()
@@ -4138,9 +4148,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprC
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             # setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='FIXED')
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision, ct='FIXED')
             if asciiExport:
                 export(exData, idx=cIdx, objC=objConst, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
@@ -4153,9 +4163,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprC
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='POINT')
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision, ct='POINT')
             if asciiExport:
                 export(exData, idx=cIdx, objC=objConst, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
@@ -4170,9 +4180,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprC
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='POINT')
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision, ct='POINT')
             if asciiExport:
                 export(exData, idx=cIdx, objC=objConst, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
@@ -4183,9 +4193,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprB
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, ct='FIXED')
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision, ct='FIXED')
             if asciiExport:
                 export(exData, idx=cIdx, objC=objConst, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
@@ -4199,9 +4209,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprC
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock all directions for the compressive force
@@ -4224,9 +4234,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprT
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock all directions for the tensile force
@@ -4247,9 +4257,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprT
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions for shearing force
@@ -4270,7 +4280,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             value = brkThresExprS
             brkThres = value /scene.rigidbody_world.steps_per_second *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions for bending force
@@ -4291,9 +4301,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprT
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock direction for tensile force
@@ -4314,9 +4324,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresExprS
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions for shearing force
@@ -4337,7 +4347,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             value = brkThresExprB
             brkThres = value /scene.rigidbody_world.steps_per_second *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions for bending force
@@ -4365,9 +4375,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
@@ -4405,9 +4415,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             if brkThresExprS9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
-                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions accordingly to axis
@@ -4439,7 +4449,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             brkThres = value /scene.rigidbody_world.steps_per_second *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
@@ -4479,7 +4489,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = value /scene.rigidbody_world.steps_per_second *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions accordingly to axis
@@ -4509,9 +4519,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
@@ -4549,9 +4559,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             if brkThresExprB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
-                brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+                brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions accordingly to axis
@@ -4587,7 +4597,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 
             brkThres = value /scene.rigidbody_world.steps_per_second *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+            setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
             if qUpdateComplete:
                 objConst.rotation_mode = 'QUATERNION'
                 ### Lock directions accordingly to axis
@@ -4608,7 +4618,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
             value = brkThresExprC
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ### Loop through all constraints of this connection
             for i in range(3):
                 cIdx = consts[cInc]; cInc += 1
@@ -4620,7 +4630,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4652,7 +4662,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
             value = brkThresExprC
-            brkThres = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ### Loop through all constraints of this connection
             for i in range(4):
                 cIdx = consts[cInc]; cInc += 1
@@ -4664,7 +4674,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking)
+                setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4699,11 +4709,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
             value = brkThresExprC
-            brkThres1 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres1 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             value = brkThresExprT
-            brkThres2 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres2 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             value = brkThresExprS
-            brkThres3 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres3 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             # Loop through all constraints of this connection
             for j in range(3):
 
@@ -4717,7 +4727,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-                setConstParams(objConst, bt=brkThres1, ub=constraintUseBreaking)
+                setConstParams(objConst, bt=brkThres1, ub=constraintUseBreaking, dc=disableCollision)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4749,7 +4759,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-                setConstParams(objConst, bt=brkThres2, ub=constraintUseBreaking)
+                setConstParams(objConst, bt=brkThres2, ub=constraintUseBreaking, dc=disableCollision)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4781,7 +4791,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-                setConstParams(objConst, bt=brkThres3, ub=constraintUseBreaking)
+                setConstParams(objConst, bt=brkThres3, ub=constraintUseBreaking, dc=disableCollision)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4809,11 +4819,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
             value = brkThresExprC
-            brkThres1 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres1 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             value = brkThresExprT
-            brkThres2 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres2 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             value = brkThresExprS
-            brkThres3 = ((value /scene.rigidbody_world.steps_per_second) *scene.rigidbody_world.time_scale) *correction
+            brkThres3 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             # Loop through all constraints of this connection
             for j in range(4):
 
@@ -4827,7 +4837,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-                setConstParams(objConst, bt=brkThres1, ub=constraintUseBreaking)
+                setConstParams(objConst, bt=brkThres1, ub=constraintUseBreaking, dc=disableCollision)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4860,7 +4870,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-                setConstParams(objConst, bt=brkThres2, ub=constraintUseBreaking)
+                setConstParams(objConst, bt=brkThres2, ub=constraintUseBreaking, dc=disableCollision)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
@@ -4893,7 +4903,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
                     # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
                 ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
-                setConstParams(objConst, bt=brkThres3, ub=constraintUseBreaking)
+                setConstParams(objConst, bt=brkThres3, ub=constraintUseBreaking, dc=disableCollision)
                 if qUpdateComplete:
                     objConst.rotation_mode = 'QUATERNION'
                     objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
