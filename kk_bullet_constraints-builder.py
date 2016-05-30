@@ -984,10 +984,10 @@ def monitor_initBuffers(scene):
               elemGrp = elemGrpA
         else: elemGrp = elemGrpB
         springStiff = elemGrps[elemGrp][EGSidxSStf]
-        tol1dist = elemGrps[elemGrp][EGSidxTl1D]
-        tol1rot = elemGrps[elemGrp][EGSidxTl1R]
-        tol2dist = elemGrps[elemGrp][EGSidxTl2D]
-        tol2rot = elemGrps[elemGrp][EGSidxTl2R]
+        tol1dist = elemGrps[elemGrp][EGSidxTl1D] *scene.rigidbody_world.time_scale
+        tol1rot = elemGrps[elemGrp][EGSidxTl1R] *scene.rigidbody_world.time_scale
+        tol2dist = elemGrps[elemGrp][EGSidxTl2D] *scene.rigidbody_world.time_scale
+        tol2rot = elemGrps[elemGrp][EGSidxTl2R] *scene.rigidbody_world.time_scale
         
         # Calculate distance between both elements of the connection
         distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
@@ -4061,10 +4061,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == CT: qUpdateComplete = 0
             else: objConst0['ConnectType'] = CT; qUpdateComplete = 1
         else:
-            tol1dist = elemGrps[elemGrp][EGSidxTl1D]
-            tol1rot = elemGrps[elemGrp][EGSidxTl1R]
-            tol2dist = elemGrps[elemGrp][EGSidxTl2D]
-            tol2rot = elemGrps[elemGrp][EGSidxTl2R]
+            tol1dist = elemGrps[elemGrp][EGSidxTl1D] *scene.rigidbody_world.time_scale
+            tol1rot = elemGrps[elemGrp][EGSidxTl1R] *scene.rigidbody_world.time_scale
+            tol2dist = elemGrps[elemGrp][EGSidxTl2D] *scene.rigidbody_world.time_scale
+            tol2rot = elemGrps[elemGrp][EGSidxTl2R] *scene.rigidbody_world.time_scale
 
             objConst0 = objConst
             qUpdateComplete = 1
