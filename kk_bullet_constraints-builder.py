@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.27 #
+# Bullet Constraints Builder v2.28 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -57,11 +57,11 @@ asciiExport = 0              # 0     | Exports all constraint data to an ASCII t
 elemGrps = [
 # 0          1    2           3        4   5       6         7         8      9         10     11      12   13   14   15    16   17    18     19              20
 # Name       RVP  Mat.preset  Density  CT  BTC     BTT       BTS       BTS90  BTB       BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.Assist.+Data  Cyl
-[ "",        1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.5*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
-[ "Columns", 1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.5*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
-[ "Walls",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.5*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
-[ "Slabs",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.5*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
-[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "2*a",    "0.3*a",  "",    "0.5*a",  "",    10**6,  .1,  .2,  .2,  1.6,  0,   .95,  0,     "None",         0 ]
+[ "",        1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.0*a",  "",    10**6,  .1,  .1,  .2,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
+[ "Columns", 1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.0*a",  "",    10**6,  .1,  .1,  .2,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
+[ "Walls",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.0*a",  "",    10**6,  .1,  .1,  .2,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
+[ "Slabs",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.0*a",  "",    10**6,  .1,  .1,  .2,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
+[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "2*a",    "0.3*a",  "",    "0.3*a",  "",    10**6,  .1,  .1,  .2,  1.6,  0,   .95,  0,     "None",         0 ]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 ### Magic numbers / column descriptions for above element group settings (in order from left to right):
@@ -140,7 +140,7 @@ formulaAssistants = [
  "Exp:N-":  "fc*((h*w)-rho*(h*w))+fs*rho*(h*w)",
  "Exp:N+":  "fs*rho*(h*w)",
  "Exp:V+/-":"(0.15*k*(100*rho*fc)**(1/3))*(h*w)",
- "Exp:M+/-":"(fc*(1-rho)/4+fs*rho*e1)*(h*w)*h/2/1000"
+ "Exp:M+/-":"(fc*(1-rho)+fs*rho*e1*4.5)*h*h*w/12/1000"
 }]
 # Material strength values (N/mm²):
 # fs = strength of steel
@@ -173,13 +173,13 @@ formulaAssistants = [
 # N-      ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
 # N+      ≈ fs * rho * (h*b)   
 # V+ = V- ≈ fs *y * e1*h²* 1,2  +  0.15/ k* ((100*rho*fc)^1/3) *h*b
-# M+ = M- ≈ (fc*(1-rho)+2*(fs*rho))*(h*w) /4*(e1*h)
+# M+ = M- ≈ (fc*(1-rho) + fs*rho*e1*4.5) *h*h*w/12 /1000 
 #
 # Formulas for walls & slabs:
 # N-      ≈ fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
 # N+      ≈ fs * rho * (h*b)   
 # V+ = V- ≈ 0.15/k* ((100*rho*fc)^1/3) *h*b
-# M+ = M- ≈ (fc*(1-rho)/4 + fs*rho*e1)*(h*w)*h /2 /1000
+# M+ = M- ≈ (fc*(1-rho) + fs*rho*e1*4.5) *h*h*w/12 /1000 
 
 ### Vars for developers
 debug = 0                            # 0     | Enables verbose console output for debugging purposes
@@ -214,7 +214,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 2, 7),
+    "version": (2, 2, 8),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1895,6 +1895,9 @@ class bcb_panel(bpy.types.Panel):
         box.prop(props, "prop_submenu_advancedG", text="Advanced Global Settings", icon=self.icon(props.prop_submenu_advancedG), emboss = False)
 
         if props.prop_submenu_advancedG:
+            row = box.row(); row.operator("bcb.export_ascii", icon="EXPORT")
+            box.separator()
+
             row = box.row()
             split = row.split(percentage=.50, align=False)
             split.prop(props, "prop_constraintUseBreaking")
@@ -1936,8 +1939,6 @@ class bcb_panel(bpy.types.Panel):
             row = box.row(); row.prop(props, "prop_progrWeakLimit")
             if props.prop_progrWeak == 0: row.enabled = 0
             row = box.row(); row.prop(props, "prop_progrWeakStartFact")
-            box.separator()
-            row = box.row(); row.operator("bcb.export_ascii", icon="EXPORT")
         
         ###### Element groups box
         
@@ -4029,7 +4030,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Bending constraint (3D)
-            correction = 1
+            correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
             cIdx = consts[cInc]; cInc += 1
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
@@ -4189,7 +4190,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             
         ### 2x GENERIC; Bending + torsion (1D) breaking thresholds
         if CT == 15 or CT == 17:
-            correction = 1
+            correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
 
             ### Bending with torsion constraint #1
             cIdx = consts[cInc]; cInc += 1
@@ -4261,7 +4262,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 
         ### 3x GENERIC; Bending (1D), torsion (1D) breaking thresholds
         if CT == 16 or CT == 18:
-            correction = 1
+            correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
 
             ### Bending without torsion constraint #1
             cIdx = consts[cInc]; cInc += 1
