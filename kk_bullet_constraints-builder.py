@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.29 #
+# Bullet Constraints Builder v2.30 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -50,19 +50,20 @@ progrWeakLimit = 10          # 10    | For progressive weakening: Limits the wea
 progrWeakStartFact = 1       # 1     | Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a regular update.
 snapToAreaOrient = 1         # 1     | Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method).
 disableCollision = 1         # 1     | Disables collisions between connected elements until breach.
+lowerBrkThresPriority = 1    # 1     | Gives priority to the weaker breaking threshold of two elements to be connected, if disabled the stronger value is used for the connection.
 
 ### Vars not directly accessible from GUI
 asciiExport = 0              # 0     | Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
 
 ### Customizable element groups list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
 elemGrps = [
-# 0          1    2           3        4   5       6         7         8      9         10     11      12   13   14   15    16   17    18     19              20
-# Name       RVP  Mat.preset  Density  CT  BTC     BTT       BTS       BTS90  BTB       BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.Assist.+Data  Cyl
-[ "",        1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.0*a",  "",    10**6,  .1,  .1,  .2,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
-[ "Columns", 1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "155*a",  "",    "1.0*a",  "",    10**6,  .1,  .1,  .2,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
-[ "Walls",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.0*a",  "",    10**6,  .1,  .1,  .2,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
-[ "Slabs",   1,   "Concrete", 2400,    6,  "35*a", "5.2*a",  "0.9*a",  "",    "1.0*a",  "",    10**6,  .1,  .1,  .2,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
-[ "Masonry", 1,   "Masonry",  1800,    6,  "10*a", "2*a",    "0.3*a",  "",    "0.3*a",  "",    10**6,  .1,  .1,  .2,  1.6,  0,   .95,  0,     "None",         0 ]
+# 0          1    2           3        4   5     6       7       8      9      10     11      12   13   14   15    16   17    18     19              20
+# Name       RVP  Mat.preset  Density  CT  BTC   BTT     BTS     BTS90  BTB    BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.Assist.+Data  Cyl
+[ "",        1,   "Concrete", 2400,    6,  "35", "5.2",  "155",  "",    "1.0", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
+[ "Columns", 1,   "Concrete", 2400,    6,  "35", "5.2",  "155",  "",    "1.0", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
+[ "Walls",   1,   "Concrete", 2400,    6,  "35", "5.2",  "0.9",  "",    "1.0", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
+[ "Slabs",   1,   "Concrete", 2400,    6,  "35", "5.2",  "0.9",  "",    "1.0", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
+[ "Masonry", 1,   "Masonry",  1800,    6,  "10", "2",    "0.3",  "",    "0.3", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 ### Magic numbers / column descriptions for above element group settings (in order from left to right):
@@ -215,7 +216,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 2, 9),
+    "version": (2, 3, 0),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -373,6 +374,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_progrWeakStartFact"] = progrWeakStartFact
     scene["bcb_prop_snapToAreaOrient"] = snapToAreaOrient
     scene["bcb_prop_disableCollision"] = disableCollision
+    scene["bcb_prop_lowerBrkThresPriority"] = lowerBrkThresPriority
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     #scene["bcb_prop_elemGrps"] = elemGrps
@@ -476,6 +478,10 @@ def getConfigDataFromScene(scene):
     if "bcb_prop_disableCollision" in scene.keys():
         global disableCollision
         try: disableCollision = props.prop_disableCollision = scene["bcb_prop_disableCollision"]
+        except: pass
+    if "bcb_prop_lowerBrkThresPriority" in scene.keys():
+        global lowerBrkThresPriority
+        try: lowerBrkThresPriority = props.prop_lowerBrkThresPriority = scene["bcb_prop_lowerBrkThresPriority"]
         except: pass
 
     if len(warning): return warning
@@ -798,7 +804,8 @@ def monitor_eventHandler(scene):
 
     ### Render part
     if qRenderAnimation:
-        # Need to disable handler while rendering, otherwise Blender crashes
+        # Need to disable handlers while rendering, otherwise Blender crashes
+        bpy.app.handlers.frame_change_pre.pop()
         bpy.app.handlers.frame_change_pre.pop()
         
         filepathOld = bpy.context.scene.render.filepath
@@ -817,8 +824,9 @@ def monitor_eventHandler(scene):
         
         bpy.context.scene.render.filepath = filepathOld
         
-        # Append handler again
+        # Append handlers again
         bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
+        bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
 
     #############################
     ### What to do on start frame
@@ -899,6 +907,10 @@ def monitor_eventHandler(scene):
                         obj["Layers_BCB"] = obj.layers
                         obj.layers = [False,False,False,False,False, False,False,False,False,False, False,False,False,False,False, False,False,False,False,True]
             
+################################################################################
+
+def stop_eventHandler(scene):
+
     ### Check if last frame is reached
     if scene.frame_current == scene.frame_end or os.path.isfile(commandStop):
         if bpy.context.screen.is_animation_playing:
@@ -1304,10 +1316,10 @@ def combineExpressions():
             
             ### Normalize result upon 1 mm^2, 'a' should be the only var left over
             a = 'a'
-            Nn = "(" +Nn +")/(h*w)*a"
-            Np = "(" +Np +")/(h*w)*a"
-            Vpn = "(" +Vpn +")/(h*w)*a"
-            Mpn = "(" +Mpn +")/(h*w)*a"
+            Nn = "(" +Nn +")/(h*w)"
+            Np = "(" +Np +")/(h*w)"
+            Vpn = "(" +Vpn +")/(h*w)"
+            Mpn = "(" +Mpn +")/(h*w)"
 
             ### Combine all available expressions with each other      
             symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
@@ -1409,10 +1421,10 @@ def combineExpressions():
             
             ### Normalize result upon 1 mm^2, 'a' should be the only var left over
             a = 'a'
-            Nn = "(" +Nn +")/(h*w)*a"
-            Np = "(" +Np +")/(h*w)*a"
-            Vpn = "(" +Vpn +")/(h*w)*a"
-            Mpn = "(" +Mpn +")/(h*w)*a"
+            Nn = "(" +Nn +")/(h*w)"
+            Np = "(" +Np +")/(h*w)"
+            Vpn = "(" +Vpn +")/(h*w)"
+            Mpn = "(" +Mpn +")/(h*w)"
 
             ### Combine all available expressions with each other      
             symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
@@ -1711,6 +1723,7 @@ class bcb_props(bpy.types.PropertyGroup):
     prop_progrWeakStartFact = float_(name="Start Weakness", default=progrWeakStartFact, min=0.0, max=1.0, description="Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update.")
     prop_snapToAreaOrient = bool_(name="90° Axis Snapping for Const. Orient.", default=snapToAreaOrient, description="Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method).")
     prop_disableCollision = bool_(name="Disable Collisions", default=disableCollision, description="Disables collisions between connected elements until breach.")
+    prop_lowerBrkThresPriority = bool_(name="Lower Strength Priority", default=lowerBrkThresPriority, description="Gives priority to the weaker breaking threshold of two elements to be connected, if disabled the stronger value is used for the connection.")
     
     for i in range(maxMenuElementGroupItems):
         if i < len(elemGrps): j = i
@@ -1718,12 +1731,12 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("prop_elemGrp_%d_EGSidxName" %i +" = string_(name='Grp. Name', default=elemGrps[j][EGSidxName], description='The name of the element group.')")
         exec("prop_elemGrp_%d_EGSidxCTyp" %i +" = int_(name='Connection Type', default=elemGrps[j][EGSidxCTyp], min=1, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
 
-        exec("prop_elemGrp_%d_EGSidxBTC" %i +" = string_(name='Compressive', default=elemGrps[j][EGSidxBTC], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_EGSidxBTT" %i +" = string_(name='Tensile', default=elemGrps[j][EGSidxBTT], description='Math expression for the material´s real world tensile breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_EGSidxBTS" %i +" = string_(name='Shear', default=elemGrps[j][EGSidxBTS], description='Math expression for the material´s real world shearing breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_EGSidxBTS9" %i +" = string_(name='Shear 90°', default=elemGrps[j][EGSidxBTS9], description='Math expression for the material´s real world shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_EGSidxBTB" %i +" = string_(name='Bend', default=elemGrps[j][EGSidxBTB], description='Math expression for the material´s real world bending breaking threshold in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
-        exec("prop_elemGrp_%d_EGSidxBTB9" %i +" = string_(name='Bend 90°', default=elemGrps[j][EGSidxBTB9], description='Math expression for the material´s real world bending breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties. (Example: `30*a´)')")
+        exec("prop_elemGrp_%d_EGSidxBTC" %i +" = string_(name='Compressive', default=elemGrps[j][EGSidxBTC], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties.')")
+        exec("prop_elemGrp_%d_EGSidxBTT" %i +" = string_(name='Tensile', default=elemGrps[j][EGSidxBTT], description='Math expression for the material´s real world tensile breaking threshold in N/mm^2 together with related geometry properties.')")
+        exec("prop_elemGrp_%d_EGSidxBTS" %i +" = string_(name='Shear', default=elemGrps[j][EGSidxBTS], description='Math expression for the material´s real world shearing breaking threshold in N/mm^2 together with related geometry properties.')")
+        exec("prop_elemGrp_%d_EGSidxBTS9" %i +" = string_(name='Shear 90°', default=elemGrps[j][EGSidxBTS9], description='Math expression for the material´s real world shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties.')")
+        exec("prop_elemGrp_%d_EGSidxBTB" %i +" = string_(name='Bend', default=elemGrps[j][EGSidxBTB], description='Math expression for the material´s real world bending breaking threshold in Nm/mm^2 together with related geometry properties.')")
+        exec("prop_elemGrp_%d_EGSidxBTB9" %i +" = string_(name='Bend 90°', default=elemGrps[j][EGSidxBTB9], description='Math expression for the material´s real world bending breaking threshold with h and w swapped (rotated by 90°) in Nm/mm^2 together with related geometry properties.')")
 
         exec("prop_elemGrp_%d_EGSidxSStf" %i +" = float_(name='Spring Stiffness', default=elemGrps[j][EGSidxSStf], min=0.0, max=10**20, description='Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.')")
         exec("prop_elemGrp_%d_EGSidxRqVP" %i +" = int_(name='Req. Vertex Pairs', default=elemGrps[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
@@ -1751,12 +1764,12 @@ class bcb_props(bpy.types.PropertyGroup):
             exec("self.prop_elemGrp_%d_EGSidxMatP" %i +" = elemGrps[i][EGSidxMatP]")
             exec("self.prop_elemGrp_%d_EGSidxDens" %i +" = elemGrps[i][EGSidxDens]")
             exec("self.prop_elemGrp_%d_EGSidxCTyp" %i +" = elemGrps[i][EGSidxCTyp]")
-            exec("self.prop_elemGrp_%d_EGSidxBTC" %i +" = elemGrps[i][EGSidxBTC]")
-            exec("self.prop_elemGrp_%d_EGSidxBTT" %i +" = elemGrps[i][EGSidxBTT]")
-            exec("self.prop_elemGrp_%d_EGSidxBTS" %i +" = elemGrps[i][EGSidxBTS]")
-            exec("self.prop_elemGrp_%d_EGSidxBTS9" %i +" = elemGrps[i][EGSidxBTS9]")
-            exec("self.prop_elemGrp_%d_EGSidxBTB" %i +" = elemGrps[i][EGSidxBTB]")
-            exec("self.prop_elemGrp_%d_EGSidxBTB9" %i +" = elemGrps[i][EGSidxBTB9]")
+            exec("self.prop_elemGrp_%d_EGSidxBTC" %i +" = elemGrps[i][EGSidxBTC].replace('*a','')")
+            exec("self.prop_elemGrp_%d_EGSidxBTT" %i +" = elemGrps[i][EGSidxBTT].replace('*a','')")
+            exec("self.prop_elemGrp_%d_EGSidxBTS" %i +" = elemGrps[i][EGSidxBTS].replace('*a','')")
+            exec("self.prop_elemGrp_%d_EGSidxBTS9" %i +" = elemGrps[i][EGSidxBTS9].replace('*a','')")
+            exec("self.prop_elemGrp_%d_EGSidxBTB" %i +" = elemGrps[i][EGSidxBTB].replace('*a','')")
+            exec("self.prop_elemGrp_%d_EGSidxBTB9" %i +" = elemGrps[i][EGSidxBTB9].replace('*a','')")
             exec("self.prop_elemGrp_%d_EGSidxSStf" %i +" = elemGrps[i][EGSidxSStf]")
             exec("self.prop_elemGrp_%d_EGSidxTl1D" %i +" = elemGrps[i][EGSidxTl1D]")
             exec("self.prop_elemGrp_%d_EGSidxTl1R" %i +" = elemGrps[i][EGSidxTl1R]")
@@ -1799,6 +1812,7 @@ class bcb_props(bpy.types.PropertyGroup):
         global progrWeakStartFact; progrWeakStartFact = self.prop_progrWeakStartFact
         global snapToAreaOrient; snapToAreaOrient = self.prop_snapToAreaOrient
         global disableCollision; disableCollision = self.prop_disableCollision
+        global lowerBrkThresPriority; lowerBrkThresPriority = self.prop_lowerBrkThresPriority
 
         global elemGrps
         for i in range(len(elemGrps)):
@@ -1822,6 +1836,13 @@ class bcb_props(bpy.types.PropertyGroup):
             elemGrps[i][EGSidxScal] = eval("self.prop_elemGrp_%d_EGSidxScal" %i)
             elemGrps[i][EGSidxFacg] = eval("self.prop_elemGrp_%d_EGSidxFacg" %i)
             elemGrps[i][EGSidxCyln] = eval("self.prop_elemGrp_%d_EGSidxCyln" %i)
+            # Remove surface variable if existing (will be added in setConstraintSettings()
+            elemGrps[i][EGSidxBTC] = elemGrps[i][EGSidxBTC].replace('*a','')
+            elemGrps[i][EGSidxBTT] = elemGrps[i][EGSidxBTT].replace('*a','')
+            elemGrps[i][EGSidxBTS] = elemGrps[i][EGSidxBTS].replace('*a','')
+            elemGrps[i][EGSidxBTS9] = elemGrps[i][EGSidxBTS9].replace('*a','')
+            elemGrps[i][EGSidxBTB] = elemGrps[i][EGSidxBTB].replace('*a','')
+            elemGrps[i][EGSidxBTB9] = elemGrps[i][EGSidxBTB9].replace('*a','')
 
         ### If different formula assistant ID from that stored in element group then update with defaults
         i = self.prop_menu_selectedElemGrp
@@ -1922,7 +1943,10 @@ class bcb_panel(bpy.types.Panel):
             split.prop(props, "prop_saveBackups")
             box.separator()
 
-            row = box.row(); row.prop(props, "prop_snapToAreaOrient")
+            row = box.row()
+            split = row.split(percentage=.50, align=False)
+            split.prop(props, "prop_snapToAreaOrient")
+            split.prop(props, "prop_lowerBrkThresPriority")
             row = box.row()
             if props.prop_snapToAreaOrient: row.enabled = 0
             row.prop(props, "prop_alignVertical")
@@ -2094,7 +2118,7 @@ class bcb_panel(bpy.types.Panel):
         box = layout.box();
         box.label(text=connectType[0])
 
-        row = layout.row(); row.label(text="Breaking Thresholds in [N or Nm] *a (mm²):")
+        row = layout.row(); row.label(text="Breaking Thresholds in [N or Nm] / mm²:")
 
         # Prepare possible expression variables
         a = h = w = b = s = 1   
@@ -2229,7 +2253,7 @@ class OBJECT_OT_bcb_get_config(bpy.types.Operator):
         if "bcb_prop_elemGrps" in scene.keys():
             ###### Get menu config data from scene
             warning = getConfigDataFromScene(scene)
-            if warning != None and len(warning): self.report({'ERROR'}, warning)
+            if warning != None and len(warning): self.report({'ERROR'}, warning)  # Create pop-up message
             props.prop_menu_gotConfig = 1
             ###### Get build data from scene
             #getBuildDataFromScene(scene)
@@ -2321,20 +2345,31 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
 class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
     bl_idname = "bcb.export_ascii_fm"
     bl_label = "Export to FM"
-    bl_description = "Exports all constraint data to the Fracture Modifier (special Blender version required). WARNING: This feature is experimental and results of the FM can vary, use with care!"
+    bl_description = "Exports all constraint data to the fracture modifier (special Blender version required). WARNING: This feature is experimental and results of the FM can vary, use with care!"
     def execute(self, context):
-        scene = bpy.context.scene
-        global asciiExport
-        asciiExport = 1
-        ###### Execute main building process from scratch
-        build()
-        asciiExport = 0
-        build_fm()
-        bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"])
-        ### Free previous bake data
-        contextFix = bpy.context.copy()
-        contextFix['point_cache'] = scene.rigidbody_world.point_cache
-        bpy.ops.ptcache.free_bake(contextFix)
+        if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
+            self.report({'ERROR'}, "Fracture modifier not available in this Blender version.")  # Create pop-up message
+        else:
+            ###### Execute main building process from scratch
+            scene = bpy.context.scene
+            global asciiExport
+            asciiExport = 1
+            build()
+            asciiExport = 0
+            build_fm()
+            bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"])
+            ### Free previous bake data
+            contextFix = bpy.context.copy()
+            contextFix['point_cache'] = scene.rigidbody_world.point_cache
+            bpy.ops.ptcache.free_bake(contextFix)
+            if automaticMode:
+                # Prepare event handler
+                bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
+                # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
+                #bpy.ops.ptcache.bake(contextFix, bake=True)
+                # Start animation playback and by that the baking process
+                if not bpy.context.screen.is_animation_playing:
+                    bpy.ops.screen.animation_play()
         return{'FINISHED'} 
 
 ########################################
@@ -2351,8 +2386,9 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
             print('\nInit BCB monitor event handler.')
             # Free old monitor data if still in memory (can happen if user stops baking before finished)
             monitor_freeBuffers(scene)
-            # Prepare event handler
+            # Prepare event handlers
             bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
+            bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
             ### Free previous bake data
             contextFix = bpy.context.copy()
             contextFix['point_cache'] = scene.rigidbody_world.point_cache
@@ -2393,7 +2429,7 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
             elemGrps.append(elemGrps[props.prop_menu_selectedElemGrp].copy())
             # Update menu selection
             props.prop_menu_selectedElemGrp = len(elemGrps) -1
-        else: self.report({'ERROR'}, "Maximum allowed element group count reached.")
+        else: self.report({'ERROR'}, "Maximum allowed element group count reached.")  # Create pop-up message
         # Update menu related properties from global vars
         props.props_update_menu()
         return{'FINISHED'} 
@@ -2414,7 +2450,7 @@ class OBJECT_OT_bcb_del(bpy.types.Operator):
             # Update menu selection
             if props.prop_menu_selectedElemGrp >= len(elemGrps):
                 props.prop_menu_selectedElemGrp = len(elemGrps) -1
-        else: self.report({'ERROR'}, "At least one element group is required.")
+        else: self.report({'ERROR'}, "At least one element group is required.")  # Create pop-up message
         # Update menu related properties from global vars
         props.props_update_menu()
         return{'FINISHED'} 
@@ -3676,7 +3712,10 @@ def build_fm():
 
     scene = bpy.context.scene
 
-    s = bpy.data.texts["BCB_export.txt"].as_string()
+    try: s = bpy.data.texts["BCB_export.txt"].as_string()
+    except:
+        print("Error: No export data found, couldn't build fracture modifier object.")
+        return
     o = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
 
     # Create object to use the fracture modifier on
@@ -3995,62 +4034,121 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         else:
             CT = elemGrps[elemGrpB][EGSidxCTyp]
             elemGrp = elemGrpB
+        
+        ### Prepare expression strings
+        brkThresExprC_A = elemGrps[elemGrpA][EGSidxBTC]
+        brkThresExprC_B = elemGrps[elemGrpB][EGSidxBTC]
+        brkThresExprT_A = elemGrps[elemGrpA][EGSidxBTT]
+        brkThresExprT_B = elemGrps[elemGrpB][EGSidxBTT]
+        brkThresExprS_A = elemGrps[elemGrpA][EGSidxBTS]
+        brkThresExprS_B = elemGrps[elemGrpB][EGSidxBTS]
+        brkThresExprS9_A = elemGrps[elemGrpA][EGSidxBTS9]
+        brkThresExprS9_B = elemGrps[elemGrpB][EGSidxBTS9]
+        brkThresExprB_A = elemGrps[elemGrpA][EGSidxBTB]
+        brkThresExprB_B = elemGrps[elemGrpB][EGSidxBTB]
+        brkThresExprB9_A = elemGrps[elemGrpA][EGSidxBTB9]
+        brkThresExprB9_B = elemGrps[elemGrpB][EGSidxBTB9]
 
-        ### Evaluate and Use always the weaker of both thresholds for every degree of freedom
-        try: brkThresExprC_A = eval(elemGrps[elemGrpA][EGSidxBTC])
-        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTC]); brkThresExprC_A = 0
-        try: brkThresExprC_B = eval(elemGrps[elemGrpB][EGSidxBTC])
-        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTC]); brkThresExprC_B = 0
-        if brkThresExprC_A <= brkThresExprC_B: brkThresExprC = brkThresExprC_A
-        else:                                  brkThresExprC = brkThresExprC_B
+        ### Add surface variable
+        if len(brkThresExprC_A): brkThresExprC_A += "*a"
+        if len(brkThresExprC_B): brkThresExprC_B += "*a"
+        if len(brkThresExprT_A): brkThresExprT_A += "*a"
+        if len(brkThresExprT_B): brkThresExprT_B += "*a"
+        if len(brkThresExprS_A): brkThresExprS_A += "*a"
+        if len(brkThresExprS_B): brkThresExprS_B += "*a"
+        if len(brkThresExprS9_A): brkThresExprS9_A += "*a"
+        if len(brkThresExprS9_B): brkThresExprS9_B += "*a"
+        if len(brkThresExprB_A): brkThresExprB_A += "*a"
+        if len(brkThresExprB_B): brkThresExprB_B += "*a"
+        if len(brkThresExprB9_A): brkThresExprB9_A += "*a"
+        if len(brkThresExprB9_B): brkThresExprB9_B += "*a"
+        
+        ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
+        try: brkThresValueC_A = eval(brkThresExprC_A)
+        except: print("\rError: Expression could not be evaluated:", brkThresExprC_A); brkThresValueC_A = 0
+        try: brkThresValueC_B = eval(brkThresExprC_B)
+        except: print("\rError: Expression could not be evaluated:", brkThresExprC_B); brkThresValueC_B = 0
 
-        try: brkThresExprT_A = eval(elemGrps[elemGrpA][EGSidxBTT])
-        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTT]); brkThresExprT_A = 0
-        try: brkThresExprT_B = eval(elemGrps[elemGrpB][EGSidxBTT])
-        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTT]); brkThresExprT_B = 0
-        if brkThresExprT_A <= brkThresExprT_B: brkThresExprT = brkThresExprT_A
-        else:                                  brkThresExprT = brkThresExprT_B
+        try: brkThresValueT_A = eval(brkThresExprT_A)
+        except: print("\rError: Expression could not be evaluated:", brkThresExprT_A); brkThresValueT_A = 0
+        try: brkThresValueT_B = eval(brkThresExprT_B)
+        except: print("\rError: Expression could not be evaluated:", brkThresExprT_B); brkThresValueT_B = 0
 
-        try: brkThresExprS_A = eval(elemGrps[elemGrpA][EGSidxBTS])
-        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTS]); brkThresExprS_A = 0
-        try: brkThresExprS_B = eval(elemGrps[elemGrpB][EGSidxBTS])
-        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTS]); brkThresExprS_B = 0
-        if brkThresExprS_A <= brkThresExprS_B: brkThresExprS = brkThresExprS_A
-        else:                                  brkThresExprS = brkThresExprS_B
+        try: brkThresValueS_A = eval(brkThresExprS_A)
+        except: print("\rError: Expression could not be evaluated:", brkThresExprS_A); brkThresValueS_A = 0
+        try: brkThresValueS_B = eval(brkThresExprS_B)
+        except: print("\rError: Expression could not be evaluated:", brkThresExprS_B); brkThresValueS_B = 0
 
-        if len(elemGrps[elemGrpA][EGSidxBTS9]):  # Can also have zero-size string if not used
-            try: brkThresExprS9_A = eval(elemGrps[elemGrpA][EGSidxBTS9])
-            except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTS9]); brkThresExprS9_A = 0
-        else: brkThresExprS9_A = -1
-        if len(elemGrps[elemGrpB][EGSidxBTS9]):  # Can also have zero-size string if not used
-            try: brkThresExprS9_B = eval(elemGrps[elemGrpB][EGSidxBTS9])
-            except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTS9]); brkThresExprS9_B = 0
-        else: brkThresExprS9_B = -1
-        if brkThresExprS9_A == -1 or brkThresExprS9_B == -1: brkThresExprS9 = -1
-        else:    
-            if brkThresExprS9_A <= brkThresExprS9_B: brkThresExprS9 = brkThresExprS9_A
-            else:                                    brkThresExprS9 = brkThresExprS9_B
+        if len(brkThresExprS9_A):  # Can also have zero-size string if not used
+            try: brkThresValueS9_A = eval(brkThresExprS9_A)
+            except: print("\rError: Expression could not be evaluated:", brkThresExprS9_A); brkThresValueS9_A = 0
+        else: brkThresValueS9_A = -1
+        if len(brkThresExprS9_B):  # Can also have zero-size string if not used
+            try: brkThresValueS9_B = eval(brkThresExprS9_B)
+            except: print("\rError: Expression could not be evaluated:", brkThresExprS9_B); brkThresValueS9_B = 0
+        else: brkThresValueS9_B = -1
 
-        try: brkThresExprB_A = eval(elemGrps[elemGrpA][EGSidxBTB])
-        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTB]); brkThresExprB_A = 0
-        try: brkThresExprB_B = eval(elemGrps[elemGrpB][EGSidxBTB])
-        except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTB]); brkThresExprB_B = 0
-        if brkThresExprB_A <= brkThresExprB_B: brkThresExprB = brkThresExprB_A
-        else:                                  brkThresExprB = brkThresExprB_B
+        try: brkThresValueB_A = eval(brkThresExprB_A)
+        except: print("\rError: Expression could not be evaluated:", brkThresExprB_A); brkThresValueB_A = 0
+        try: brkThresValueB_B = eval(brkThresExprB_B)
+        except: print("\rError: Expression could not be evaluated:", brkThresExprB_B); brkThresValueB_B = 0
 
-        if len(elemGrps[elemGrpA][EGSidxBTB9]):  # Can also have zero-size string if not used
-            try: brkThresExprB9_A = eval(elemGrps[elemGrpA][EGSidxBTB9])
-            except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpA][EGSidxBTB9]); brkThresExprB9_A = 0
-        else: brkThresExprB9_A = -1
-        if len(elemGrps[elemGrpB][EGSidxBTB9]):  # Can also have zero-size string if not used
-            try: brkThresExprB9_B = eval(elemGrps[elemGrpB][EGSidxBTB9])
-            except: print("\rError: Expression could not be evaluated:", elemGrps[elemGrpB][EGSidxBTB9]); brkThresExprB9_B = 0
-        else: brkThresExprB9_B = -1
-        if brkThresExprB9_A == -1 or brkThresExprB9_B == -1: brkThresExprB9 = -1
-        else:    
-            if brkThresExprB9_A <= brkThresExprB9_B: brkThresExprB9 = brkThresExprB9_A
-            else:                                    brkThresExprB9 = brkThresExprB9_B
+        if len(brkThresExprB9_A):  # Can also have zero-size string if not used
+            try: brkThresValueB9_A = eval(brkThresExprB9_A)
+            except: print("\rError: Expression could not be evaluated:", brkThresExprB9_A); brkThresValueB9_A = 0
+        else: brkThresValueB9_A = -1
+        if len(brkThresExprB9_B):  # Can also have zero-size string if not used
+            try: brkThresValueB9_B = eval(brkThresExprB9_B)
+            except: print("\rError: Expression could not be evaluated:", brkThresExprB9_B); brkThresValueB9_B = 0
+        else: brkThresValueB9_B = -1
 
+        if lowerBrkThresPriority:
+            ### Use the weaker of both breaking thresholds for every degree of freedom
+            if brkThresValueC_A <= brkThresValueC_B: brkThresValueC = brkThresValueC_A
+            else:                                  brkThresValueC = brkThresValueC_B
+
+            if brkThresValueT_A <= brkThresValueT_B: brkThresValueT = brkThresValueT_A
+            else:                                  brkThresValueT = brkThresValueT_B
+
+            if brkThresValueS_A <= brkThresValueS_B: brkThresValueS = brkThresValueS_A
+            else:                                  brkThresValueS = brkThresValueS_B
+
+            if brkThresValueS9_A == -1 or brkThresValueS9_B == -1: brkThresValueS9 = -1
+            else:    
+                if brkThresValueS9_A <= brkThresValueS9_B: brkThresValueS9 = brkThresValueS9_A
+                else:                                    brkThresValueS9 = brkThresValueS9_B
+
+            if brkThresValueB_A <= brkThresValueB_B: brkThresValueB = brkThresValueB_A
+            else:                                  brkThresValueB = brkThresValueB_B
+
+            if brkThresValueB9_A == -1 or brkThresValueB9_B == -1: brkThresValueB9 = -1
+            else:    
+                if brkThresValueB9_A <= brkThresValueB9_B: brkThresValueB9 = brkThresValueB9_A
+                else:                                    brkThresValueB9 = brkThresValueB9_B
+        else:
+            ### Use the stronger of both breaking thresholds for every degree of freedom
+            if brkThresValueC_A > brkThresValueC_B: brkThresValueC = brkThresValueC_A
+            else:                                  brkThresValueC = brkThresValueC_B
+
+            if brkThresValueT_A > brkThresValueT_B: brkThresValueT = brkThresValueT_A
+            else:                                  brkThresValueT = brkThresValueT_B
+
+            if brkThresValueS_A > brkThresValueS_B: brkThresValueS = brkThresValueS_A
+            else:                                  brkThresValueS = brkThresValueS_B
+
+            if brkThresValueS9_A == -1 or brkThresValueS9_B == -1: brkThresValueS9 = -1
+            else:    
+                if brkThresValueS9_A > brkThresValueS9_B: brkThresValueS9 = brkThresValueS9_A
+                else:                                    brkThresValueS9 = brkThresValueS9_B
+
+            if brkThresValueB_A > brkThresValueB_B: brkThresValueB = brkThresValueB_A
+            else:                                  brkThresValueB = brkThresValueB_B
+
+            if brkThresValueB9_A == -1 or brkThresValueB9_B == -1: brkThresValueB9 = -1
+            else:    
+                if brkThresValueB9_A > brkThresValueB9_B: brkThresValueB9 = brkThresValueB9_A
+                else:                                    brkThresValueB9 = brkThresValueB9_B
+        
         springStiff = elemGrps[elemGrp][EGSidxSStf]
 
         if not asciiExport:
@@ -4147,7 +4245,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprC
+            value = brkThresValueC
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             # setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision, ct='FIXED')
@@ -4162,7 +4260,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprC
+            value = brkThresValueC
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision, ct='POINT')
@@ -4179,7 +4277,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprC
+            value = brkThresValueC
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision, ct='POINT')
@@ -4192,7 +4290,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprB
+            value = brkThresValueB
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision, ct='FIXED')
@@ -4208,7 +4306,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprC
+            value = brkThresValueC
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
@@ -4233,7 +4331,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprT
+            value = brkThresValueT
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
@@ -4256,7 +4354,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprT
+            value = brkThresValueT
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
@@ -4277,7 +4375,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprS
+            value = brkThresValueS
             brkThres = value /scene.rigidbody_world.steps_per_second *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
@@ -4300,7 +4398,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprT
+            value = brkThresValueT
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
@@ -4323,7 +4421,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprS
+            value = brkThresValueS
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
@@ -4344,7 +4442,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprB
+            value = brkThresValueB
             brkThres = value /scene.rigidbody_world.steps_per_second *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
             setConstParams(objConst, bt=brkThres, ub=constraintUseBreaking, dc=disableCollision)
@@ -4367,10 +4465,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprS
-            if brkThresExprS9 != -1:
+            value = brkThresValueS
+            if brkThresValueS9 != -1:
                 value1 = value
-                value = brkThresExprS9
+                value = brkThresValueS9
                 value2 = value
                 values = [value1, value2]
                 values.sort()
@@ -4413,7 +4511,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            if brkThresExprS9 != -1:
+            if brkThresValueS9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
@@ -4439,10 +4537,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprB
-            if brkThresExprB9 != -1:
+            value = brkThresValueB
+            if brkThresValueB9 != -1:
                 value1 = value
-                value = brkThresExprB9
+                value = brkThresValueB9
                 value2 = value
                 values = [value1, value2]
                 values.sort()
@@ -4485,7 +4583,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            if brkThresExprB9 != -1:
+            if brkThresValueB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = value /scene.rigidbody_world.steps_per_second *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
@@ -4511,10 +4609,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            value = brkThresExprB
-            if brkThresExprB9 != -1:
+            value = brkThresValueB
+            if brkThresValueB9 != -1:
                 value1 = value
-                value = brkThresExprB9
+                value = brkThresValueB9
                 value2 = value
                 values = [value1, value2]
                 values.sort()
@@ -4557,7 +4655,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not asciiExport:
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-            if brkThresExprB9 != -1:
+            if brkThresValueB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
@@ -4585,10 +4683,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 #            value *= .01  # Use 1% of the bending thresholds for torsion 
             value *= .1  # Use 10% of the bending thresholds for torsion 
 
-#            value = brkThresExprS
-#            if brkThresExprS9 != -1:
+#            value = brkThresValueS
+#            if brkThresValueS9 != -1:
 #                value1 = value
-#                value = brkThresExprS9
+#                value = brkThresValueS9
 #                value2 = value
 #                values = [value1, value2]
 #                values.sort()
@@ -4617,7 +4715,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
-            value = brkThresExprC
+            value = brkThresValueC
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ### Loop through all constraints of this connection
             for i in range(3):
@@ -4661,7 +4759,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
-            value = brkThresExprC
+            value = brkThresValueC
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             ### Loop through all constraints of this connection
             for i in range(4):
@@ -4708,11 +4806,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 3   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
-            value = brkThresExprC
+            value = brkThresValueC
             brkThres1 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
-            value = brkThresExprT
+            value = brkThresValueT
             brkThres2 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
-            value = brkThresExprS
+            value = brkThresValueS
             brkThres3 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             # Loop through all constraints of this connection
             for j in range(3):
@@ -4818,11 +4916,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             correction /= 4   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
-            value = brkThresExprC
+            value = brkThresValueC
             brkThres1 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
-            value = brkThresExprT
+            value = brkThresValueT
             brkThres2 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
-            value = brkThresExprS
+            value = brkThresValueS
             brkThres3 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction
             # Loop through all constraints of this connection
             for j in range(4):
