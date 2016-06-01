@@ -2357,19 +2357,20 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             build()
             asciiExport = 0
             build_fm()
-            bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"])
-            ### Free previous bake data
-            contextFix = bpy.context.copy()
-            contextFix['point_cache'] = scene.rigidbody_world.point_cache
-            bpy.ops.ptcache.free_bake(contextFix)
-            if automaticMode:
-                # Prepare event handler
-                bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
-                # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
-                #bpy.ops.ptcache.bake(contextFix, bake=True)
-                # Start animation playback and by that the baking process
-                if not bpy.context.screen.is_animation_playing:
-                    bpy.ops.screen.animation_play()
+            if "BCB_export.txt" in bpy.data.texts:
+                bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"])
+                ### Free previous bake data
+                contextFix = bpy.context.copy()
+                contextFix['point_cache'] = scene.rigidbody_world.point_cache
+                bpy.ops.ptcache.free_bake(contextFix)
+                if automaticMode:
+                    # Prepare event handler
+                    bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
+                    # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
+                    #bpy.ops.ptcache.bake(contextFix, bake=True)
+                    # Start animation playback and by that the baking process
+                    if not bpy.context.screen.is_animation_playing:
+                        bpy.ops.screen.animation_play()
         return{'FINISHED'} 
 
 ########################################
