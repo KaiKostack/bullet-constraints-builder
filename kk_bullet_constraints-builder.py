@@ -130,7 +130,7 @@ formulaAssistants = [
  "Exp:N-":  "fc*((h*w)-rho*(h*w))+fs*rho*(h*w)",
  "Exp:N+":  "fs*rho*(h*w)",
  "Exp:V+/-":"fs*y*e1*h**2*1.2",
- "Exp:M+/-":"(fc*(1-rho)/4+fs*rho*e1)*(h*w)*h/2/1000"
+ "Exp:M+/-":"(fc*(1-rho)+fs*rho*e1*4.5)*h*h*w/12/1000"
 },
 {"Name":"Reinforced Concrete (Walls & Slabs)", "ID":"con_rei_wall",
  "h":250, "w":150, "fc":30, "fs":500, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
