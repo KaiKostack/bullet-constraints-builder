@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.30 #
+# Bullet Constraints Builder v2.31 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -191,7 +191,7 @@ commandStop = r"/tmp/bcb-stop"       #       | For very large simulations Blende
 maxMenuElementGroupItems = 100       # 100   | Maximum allowed element group entries in menu 
 emptyDrawSize = 0.25                 # 0.25  | Display size of constraint empty objects as radius in meters
 asciiExportName = "BCB_export.txt"   #       | Name of ASCII text file to be exported
-    
+  
 # For monitor event handler
 qRenderAnimation = 0                 # 0     | Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
 
@@ -216,7 +216,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 3, 0),
+    "version": (2, 3, 1),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -306,14 +306,28 @@ else:
 ################################################################################
 ################################################################################
 
-def logDataToFile(data, pathName):
+def dataToFile(data, pathName):
     try: f = open(pathName, "wb")
     except:
-        print('Error: Could not write log file:', pathName)
+        print('Error: Could not write file:', pathName)
         return 1
     else:
         pickle.dump(data, f, 0)
         f.close()
+
+########################################
+
+def dataFromFile(pathName):
+    try: f = open(pathName, "rb")
+    except:
+        print('Error: Could not read file:', pathName)
+        return 1
+    else:
+        raw = f.read()
+        data = pickle.loads(raw)
+        f.close()
+        return data
+    return None
 
 ########################################
 
@@ -349,10 +363,80 @@ def makeListsPickleFriendly(listOld):
 
 ################################################################################
 
+def exportConfigData(scene):
+
+    ### Store menu config data to file
+    print("Exporting config data to external file...")
+    
+    configData = []
+    configData.append(bl_info["version"])
+    configData.append(stepsPerSecond)
+    configData.append(constraintUseBreaking)
+    configData.append(connectionCountLimit)
+    configData.append(searchDistance)
+    configData.append(clusterRadius)
+    configData.append(alignVertical)
+    configData.append(useAccurateArea)
+    configData.append(nonManifoldThickness)
+    configData.append(minimumElementSize)
+    configData.append(automaticMode)
+    configData.append(saveBackups)
+    configData.append(timeScalePeriod)
+    configData.append(timeScalePeriodValue)
+    configData.append(warmUpPeriod)
+    configData.append(progrWeak)
+    configData.append(progrWeakLimit)
+    configData.append(progrWeakStartFact)
+    configData.append(snapToAreaOrient)
+    configData.append(disableCollision)
+    configData.append(lowerBrkThresPriority)
+    configData.append(elemGrps)
+    dataToFile(configData, logPath +r"\bcb.cfg")
+    
+################################################################################
+
+def importConfigData(scene):
+
+    ### Importing menu config data from file
+    print("Importing config data from external file...")
+    
+    configData = dataFromFile(logPath +r"\bcb.cfg")
+    i = 0
+    if bl_info["version"] != configData[i]:
+        print("Error: Version mismatch. Try to use the same version of the BCB for export and import.")
+        return 1
+    else:
+        props = bpy.context.window_manager.bcb
+        i += 1
+        global stepsPerSecond; stepsPerSecond = props.prop_stepsPerSecond = configData[i]; i += 1
+        global constraintUseBreaking; constraintUseBreaking = props.prop_constraintUseBreaking = configData[i]; i += 1
+        global connectionCountLimit; connectionCountLimit = props.prop_connectionCountLimit = configData[i]; i += 1
+        global searchDistance; searchDistance = props.prop_searchDistance = configData[i]; i += 1
+        global clusterRadius; clusterRadius = props.prop_clusterRadius = configData[i]; i += 1
+        global alignVertical; alignVertical = props.prop_alignVertical = configData[i]; i += 1
+        global useAccurateArea; useAccurateArea = props.prop_useAccurateArea = configData[i]; i += 1
+        global nonManifoldThickness; nonManifoldThickness = props.prop_nonManifoldThickness = configData[i]; i += 1
+        global minimumElementSize; minimumElementSize = props.prop_minimumElementSize = configData[i]; i += 1
+        global automaticMode; automaticMode = props.prop_automaticMode = configData[i]; i += 1
+        global saveBackups; saveBackups = props.prop_saveBackups = configData[i]; i += 1
+        global timeScalePeriod; timeScalePeriod = props.prop_timeScalePeriod = configData[i]; i += 1
+        global timeScalePeriodValue; timeScalePeriodValue = props.prop_timeScalePeriodValue = configData[i]; i += 1
+        global warmUpPeriod; warmUpPeriod = props.prop_warmUpPeriod = configData[i]; i += 1
+        global progrWeak; progrWeak = props.prop_progrWeak = configData[i]; i += 1
+        global progrWeakLimit; progrWeakLimit = props.prop_progrWeakLimit = configData[i]; i += 1
+        global progrWeakStartFact; progrWeakStartFact = props.prop_progrWeakStartFact = configData[i]; i += 1
+        global snapToAreaOrient; snapToAreaOrient = props.prop_snapToAreaOrient = configData[i]; i += 1
+        global disableCollision; disableCollision = props.prop_disableCollision = configData[i]; i += 1
+        global lowerBrkThresPriority; lowerBrkThresPriority = props.prop_lowerBrkThresPriority = configData[i]; i += 1
+        global elemGrps; elemGrps = configData[i]; i += 1
+        return 0
+    
+################################################################################
+
 def storeConfigDataInScene(scene):
 
     ### Store menu config data in scene
-    if debug: print("Storing menu config data in scene...")
+    print("Storing menu config data in scene...")
     
     scene["bcb_version"] = bl_info["version"]
     scene["bcb_prop_stepsPerSecond"] = stepsPerSecond
@@ -391,7 +475,7 @@ def storeConfigDataInScene(scene):
 def getConfigDataFromScene(scene):
     
     ### Get menu config data from scene
-    if debug: print("Getting menu config data from scene...")
+    print("Getting menu config data from scene...")
 
     warning = ""
     if "bcb_version" in scene.keys():
@@ -618,10 +702,10 @@ def getBuildDataFromScene(scene):
         log.append(makeListsPickleFriendly(connectsGeo))
         log.append(makeListsPickleFriendly(connectsConsts))
         log.append(makeListsPickleFriendly(constsConnect))
-        logDataToFile(log, logPath +r"\log_bcb_keys.txt")
+        dataToFile(log, logPath +r"\log_bcb_keys.txt")
         log = []
         log.append([obj.name for obj in bpy.context.scene.objects])
-        logDataToFile(log, logPath +r"\log_bcb_scene.txt")
+        dataToFile(log, logPath +r"\log_bcb_scene.txt")
         
     return objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect
 
@@ -1925,12 +2009,15 @@ class bcb_panel(bpy.types.Panel):
 
         if props.prop_submenu_advancedG:
             row = box.row()
-            split = row.split(percentage=.50, align=False)
-            split.operator("bcb.export_ascii", icon="EXPORT")
-            split.operator("bcb.export_ascii_fm", icon="EXPORT")
-            box.separator()
-
-            row = box.row(); row.prop(props, "prop_stepsPerSecond")
+            split = row.split(percentage=.85, align=False)
+            split2 = split.split(percentage=.5, align=False)
+            split2.operator("bcb.export_ascii", icon="EXPORT")
+            split2.operator("bcb.export_ascii_fm", icon="EXPORT")
+            split.operator("bcb.import_config", icon="FILE_REFRESH")
+            row = box.row()
+            split = row.split(percentage=.85, align=False)
+            split.prop(props, "prop_stepsPerSecond")
+            split.operator("bcb.export_config", icon="NEW")
 
             row = box.row()
             split = row.split(percentage=.50, align=False)
@@ -2328,18 +2415,45 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
 
 ########################################
 
+class OBJECT_OT_bcb_export_config(bpy.types.Operator):
+    bl_idname = "bcb.export_config"
+    bl_label = ""
+    bl_description = 'Exports BCB config data to an external file. Location: %s' %logPath
+    def execute(self, context):
+        scene = bpy.context.scene
+        exportConfigData(scene)
+        return{'FINISHED'} 
+
+########################################
+
+class OBJECT_OT_bcb_import_config(bpy.types.Operator):
+    bl_idname = "bcb.import_config"
+    bl_label = ""
+    bl_description = 'Imports BCB config data from an external file. Location: %s' %logPath
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        error = importConfigData(scene)
+        if not error:
+            props.prop_menu_gotConfig = 1
+            # Update menu related properties from global vars
+            props.props_update_menu()
+        return{'FINISHED'} 
+
+########################################
+
 class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
     bl_idname = "bcb.export_ascii"
     bl_label = "Export to Text"
-    bl_description = "Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment)."
+    bl_description = "Exports all constraint data to an ASCII text file within this .blend file instead of creating actual empty objects (only useful for developers at the moment)."
     def execute(self, context):
         global asciiExport
         asciiExport = 1
         ###### Execute main building process from scratch
         build()
         asciiExport = 0
-        return{'FINISHED'} 
-
+        return{'FINISHED'}
+    
 ########################################
 
 class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
@@ -2584,6 +2698,8 @@ classes = [ \
     OBJECT_OT_bcb_clear,
     OBJECT_OT_bcb_build,
     OBJECT_OT_bcb_update,
+    OBJECT_OT_bcb_export_config,
+    OBJECT_OT_bcb_import_config,
     OBJECT_OT_bcb_export_ascii,
     OBJECT_OT_bcb_export_ascii_fm,
     OBJECT_OT_bcb_bake,
