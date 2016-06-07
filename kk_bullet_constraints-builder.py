@@ -5469,7 +5469,7 @@ def build():
                     # Remove instancing from objects
                     bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
                     # Apply scale factor of all objects (to make sure volume and mass calculation are correct)
-                    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+                    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
                 
                     ###### Find connections by vertex pairs
                     #connectsPair, connectsPairDist = findConnectionsByVertexPairs(objs, objsEGrp)
