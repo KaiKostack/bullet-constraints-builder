@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.31 #
+# Bullet Constraints Builder v2.32 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -216,7 +216,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 3, 1),
+    "version": (2, 3, 2),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -878,7 +878,8 @@ def clearAllDataFromScene(scene):
     for obj in objs:
         obj.select = 1
 
-    print('\nTime: %0.2f s' %(time.time()-time_start))
+    print('-- Time: %0.2f s' %(time.time()-time_start))
+    print()
     print('Done.')
         
 ################################################################################   
@@ -917,7 +918,7 @@ def monitor_eventHandler(scene):
     if not "bcb_monitor" in bpy.app.driver_namespace:
         print("Initializing buffers...")
 
-        # Store start time
+        # Store frame time
         bpy.app.driver_namespace["bcb_time"] = time.time()
         
         ###### Function
@@ -995,6 +996,10 @@ def monitor_eventHandler(scene):
 
 def stop_eventHandler(scene):
 
+    # Store start time if not available
+    if "bcb_time_start" not in bpy.app.driver_namespace.keys():
+        bpy.app.driver_namespace["bcb_time_start"] = time.time()
+
     ### Check if last frame is reached
     if scene.frame_current == scene.frame_end or os.path.isfile(commandStop):
         if bpy.context.screen.is_animation_playing:
@@ -1017,9 +1022,17 @@ def stop_eventHandler(scene):
         monitor_freeBuffers(scene)
         # Go back to start frame
         scene.frame_current = scene.frame_start
+
+        time_start = bpy.app.driver_namespace["bcb_time_start"]
+        del bpy.app.driver_namespace["bcb_time_start"]
+        print('-- Time total: %0.2f s' %(time.time()-time_start))
+
         # Continue with further automatic mode steps
         if automaticMode:
             automaticModeAfterStop()
+        else:
+            print()
+            print('Done.')
             
 ################################################################################
 
@@ -4797,8 +4810,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 
             try: value = values[0]  # Use the smaller value from either standard or 90° bending thresholds as base for torsion
             except: pass
-#            value *= .01  # Use 1% of the bending thresholds for torsion 
-            value *= .1  # Use 10% of the bending thresholds for torsion 
+            value *= .5  # Use 50% of the bending thresholds for torsion (we really need a formula for that)
 
 #            value = brkThresValueS
 #            if brkThresValueS9 != -1:
