@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.32 #
+# Bullet Constraints Builder v2.33 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -216,7 +216,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 3, 2),
+    "version": (2, 3, 3),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -3781,10 +3781,10 @@ def setAttribsOfConstraint(objConst, props):
         
 ########################################
 
-def export(exData, idx=None, objC=None, name=None, loc=None, obj1=None, obj2=None, tol1=None, tol2=None, rotm=None, quat=None, attr=None):
+def export(exData, idx=None, objC=None, name=None, loc=None, obj1=None, obj2=None, tol1=None, tol2=None, rotm=None, rot=None, attr=None):
 
     ### Adds data to the export data array
-    # export(exData, idx=1, objC=objConst, name=1, loc=1, obj1=1, obj2=1, tol1=[tol1dist, tol1rot], tol2=[tol2dist, tol2rot], rotm=1, quat=1, attr=1)
+    # export(exData, idx=1, objC=objConst, name=1, loc=1, obj1=1, obj2=1, tol1=[tol1dist, tol1rot], tol2=[tol2dist, tol2rot], rotm=1, rot=1, attr=1)
     
     if idx == None:
         exData.append([])
@@ -3805,12 +3805,12 @@ def export(exData, idx=None, objC=None, name=None, loc=None, obj1=None, obj2=Non
     elif tol2 != None:                exData[idx][5] = tol2               # Should always get data
     if rotm != None and objC != None: exData[idx][6] = objC.rotation_mode
     elif rotm != None:                exData[idx][6] = rotm
-    if quat != None and objC != None: exData[idx][7] = Vector(objC.rotation_quaternion).to_tuple()
-    elif quat != None:                exData[idx][7] = quat
+    if rot != None and objC != None:  exData[idx][7] = Vector(objC.rotation_quaternion).to_tuple()
+    elif rot != None:                 exData[idx][7] = rot
     if attr != None and objC != None: exData[idx][8] = getAttribsOfConstraint(objC)
     elif attr != None:                exData[idx][8] = attr
 
-    # Data structure ("[]" means not always present):
+    # Data structure ("[]" means not always present, will be None instead):
     # 0 - empty.name
     # 1 - empty.location
     # 2 - obj1.name
@@ -3865,37 +3865,41 @@ def build_fm():
     ob.modifiers["Fracture"].fracture_mode = 'EXTERNAL'
     md = ob.modifiers["Fracture"]
 
-    obParent = None
+    objs = []
+    objsName = []
     count = len(o)
     indexmap = dict()
     j = 0
     for i in range(count):
         ob1 = o[i][2]
         ob2 = o[i][3]
-        if not ob1 in indexmap.keys():
+        if not ob1 in objsName:
             try: obb1 = bpy.context.scene.objects[ob1]
             except: pass
             else:
-                indexmap[ob1] = md.mesh_islands.new(obb1)
-                #indexmap[ob1].rigidbody.use_margin = True
-                #if obb1.rigid_body.type == 'PASSIVE':
-                #    indexmap[ob1].rigidbody.kinematic=True
-                #    indexmap[ob1].rigidbody.type='ACTIVE'
-                if obParent == None and obb1.parent: obParent = obb1.parent
-                obb1.select = True
+                objs.append(obb1)
+                objsName.append(ob1)
                 
-        if not ob2 in indexmap.keys():
+        if not ob2 in objsName:
             try: obb2 = bpy.context.scene.objects[ob2]
             except: pass
             else:
-                indexmap[ob2] = md.mesh_islands.new(obb2)
-                #indexmap[ob2].rigidbody.use_margin = True
-                #if obb2.rigid_body.type == 'PASSIVE':
-                #    indexmap[ob2].rigidbody.kinematic=True
-                #    indexmap[ob2].rigidbody.type='ACTIVE'
-                if obParent == None and obb2.parent: obParent = obb2.parent
-                obb2.select = True
+                objs.append(obb2)
+                objsName.append(ob2)
 
+    objParent = None
+    for i in range(len(objs)):
+        obj = objs[i]
+        objName = objsName[i]
+        if objName not in indexmap.keys():
+            indexmap[objName] = md.mesh_islands.new(obj)
+            #indexmap[objFM].rigidbody.use_margin = True
+            #if obj.rigid_body.type == 'PASSIVE':
+            #    indexmap[objFM].rigidbody.kinematic=True
+            #    indexmap[objFM].rigidbody.type='ACTIVE'
+            if objParent == None and obj.parent: objParent = obj.parent
+            obj.select = True
+    
     print('Time mesh islands: %0.2f s' %(time.time()-time_start))
     time_const = time.time()
 
@@ -3924,7 +3928,6 @@ def build_fm():
         if o[i][j] is not None and len(o[i][j]) == 3 and o[i][j][0] in {"TOLERANCE"}:
             breaking_distance = o[i][j][1]
             breaking_angle = o[i][j][2]
-            #j += 1
         else:
             breaking_distance = -1
             breaking_angle = -1
@@ -3941,7 +3944,6 @@ def build_fm():
             else:
                 plastic = False
                 plastic_off += 1
-            #j += 1
         else:
             plastic_distance = -1
             plastic_angle = -1
@@ -3951,10 +3953,9 @@ def build_fm():
         
         # 5 - [empty.rotation_mode]
         # 6 - [empty.rotation_quaternion]
-        if o[i][j] == "QUATERNION": # euler ?
+        if o[i][j] == "QUATERNION":  # If no quaternion exists we assume no rotation is available
             rot = mathutils.Quaternion(o[i][j+1])
-            #j += 2
-        else:
+        else:  # If None or EULER then no rotation is available
             rot = mathutils.Quaternion((1.0, 0.0, 0.0, 0.0))
         j += 2
                 
@@ -4024,13 +4025,13 @@ def build_fm():
     bpy.ops.object.delete(use_global=True)
 
     # Apply parent if one has been found earlier
-    if obParent != None:
+    if objParent != None:
         ob.select = 1
-        obParent.select = 1
-        bpy.context.scene.objects.active = obParent
-        print("Parenting", ob.name, "to", obParent.name, "...")
+        objParent.select = 1
+        bpy.context.scene.objects.active = objParent
+        print("Parenting", ob.name, "to", objParent.name, "...")
         bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
-        obParent.select = 0
+        objParent.select = 0
         bpy.context.scene.objects.active = ob
 
     scene.layers = [bool(q) for q in layersBak]  # Revert scene layer settings from backup
@@ -4450,7 +4451,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation to that vector
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
         ### 1x GENERIC; Tensile (3D)
@@ -4473,7 +4474,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             
         ### 2x GENERIC; Tensile + shearing (3D), bending (3D) breaking thresholds
@@ -4496,7 +4497,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Bending constraint (3D)
@@ -4517,7 +4518,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             
         ### 3x GENERIC; Tensile constraint (1D) breaking threshold
@@ -4540,7 +4541,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
         ### 3x GENERIC; Shearing constraint (2D), bending constraint (3D) breaking thresholds
@@ -4563,7 +4564,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Bending constraint (3D)
@@ -4584,7 +4585,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
         ### 2x GENERIC; Shearing (1D) breaking thresholds
@@ -4633,7 +4634,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Shearing constraint #2
@@ -4655,7 +4656,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
             
         ### 2x GENERIC; Bending + torsion (1D) breaking thresholds
@@ -4705,7 +4706,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Bending with torsion constraint #2
@@ -4727,7 +4728,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
         ### 3x GENERIC; Bending (1D), torsion (1D) breaking thresholds
@@ -4777,7 +4778,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Bending without torsion constraint #2
@@ -4799,7 +4800,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
             ### Torsion constraint
@@ -4834,7 +4835,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             # Align constraint rotation like above
             objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
             if asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, quat=1, attr=1)
+                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
                 export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
 
         ###### Springs (additional)
@@ -4878,7 +4879,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, e=0)
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
                     if CT == 7:
                            export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
                     else:  export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC_OFF", tol2dist, tol2rot])
@@ -4923,7 +4924,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, usx,usy,usz, sdx,sdy,sdz, ssx,ssy,ssz)
                     setConstParams(objConst, e=0)
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
                     if CT == 8:
                            export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
                     else:  export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC_OFF", tol2dist, tol2rot])
@@ -4973,7 +4974,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
 
                 ### Second constraint
@@ -5005,7 +5006,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
 
                 ### Third constraint
@@ -5037,7 +5038,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
 
         ### 3 x 4x SPRING; Compressive (1D), tensile (1D), shearing (2D) breaking thresholds; circular placed for plastic deformability
@@ -5084,7 +5085,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation to that vector
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
 
                 ### Second constraint
@@ -5117,7 +5118,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
 
                 ### Third constraint
@@ -5150,7 +5151,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 # Align constraint rotation like above
                 objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
                 if asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, quat=1, attr=1)
+                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
                     export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
 
         if not asciiExport:
@@ -5176,7 +5177,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 #if aspect >= 1: aspect = (w /h)  # Alternative for CTs without differentiated shearing/bending axis: can lead to flipped orientations
                 side = (a /aspect)**.5  # Calculate original dimensions from actual contact area
                 side /= 1000  # mm to m
-                axs = Vector((0, side *aspect, side))
+                axs = Vector((0.000001, side *aspect, side))  # Should never be 0 otherwise orientation will be discarded by Blender to Bullet conversion
             else:
                 # Use standard size for drawing of non-directional constraints
                 axs = Vector((emptyDrawSize, emptyDrawSize, emptyDrawSize))
@@ -5481,7 +5482,7 @@ def build():
                     # Remove instancing from objects
                     bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
                     # Apply scale factor of all objects (to make sure volume and mass calculation are correct)
-                    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+                    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
                 
                     ###### Find connections by vertex pairs
                     #connectsPair, connectsPairDist = findConnectionsByVertexPairs(objs, objsEGrp)
