@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.33 #
+# Bullet Constraints Builder v2.34 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -216,7 +216,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 3, 3),
+    "version": (2, 3, 4),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -3576,6 +3576,9 @@ def createEmptyObjs(scene, constCnt):
     ### Create empty objects
     print("Creating empty objects... (%d)" %constCnt)
 
+    # Use second scene optimization (enabling this is not recommended, as there are limitations in Blender related to RBs on multiple scenes)
+    useSecondScene = 0
+    
     ### Create first object
     objConst = bpy.data.objects.new('Constraint', None)
     bpy.context.scene.objects.link(objConst)
@@ -3583,37 +3586,41 @@ def createEmptyObjs(scene, constCnt):
     bpy.context.scene.objects.active = objConst
     bpy.ops.rigidbody.constraint_add()
 
-    constCntPerScene = 1024
-    scenesTemp = []
+    if useSecondScene:
+        constCntPerScene = 1024
+        scenesTemp = []
+    else:
+        constCntPerScene = 0
     emptyObjsGlobal = [objConst]
     # Repeat until desired object count is reached
     while len(emptyObjsGlobal) < constCnt:
         
-        ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
-        sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
-        scenesTemp.append(sceneTemp)
-        # Set layers to same state as original scene
-        sceneTemp.layers = scene.layers
-        # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
-        bpy.context.screen.scene = scene
-        # Link cameras because in second scene is none and when coming back camera view will losing focus
-        objCameras = []
-        for objTemp in scene.objects:
-            if objTemp.type == 'CAMERA':
-                sceneTemp.objects.link(objTemp)
-                objCameras.append(objTemp)
-        # Switch to new scene
-        bpy.context.screen.scene = sceneTemp
-        # If using two scenes make sure both are using the same RigidBodyWorld and RigidBodyConstraints groups
-        bpy.ops.rigidbody.world_add()
-        bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
-        bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
-        # Link first empty into new scene
-        bpy.context.scene.objects.link(objConst)
-        
+        if useSecondScene:
+            ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
+            sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
+            scenesTemp.append(sceneTemp)
+            # Set layers to same state as original scene
+            sceneTemp.layers = scene.layers
+            # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
+            bpy.context.screen.scene = scene
+            # Link cameras because in second scene is none and when coming back camera view will losing focus
+            objCameras = []
+            for objTemp in scene.objects:
+                if objTemp.type == 'CAMERA':
+                    sceneTemp.objects.link(objTemp)
+                    objCameras.append(objTemp)
+            # Switch to new scene
+            bpy.context.screen.scene = sceneTemp
+            # If using two scenes make sure both are using the same RigidBodyWorld and RigidBodyConstraints groups
+            bpy.ops.rigidbody.world_add()
+            bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
+            bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
+            # Link first empty into new scene
+            bpy.context.scene.objects.link(objConst)
+            
         ### Duplicate empties as long as we got the desired count   
         emptyObjs = [objConst]
-        while len(emptyObjs) < (constCnt -(len(emptyObjsGlobal) -1)) and len(emptyObjs) <= constCntPerScene:
+        while len(emptyObjs) < (constCnt -(len(emptyObjsGlobal) -1)) and (constCntPerScene == 0 or len(emptyObjs) <= constCntPerScene):
             sys.stdout.write("%d " %len(emptyObjs))
             # Update progress bar
             bpy.context.window_manager.progress_update(len(emptyObjsGlobal) /constCnt)
@@ -3640,26 +3647,36 @@ def createEmptyObjs(scene, constCnt):
         
     emptyObjs = emptyObjsGlobal
 
-    ### Link new object back into original scene
-    for scn in scenesTemp:
-        # Switch through temp scenes
-        bpy.context.screen.scene = scn
-        # Select all objects
-        bpy.ops.object.select_all(action='SELECT')
-        # Link objects to original scene
-        bpy.ops.object.make_links_scene(scene=scene.name)
+    if useSecondScene:
+        ### Link new object back into original scene
+        for scn in scenesTemp:
+            # Switch through temp scenes
+            bpy.context.screen.scene = scn
+            # Select all objects
+            bpy.ops.object.select_all(action='SELECT')
+            # Link objects to original scene
+            bpy.ops.object.make_links_scene(scene=scene.name)
+            # Remove constraint data (otherwise it would cause undesired side effects later in the simulation)
+            bpy.ops.rigidbody.constraints_remove()
+            # Delete objects from temp scene (required to get rid of the duplicate rigid body world data, which later would have influence on the simulation)
+            bpy.ops.object.delete(use_global=False)
 
-#    # Link new object back into original scene
-#    for obj in emptyObjs[1:]:
-#        scene.objects.link(obj)
-        
-    # Switch back to original scene
-    bpy.context.screen.scene = scene
-    # Delete second scene
-    for scn in scenesTemp:
-        bpy.data.scenes.remove(scn)
+        # Switch back to original scene
+        bpy.context.screen.scene = scene
+        # Delete second scene
+        for scn in scenesTemp:
+            bpy.data.scenes.remove(scn)
+        print()
 
+        # Turn empties into constraints (extremely slow but there is no faster way when using temp scenes)
+        print("Turning empties into constraints...")
+        for i in range(len(emptyObjs)):
+            sys.stdout.write("\r%d" %i)
+            obj = emptyObjs[i]
+            bpy.context.scene.objects.active = obj
+            bpy.ops.rigidbody.constraint_add()
     print()
+
     return emptyObjs        
 
 ################################################################################   
