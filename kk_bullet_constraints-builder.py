@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.35 #
+# Bullet Constraints Builder v2.36 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -216,7 +216,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 3, 5),
+    "version": (2, 3, 6),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -1108,6 +1108,7 @@ def monitor_initBuffers(scene):
         constsEnabled = []
         constsUseBrk = []
         constsBrkThres = []
+        mode = 1
         for const in connectsConsts[d -1]:
             emptyObj = emptyObjs[const]
             consts.append(emptyObj)
@@ -1118,10 +1119,8 @@ def monitor_initBuffers(scene):
                 constsBrkThres.append(emptyObj.rigid_body_constraint.breaking_threshold)
                 # Disable breakability for warm up time
                 if warmUpPeriod: emptyObj.rigid_body_constraint.use_breaking = 0
-                # Set tolerance evaluation mode (if plastic or not)
-                if emptyObj.rigid_body_constraint.type == 'GENERIC_SPRING':
-                      mode = 1
-                else: mode = 0
+                # Set initial mode state if plastic or not (activate plastic mode only if the connection constists exclusively of springs)
+                if emptyObj.rigid_body_constraint.type != 'GENERIC_SPRING': mode = 0
             else:
                 if not qWarning:
                     qWarning = 1
@@ -1167,15 +1166,22 @@ def monitor_checkForChange(scene):
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
                 if distanceDif > toleranceDist +(angleDif /pi) \
                 or angleDif > toleranceRot:
+                    qPlastic = 0
                     for const in consts:
                         # Enable spring constraints for this connection by setting its stiffness
                         if const.rigid_body_constraint.type == 'GENERIC_SPRING':
                             const.rigid_body_constraint.enabled = 1
+                            qPlastic = 1
                         # Disable non-spring constraints for this connection
                         else: const.rigid_body_constraint.enabled = 0
-                    # Switch connection to plastic mode
-                    connect[12] += 1
-                    cntP += 1
+                    if qPlastic:
+                        # Flag connection as being in plastic mode
+                        connect[12] += 1
+                        cntP += 1
+                    else:
+                        # Flag connection as being disconnected
+                        connect[12] += 2
+                        cntB += 1
 
         ### If connection is in plastic mode then check if second tolerance is reached
         if connect[12] == 1:
@@ -1198,9 +1204,10 @@ def monitor_checkForChange(scene):
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
                 if distanceDif > toleranceDist +(angleDif /pi) \
                 or angleDif > toleranceRot:
-                    # Disable all constraints for this connection
+                    # Disable plastic constraints for this connection
                     for const in consts:
-                        const.rigid_body_constraint.enabled = 0
+                        if const.rigid_body_constraint.type == 'GENERIC_SPRING':
+                            const.rigid_body_constraint.enabled = 0
                     # Flag connection as being disconnected
                     connect[12] += 1
                     cntB += 1
