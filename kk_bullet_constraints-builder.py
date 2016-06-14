@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.34 #
+# Bullet Constraints Builder v2.35 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -216,7 +216,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 3, 4),
+    "version": (2, 3, 5),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -224,7 +224,7 @@ bl_info = {
     "tracker_url": "http://kaikostack.com",
     "category": "Animation"}
 
-import bpy, sys, os, platform, mathutils, time, copy, math, pickle, base64, zlib
+import bpy, sys, os, platform, mathutils, time, copy, math, pickle, base64, zlib, random
 from mathutils import Vector
 #import os
 #os.system("cls")
@@ -3621,7 +3621,11 @@ def createEmptyObjs(scene, constCnt):
         ### Duplicate empties as long as we got the desired count   
         emptyObjs = [objConst]
         while len(emptyObjs) < (constCnt -(len(emptyObjsGlobal) -1)) and (constCntPerScene == 0 or len(emptyObjs) <= constCntPerScene):
-            sys.stdout.write("%d " %len(emptyObjs))
+            if constCntPerScene != 0:
+                sys.stdout.write("%d " %len(emptyObjs))
+            else:
+                if len(emptyObjs) <= 1024: sys.stdout.write("%d " %len(emptyObjs))
+                else:                      sys.stdout.write("\r%d - " %len(emptyObjs))
             # Update progress bar
             bpy.context.window_manager.progress_update(len(emptyObjsGlobal) /constCnt)
             
@@ -3676,7 +3680,37 @@ def createEmptyObjs(scene, constCnt):
             bpy.context.scene.objects.active = obj
             bpy.ops.rigidbody.constraint_add()
     print()
-
+    
+#    ### Sort empty objects by database order (old slower code)
+#    objsSorted = []
+#    #for objDB in bpy.data.objects:  # Sort by bpy.data order
+#    for objDB in bpy.data.groups["RigidBodyConstraints"].objects:  # Sort by RigidBodyConstraints group order
+#        for obj in emptyObjs:
+#            if obj.name == objDB.name:
+#                objsSorted.append(obj)
+#                del emptyObjs[emptyObjs.index(obj)]
+#                break
+    ### Sort empty objects by database order
+    objsSource = emptyObjs
+    objsDB = bpy.data.groups["RigidBodyConstraints"].objects
+    # Generate dictionary index by DB order
+    objsIndex = {}
+    for i in range(len(objsDB)): objsIndex[objsDB[i].name] = i
+    # Sort objects by index
+    objsSorted = [None for i in range(len(objsDB))]
+    for obj in objsSource:
+        objsSorted[objsIndex[obj.name]] = obj
+    # Filter unused objects
+    objsSortedFiltered = []
+    for obj in objsSorted:
+        if obj != None: objsSortedFiltered.append(obj)
+#    print("EMTPIES (original, DB):")
+#    for i in range(len(objsSource)):
+#        obj = objsSource[i]
+#        objSorted = objsSortedFiltered[i]
+#        print(obj.name, objSorted.name)
+    emptyObjs = objsSortedFiltered
+    
     return emptyObjs        
 
 ################################################################################   
@@ -3863,10 +3897,10 @@ def build_fm():
     except:
         print("Error: No export data found, couldn't build fracture modifier object.")
         return
-    o = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
+    consts = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
 
     # Create object to use the fracture modifier on
-    bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0))
+    bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), rotation=(0, 0, 0))
     ob = bpy.context.scene.objects.active
     ob.name = "BCB_export"
     ob.data.name = "BCB_export"
@@ -3882,34 +3916,62 @@ def build_fm():
     ob.modifiers["Fracture"].fracture_mode = 'EXTERNAL'
     md = ob.modifiers["Fracture"]
 
-    objs = []
-    objsName = []
-    count = len(o)
+    objs = []; objsName = []
     indexmap = dict()
     j = 0
-    for i in range(count):
-        ob1 = o[i][2]
-        ob2 = o[i][3]
-        if not ob1 in objsName:
-            try: obb1 = bpy.context.scene.objects[ob1]
+    for i in range(len(consts)):
+        objN1 = consts[i][2]
+        objN2 = consts[i][3]
+        if not objN1 in objsName:
+            try: obj1 = bpy.context.scene.objects[objN1]
             except: pass
             else:
-                objs.append(obb1)
-                objsName.append(ob1)
+                objs.append(obj1)
+                objsName.append(objN1)
                 
-        if not ob2 in objsName:
-            try: obb2 = bpy.context.scene.objects[ob2]
+        if not objN2 in objsName:
+            try: obj2 = bpy.context.scene.objects[objN2]
             except: pass
             else:
-                objs.append(obb2)
-                objsName.append(ob2)
+                objs.append(obj2)
+                objsName.append(objN2)
 
+#    ### Sort mesh objects by database order (old slower code)
+#    objsSorted = []
+#    #for objDB in bpy.data.objects:  # Sort by bpy.data order
+#    for objDB in bpy.data.groups["RigidBodyWorld"].objects:  # Sort by RigidBodyWorld group order
+#        for obj in objs:
+#            if obj.name == objDB.name:
+#                objsSorted.append(obj)
+#                del objs[objs.index(obj)]
+#                break
+    ### Sort mesh objects by database order
+    objsSource = objs
+    objsDB = bpy.data.groups["RigidBodyWorld"].objects
+    # Generate dictionary index by DB order
+    objsIndex = {}
+    for i in range(len(objsDB)): objsIndex[objsDB[i].name] = i
+    # Sort objects by index
+    objsSorted = [None for i in range(len(objsDB))]
+    for obj in objsSource:
+        objsSorted[objsIndex[obj.name]] = obj
+    # Filter unused objects
+    objsSortedFiltered = []
+    for obj in objsSorted:
+        if obj != None: objsSortedFiltered.append(obj)
+#    print("MESHES (original, DB):")
+#    for i in range(len(objsSource)):
+#        obj = objsSource[i]
+#        objSorted = objsSortedFiltered[i]
+#        print(obj.name, objSorted.name)
+    objs = objsSortedFiltered
+    
+    ### Create mesh islands    
     objParent = None
     for i in range(len(objs)):
         obj = objs[i]
-        objName = objsName[i]
-        if objName not in indexmap.keys():
-            indexmap[objName] = md.mesh_islands.new(obj)
+        if obj.name not in indexmap.keys():
+            indexmap[obj.name] = md.mesh_islands.new(obj)
             #indexmap[objFM].rigidbody.use_margin = True
             #if obj.rigid_body.type == 'PASSIVE':
             #    indexmap[objFM].rigidbody.kinematic=True
@@ -3919,43 +3981,42 @@ def build_fm():
     
     print('Time mesh islands: %0.2f s' %(time.time()-time_start))
     time_const = time.time()
-
+    
+    ### Create constraints
     plastic_on = 0
     plastic_off = 0
     noplastic = 0
-    for i in range(count):
-        #print("CONSTRAINT", i)
-        #print(o[i])
+    for i in range(len(consts)):
         prop_index = 0
         j = 0
-        name = o[i][j]
+        name = consts[i][j]
         j += 1
         
         # 0 - empty.location
-        pos = mathutils.Vector(o[i][j])
+        pos = mathutils.Vector(consts[i][j])
         j += 1
         
         # 1 - obj1.name
         # 2 - obj2.name
-        ob1 = o[i][j]
-        ob2 = o[i][j+1]
+        ob1 = consts[i][j]
+        ob2 = consts[i][j+1]
         j += 2
         
         # 3 - [ ["TOLERANCE", tol1dist, tol1rot] ]
-        if o[i][j] is not None and len(o[i][j]) == 3 and o[i][j][0] in {"TOLERANCE"}:
-            breaking_distance = o[i][j][1]
-            breaking_angle = o[i][j][2]
+        if consts[i][j] is not None and len(consts[i][j]) == 3 and consts[i][j][0] in {"TOLERANCE"}:
+            breaking_distance = consts[i][j][1]
+            breaking_angle = consts[i][j][2]
         else:
             breaking_distance = -1
             breaking_angle = -1
         j += 1
         
         # 4 - [ ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot] ]
-        if o[i][j] is not None and len(o[i][j]) == 3 and o[i][j][0] in {"PLASTIC", "PLASTIC_OFF"}: #ugh, variable length ?
-            plastic_distance = o[i][j][1]
-            plastic_angle = o[i][j][2]
+        if consts[i][j] is not None and len(consts[i][j]) == 3 and consts[i][j][0] in {"PLASTIC", "PLASTIC_OFF"}: #ugh, variable length ?
+            plastic_distance = consts[i][j][1]
+            plastic_angle = consts[i][j][2]
             
-            if o[i][j][0] == "PLASTIC": 
+            if consts[i][j][0] == "PLASTIC": 
                 plastic = True
                 plastic_on += 1
             else:
@@ -3970,14 +4031,14 @@ def build_fm():
         
         # 5 - [empty.rotation_mode]
         # 6 - [empty.rotation_quaternion]
-        if o[i][j] == "QUATERNION":  # If no quaternion exists we assume no rotation is available
-            rot = mathutils.Quaternion(o[i][j+1])
+        if consts[i][j] == "QUATERNION":  # If no quaternion exists we assume no rotation is available
+            rot = mathutils.Quaternion(consts[i][j+1])
         else:  # If None or EULER then no rotation is available
             rot = mathutils.Quaternion((1.0, 0.0, 0.0, 0.0))
         j += 2
                 
         # 7 - empty.rigid_body_constraint (dictionary of attributes)
-        props = o[i][j]
+        props = consts[i][j]
         prop_index = j
         
         #peek the type...
@@ -4023,13 +4084,13 @@ def build_fm():
             #con.plastic = False
             
     #        ind = prop_index+1
-    #        if len(o[i][ind]) == 3 and o[i][ind][0] == "BREAK":
-    #            con.breaking_distance = o[i][ind][1] # this is normed to 0...1, odd... why not absolute ?
-    #            con.breaking_angle = o[i][ind][2] * math.pi
+    #        if len(consts[i][ind]) == 3 and consts[i][ind][0] == "BREAK":
+    #            con.breaking_distance = consts[i][ind][1] # this is normed to 0...1, odd... why not absolute ?
+    #            con.breaking_angle = consts[i][ind][2] * math.pi
 
     #clumsy, but could work: disable plastic globally, when no plastic has been found at all
     #if plastic_on == 0 and plastic_off == 0:
-    #    for i in range(count):
+    #    for i in range(len(consts)):
     #        md.mesh_constraints[i].plastic_angle = -1
     #        md.mesh_constraints[i].plastic_distance = -1
     
