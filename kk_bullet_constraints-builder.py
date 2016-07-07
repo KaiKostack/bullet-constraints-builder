@@ -1,5 +1,5 @@
 ####################################
-# Bullet Constraints Builder v2.36 #
+# Bullet Constraints Builder v2.37 #
 ####################################
 #
 # Written within the scope of Inachus FP7 Project (607522):
@@ -51,6 +51,7 @@ progrWeakStartFact = 1       # 1     | Start weakness as factor all breaking thr
 snapToAreaOrient = 1         # 1     | Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method).
 disableCollision = 1         # 1     | Disables collisions between connected elements until breach.
 lowerBrkThresPriority = 1    # 1     | Gives priority to the weaker breaking threshold of two elements to be connected, if disabled the stronger value is used for the connection.
+
 
 ### Vars not directly accessible from GUI
 asciiExport = 0              # 0     | Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
@@ -216,7 +217,7 @@ elemGrpsBak = elemGrps.copy()
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "version": (2, 3, 6),
+    "version": (2, 3, 7),
     "blender": (2, 7, 5),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
@@ -839,7 +840,8 @@ def clearAllDataFromScene(scene):
     
     ### Clear object properties
     for obj in objs:
-        for key in obj.keys(): del obj[key]
+        for key in obj.keys():
+            if "bcb_" in key: del obj[key]
 
     ### Remove ID property build data (leaves menu props in place)
     for key in scene.keys():
@@ -960,7 +962,10 @@ def monitor_eventHandler(scene):
     
         ###### Function
         cntBroken = monitor_checkForChange(scene)
-        
+
+        # Debug: Stop on first broken connection
+        #if cntBroken > 0: bpy.ops.screen.animation_play()
+            
         ### Apply progressive weakening factor
         if progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"] \
         and (not timeScalePeriod or (timeScalePeriod and scene.frame_current > scene.frame_start +timeScalePeriod)) \
@@ -2397,8 +2402,10 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
         scene.frame_current = scene.frame_start
         ### Free previous bake data
         contextFix = bpy.context.copy()
-        contextFix['point_cache'] = scene.rigidbody_world.point_cache
-        bpy.ops.ptcache.free_bake(contextFix)
+        try: contextFix['point_cache'] = scene.rigidbody_world.point_cache
+        except: pass
+        try: bpy.ops.ptcache.free_bake(contextFix)
+        except: pass
         ### Invalidate point cache to enforce a full bake without using previous cache data
         if "RigidBodyWorld" in bpy.data.groups:
             obj = bpy.data.groups["RigidBodyWorld"].objects[0]
@@ -2806,6 +2813,30 @@ def gatherObjects(scene):
 
 ################################################################################   
 
+def prepareObjects(objs):
+
+    ### Prepare objects (make unique, apply transforms etc.)
+    # Select objects
+    for obj in objs: obj.select = 1
+    # Remove instancing from objects
+    bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
+    ### Apply scale factor depending on object's collision shape to make sure volume and mass calculation are correct (not all need this)
+    for obj in objs:
+        if obj.rigid_body != None:
+            if obj.rigid_body.collision_shape == 'CONVEX_HULL' or obj.rigid_body.collision_shape == 'MESH':  # Not needed: SPHERE, CAPSULE, CYLINDER, CONE
+                obj["Scale"] = obj.scale  # Backup original scale
+                obj.select = 1
+            else:
+                obj.select = 0
+        else:
+            # Add rigid body status if not already present
+            bpy.context.scene.objects.active = obj
+            bpy.ops.rigidbody.object_add()
+            obj.select = 1
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+################################################################################   
+
 def boundaryBox(obj, qGlobalSpace):
 
     ### Calculate boundary box corners and center from given object
@@ -2942,7 +2973,7 @@ def findConnectionsByBoundaryBoxIntersection(objs):
         bbMax += Vector((searchDistance, searchDistance, searchDistance))
         bboxes.append([bbMin, bbMax])
     
-    ### Find connections by vertex pairs
+    ### Find connections by intersecting boundary boxes
     connectsPair = []          # Stores both connected objects indices per connection
     connectsPairDist = []      # Stores distance between both elements
     for k in range(len(objs)):
@@ -5563,12 +5594,9 @@ def build():
             if len(objs) > 1:
                 if objCntInEGrps > 1:
                     time_start_connections = time.time()
-
-                    # Remove instancing from objects
-                    bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
-                    # Apply scale factor of all objects (to make sure volume and mass calculation are correct)
-                    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-                
+                    
+                    ###### Prepare objects (make unique, apply transforms etc.)
+                    prepareObjects(objs)
                     ###### Find connections by vertex pairs
                     #connectsPair, connectsPairDist = findConnectionsByVertexPairs(objs, objsEGrp)
                     ###### Find connections by boundary box intersection and skip connections whose elements are too small and store them for later parenting
