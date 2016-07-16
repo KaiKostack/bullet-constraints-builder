@@ -3985,7 +3985,7 @@ def build_fm():
 #                break
     ### Sort mesh objects by database order
     objsSource = objs
-    objsDB = bpy.data.groups["RigidBodyWorld"].objects
+    objsDB = bpy.context.scene.objects
     # Generate dictionary index by DB order
     objsIndex = {}
     for i in range(len(objsDB)): objsIndex[objsDB[i].name] = i
