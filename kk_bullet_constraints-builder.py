@@ -402,6 +402,7 @@ def importConfigData(scene):
     print("Importing config data from external file...")
     
     configData = dataFromFile(logPath +r"\bcb.cfg")
+    if configData == 1: return 1  # Error
     i = 0
     if bl_info["version"] != configData[i]:
         print("Error: Version mismatch. Try to use the same version of the BCB for export and import.")
