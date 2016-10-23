@@ -382,22 +382,6 @@ class OBJECT_OT_bcb_reset(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_estimate_cluster_radius(bpy.types.Operator):
-    bl_idname = "bcb.estimate_cluster_radius"
-    bl_label = ""
-    bl_description = "Estimate optimal cluster radius from selected objects in scene (even if you already have built a BCB structure only selected objects are considered)."
-    def execute(self, context):
-        scene = bpy.context.scene
-        result = estimateClusterRadius(scene)
-        if result > 0:
-            props = context.window_manager.bcb
-            props.clusterRadius = result
-            # Update menu related properties from global vars
-            props.props_update_menu()
-        return{'FINISHED'}
-
-########################################
-
 class OBJECT_OT_bcb_asst_update(bpy.types.Operator):
     bl_idname = "bcb.asst_update"
     bl_label = "Evaluate"
@@ -408,4 +392,102 @@ class OBJECT_OT_bcb_asst_update(bpy.types.Operator):
         combineExpressions()
         # Update menu related properties from global vars
         props.props_update_menu()
+        return{'FINISHED'}
+    
+################################################################################
+
+class OBJECT_OT_bcb_tool_estimate_cluster_radius(bpy.types.Operator):
+    bl_idname = "bcb.tool_estimate_cluster_radius"
+    bl_label = ""
+    bl_description = "Estimate optimal cluster radius from selected objects in scene (even if you already have built a BCB structure only selected objects are considered)."
+    def execute(self, context):
+        scene = bpy.context.scene
+        result = tool_estimateClusterRadius(scene)
+        if result > 0:
+            props = context.window_manager.bcb
+            props.clusterRadius = result
+            # Update menu related properties from global vars
+            props.props_update_menu()
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
+    bl_idname = "bcb.tool_do_all_steps_at_once"
+    bl_label = "Do All Steps At Once!"
+    bl_description = ""
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_createGroupsFromNames(scene)
+        tool_applyAllModifiers(scene)
+        tool_separateLoose(scene)
+        tool_discretize(scene)
+        tool_enableRigidBodies(scene)
+        tool_fixFoundation(scene)
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_create_groups_from_names(bpy.types.Operator):
+    bl_idname = "bcb.tool_create_groups_from_names"
+    bl_label = "Create Groups From Names"
+    bl_description = "Creates object groups from object names and adds them to the element group list. (':' is used as name separator by default.)"
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_createGroupsFromNames(scene)
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
+    bl_idname = "bcb.tool_apply_all_modifiers"
+    bl_label = "Apply All Modifiers"
+    bl_description = ""
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_applyAllModifiers(scene)
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_separate_loose(bpy.types.Operator):
+    bl_idname = "bcb.tool_separate_loose"
+    bl_label = "Separate Loose"
+    bl_description = ""
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_separateLoose(scene)
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_discretize(bpy.types.Operator):
+    bl_idname = "bcb.tool_discretize"
+    bl_label = "Discretize"
+    bl_description = ""
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_discretize(scene)
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
+    bl_idname = "bcb.tool_enable_rigid_bodies"
+    bl_label = "Enable Rigid Bodies"
+    bl_description = ""
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_enableRigidBodies(scene)
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_fix_foundation(bpy.types.Operator):
+    bl_idname = "bcb.tool_fix_foundation"
+    bl_label = "Fix Foundation"
+    bl_description = ""
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_fixFoundation(scene)
         return{'FINISHED'}

@@ -36,9 +36,12 @@ mem = bpy.app.driver_namespace
 from global_vars import *      # Contains global variables
 from builder_prep import *     # Contains preparation steps functions called by the builder
 
+import kk_mesh_separate_loose
+import kk_mesh_fracture
+
 ################################################################################
 
-def estimateClusterRadius(scene):
+def tool_estimateClusterRadius(scene):
     
     objs, emptyObjs = gatherObjects(scene)
     
@@ -69,3 +72,57 @@ def estimateClusterRadius(scene):
     else:
         print("Selected objects required for cluster radius estimation.") 
         return 0
+
+################################################################################
+
+def tool_createGroupsFromNames(scene):
+
+    pass
+
+################################################################################
+
+def tool_applyAllModifiers(scene):
+
+    pass
+
+################################################################################
+
+def tool_separateLoose(scene):
+    
+    ###### External function
+    kk_mesh_separate_loose.run()
+
+################################################################################
+
+def tool_discretize(scene):
+
+    # Backup selection
+    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    # Set object centers to geometry origin
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+    # Create cutting plane to be used by external module
+    bpy.ops.mesh.primitive_plane_add(radius=100, view_align=False, enter_editmode=False, location=Vector((0, 0, 0)))
+    objC = bpy.context.scene.objects.active
+    objC.name = "BCB_CuttingPlane"
+    # Revert to previous selection
+    for obj in selection: obj.select = 1
+    objC.select = 0
+
+    ###### External function
+    #kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 'BCB_CuttingPlane'], None)
+    kk_mesh_fracture.run('BCB', ['HALVING', 2.5, 'BCB_CuttingPlane'], None)
+    
+    # Delete cutting plane object
+    bpy.context.scene.objects.unlink(objC)
+
+################################################################################
+
+def tool_enableRigidBodies(scene):
+
+    pass
+
+################################################################################
+
+def tool_fixFoundation(scene):
+
+    pass

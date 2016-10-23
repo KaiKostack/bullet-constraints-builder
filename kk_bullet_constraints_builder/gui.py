@@ -94,7 +94,7 @@ class bcb_panel(bpy.types.Panel):
         split = row.split(percentage=.85, align=False)
         if props.menu_gotData: split.enabled = 0
         split.prop(props, "clusterRadius")
-        split.operator("bcb.estimate_cluster_radius", icon="AUTO")
+        split.operator("bcb.tool_estimate_cluster_radius", icon="AUTO")
         
         ###### Advanced main settings box
         
@@ -158,6 +158,31 @@ class bcb_panel(bpy.types.Panel):
             row = box.row(); row.prop(props, "progrWeakLimit")
             if props.progrWeak == 0: row.enabled = 0
             row = box.row(); row.prop(props, "progrWeakStartFact")
+
+        ###### Advanced main settings box
+        
+        box = layout.box()
+        box.prop(props, "submenu_preprocTools", text="Preprocessing Tools", icon=self.icon(props.submenu_preprocTools), emboss = False)
+
+        if props.submenu_preprocTools:
+            row = box.row(); split = row.split(percentage=.1, align=False)
+            split.label(text=""); split.operator("bcb.tool_do_all_steps_at_once", icon="LINKED")
+            row = box.row(); split = row.split(percentage=.1, align=False)
+            split.label(text="1."); split.operator("bcb.tool_create_groups_from_names", icon="DOT")
+            row = box.row(); split = row.split(percentage=.1, align=False)
+            split.label(text="2."); split.operator("bcb.tool_apply_all_modifiers", icon="DOT")
+            row = box.row(); split = row.split(percentage=.1, align=False)
+            split.label(text="3."); split.operator("bcb.tool_separate_loose", icon="DOT")
+            row = box.row(); split = row.split(percentage=.1, align=False)
+            split.label(text="4."); split.operator("bcb.tool_discretize", icon="DOT")
+            row = box.row(); split = row.split(percentage=.1, align=False)
+            split.label(text="5."); split.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
+            row = box.row(); split = row.split(percentage=.1, align=False)
+            split.label(text="6."); split.operator("bcb.tool_fix_foundation", icon="DOT")
+
+            row = box.row(); row.label(text="These tools are meant to ease your workflow")
+            row = box.row(); row.label(text="but keep in mind that some are guess based")
+            row = box.row(); row.label(text="like 1 and 6, so please double-check results.")
             
         ###### Element groups box
         

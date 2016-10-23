@@ -428,7 +428,7 @@ def makeParentsForTooSmallElementsReal(objs, connectsPairParent):
 #        sceneTemp.objects.unlink(objParent)
         # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
         if k %200 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
-            bpy.data.scenes.remove(sceneTemp)
+            bpy.data.scenes.remove(sceneTemp, do_unlink=1)
             sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
             # Link cameras because in second scene is none and when coming back camera view will losing focus
             for obj in objCameras:
@@ -439,7 +439,7 @@ def makeParentsForTooSmallElementsReal(objs, connectsPairParent):
     # Switch back to original scene
     bpy.context.screen.scene = scene
     # Delete second scene
-    bpy.data.scenes.remove(sceneTemp)
+    bpy.data.scenes.remove(sceneTemp, do_unlink=1)
 
     ### Remove child object from rigid body world (should not be simulated anymore)
     for k in range(len(connectsPairParent)):
@@ -645,6 +645,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
             modA_bool = objA.modifiers["Boolean_BCB"]
             ### Create a boolean intersection mesh (for center point calculation)
             modA_bool.operation = 'INTERSECT'
+            modA_bool.solver = 'CARVE'
 #            try: modA_bool.use_bmesh = 1  # Try to enable bmesh based boolean if possible
 #            except: pass
 #            else:
@@ -754,7 +755,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
 #            sceneTemp.objects.unlink(objB)
             # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
             if k %200 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
-                bpy.data.scenes.remove(sceneTemp)
+                bpy.data.scenes.remove(sceneTemp, do_unlink=1)
                 sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
                 # Link cameras because in second scene is none and when coming back camera view will losing focus
                 for obj in objCameras:
@@ -769,7 +770,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
     # Switch back to original scene
     bpy.context.screen.scene = scene
     # Delete second scene
-    bpy.data.scenes.remove(sceneTemp)
+    bpy.data.scenes.remove(sceneTemp, do_unlink=1)
                 
     print()
     return connectsGeo, connectsLoc
@@ -1015,7 +1016,7 @@ def createEmptyObjs(scene, constCnt):
         bpy.context.screen.scene = scene
         # Delete second scene
         for scn in scenesTemp:
-            bpy.data.scenes.remove(scn)
+            bpy.data.scenes.remove(scn, do_unlink=1)
         print()
 
         # Turn empties into constraints (extremely slow but there is no faster way when using temp scenes)

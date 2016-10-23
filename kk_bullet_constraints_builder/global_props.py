@@ -51,6 +51,7 @@ class bcb_props(bpy.types.PropertyGroup):
     menu_selectedElemGrp = int_(0)
     submenu_advancedG = bool_(0)
     submenu_advancedE = bool_(0)
+    submenu_preprocTools = bool_(0)
     submenu_assistant = bool_(0)
     submenu_assistant_advanced = bool_(0, name="Advanced", description="Shows advanced settings and formulas.")
     asciiExport = bool_(0)  # Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).

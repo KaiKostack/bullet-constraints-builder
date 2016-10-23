@@ -29,8 +29,9 @@
 
 ################################################################################
 
-import bpy, sys, os, platform, mathutils, time, copy, math, pickle, base64, zlib, random
+import bpy, sys, os, platform, mathutils, time, copy, math, pickle, base64, zlib, random, imp
 from mathutils import Vector
+mem = bpy.app.driver_namespace
 #import os
 #os.system("cls")
 
@@ -113,12 +114,32 @@ else:
 ########################################
 
 # Take either the path of the current blend file into consideration for module import (for more convenient development)
-try:    basedir = os.path.join(os.path.dirname(bpy.data.filepath), "kk_bullet_constraints-builder")
+try:    basedir = os.path.join(os.path.dirname(bpy.data.filepath), "kk_bullet_constraints_builder")
 # Or if that fails it's probably being installed as add-on and we have to use a different path instead
 except: basedir = os.path.dirname(__file__)
 if basedir not in sys.path: sys.path.append(basedir)
+# Add also subfolder(s)
+subdir = os.path.join(basedir, "extern")
+if subdir not in sys.path: sys.path.append(subdir)
 #print("BASEDIR:", basedir)
 
+### Force all modules to reload (doesn't work as expected as UI elements aren't updated, you have to restart Blender)
+#if "bcb_init_modules" in mem.keys():
+#    # Second or subsequent run: remove all but initially loaded modules
+#    del_modules = []
+#    for m in sys.modules.keys():
+#        if m not in mem["bcb_init_modules"]:
+#            del_modules.append(m)
+#    for m in del_modules:
+#        del sys.modules[m]
+#        #imp.reload(sys.modules[m])
+#else:
+#    # First run: find out which modules were initially loaded
+#    init_modules = []
+#    for m in sys.modules.keys():
+#        init_modules.append(m)
+#    mem["bcb_init_modules"] = init_modules     
+    
 ### Import submodules
 from build_data import *       # Contains build data access functions
 from builder import *          # Contains constraints builder function
@@ -171,8 +192,15 @@ classes = [ \
     OBJECT_OT_bcb_up,
     OBJECT_OT_bcb_down,
     OBJECT_OT_bcb_reset,
-    OBJECT_OT_bcb_estimate_cluster_radius,
-    OBJECT_OT_bcb_asst_update
+    OBJECT_OT_bcb_asst_update,
+    OBJECT_OT_bcb_tool_estimate_cluster_radius,
+    OBJECT_OT_bcb_tool_do_all_steps_at_once,
+    OBJECT_OT_bcb_tool_create_groups_from_names,
+    OBJECT_OT_bcb_tool_apply_all_modifiers,
+    OBJECT_OT_bcb_tool_separate_loose,
+    OBJECT_OT_bcb_tool_discretize,
+    OBJECT_OT_bcb_tool_enable_rigid_bodies,
+    OBJECT_OT_bcb_tool_fix_foundation
     ]
 
 ################################################################################
@@ -195,7 +223,7 @@ def unregister():
         try: bpy.utils.unregister_class(c) 
         except: pass
     del bpy.types.WindowManager.bcb
- 
+
  
 if __name__ == "__main__":
     try: unregister()
