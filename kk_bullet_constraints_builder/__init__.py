@@ -38,9 +38,13 @@ mem = bpy.app.driver_namespace
 ########################################
 
 ###### SymPy detection and import code
+from pkgutil import iter_modules
+def module_exists(module_name):
+    return module_name in (name for loader, name, ispkg in iter_modules())
+
 ### Try to import SymPy
-try: import sympy
-except:
+if module_exists("sympy"): import sympy
+else:
     pythonLibsPaths = []
     if platform.system() == 'Windows':
         #pythonLibsPaths.append(r"c:\Python34\Lib\site-packages")
@@ -84,8 +88,8 @@ except:
     else: print('Unknown platform detected, unable to guess path to Python:', platform.system())
 
 ### Try to import SymPy from paths
-try: import sympy
-except:
+if module_exists("sympy"): import sympy
+else:
     ### If not found attempt using pip to automatically install SymPy module in Blender
     import subprocess, bpy
     def do(cmd, *arg):
@@ -103,13 +107,13 @@ except:
     do('pip', 'install', 'sympy')
 
 ### Ultimate attempt to import SymPy
-try: import sympy
-except:
-    print("No SymPy module found, continuing without formula simplification feature...")
-    qSymPy = 0
-else:
-    print("SymPy module found.")
+if module_exists("sympy"):
+    import sympy
+    #print("SymPy module found.")
     qSymPy = 1
+else:
+    #print("No SymPy module found, continuing without formula simplification feature...")
+    qSymPy = 0
 
 ########################################
 
