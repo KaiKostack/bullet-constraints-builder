@@ -39,28 +39,40 @@ from global_vars import *      # Contains global variables
 
 class bcb_props(bpy.types.PropertyGroup):
     
-    int_ = bpy.props.IntProperty 
-    float_ = bpy.props.FloatProperty
-    bool_ = bpy.props.BoolProperty
+    int_ =    bpy.props.IntProperty 
+    float_ =  bpy.props.FloatProperty
+    bool_ =   bpy.props.BoolProperty
     string_ = bpy.props.StringProperty
-    enum_ = bpy.props.EnumProperty
+    enum_ =   bpy.props.EnumProperty
     
-    ###### Create menu related properties from global vars
-    menu_gotConfig = int_(0)
-    menu_gotData = int_(0)
-    menu_selectedElemGrp = int_(0)
-    submenu_advancedG = bool_(0)
-    submenu_advancedE = bool_(0)
-    submenu_preprocTools = bool_(0)
-    submenu_assistant = bool_(0)
-    submenu_assistant_advanced = bool_(0, name="Advanced", description="Shows advanced settings and formulas.")
-    asciiExport = bool_(0)  # Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
+    ###### Menu properties
+    null =                 bool_(default=0)
+    menu_gotConfig =       int_(default=0)
+    menu_gotData =         int_(default=0)
+    menu_selectedElemGrp = int_(default=0)
+    submenu_advancedG =    bool_(default=0)
+    submenu_advancedE =    bool_(default=0)
+    submenu_preprocTools = bool_(default=0)
 
+    ### Formula assistant
+    submenu_assistant = bool_(default=0)
+    submenu_assistant_advanced = bool_(default=0, name="Advanced", description="Shows advanced settings and formulas.")
     assistant_menu_data = []  # (ID, Name in menu, "", Index)
     for i in range(len(formulaAssistants)):
         assistant_menu_data.append((formulaAssistants[i]["ID"], formulaAssistants[i]["Name"], "", i))
-    #assistant_menu = enum_(items=assistant_menu_data, name="Type of Building Material")
-    
+
+    ###### Special menu properties
+    asciiExport = bool_(default=0)  # Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
+
+    ###### Properties to be stored in blend file
+    preprocTools_grp = bool_(default=1)
+    preprocTools_mod = bool_(default=1)
+    preprocTools_sep = bool_(default=1)
+    preprocTools_dis = bool_(default=1)
+    preprocTools_rbs = bool_(default=1)
+    preprocTools_fix = bool_(default=1)
+
+    ### Element group properties
     stepsPerSecond = int_(name="Steps Per Second",                        default=200, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
     constraintUseBreaking = bool_(name="Enable Breaking",                 default=1,                       description="Enables breaking for all constraints.")
     connectionCountLimit = int_(name="Con. Count Limit",                  default=100, min=0, max=10000,   description="Maximum count of connections per object pair (0 = disabled).")
@@ -112,7 +124,7 @@ class bcb_props(bpy.types.PropertyGroup):
         # Update fromula assistant submenu according to the chosen element group
         exec("assistant_menu = enum_(name='Type of Building Material', items=assistant_menu_data, default=elemGrps[j][EGSidxAsst]['ID'])")
 
-    ###### Update menu related properties from global vars
+    ###### Update menu properties from global vars
     def props_update_menu(self):
 
         ### Update main class properties
@@ -150,7 +162,7 @@ class bcb_props(bpy.types.PropertyGroup):
         props_asst_con_rei_beam.props_update_menu()
         props_asst_con_rei_wall.props_update_menu()
             
-    ###### Update global vars from menu related properties
+    ###### Update global vars from menu properties
     def props_update_globals(self):
 
         elemGrps = mem["elemGrps"]

@@ -43,9 +43,13 @@ class bcb_panel(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
 
-    def icon(self, bool):
+    def icon_pulldown(self, bool):
         if bool: return 'TRIA_DOWN'
         else: return 'TRIA_RIGHT'
+
+    def icon_checkbox(self, bool):
+        if bool: return 'CHECKBOX_HLT'
+        else: return 'CHECKBOX_DEHLT'
 
     def draw(self, context):
         layout = self.layout
@@ -100,7 +104,7 @@ class bcb_panel(bpy.types.Panel):
         
         layout.separator()
         box = layout.box()
-        box.prop(props, "submenu_advancedG", text="Advanced Global Settings", icon=self.icon(props.submenu_advancedG), emboss = False)
+        box.prop(props, "submenu_advancedG", text="Advanced Global Settings", icon=self.icon_pulldown(props.submenu_advancedG), emboss = False)
 
         if props.submenu_advancedG:
             row = box.row()
@@ -162,24 +166,33 @@ class bcb_panel(bpy.types.Panel):
         ###### Advanced main settings box
         
         box = layout.box()
-        box.prop(props, "submenu_preprocTools", text="Preprocessing Tools", icon=self.icon(props.submenu_preprocTools), emboss = False)
+        box.prop(props, "submenu_preprocTools", text="Preprocessing Tools", icon=self.icon_pulldown(props.submenu_preprocTools), emboss = False)
 
         if props.submenu_preprocTools:
-            row = box.row(); split = row.split(percentage=.1, align=False)
-            split.label(text=""); split.operator("bcb.tool_do_all_steps_at_once", icon="LINKED")
-            row = box.row(); split = row.split(percentage=.1, align=False)
-            split.label(text="1."); split.operator("bcb.tool_create_groups_from_names", icon="DOT")
-            row = box.row(); split = row.split(percentage=.1, align=False)
-            split.label(text="2."); split.operator("bcb.tool_apply_all_modifiers", icon="DOT")
-            row = box.row(); split = row.split(percentage=.1, align=False)
-            split.label(text="3."); split.operator("bcb.tool_separate_loose", icon="DOT")
-            row = box.row(); split = row.split(percentage=.1, align=False)
-            split.label(text="4."); split.operator("bcb.tool_discretize", icon="DOT")
-            row = box.row(); split = row.split(percentage=.1, align=False)
-            split.label(text="5."); split.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
-            row = box.row(); split = row.split(percentage=.1, align=False)
-            split.label(text="6."); split.operator("bcb.tool_fix_foundation", icon="DOT")
-
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            #split.label(text="", icon="LINKED")  # Ugly formatting better use prop method below
+            split.prop(props, "null", text="", icon="LINKED", emboss = False)
+            split.operator("bcb.tool_do_all_steps_at_once", icon="DOTSUP")
+            
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_grp", text="", icon=self.icon_checkbox(props.preprocTools_grp), emboss = False)
+            split.operator("bcb.tool_create_groups_from_names", icon="DOT")
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_mod", text="", icon=self.icon_checkbox(props.preprocTools_mod), emboss = False)
+            split.operator("bcb.tool_apply_all_modifiers", icon="DOT")
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_sep", text="", icon=self.icon_checkbox(props.preprocTools_sep), emboss = False)
+            split.operator("bcb.tool_separate_loose", icon="DOT")
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_dis", text="", icon=self.icon_checkbox(props.preprocTools_dis), emboss = False)
+            split.operator("bcb.tool_discretize", icon="DOT")
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_rbs", text="", icon=self.icon_checkbox(props.preprocTools_rbs), emboss = False)
+            split.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_fix", text="", icon=self.icon_checkbox(props.preprocTools_fix), emboss = False)
+            split.operator("bcb.tool_fix_foundation", icon="DOT")
+            
             row = box.row(); row.label(text="These tools are meant to ease your workflow")
             row = box.row(); row.label(text="but keep in mind that some are guess based")
             row = box.row(); row.label(text="like 1 and 6, so please double-check results.")
@@ -242,7 +255,7 @@ class bcb_panel(bpy.types.Panel):
         ###### Formula assistant box
 
         box = layout.box()
-        box.prop(props, "submenu_assistant", text="Formula Assistant", icon=self.icon(props.submenu_assistant), emboss = False)
+        box.prop(props, "submenu_assistant", text="Formula Assistant", icon=self.icon_pulldown(props.submenu_assistant), emboss = False)
 
         if props.submenu_assistant:
             # Pull-down selector
@@ -414,7 +427,7 @@ class bcb_panel(bpy.types.Panel):
         ###### Advanced element group settings box
         
         box = layout.box()
-        box.prop(props, "submenu_advancedE", text="Advanced Element Settings", icon=self.icon(props.submenu_advancedE), emboss = False)
+        box.prop(props, "submenu_advancedE", text="Advanced Element Settings", icon=self.icon_pulldown(props.submenu_advancedE), emboss = False)
 
         if props.submenu_advancedE:
             row = box.row(); row.prop(props, "elemGrp_%d_EGSidxSStf" %i)

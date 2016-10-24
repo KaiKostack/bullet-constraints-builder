@@ -45,6 +45,14 @@ def storeConfigDataInScene(scene):
     
     props = bpy.context.window_manager.bcb
     scene["bcb_version"] = bcb_version
+
+    scene["bcb_prop_preprocTools_grp"] = props.preprocTools_grp
+    scene["bcb_prop_preprocTools_mod"] = props.preprocTools_mod
+    scene["bcb_prop_preprocTools_sep"] = props.preprocTools_sep
+    scene["bcb_prop_preprocTools_dis"] = props.preprocTools_dis
+    scene["bcb_prop_preprocTools_rbs"] = props.preprocTools_rbs
+    scene["bcb_prop_preprocTools_fix"] = props.preprocTools_fix
+
     scene["bcb_prop_stepsPerSecond"] = props.stepsPerSecond
     scene["bcb_prop_constraintUseBreaking"] = props.constraintUseBreaking
     scene["bcb_prop_connectionCountLimit"] = props.connectionCountLimit
@@ -83,6 +91,8 @@ def getConfigDataFromScene(scene):
     ### Get menu config data from scene
     print("Getting menu config data from scene...")
 
+    props = bpy.context.window_manager.bcb
+
     warning = ""
     if "bcb_version" in scene.keys():
         versionCfg = scene["bcb_version"]
@@ -92,7 +102,19 @@ def getConfigDataFromScene(scene):
                 warning = "Configuration settings from an older BCB version detected which is known to be incompatible with this one.\nTry to clear settings and reconfigure your scene from scratch."
     else:   warning = "Configuration settings from an older BCB version detected which is known to be incompatible with this one.\nTry to clear settings and reconfigure your scene from scratch."
 
-    props = bpy.context.window_manager.bcb
+    if "bcb_prop_preprocTools_grp" in scene.keys():
+        props.preprocTools_grp = scene["bcb_prop_preprocTools_grp"]
+    if "bcb_prop_preprocTools_mod" in scene.keys():
+        props.preprocTools_mod = scene["bcb_prop_preprocTools_mod"]
+    if "bcb_prop_preprocTools_sep" in scene.keys():
+        props.preprocTools_sep = scene["bcb_prop_preprocTools_sep"]
+    if "bcb_prop_preprocTools_dis" in scene.keys():
+        props.preprocTools_dis = scene["bcb_prop_preprocTools_dis"]
+    if "bcb_prop_preprocTools_rbs" in scene.keys():
+        props.preprocTools_rbs = scene["bcb_prop_preprocTools_rbs"]
+    if "bcb_prop_preprocTools_fix" in scene.keys():
+        props.preprocTools_fix = scene["bcb_prop_preprocTools_fix"]
+
     if "bcb_prop_stepsPerSecond" in scene.keys():
         props.stepsPerSecond = scene["bcb_prop_stepsPerSecond"]
     if "bcb_prop_constraintUseBreaking" in scene.keys():

@@ -414,16 +414,18 @@ class OBJECT_OT_bcb_tool_estimate_cluster_radius(bpy.types.Operator):
 
 class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
     bl_idname = "bcb.tool_do_all_steps_at_once"
-    bl_label = "Do All Steps At Once!"
+    bl_label = "Do All Selected Steps At Once!"
     bl_description = ""
     def execute(self, context):
+        props = context.window_manager.bcb
         scene = bpy.context.scene
-        tool_createGroupsFromNames(scene)
-        tool_applyAllModifiers(scene)
-        tool_separateLoose(scene)
-        tool_discretize(scene)
-        tool_enableRigidBodies(scene)
-        tool_fixFoundation(scene)
+        print(props.preprocTools_grp, props.preprocTools_mod, props.preprocTools_sep, props.preprocTools_dis, props.preprocTools_rbs, props.preprocTools_fix)
+        if props.preprocTools_grp: tool_createGroupsFromNames(scene)
+        if props.preprocTools_mod: tool_applyAllModifiers(scene)
+        if props.preprocTools_sep: tool_separateLoose(scene)
+        if props.preprocTools_dis: tool_discretize(scene)
+        if props.preprocTools_rbs: tool_enableRigidBodies(scene)
+        if props.preprocTools_fix: tool_fixFoundation(scene)
         return{'FINISHED'}
 
 ########################################

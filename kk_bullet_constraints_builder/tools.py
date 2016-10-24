@@ -91,6 +91,8 @@ def tool_separateLoose(scene):
     
     ###### External function
     kk_mesh_separate_loose.run()
+    # Set object centers to geometry origin
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
 ################################################################################
 
@@ -109,8 +111,8 @@ def tool_discretize(scene):
     objC.select = 0
 
     ###### External function
-    #kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 'BCB_CuttingPlane'], None)
-    kk_mesh_fracture.run('BCB', ['HALVING', 2.5, 'BCB_CuttingPlane'], None)
+    kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 'BCB_CuttingPlane'], None)
+    kk_mesh_fracture.run('BCB', ['HALVING', 1.95, 'BCB_CuttingPlane'], None)
     
     # Delete cutting plane object
     bpy.context.scene.objects.unlink(objC)
