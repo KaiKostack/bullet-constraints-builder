@@ -48,10 +48,15 @@ def storeConfigDataInScene(scene):
 
     scene["bcb_prop_preprocTools_grp"] = props.preprocTools_grp
     scene["bcb_prop_preprocTools_mod"] = props.preprocTools_mod
+    scene["bcb_prop_preprocTools_rbs"] = props.preprocTools_rbs
     scene["bcb_prop_preprocTools_sep"] = props.preprocTools_sep
     scene["bcb_prop_preprocTools_dis"] = props.preprocTools_dis
-    scene["bcb_prop_preprocTools_rbs"] = props.preprocTools_rbs
     scene["bcb_prop_preprocTools_fix"] = props.preprocTools_fix
+
+    scene["bcb_prop_preprocTools_grp_sep"] = props.preprocTools_grp_sep
+    scene["bcb_prop_preprocTools_dis_siz"] = props.preprocTools_dis_siz
+    scene["bcb_prop_preprocTools_dis_jus"] = props.preprocTools_dis_jus
+    scene["bcb_prop_preprocTools_fix_gnd"] = props.preprocTools_fix_gnd
 
     scene["bcb_prop_stepsPerSecond"] = props.stepsPerSecond
     scene["bcb_prop_constraintUseBreaking"] = props.constraintUseBreaking
@@ -106,14 +111,23 @@ def getConfigDataFromScene(scene):
         props.preprocTools_grp = scene["bcb_prop_preprocTools_grp"]
     if "bcb_prop_preprocTools_mod" in scene.keys():
         props.preprocTools_mod = scene["bcb_prop_preprocTools_mod"]
+    if "bcb_prop_preprocTools_rbs" in scene.keys():
+        props.preprocTools_rbs = scene["bcb_prop_preprocTools_rbs"]
     if "bcb_prop_preprocTools_sep" in scene.keys():
         props.preprocTools_sep = scene["bcb_prop_preprocTools_sep"]
     if "bcb_prop_preprocTools_dis" in scene.keys():
         props.preprocTools_dis = scene["bcb_prop_preprocTools_dis"]
-    if "bcb_prop_preprocTools_rbs" in scene.keys():
-        props.preprocTools_rbs = scene["bcb_prop_preprocTools_rbs"]
     if "bcb_prop_preprocTools_fix" in scene.keys():
         props.preprocTools_fix = scene["bcb_prop_preprocTools_fix"]
+
+    if "bcb_prop_preprocTools_grp_sep" in scene.keys():
+        props.preprocTools_grp_sep = scene["bcb_prop_preprocTools_grp_sep"]
+    if "bcb_prop_preprocTools_dis_siz" in scene.keys():
+        props.preprocTools_dis_siz = scene["bcb_prop_preprocTools_dis_siz"]
+    if "bcb_prop_preprocTools_dis_jus" in scene.keys():
+        props.preprocTools_dis_jus = scene["bcb_prop_preprocTools_dis_jus"]
+    if "bcb_prop_preprocTools_fix_gnd" in scene.keys():
+        props.preprocTools_fix_gnd = scene["bcb_prop_preprocTools_fix_gnd"]
 
     if "bcb_prop_stepsPerSecond" in scene.keys():
         props.stepsPerSecond = scene["bcb_prop_stepsPerSecond"]

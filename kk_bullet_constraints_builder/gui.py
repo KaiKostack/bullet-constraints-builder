@@ -171,26 +171,37 @@ class bcb_panel(bpy.types.Panel):
             
             row = box.row(); split = row.split(percentage=.08, align=False)
             split.prop(props, "preprocTools_grp", text="")
-            split.operator("bcb.tool_create_groups_from_names", icon="DOT")
+            box2 = split.box()
+            box2.operator("bcb.tool_create_groups_from_names", icon="DOT")
+            row2 = box2.row(); row2.prop(props, "preprocTools_grp_sep")
+
             row = box.row(); split = row.split(percentage=.08, align=False)
             split.prop(props, "preprocTools_mod", text="")
-            split.operator("bcb.tool_apply_all_modifiers", icon="DOT")
-            row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_sep", text="")
-            split.operator("bcb.tool_separate_loose", icon="DOT")
-            row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_dis", text="")
-            split.operator("bcb.tool_discretize", icon="DOT")
+            box2 = split.box()
+            box2.operator("bcb.tool_apply_all_modifiers", icon="DOT")
+
             row = box.row(); split = row.split(percentage=.08, align=False)
             split.prop(props, "preprocTools_rbs", text="")
-            split.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
+            box2 = split.box()
+            box2.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
+
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_sep", text="")
+            box2 = split.box()
+            box2.operator("bcb.tool_separate_loose", icon="DOT")
+
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_dis", text="")
+            box2 = split.box()
+            box2.operator("bcb.tool_discretize", icon="DOT")
+            row2 = box2.row(); row2.prop(props, "preprocTools_dis_siz")
+            row2 = box2.row(); row2.prop(props, "preprocTools_dis_jus")
+
             row = box.row(); split = row.split(percentage=.08, align=False)
             split.prop(props, "preprocTools_fix", text="")
-            split.operator("bcb.tool_fix_foundation", icon="DOT")
-            
-            row = box.row(); row.label(text="These tools are meant to ease your workflow")
-            row = box.row(); row.label(text="but keep in mind that some are guess based")
-            row = box.row(); row.label(text="like 1 and 6, so please double-check results.")
+            box2 = split.box()
+            box2.operator("bcb.tool_fix_foundation", icon="DOT")
+            row2 = box2.row(); row2.prop(props, "preprocTools_fix_gnd")
             
         ###### Element groups box
         

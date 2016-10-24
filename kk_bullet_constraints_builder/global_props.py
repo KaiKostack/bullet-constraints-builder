@@ -66,11 +66,17 @@ class bcb_props(bpy.types.PropertyGroup):
     ###### Properties to be stored in blend file
     preprocTools_grp = bool_(default=1)
     preprocTools_mod = bool_(default=1)
+    preprocTools_rbs = bool_(default=1)
     preprocTools_sep = bool_(default=1)
     preprocTools_dis = bool_(default=1)
-    preprocTools_rbs = bool_(default=1)
     preprocTools_fix = bool_(default=1)
 
+    ### Preprocessing tools properties
+    preprocTools_grp_sep = string_(name="Separator",            default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names.")
+    preprocTools_dis_siz = float_(name="Min. Size Limit",       default=2.5, min=0.0, max=1000, description="Minimum dimension for an element to be still considered for subdivision, at least two dimension axis must be above this size.")
+    preprocTools_dis_jus = bool_(name="Enable Junction Search", default=1, description="Tries to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes.")
+    preprocTools_fix_gnd = float_(name="Ground Level (Z-Axis)", default=0, min=-1000000, max=1000000, description="All elements whose centroids are located below ground level will be set to 'fixed' in rigid body settings.")
+    
     ### Element group properties
     stepsPerSecond = int_(name="Steps Per Second",                        default=200, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
     constraintUseBreaking = bool_(name="Enable Breaking",                 default=1,                       description="Enables breaking for all constraints.")

@@ -421,9 +421,9 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         scene = bpy.context.scene
         if props.preprocTools_grp: tool_createGroupsFromNames(scene)
         if props.preprocTools_mod: tool_applyAllModifiers(scene)
+        if props.preprocTools_rbs: tool_enableRigidBodies(scene)
         if props.preprocTools_sep: tool_separateLoose(scene)
         if props.preprocTools_dis: tool_discretize(scene)
-        if props.preprocTools_rbs: tool_enableRigidBodies(scene)
         if props.preprocTools_fix: tool_fixFoundation(scene)
         return{'FINISHED'}
 
@@ -451,6 +451,17 @@ class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
 
 ########################################
 
+class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
+    bl_idname = "bcb.tool_enable_rigid_bodies"
+    bl_label = "Enable Rigid Bodies"
+    bl_description = ""
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_enableRigidBodies(scene)
+        return{'FINISHED'}
+
+########################################
+
 class OBJECT_OT_bcb_tool_separate_loose(bpy.types.Operator):
     bl_idname = "bcb.tool_separate_loose"
     bl_label = "Separate Loose"
@@ -469,17 +480,6 @@ class OBJECT_OT_bcb_tool_discretize(bpy.types.Operator):
     def execute(self, context):
         scene = bpy.context.scene
         tool_discretize(scene)
-        return{'FINISHED'}
-
-########################################
-
-class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
-    bl_idname = "bcb.tool_enable_rigid_bodies"
-    bl_label = "Enable Rigid Bodies"
-    bl_description = ""
-    def execute(self, context):
-        scene = bpy.context.scene
-        tool_enableRigidBodies(scene)
         return{'FINISHED'}
 
 ########################################
