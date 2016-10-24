@@ -419,7 +419,6 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
-        print(props.preprocTools_grp, props.preprocTools_mod, props.preprocTools_sep, props.preprocTools_dis, props.preprocTools_rbs, props.preprocTools_fix)
         if props.preprocTools_grp: tool_createGroupsFromNames(scene)
         if props.preprocTools_mod: tool_applyAllModifiers(scene)
         if props.preprocTools_sep: tool_separateLoose(scene)

@@ -46,7 +46,6 @@ class bcb_props(bpy.types.PropertyGroup):
     enum_ =   bpy.props.EnumProperty
     
     ###### Menu properties
-    null =                 bool_(default=0)
     menu_gotConfig =       int_(default=0)
     menu_gotData =         int_(default=0)
     menu_selectedElemGrp = int_(default=0)

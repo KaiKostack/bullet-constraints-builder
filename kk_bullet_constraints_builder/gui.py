@@ -47,10 +47,6 @@ class bcb_panel(bpy.types.Panel):
         if bool: return 'TRIA_DOWN'
         else: return 'TRIA_RIGHT'
 
-    def icon_checkbox(self, bool):
-        if bool: return 'CHECKBOX_HLT'
-        else: return 'CHECKBOX_DEHLT'
-
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
@@ -170,27 +166,26 @@ class bcb_panel(bpy.types.Panel):
 
         if props.submenu_preprocTools:
             row = box.row(); split = row.split(percentage=.08, align=False)
-            #split.label(text="", icon="LINKED")  # Ugly formatting better use prop method below
-            split.prop(props, "null", text="", icon="LINKED", emboss = False)
+            split.label(text="", icon="LINKED")
             split.operator("bcb.tool_do_all_steps_at_once", icon="DOTSUP")
             
             row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_grp", text="", icon=self.icon_checkbox(props.preprocTools_grp), emboss = False)
+            split.prop(props, "preprocTools_grp", text="")
             split.operator("bcb.tool_create_groups_from_names", icon="DOT")
             row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_mod", text="", icon=self.icon_checkbox(props.preprocTools_mod), emboss = False)
+            split.prop(props, "preprocTools_mod", text="")
             split.operator("bcb.tool_apply_all_modifiers", icon="DOT")
             row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_sep", text="", icon=self.icon_checkbox(props.preprocTools_sep), emboss = False)
+            split.prop(props, "preprocTools_sep", text="")
             split.operator("bcb.tool_separate_loose", icon="DOT")
             row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_dis", text="", icon=self.icon_checkbox(props.preprocTools_dis), emboss = False)
+            split.prop(props, "preprocTools_dis", text="")
             split.operator("bcb.tool_discretize", icon="DOT")
             row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_rbs", text="", icon=self.icon_checkbox(props.preprocTools_rbs), emboss = False)
+            split.prop(props, "preprocTools_rbs", text="")
             split.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
             row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_fix", text="", icon=self.icon_checkbox(props.preprocTools_fix), emboss = False)
+            split.prop(props, "preprocTools_fix", text="")
             split.operator("bcb.tool_fix_foundation", icon="DOT")
             
             row = box.row(); row.label(text="These tools are meant to ease your workflow")
