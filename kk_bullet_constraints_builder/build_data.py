@@ -57,6 +57,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_preprocTools_dis_siz"] = props.preprocTools_dis_siz
     scene["bcb_prop_preprocTools_dis_jus"] = props.preprocTools_dis_jus
     scene["bcb_prop_preprocTools_fix_gnd"] = props.preprocTools_fix_gnd
+    scene["bcb_prop_preprocTools_fix_obj"] = props.preprocTools_fix_obj
 
     scene["bcb_prop_stepsPerSecond"] = props.stepsPerSecond
     scene["bcb_prop_constraintUseBreaking"] = props.constraintUseBreaking
@@ -128,6 +129,8 @@ def getConfigDataFromScene(scene):
         props.preprocTools_dis_jus = scene["bcb_prop_preprocTools_dis_jus"]
     if "bcb_prop_preprocTools_fix_gnd" in scene.keys():
         props.preprocTools_fix_gnd = scene["bcb_prop_preprocTools_fix_gnd"]
+    if "bcb_prop_preprocTools_fix_obj" in scene.keys():
+        props.preprocTools_fix_obj = scene["bcb_prop_preprocTools_fix_obj"]
 
     if "bcb_prop_stepsPerSecond" in scene.keys():
         props.stepsPerSecond = scene["bcb_prop_stepsPerSecond"]

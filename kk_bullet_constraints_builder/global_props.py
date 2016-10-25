@@ -46,6 +46,7 @@ class bcb_props(bpy.types.PropertyGroup):
     enum_ =   bpy.props.EnumProperty
     
     ###### Menu properties
+
     menu_gotConfig =       int_(default=0)
     menu_gotData =         int_(default=0)
     menu_selectedElemGrp = int_(default=0)
@@ -60,10 +61,12 @@ class bcb_props(bpy.types.PropertyGroup):
     for i in range(len(formulaAssistants)):
         assistant_menu_data.append((formulaAssistants[i]["ID"], formulaAssistants[i]["Name"], "", i))
 
-    ###### Special menu properties
+    ### Special menu properties
     asciiExport = bool_(default=0)  # Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
 
     ###### Properties to be stored in blend file
+
+    ### Preprocessing tools properties
     preprocTools_grp = bool_(default=1)
     preprocTools_mod = bool_(default=1)
     preprocTools_rbs = bool_(default=1)
@@ -71,11 +74,11 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_dis = bool_(default=1)
     preprocTools_fix = bool_(default=1)
 
-    ### Preprocessing tools properties
-    preprocTools_grp_sep = string_(name="Separator",            default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names.")
-    preprocTools_dis_siz = float_(name="Min. Size Limit",       default=2.5, min=0.0, max=1000, description="Minimum dimension for an element to be still considered for subdivision, at least two dimension axis must be above this size.")
-    preprocTools_dis_jus = bool_(name="Enable Junction Search", default=1, description="Tries to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes.")
-    preprocTools_fix_gnd = float_(name="Ground Level (Z-Axis)", default=0, min=-1000000, max=1000000, description="All elements whose centroids are located below ground level will be set to 'fixed' in rigid body settings.")
+    preprocTools_grp_sep = string_(name="Separator",               default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names.")
+    preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.5, min=0.0, max=1000, description="Minimum dimension for an element for still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller down to 50%.")
+    preprocTools_dis_jus = bool_(name="Enable Junction Search",    default=1, description="Tries to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes.")
+    preprocTools_fix_gnd = float_(name="Ground Level (Z-Axis)",    default=0, min=-1000000, max=1000000, description="All elements whose centroids are located below ground level will be set to 'fixed' in rigid body settings.")
+    preprocTools_fix_obj = string_(name="Shake Table Object Name", default='Ground_Motion', description="Enter the name of a ground motion object here and the detected fixed objects will automatically be attached to it. This can be useful for simulating earthquakes through a pre-animated ground motion object like a virtual shake table. (Tip: If there is no ground motion data available, the Graph Editor can be used to generate artificial noise patterns.)")
     
     ### Element group properties
     stepsPerSecond = int_(name="Steps Per Second",                        default=200, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")

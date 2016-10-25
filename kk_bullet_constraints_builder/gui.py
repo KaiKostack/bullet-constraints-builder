@@ -168,6 +168,7 @@ class bcb_panel(bpy.types.Panel):
             row = box.row(); split = row.split(percentage=.08, align=False)
             split.label(text="", icon="LINKED")
             split.operator("bcb.tool_do_all_steps_at_once", icon="DOTSUP")
+            box.separator()
             
             row = box.row(); split = row.split(percentage=.08, align=False)
             split.prop(props, "preprocTools_grp", text="")
@@ -202,6 +203,7 @@ class bcb_panel(bpy.types.Panel):
             box2 = split.box()
             box2.operator("bcb.tool_fix_foundation", icon="DOT")
             row2 = box2.row(); row2.prop(props, "preprocTools_fix_gnd")
+            row2 = box2.row(); row2.prop(props, "preprocTools_fix_obj")
             
         ###### Element groups box
         

@@ -415,7 +415,7 @@ class OBJECT_OT_bcb_tool_estimate_cluster_radius(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
     bl_idname = "bcb.tool_do_all_steps_at_once"
     bl_label = "Do All Selected Steps At Once!"
-    bl_description = ""
+    bl_description = "Executes all selected tools in the order from top to bottom."
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -432,7 +432,7 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_create_groups_from_names(bpy.types.Operator):
     bl_idname = "bcb.tool_create_groups_from_names"
     bl_label = "Create Groups From Names"
-    bl_description = "Creates object groups from object names and adds them to the element group list. (':' is used as name separator by default.)"
+    bl_description = "Creates groups for all selected objects based on a specified naming convention and adds them also to the element groups list."
     def execute(self, context):
         scene = bpy.context.scene
         tool_createGroupsFromNames(scene)
@@ -443,7 +443,7 @@ class OBJECT_OT_bcb_tool_create_groups_from_names(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
     bl_idname = "bcb.tool_apply_all_modifiers"
     bl_label = "Apply All Modifiers"
-    bl_description = ""
+    bl_description = "Applies all modifiers on all selected objects."
     def execute(self, context):
         scene = bpy.context.scene
         tool_applyAllModifiers(scene)
@@ -454,7 +454,7 @@ class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
     bl_idname = "bcb.tool_enable_rigid_bodies"
     bl_label = "Enable Rigid Bodies"
-    bl_description = ""
+    bl_description = "Enables rigid body settings for all selected objects."
     def execute(self, context):
         scene = bpy.context.scene
         tool_enableRigidBodies(scene)
@@ -465,7 +465,7 @@ class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_separate_loose(bpy.types.Operator):
     bl_idname = "bcb.tool_separate_loose"
     bl_label = "Separate Loose"
-    bl_description = ""
+    bl_description = "Separates all loose (not connected) mesh elements within an object into separate objects, this is done for all selected objects."
     def execute(self, context):
         scene = bpy.context.scene
         tool_separateLoose(scene)
@@ -476,7 +476,7 @@ class OBJECT_OT_bcb_tool_separate_loose(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_discretize(bpy.types.Operator):
     bl_idname = "bcb.tool_discretize"
     bl_label = "Discretize"
-    bl_description = ""
+    bl_description = "Discretizes (subdivides) all selected objects into smaller segments by splitting them into halves as long as a specified minimum size is reached."
     def execute(self, context):
         scene = bpy.context.scene
         tool_discretize(scene)
@@ -487,7 +487,7 @@ class OBJECT_OT_bcb_tool_discretize(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_fix_foundation(bpy.types.Operator):
     bl_idname = "bcb.tool_fix_foundation"
     bl_label = "Fix Foundation"
-    bl_description = ""
+    bl_description = "Enables 'Passive' for all selected rigid body objects which meet the specified ground conditions."
     def execute(self, context):
         scene = bpy.context.scene
         tool_fixFoundation(scene)
