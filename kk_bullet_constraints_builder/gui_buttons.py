@@ -203,7 +203,8 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             props.asciiExport = 0
             build_fm()
             if "BCB_export.txt" in bpy.data.texts:
-                bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"], do_unlink=1)
+                try:    bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"], do_unlink=1)
+                except: bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"])
                 ### Free previous bake data
                 contextFix = bpy.context.copy()
                 contextFix['point_cache'] = scene.rigidbody_world.point_cache

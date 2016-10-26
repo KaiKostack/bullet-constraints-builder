@@ -841,7 +841,8 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
             if ob.type != 'CAMERA':
                 sceneCreate.objects.unlink(ob)
         # Delete second scene
-        bpy.data.scenes.remove(sceneCreate, do_unlink=1)
+        try:    bpy.data.scenes.remove(sceneCreate, do_unlink=1)
+        except: bpy.data.scenes.remove(sceneCreate)
             
     objCP.location = locCold
     objCP.rotation_euler = rotCold
