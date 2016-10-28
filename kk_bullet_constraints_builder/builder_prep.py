@@ -647,8 +647,9 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
             modA_bool = objA.modifiers["Boolean_BCB"]
             ### Create a boolean intersection mesh (for center point calculation)
             modA_bool.operation = 'INTERSECT'
-            modA_bool.solver = 'CARVE'
-#            try: modA_bool.use_bmesh = 1  # Try to enable bmesh based boolean if possible
+            try: modA_bool.solver = 'CARVE'
+            except: pass
+#            try: modA_bool.solver = 'BMESH'  # Try to enable bmesh based boolean if possible
 #            except: pass
 #            else:
 #                try: modA_bool.use_bmesh_connect_regions = 0  # Disable this for bmesh to avoid long malformed faces

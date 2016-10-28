@@ -69,7 +69,7 @@ class OBJECT_OT_bcb_get_config(bpy.types.Operator):
         if "bcb_prop_elemGrps" in scene.keys():
             ###### Get menu config data from scene
             warning = getConfigDataFromScene(scene)
-            if warning != None and len(warning): self.report({'ERROR'}, warning)  # Create pop-up message
+            if warning != None and len(warning): self.report({'ERROR'}, warning)  # Create popup message
             props.menu_gotConfig = 1
             ###### Get build data from scene
             #getBuildDataFromScene(scene)
@@ -165,10 +165,12 @@ class OBJECT_OT_bcb_import_config(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         error = importConfigData(scene)
+        elemGrps = mem["elemGrps"]
+        if props.menu_selectedElemGrp >= len(elemGrps): props.menu_selectedElemGrp = len(elemGrps)-1
         if not error:
             props.menu_gotConfig = 1
-            # Update menu related properties from global vars
-            props.props_update_menu()
+        # Update menu related properties from global vars
+        props.props_update_menu()
         return{'FINISHED'} 
 
 ########################################
@@ -193,7 +195,7 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
     bl_description = "Exports all constraint data to the fracture modifier (special Blender version required). WARNING: This feature is experimental and results of the FM can vary, use with care!"
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
-            self.report({'ERROR'}, "Fracture modifier not available in this Blender version.")  # Create pop-up message
+            self.report({'ERROR'}, "Fracture modifier not available in this Blender version.")  # Create popup message
         else:
             ###### Execute main building process from scratch
             scene = bpy.context.scene
@@ -269,7 +271,7 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
             elemGrps.append(elemGrps[props.menu_selectedElemGrp].copy())
             # Update menu selection
             props.menu_selectedElemGrp = len(elemGrps) -1
-        else: self.report({'ERROR'}, "Maximum allowed element group count reached.")  # Create pop-up message
+        else: self.report({'ERROR'}, "Maximum allowed element group count reached.")  # Create popup message
         # Update menu related properties from global vars
         props.props_update_menu()
         return{'FINISHED'} 
@@ -286,11 +288,11 @@ class OBJECT_OT_bcb_del(bpy.types.Operator):
         scene = bpy.context.scene
         if len(elemGrps) > 1:
             # Remove element group (syncing element group indices happens on execution)
-            elemGrps.remove(elemGrps[props.menu_selectedElemGrp])
+            del elemGrps[props.menu_selectedElemGrp]
             # Update menu selection
             if props.menu_selectedElemGrp >= len(elemGrps):
                 props.menu_selectedElemGrp = len(elemGrps) -1
-        else: self.report({'ERROR'}, "At least one element group is required.")  # Create pop-up message
+        else: self.report({'ERROR'}, "At least one element group is required.")  # Create popup message
         # Update menu related properties from global vars
         props.props_update_menu()
         return{'FINISHED'} 
@@ -374,6 +376,7 @@ class OBJECT_OT_bcb_reset(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         # Overwrite element group with original backup (syncing element group indices happens on execution)
+        print("ELEMENT GRP CNT:", len(mem["elemGrps"]), len(elemGrpsBak))
         mem["elemGrps"] = elemGrpsBak.copy()
         # Update menu selection
         props.menu_selectedElemGrp = 0
@@ -422,9 +425,9 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         scene = bpy.context.scene
         if props.preprocTools_grp: tool_createGroupsFromNames(scene)
         if props.preprocTools_mod: tool_applyAllModifiers(scene)
-        if props.preprocTools_rbs: tool_enableRigidBodies(scene)
         if props.preprocTools_sep: tool_separateLoose(scene)
         if props.preprocTools_dis: tool_discretize(scene)
+        if props.preprocTools_rbs: tool_enableRigidBodies(scene)
         if props.preprocTools_fix: tool_fixFoundation(scene)
         return{'FINISHED'}
 
@@ -452,17 +455,6 @@ class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
-    bl_idname = "bcb.tool_enable_rigid_bodies"
-    bl_label = "Enable Rigid Bodies"
-    bl_description = "Enables rigid body settings for all selected objects."
-    def execute(self, context):
-        scene = bpy.context.scene
-        tool_enableRigidBodies(scene)
-        return{'FINISHED'}
-
-########################################
-
 class OBJECT_OT_bcb_tool_separate_loose(bpy.types.Operator):
     bl_idname = "bcb.tool_separate_loose"
     bl_label = "Separate Loose"
@@ -481,6 +473,17 @@ class OBJECT_OT_bcb_tool_discretize(bpy.types.Operator):
     def execute(self, context):
         scene = bpy.context.scene
         tool_discretize(scene)
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
+    bl_idname = "bcb.tool_enable_rigid_bodies"
+    bl_label = "Enable Rigid Bodies"
+    bl_description = "Enables rigid body settings for all selected objects."
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_enableRigidBodies(scene)
         return{'FINISHED'}
 
 ########################################

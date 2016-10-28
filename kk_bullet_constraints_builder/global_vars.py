@@ -35,7 +35,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 4, 0)
+bcb_version = (2, 4, 1)
 
 ### Customizable element groups list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
 elemGrps = mem["elemGrps"] = [
@@ -142,7 +142,7 @@ formulaAssistants = [
 #
 # Areas (mm
 # A = cross area beam, h*b
-# As = total cross area of the sum of all longitudinal steel bars, (dl/2)²*pi
+# As = total cross area of the sum of all longitudinal steel bars, (dl/2)
 # asw = total cross area steel stirrup in cm
 #
 # Coefficients:

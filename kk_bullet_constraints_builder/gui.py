@@ -36,7 +36,38 @@ mem = bpy.app.driver_namespace
 from global_vars import *      # Contains global variables
 
 ################################################################################
+
+def dpifac100():
+    prefs = bpy.context.user_preferences.system
+    if hasattr(prefs, 'pixel_size'):  # python access to this was only added recently, assume non-retina display is used if using older blender
+        retinafac = bpy.context.user_preferences.system.pixel_size
+    else:
+        retinafac = 1
+    return bpy.context.user_preferences.system.dpi/(100/retinafac)
    
+class bcb_report(bpy.types.Operator):
+    bl_idname = "bcb.report"
+    bl_label = "INFO"
+    bl_description = "Report message operator"
+    def execute(self, context):
+        return {'FINISHED'}
+    def invoke(self, context, event):
+        wm = context.window_manager
+        props = context.window_manager.bcb
+        # Calculate safe width in pixel from char count of the string
+        strSize = len(props.message)
+        widthPx = (strSize*12+40) /dpifac100()
+        #return wm.invoke_props_dialog(self)
+        return wm.invoke_popup(self, width=widthPx, height=300)
+    def draw(self, context):
+        layout = self.layout
+        props = context.window_manager.bcb
+        message = props.message
+        row = layout.row()
+        row.label(text=message, icon="ERROR")
+
+########################################
+
 class bcb_panel(bpy.types.Panel):
     ver = bcb_version
     bl_label = "Bullet Constraints Builder v%d.%d%d" %(ver[0], ver[1], ver[2]) 
@@ -55,7 +86,7 @@ class bcb_panel(bpy.types.Panel):
         obj = context.object
         scene = bpy.context.scene
         try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak
+        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
         #print(props_asst_con_rei_beam.h, '\n', elemGrps[props.menu_selectedElemGrp][EGSidxAsst])
 
         row = layout.row()
@@ -85,6 +116,51 @@ class bcb_panel(bpy.types.Panel):
             split2 = split.split(align=False)
             split2.operator("bcb.set_config", icon="NEW")
 
+        ###### Preprocessing tools box
+        
+        box = layout.box()
+        box.prop(props, "submenu_preprocTools", text="Preprocessing Tools", icon=self.icon_pulldown(props.submenu_preprocTools), emboss = False)
+        if props.submenu_preprocTools:
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.label(text="", icon="LINKED")
+            split.operator("bcb.tool_do_all_steps_at_once", icon="DOTSUP")
+            box.separator()
+            
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_grp", text="")
+            box2 = split.box()
+            box2.operator("bcb.tool_create_groups_from_names", icon="DOT")
+            row2 = box2.row(); row2.prop(props, "preprocTools_grp_sep")
+
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_mod", text="")
+            box2 = split.box()
+            box2.operator("bcb.tool_apply_all_modifiers", icon="DOT")
+
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_sep", text="")
+            box2 = split.box()
+            box2.operator("bcb.tool_separate_loose", icon="DOT")
+
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_dis", text="")
+            box2 = split.box()
+            box2.operator("bcb.tool_discretize", icon="DOT")
+            row2 = box2.row(); row2.prop(props, "preprocTools_dis_siz")
+            row2 = box2.row(); row2.prop(props, "preprocTools_dis_jus")
+
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_rbs", text="")
+            box2 = split.box()
+            box2.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
+
+            row = box.row(); split = row.split(percentage=.08, align=False)
+            split.prop(props, "preprocTools_fix", text="")
+            box2 = split.box()
+            box2.operator("bcb.tool_fix_foundation", icon="DOT")
+            row2 = box2.row(); row2.prop(props, "preprocTools_fix_gnd")
+            row2 = box2.row(); row2.prop(props, "preprocTools_fix_obj")
+            
         layout.separator()
         row = layout.row()
         if props.menu_gotData: row.enabled = 0
@@ -98,10 +174,8 @@ class bcb_panel(bpy.types.Panel):
         
         ###### Advanced main settings box
         
-        layout.separator()
         box = layout.box()
         box.prop(props, "submenu_advancedG", text="Advanced Global Settings", icon=self.icon_pulldown(props.submenu_advancedG), emboss = False)
-
         if props.submenu_advancedG:
             row = box.row()
             split = row.split(percentage=.85, align=False)
@@ -159,52 +233,6 @@ class bcb_panel(bpy.types.Panel):
             if props.progrWeak == 0: row.enabled = 0
             row = box.row(); row.prop(props, "progrWeakStartFact")
 
-        ###### Advanced main settings box
-        
-        box = layout.box()
-        box.prop(props, "submenu_preprocTools", text="Preprocessing Tools", icon=self.icon_pulldown(props.submenu_preprocTools), emboss = False)
-
-        if props.submenu_preprocTools:
-            row = box.row(); split = row.split(percentage=.08, align=False)
-            split.label(text="", icon="LINKED")
-            split.operator("bcb.tool_do_all_steps_at_once", icon="DOTSUP")
-            box.separator()
-            
-            row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_grp", text="")
-            box2 = split.box()
-            box2.operator("bcb.tool_create_groups_from_names", icon="DOT")
-            row2 = box2.row(); row2.prop(props, "preprocTools_grp_sep")
-
-            row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_mod", text="")
-            box2 = split.box()
-            box2.operator("bcb.tool_apply_all_modifiers", icon="DOT")
-
-            row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_rbs", text="")
-            box2 = split.box()
-            box2.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
-
-            row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_sep", text="")
-            box2 = split.box()
-            box2.operator("bcb.tool_separate_loose", icon="DOT")
-
-            row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_dis", text="")
-            box2 = split.box()
-            box2.operator("bcb.tool_discretize", icon="DOT")
-            row2 = box2.row(); row2.prop(props, "preprocTools_dis_siz")
-            row2 = box2.row(); row2.prop(props, "preprocTools_dis_jus")
-
-            row = box.row(); split = row.split(percentage=.08, align=False)
-            split.prop(props, "preprocTools_fix", text="")
-            box2 = split.box()
-            box2.operator("bcb.tool_fix_foundation", icon="DOT")
-            row2 = box2.row(); row2.prop(props, "preprocTools_fix_gnd")
-            row2 = box2.row(); row2.prop(props, "preprocTools_fix_obj")
-            
         ###### Element groups box
         
         layout.separator()
@@ -264,7 +292,6 @@ class bcb_panel(bpy.types.Panel):
 
         box = layout.box()
         box.prop(props, "submenu_assistant", text="Formula Assistant", icon=self.icon_pulldown(props.submenu_assistant), emboss = False)
-
         if props.submenu_assistant:
             # Pull-down selector
             row = box.row(); row.prop(props, "assistant_menu")

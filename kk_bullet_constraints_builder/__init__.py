@@ -178,7 +178,10 @@ classes = [ \
     bcb_props,
     bcb_asst_con_rei_beam_props,
     bcb_asst_con_rei_wall_props,
+    
+    bcb_report,
     bcb_panel,
+    
     OBJECT_OT_bcb_set_config,
     OBJECT_OT_bcb_get_config,
     OBJECT_OT_bcb_clear,
@@ -220,7 +223,7 @@ def register():
     props.menu_gotConfig = 0
     props.menu_gotData = 0
     props.props_update_menu()
-    
+
            
 def unregister():
     for c in classes:

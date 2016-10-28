@@ -1,7 +1,25 @@
 ################################################
-# Efficient Separate Loose v1.4 by Kai Kostack #
+# Efficient Separate Loose v1.5 by Kai Kostack #
 ################################################
-    
+
+# ##### BEGIN GPL LICENSE BLOCK #####
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# ##### END GPL LICENSE BLOCK #####
+  
 import bpy, sys, time
 
 def run():
@@ -13,13 +31,15 @@ def run():
                            # 1 = Halving based on element order (together with element sort operator this is more flexible than mode 2)
                            # 2 = Halving based on axis based space (Z)
     qUVislands = 0         # If enabled UV islands will be used instead of mesh islands (overrides elementBase and separationMode)
+
+    qSilentVerbose = 1     # Reduces text output to a minimum
     
     ### Fixes
     if qUVislands: elementBase = 1  # This is required because a vertex can share multiple UV islands so we still would get multiple UV islands per separated mesh
     
     ###
     
-    print("\nStarting...")
+    print("\nStarting separate loose...")
     time_start = time.time()
 
     scene = bpy.context.scene
@@ -30,15 +50,15 @@ def run():
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
     
-    # create object list of selected objects
-    # (because we add more objects with following function we need a separate list)
+    # Create object list of selected objects
+    # (Because we add more objects with following function we need a separate list.)
     objs = []
     for obj in scene.objects:
         if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(scene):
             objs.append(obj)
             scene.objects.unlink(obj)   # Unlinking optimization: Unlink objects from scene for speed optimization
     
-    # main separation loop
+    # Main separation loop
     objsNew = []    # Unlinking optimization
     count = len(objs)
     while len(objs) > 0:
@@ -52,15 +72,17 @@ def run():
         vertLen = len(me.vertices)
         polyLen = len(me.polygons)
             
-        # only start halving when object has more than this number of vertices
-        # some benchmarks showed that it's optimal to keep it low as it's more effective but not less than 10
+        # Only start halving when object has more than this number of vertices
+        # Some benchmarks showed that it's optimal to keep it low as it's more effective but not less than 10
         if vertLen > 10: qObjectIsLargeEnough = 1
         else: qObjectIsLargeEnough = 0
    
         if qObjectIsLargeEnough:
-            print('Objects to split:', len(objs))
-            print('Splitting Object:', obj.name)
-            print('Vertices:', vertLen, '| polygons:', polyLen)
+            if not qSilentVerbose:
+                print('Objects to split:', len(objs))
+                print('Splitting object:', obj.name)
+                print('Vertices:', vertLen, '| polygons:', polyLen)
+            else: sys.stdout.write('\r' +"%d " %len(objs))
 
             # Enter edit mode              
             try: bpy.ops.object.mode_set(mode='EDIT')
@@ -85,7 +107,7 @@ def run():
                     for i in range(int(polyLen/2)): me.polygons[i].select = 1
     
             elif separationMode == 2:  # old half selection code based on location and axis
-                # calculate boundary box corners and center
+                # Calculate boundary box corners and center
                 verts = me.vertices
                 bbMin = verts[0].co.copy()
                 bbMax = verts[0].co.copy()
@@ -162,15 +184,16 @@ def run():
                 scene.objects.unlink(objN)   # Temporarily unlink again
                 if objN not in objsNew: objsNew.append(objN)
         
-        print('Current database object count:', len(bpy.data.objects))
+        if not qSilentVerbose: print('Current database object count:', len(bpy.data.objects))
+
+    if qSilentVerbose: print()
                                                  
     # Unlinking optimization: Relink all objects back to scene
     for objN in objsNew:
         scene.objects.link(objN)
         
-    print('-- Time total: %0.2f s\n' %(time.time()-time_start))
     print('Original mesh objects split:', count)
-    print('Done.')
+    print('Done. -- Time: %0.2f s' %(time.time()-time_start))
                  
                    
 if __name__ == "__main__":

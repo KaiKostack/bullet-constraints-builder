@@ -1,7 +1,25 @@
 ######################################
-# Mesh Fracture v1.69 by Kai Kostack #
+# Mesh Fracture v1.70 by Kai Kostack #
 ######################################
-    
+
+# ##### BEGIN GPL LICENSE BLOCK #####
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# ##### END GPL LICENSE BLOCK #####
+ 
 import bpy, sys, random, time
 from mathutils import *
 
@@ -31,11 +49,13 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     qSplitAtJunctions = 0           # 1    | Try to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes
     junctionTol = .001              # .001 | Tolerance for junction detection to avoid cutting off of very thin geometry slices (requires normals consistently pointing outside)
     junctionTolMargin = .01         # .01  | Margin inside the object boundary box borders to skip junction detection (helps to avoid cutting of similar faces which can lead to hundreds of thin mesh slices, should be larger than junctionTol) 
-    halvingCutter = 'Plane'     #      | The "knife" object for halving, a larger flat plane is recommended but can be an arbitrary geometry as well
+    junctionMaxFaceCnt = 0          # 0    | Sets a limit to skip search for junctions after this many faces have been checked (helps to skip very dense meshes more quickly, 0 = disabled)
+    halvingCutter = 'Plane'         #      | The "knife" object for halving, a larger flat plane is recommended but can be an arbitrary geometry as well
 
     ### Vars for system (should have no influence on result)
     qSecondScnOpt = 1               # 1    | Use an empty new scene for object creation, improves performance only for huge amounts of objects in scene and is incompatible with the Dynamic Fracture script (will be disabled when in use)
     qDebugVerbose = 0               # 0    | Shows verbose output in console like function names
+    qSilentVerbose = 0              # 0    | Reduces text output to a minimum
 
     ### Custom BCB parameter handling
     if objsSource == 'BCB':
@@ -49,9 +69,12 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         elif parameters[0] == 'JUNCTION':
             qUseHalving = 1
             qSplitAtJunctions = 1
-        halvingCutter = cookyCutterPlane = parameters[2]  # Object name
+        qTriangulate = parameters[2]
+        halvingCutter = cookyCutterPlane = parameters[3]  # Object name
         objectCountLimit = 100000000
         boolErrorRetryLimit = 0
+        qSeparateLoose = 0
+        qSilentVerbose = 1
         objsSource = None
         crackOrigin = None
     
@@ -63,7 +86,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     pi = 3.1415927
     pi2 = pi /2
 
-    print("\nStart fracturing...")
+    print("\nStarting splitting process...")
 
     scene = bpy.context.scene
     bpy.context.tool_settings.mesh_select_mode = False, True, False
@@ -82,6 +105,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
     
+    ###### Create main object list
     if objsSource == None:
         ### Create object list of selected objects
         ### (because we add more objects with following function we need a separate list)
@@ -89,19 +113,20 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         for obj in bpy.data.objects:
             if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
                 objs.append(obj)
-        # Deselect all objects
-        bpy.ops.object.select_all(action='DESELECT')
         print("%d objects found." %len(objs))
     else:
         ### This part allows to fracture objects from database even from a different empty scene (optimization for Dynamic Fracture)
         if qDynSecondScnOpt:
+            # Remember scene where cookyCutterPlane is linked to
             for scn in bpy.data.scenes:
                 for obj in scn.objects:
                     if cookyCutterPlane == obj.name:
                         sceneOriginal = scn
                         break
+            # Link cookyCutterPlane to current scene
             try: bpy.context.screen.scene.objects.link(bpy.data.objects[cookyCutterPlane])
             except: pass
+            # Link also objects from objsSource to current scene
             objs = objsSource
             for obj in objs:
                 try: bpy.context.screen.scene.objects.link(obj)
@@ -109,8 +134,13 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         # If no second scene optimization is used in dynamic handler
         else:
             objs = objsSource
-            
+
+    # Deselect all objects
+    bpy.ops.object.select_all(action='DESELECT')
+
     if qSeparateLoose:
+        # Select objects to fracture
+        for obj in objs: obj.select = 1
         ### perform separate loose on start objects
         i = 1
         for obj in objs:
@@ -124,8 +154,15 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
             bpy.ops.mesh.separate(type='LOOSE')
             # Leave edit mode
             try: bpy.ops.object.mode_set(mode='OBJECT')
-            except: pass 
+            except: pass
         print()
+        # Set object centers to geometry origin
+        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+        ### Create again an object list of selected objects since selection might have change
+        objs = []
+        for obj in bpy.data.objects:
+            if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
+                objs.append(obj)
     
     if qSecondScnOpt:
         ### Create new scene for faster object creation
@@ -176,10 +213,11 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
             dim = obj.dimensions
             splitAtJunction_face = 0
             if dim.x > minimumSizeLimit or dim.y > minimumSizeLimit or dim.z > minimumSizeLimit \
-            or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons)):
+            or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and splitAtJunction_face <= junctionMaxFaceCnt):
                
-                print(objectCount, '/', objectCountLimit, ':', obj.name)
-                
+                if not qSilentVerbose: print(objectCount, '/', objectCountLimit, ':', obj.name)
+                else: sys.stdout.write('\r' +"%d" %objectCount)
+
                 if not qUseHalving:
                     ### Only use plane cutter if its diameter is larger than object otherwise use hole cutter 
                     if objCP.dimensions > obj.dimensions or not qUseHoleCutter:
@@ -229,11 +267,12 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                 #####################################################
                 ###### Non-manifold mesh - surface fracture algorithm
                 if qNonManifolds:
-                    print('Mesh not water tight, non-manifolds found. Starting surface fracture...')
+                    if not qSilentVerbose: print('Mesh not water tight, non-manifolds found. Starting surface boolean...')
                     qNoObjectsLeft = 0
                     
                     boolErrorCount = 0
-                    while (boolErrorCount < boolErrorRetryLimit and not qSplitAtJunctions) or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons)):
+                    while (boolErrorCount < boolErrorRetryLimit and not qSplitAtJunctions) \
+                    or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and splitAtJunction_face <= junctionMaxFaceCnt):
                         
                         # Redraw Blenders viewport while script is running
                         #bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
@@ -312,7 +351,8 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         mod = obj.modifiers["Boolean"]
                         mod.operation = 'UNION'
                         mod.object = objCdup
-                        mod.solver = 'CARVE'
+                        try: mod.solver = 'CARVE'
+                        except: pass
                         meA = obj.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
                         # Clean boolean result in case it is corrupted, because otherwise Blender sometimes crashes with "Error: EXCEPTION_ACCESS_VIOLATION"
                         qBadResult = meA.validate(verbose=False, clean_customdata=False)
@@ -323,7 +363,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         surfA = 0
                         for poly in meA.polygons: surfA += poly.area
                         if qBadResult or (surfA > surf -.001 and surfA < surf +.001):
-                            print('Error on boolean operation, mesh problems detected. Retrying...')
+                            if not qSilentVerbose: print('Error on boolean operation, mesh problems detected. Retrying...')
                             boolErrorCount += 1
                             # Remove other object already linked to scene for new retry
                             bpy.context.scene.objects.unlink(objCdup)
@@ -369,7 +409,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         surfB = 0
                         for poly in meB.polygons: surfB += poly.area
                         if qBadResult or (surfB > surf -.001 and surfB < surf +.001):
-                            print('Error on boolean operation, mesh problems detected. Retrying...')
+                            if not qSilentVerbose: print('Error on boolean operation, mesh problems detected. Retrying...')
                             boolErrorCount += 1
                             # Remove other object already linked to scene for new retry
                             bpy.context.scene.objects.unlink(objA)
@@ -393,7 +433,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         #   just then we can expect a successful boolean attempt
                         if len(meA.vertices) == 0 or len(meB.vertices) == 0 \
                         or abs(surf -(surfA +surfB)) > .01:
-                            print('Bad result on boolean operation, retrying with different location and angle...')
+                            if not qSilentVerbose: print('Bad result on boolean operation, retrying with different location and angle...')
                             boolErrorCount += 1
                             # Remove duplicate objects for new retry
                             bpy.context.scene.objects.unlink(objA)
@@ -518,18 +558,19 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         break                        
                     
                     if boolErrorCount == boolErrorRetryLimit:
-                        print('Bool error limit reached, skipping this object...')
+                        if not qSilentVerbose: print('Bool error limit reached, skipping this object...')
                     
                     if objectCount > objectCountLimit: break
            
                 #####################################################
                 ###### Manifold mesh - solid fracture algorithm
                 else:
-                    print('Mesh water tight and manifold. Starting solid fracture...')
+                    if not qSilentVerbose: print('Mesh water tight and manifold. Starting solid boolean...')
                     qNoObjectsLeft = 0
                     
                     boolErrorCount = 0
-                    while (boolErrorCount < boolErrorRetryLimit and not qSplitAtJunctions) or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons)):
+                    while (boolErrorCount < boolErrorRetryLimit and not qSplitAtJunctions) \
+                    or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and splitAtJunction_face <= junctionMaxFaceCnt):
                         
                         # Redraw Blenders viewport while script is running
                         #bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
@@ -599,7 +640,8 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         mod = obj.modifiers["Boolean"]
                         mod.operation = 'INTERSECT'
                         mod.object = objC
-                        mod.solver = 'CARVE'
+                        try: mod.solver = 'CARVE'
+                        except: pass
                         meA = obj.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
                         # Clean boolean result in case it is corrupted, because otherwise Blender sometimes crashes with "Error: EXCEPTION_ACCESS_VIOLATION"
                         qBadResult = meA.validate(verbose=False, clean_customdata=False)
@@ -610,7 +652,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         surfA = 0
                         for poly in meA.polygons: surfA += poly.area
                         if qBadResult or (surfA > surf -.001 and surfA < surf +.001):
-                            print('Error on boolean operation, mesh problems detected. Retrying...')
+                            if not qSilentVerbose: print('Error on boolean operation, mesh problems detected. Retrying...')
                             boolErrorCount += 1
                             # Clear modifier from original object
                             obj.modifiers.clear()
@@ -647,7 +689,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         surfB = 0
                         for poly in meB.polygons: surfB += poly.area
                         if qBadResult or (surfB > surf -.001 and surfB < surf +.001):
-                            print('Error on boolean operation, mesh problems detected. Retrying...')
+                            if not qSilentVerbose: print('Error on boolean operation, mesh problems detected. Retrying...')
                             boolErrorCount += 1
                             # Remove other object already linked to scene for new retry
                             bpy.context.scene.objects.unlink(objA)
@@ -709,7 +751,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         or qManifoldsA or qManifoldsB \
                         or (((dimA.x >= 0 and dimA.y >= 0 and dimA.z >= 0) \
                         or (dimB.x >= 0 and dimB.y >= 0 and dimB.z >= 0)) and objC == objCP):  
-                            print('Error on boolean operation, retrying with different location and angle...')
+                            if not qSilentVerbose: print('Error on boolean operation, retrying with different location and angle...')
                             boolErrorCount += 1
                             # Remove both objects for new retry
                             bpy.context.scene.objects.unlink(objA)
@@ -821,16 +863,18 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         break
                   
                     if boolErrorCount == boolErrorRetryLimit:
-                        print('Bool error limit reached, skipping this object...')
+                        if not qSilentVerbose: print('Bool error limit reached, skipping this object...')
                     
                     if objectCount > objectCountLimit: break
         
             else:
-                print('Shard size below minimum limit, skipping...')
+                if not qSilentVerbose: print('Shard size below minimum limit, skipping...')
                   
         if qNoObjectsLeft:
-            print('No meshes left or shards already too small, stopping now...')
+            if not qSilentVerbose: print('No meshes left or shards already too small, stopping now...')
             break
+
+    if qSilentVerbose: print()
                                                           
     ### Remove new scene again
     if qSecondScnOpt:
@@ -867,7 +911,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     # Deselect all objects
     #bpy.ops.object.select_all(action='DESELECT')
                                                             
-    print('\nDone. - Fracture time: %0.2f s' %(time.time() -time_start))
+    print('Done. -- Time: %0.2f s' %(time.time() -time_start))
     
     # return if new objects have been created
     # secondly return list with all objects created and deleted

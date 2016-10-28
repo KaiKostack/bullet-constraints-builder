@@ -63,15 +63,16 @@ class bcb_props(bpy.types.PropertyGroup):
 
     ### Special menu properties
     asciiExport = bool_(default=0)  # Exports all constraint data to an ASCII text file instead of creating actual empty objects (only useful for developers at the moment).
+    message = string_(default="")
 
     ###### Properties to be stored in blend file
 
     ### Preprocessing tools properties
     preprocTools_grp = bool_(default=1)
     preprocTools_mod = bool_(default=1)
-    preprocTools_rbs = bool_(default=1)
     preprocTools_sep = bool_(default=1)
     preprocTools_dis = bool_(default=1)
+    preprocTools_rbs = bool_(default=1)
     preprocTools_fix = bool_(default=1)
 
     preprocTools_grp_sep = string_(name="Separator",               default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names.")
