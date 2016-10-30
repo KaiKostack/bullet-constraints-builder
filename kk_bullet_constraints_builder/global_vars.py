@@ -35,18 +35,24 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 4, 1)
+bcb_version = (2, 4, 2)
 
-### Customizable element groups list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
-elemGrps = mem["elemGrps"] = [
-# 0          1    2           3        4   5     6       7       8      9      10     11      12   13   14   15    16   17    18     19              20
-# Name       RVP  Mat.preset  Density  CT  BTC   BTT     BTS     BTS90  BTB    BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.Assist.+Data  Cyl
-[ "",        1,   "Concrete", 2400,    6,  "35", "5.2",  "155",  "",    "1.0", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
-[ "Columns", 1,   "Concrete", 2400,    6,  "35", "5.2",  "155",  "",    "1.0", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "con_rei_beam", 0 ],
-[ "Walls",   1,   "Concrete", 2400,    6,  "35", "5.2",  "0.9",  "",    "1.0", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
-[ "Slabs",   1,   "Concrete", 2400,    6,  "35", "5.2",  "0.9",  "",    "1.0", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "con_rei_wall", 0 ],
-[ "Masonry", 1,   "Masonry",  1800,    6,  "10", "2",    "0.3",  "",    "0.3", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ]
+### Customizable element group presets
+presets = [
+# 0                     1    2           3        4   5       6       7       8      9       10     11      12   13   14   15    16   17    18     19              20
+# Name                  RVP  Mat.preset  Density  CT  BTC     BTT     BTS     BTS90  BTB     BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.Assist.+Data  Cyl
+[ "",                   1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
+[ "RC Columns",         1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
+[ "RC Walls",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
+[ "RC Slabs",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
+[ "Masonry Walls",      1,   "Masonry",  1800,    6,  "10",   "2",    "0.3",  "",    "0.3",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
+[ "I-Beams Screwed",    1,   "Steel",    7800,    6,  "47.5", "23.5", "14.1", "",    "2.4",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
+[ "I-Beams Screwed 2",  1,   "Steel",    7800,    6,  "87.5", "33.8", "20.3", "",    "12.3", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
+[ "HSS-Beams Welded",   1,   "Steel",    7800,    6,  "37.5", "75",   "45",   "",    "6.6",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ]
 ] # Empty name means this group is to be used when element is not part of any element group
+
+# Actual element group list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
+elemGrps = mem["elemGrps"] = []
 
 ### Magic numbers / column descriptions for above element group settings (in order from left to right):
 EGSidxName = 0    # Group Name               | The name of the object group these settings will be used for
@@ -182,7 +188,13 @@ pi2 = pi /2
 
 ########################################
 
-# Add formula assistant settings to element groups
+# Add formula assistant settings to preset groups
+for elemGrp in presets:
+    for formAssist in formulaAssistants:
+        if elemGrp[EGSidxAsst] == formAssist['ID']:
+            elemGrp[EGSidxAsst] = formAssist.copy()
+            break
+# Add formula assistant settings to element groups (not required for empty elemGrps)
 for elemGrp in elemGrps:
     for formAssist in formulaAssistants:
         if elemGrp[EGSidxAsst] == formAssist['ID']:

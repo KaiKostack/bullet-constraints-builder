@@ -262,16 +262,47 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
 class OBJECT_OT_bcb_add(bpy.types.Operator):
     bl_idname = "bcb.add"
     bl_label = ""
-    bl_description = "Adds element group to list."
+    bl_description = "Adds a preset element group to list."
+    int_ =    bpy.props.IntProperty 
+    menuIdx = int_(default = -1)
     def execute(self, context):
         props = context.window_manager.bcb
         elemGrps = mem["elemGrps"]
         if len(elemGrps) < maxMenuElementGroupItems:
-            # Add element group (syncing element group indices happens on execution)
-            elemGrps.append(elemGrps[props.menu_selectedElemGrp].copy())
-            # Update menu selection
-            props.menu_selectedElemGrp = len(elemGrps) -1
+            if self.menuIdx < 0:
+                # Call menu
+                bpy.ops.wm.call_menu(name="bcb.add_preset")
+            else:
+                print("EXECUTE")
+                props = context.window_manager.bcb
+                elemGrps = mem["elemGrps"]
+                # Add element group (syncing element group indices happens on execution)
+                elemGrps.append(presets[self.menuIdx].copy())
+                # Update menu selection
+                props.menu_selectedElemGrp = len(elemGrps) -1
+                # Update menu related properties from global vars
+                props.props_update_menu()
+                self.menuIdx = -1
         else: self.report({'ERROR'}, "Maximum allowed element group count reached.")  # Create popup message
+        return{'FINISHED'} 
+
+########################################
+
+class OBJECT_OT_bcb_dup(bpy.types.Operator):
+    bl_idname = "bcb.dup"
+    bl_label = ""
+    bl_description = "Duplicates selected element group."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        elemGrps = mem["elemGrps"]
+        if len(elemGrps) > 0:
+            if len(elemGrps) < maxMenuElementGroupItems:
+                # Add element group (syncing element group indices happens on execution)
+                elemGrps.append(elemGrps[props.menu_selectedElemGrp].copy())
+                # Update menu selection
+                props.menu_selectedElemGrp = len(elemGrps) -1
+            else: self.report({'ERROR'}, "Maximum allowed element group count reached.")  # Create popup message
+        else: self.report({'ERROR'}, "There is no element group to duplicate.")  # Create popup message
         # Update menu related properties from global vars
         props.props_update_menu()
         return{'FINISHED'} 
@@ -286,15 +317,14 @@ class OBJECT_OT_bcb_del(bpy.types.Operator):
         props = context.window_manager.bcb
         elemGrps = mem["elemGrps"]
         scene = bpy.context.scene
-        if len(elemGrps) > 1:
+        if len(elemGrps) > 0:
             # Remove element group (syncing element group indices happens on execution)
             del elemGrps[props.menu_selectedElemGrp]
             # Update menu selection
             if props.menu_selectedElemGrp >= len(elemGrps):
                 props.menu_selectedElemGrp = len(elemGrps) -1
-        else: self.report({'ERROR'}, "At least one element group is required.")  # Create popup message
-        # Update menu related properties from global vars
-        props.props_update_menu()
+            # Update menu related properties from global vars
+            props.props_update_menu()
         return{'FINISHED'} 
 
 ########################################
@@ -425,10 +455,12 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         scene = bpy.context.scene
         if props.preprocTools_grp: tool_createGroupsFromNames(scene)
         if props.preprocTools_mod: tool_applyAllModifiers(scene)
+        if props.preprocTools_ctr: tool_centerModel(scene)
         if props.preprocTools_sep: tool_separateLoose(scene)
         if props.preprocTools_dis: tool_discretize(scene)
         if props.preprocTools_rbs: tool_enableRigidBodies(scene)
         if props.preprocTools_fix: tool_fixFoundation(scene)
+        if props.preprocTools_gnd: tool_groundMotion(scene)
         return{'FINISHED'}
 
 ########################################
@@ -451,6 +483,17 @@ class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
     def execute(self, context):
         scene = bpy.context.scene
         tool_applyAllModifiers(scene)
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_center_model(bpy.types.Operator):
+    bl_idname = "bcb.tool_center_model"
+    bl_label = "Center Model"
+    bl_description = "Shifts all selected objects as a whole to the world center of the scene. The height, however, won't be changed, so the ground levels will stay the same."
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_centerModel(scene)
         return{'FINISHED'}
 
 ########################################
@@ -495,4 +538,15 @@ class OBJECT_OT_bcb_tool_fix_foundation(bpy.types.Operator):
     def execute(self, context):
         scene = bpy.context.scene
         tool_fixFoundation(scene)
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_ground_motion(bpy.types.Operator):
+    bl_idname = "bcb.tool_ground_motion"
+    bl_label = "Ground Motion"
+    bl_description = "Attaches all selected passive rigid body objects to a specified and animated ground object. This can be useful for simulating earthquakes through a pre-animated ground motion object like a virtual shake table."
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_groundMotion(scene)
         return{'FINISHED'}

@@ -70,16 +70,24 @@ class bcb_props(bpy.types.PropertyGroup):
     ### Preprocessing tools properties
     preprocTools_grp = bool_(default=1)
     preprocTools_mod = bool_(default=1)
+    preprocTools_ctr = bool_(default=1)
     preprocTools_sep = bool_(default=1)
     preprocTools_dis = bool_(default=1)
     preprocTools_rbs = bool_(default=1)
     preprocTools_fix = bool_(default=1)
-
+    preprocTools_gnd = bool_(default=1)
+    
     preprocTools_grp_sep = string_(name="Separator",               default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names.")
     preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.5, min=0.0, max=1000, description="Minimum dimension for an element for still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller down to 50%.")
     preprocTools_dis_jus = bool_(name="Enable Junction Search",    default=1, description="Tries to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes.")
-    preprocTools_fix_gnd = float_(name="Ground Level (Z-Axis)",    default=0, min=-1000000, max=1000000, description="All elements whose centroids are located below ground level will be set to 'fixed' in rigid body settings.")
-    preprocTools_fix_obj = string_(name="Shake Table Object Name", default='Ground_Motion', description="Enter the name of a ground motion object here and the detected fixed objects will automatically be attached to it. This can be useful for simulating earthquakes through a pre-animated ground motion object like a virtual shake table. (Tip: If there is no ground motion data available, the Graph Editor can be used to generate artificial noise patterns.)")
+    preprocTools_fix_lev = float_(name="Ground Level (Z-Axis)",    default=0, min=-1000000, max=1000000, description="All elements whose centroids are located below ground level will be set to 'Passive' in rigid body settings.")
+    preprocTools_fix_nam = string_(name="By Name",                 default='', description="Enter a name (or substring) for objects that should be set to 'Passive' in rigid body settings instead of using ground level detection.")
+    preprocTools_gnd_obj = string_(name="Shake Table Object Name", default='Ground_Motion', description="Enter the name of a ground motion object here and the passive objects will automatically be attached to it.")
+    preprocTools_gnd_nac = bool_(name="Create Artificial Earthquake Motion", default=0, description="Enables generation of artificial ground motion data based on noise functions, this can be useful if there is no real world ground motion data available.")
+    preprocTools_gnd_nap = float_(name="Amplitude",   default=0.4, min=0.0, max=1000, description="Amplitude of the artificial earthquake to be generated in m (because of the random nature of the noise function this should be taken as approximation).")
+    preprocTools_gnd_nfq = float_(name="Frequency",   default=0.6, min=0.0, max=1000, description="Frequency of the artificial earthquake to be generated in Hz (because of the random nature of the noise function this should be taken as approximation).")
+    preprocTools_gnd_ndu = float_(name="Duration",    default=10, min=0.0, max=1000, description="Duration of the artificial earthquake to be generated in seconds.")
+    preprocTools_gnd_nsd = float_(name="Random Seed", default=0, min=0.0, max=10000000, description="Seed number for the random noise function used to generate the artificial earthquake, modification will change the characteristics of the motion.")
     
     ### Element group properties
     stepsPerSecond = int_(name="Steps Per Second",                        default=200, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
@@ -103,117 +111,119 @@ class bcb_props(bpy.types.PropertyGroup):
     disableCollision = bool_(name="Disable Collisions",                   default=1,                       description="Disables collisions between connected elements until breach.")
     lowerBrkThresPriority = bool_(name="Lower Strength Priority",         default=1,                       description="Gives priority to the weaker breaking threshold of two elements to be connected, if disabled the stronger value is used for the connection.")
     
+    # Create element groups properties for all possible future entries (maxMenuElementGroupItems)
     for i in range(maxMenuElementGroupItems):
         elemGrps = mem["elemGrps"]
-        if i < len(elemGrps): j = i
-        else: j = 0
-        exec("elemGrp_%d_EGSidxName" %i +" = string_(name='Grp. Name', default=elemGrps[j][EGSidxName], description='The name of the element group.')")
-        exec("elemGrp_%d_EGSidxCTyp" %i +" = int_(name='Connection Type', default=elemGrps[j][EGSidxCTyp], min=1, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
+        j = 0  # Use preset 0 as dummy data 
+        exec("elemGrp_%d_EGSidxName" %i +" = string_(name='Grp. Name', default=presets[j][EGSidxName], description='The name of the element group.')")
+        exec("elemGrp_%d_EGSidxCTyp" %i +" = int_(name='Connection Type', default=presets[j][EGSidxCTyp], min=1, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
 
-        exec("elemGrp_%d_EGSidxBTC" %i +" = string_(name='Compressive', default=elemGrps[j][EGSidxBTC], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties.')")
-        exec("elemGrp_%d_EGSidxBTT" %i +" = string_(name='Tensile', default=elemGrps[j][EGSidxBTT], description='Math expression for the material´s real world tensile breaking threshold in N/mm^2 together with related geometry properties.')")
-        exec("elemGrp_%d_EGSidxBTS" %i +" = string_(name='Shear', default=elemGrps[j][EGSidxBTS], description='Math expression for the material´s real world shearing breaking threshold in N/mm^2 together with related geometry properties.')")
-        exec("elemGrp_%d_EGSidxBTS9" %i +" = string_(name='Shear 90°', default=elemGrps[j][EGSidxBTS9], description='Math expression for the material´s real world shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties.')")
-        exec("elemGrp_%d_EGSidxBTB" %i +" = string_(name='Bend', default=elemGrps[j][EGSidxBTB], description='Math expression for the material´s real world bending breaking threshold in Nm/mm^2 together with related geometry properties.')")
-        exec("elemGrp_%d_EGSidxBTB9" %i +" = string_(name='Bend 90°', default=elemGrps[j][EGSidxBTB9], description='Math expression for the material´s real world bending breaking threshold with h and w swapped (rotated by 90°) in Nm/mm^2 together with related geometry properties.')")
+        exec("elemGrp_%d_EGSidxBTC" %i +" = string_(name='Compressive', default=presets[j][EGSidxBTC], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties.')")
+        exec("elemGrp_%d_EGSidxBTT" %i +" = string_(name='Tensile', default=presets[j][EGSidxBTT], description='Math expression for the material´s real world tensile breaking threshold in N/mm^2 together with related geometry properties.')")
+        exec("elemGrp_%d_EGSidxBTS" %i +" = string_(name='Shear', default=presets[j][EGSidxBTS], description='Math expression for the material´s real world shearing breaking threshold in N/mm^2 together with related geometry properties.')")
+        exec("elemGrp_%d_EGSidxBTS9" %i +" = string_(name='Shear 90°', default=presets[j][EGSidxBTS9], description='Math expression for the material´s real world shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties.')")
+        exec("elemGrp_%d_EGSidxBTB" %i +" = string_(name='Bend', default=presets[j][EGSidxBTB], description='Math expression for the material´s real world bending breaking threshold in Nm/mm^2 together with related geometry properties.')")
+        exec("elemGrp_%d_EGSidxBTB9" %i +" = string_(name='Bend 90°', default=presets[j][EGSidxBTB9], description='Math expression for the material´s real world bending breaking threshold with h and w swapped (rotated by 90°) in Nm/mm^2 together with related geometry properties.')")
 
-        exec("elemGrp_%d_EGSidxSStf" %i +" = float_(name='Spring Stiffness', default=elemGrps[j][EGSidxSStf], min=0.0, max=10**20, description='Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.')")
-        exec("elemGrp_%d_EGSidxRqVP" %i +" = int_(name='Req. Vertex Pairs', default=elemGrps[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
-        exec("elemGrp_%d_EGSidxMatP" %i +" = string_(name='Mat. Preset', default=elemGrps[j][EGSidxMatP], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
-        exec("elemGrp_%d_EGSidxDens" %i +" = float_(name='Density', default=elemGrps[j][EGSidxDens], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
-        exec("elemGrp_%d_EGSidxTl1D" %i +" = float_(name='1st Dist. Tol.', default=elemGrps[j][EGSidxTl1D], min=0.0, max=10.0, description='For baking: First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %).')")
-        exec("elemGrp_%d_EGSidxTl1R" %i +" = float_(name='1st Rot. Tol.', default=elemGrps[j][EGSidxTl1R], min=0.0, max=pi, description='For baking: First deformation tolerance limit for angular change in radian for connection removal or plastic deformation.')")
-        exec("elemGrp_%d_EGSidxTl2D" %i +" = float_(name='2nd Dist. Tol.', default=elemGrps[j][EGSidxTl2D], min=0.0, max=10.0, description='For baking: Second deformation tolerance limit for distance change in percent for connection removal (1.00 = 100 %).')")
-        exec("elemGrp_%d_EGSidxTl2R" %i +" = float_(name='2nd Rot. Tol.', default=elemGrps[j][EGSidxTl2R], min=0.0, max=pi, description='For baking: Second deformation tolerance limit for angular change in radian for connection removal.')")
-        exec("elemGrp_%d_EGSidxBevl" %i +" = bool_(name='Bevel', default=elemGrps[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
-        exec("elemGrp_%d_EGSidxScal" %i +" = float_(name='Rescale Factor', default=elemGrps[j][EGSidxScal], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
-        exec("elemGrp_%d_EGSidxFacg" %i +" = bool_(name='Facing', default=elemGrps[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
-        exec("elemGrp_%d_EGSidxCyln" %i +" = bool_(name='Cylindric Shape', default=elemGrps[j][EGSidxCyln], description='Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns.')")
+        exec("elemGrp_%d_EGSidxSStf" %i +" = float_(name='Spring Stiffness', default=presets[j][EGSidxSStf], min=0.0, max=10**20, description='Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.')")
+        exec("elemGrp_%d_EGSidxRqVP" %i +" = int_(name='Req. Vertex Pairs', default=presets[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
+        exec("elemGrp_%d_EGSidxMatP" %i +" = string_(name='Mat. Preset', default=presets[j][EGSidxMatP], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
+        exec("elemGrp_%d_EGSidxDens" %i +" = float_(name='Density', default=presets[j][EGSidxDens], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
+        exec("elemGrp_%d_EGSidxTl1D" %i +" = float_(name='1st Dist. Tol.', default=presets[j][EGSidxTl1D], min=0.0, max=10.0, description='For baking: First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %).')")
+        exec("elemGrp_%d_EGSidxTl1R" %i +" = float_(name='1st Rot. Tol.', default=presets[j][EGSidxTl1R], min=0.0, max=pi, description='For baking: First deformation tolerance limit for angular change in radian for connection removal or plastic deformation.')")
+        exec("elemGrp_%d_EGSidxTl2D" %i +" = float_(name='2nd Dist. Tol.', default=presets[j][EGSidxTl2D], min=0.0, max=10.0, description='For baking: Second deformation tolerance limit for distance change in percent for connection removal (1.00 = 100 %).')")
+        exec("elemGrp_%d_EGSidxTl2R" %i +" = float_(name='2nd Rot. Tol.', default=presets[j][EGSidxTl2R], min=0.0, max=pi, description='For baking: Second deformation tolerance limit for angular change in radian for connection removal.')")
+        exec("elemGrp_%d_EGSidxBevl" %i +" = bool_(name='Bevel', default=presets[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
+        exec("elemGrp_%d_EGSidxScal" %i +" = float_(name='Rescale Factor', default=presets[j][EGSidxScal], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
+        exec("elemGrp_%d_EGSidxFacg" %i +" = bool_(name='Facing', default=presets[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
+        exec("elemGrp_%d_EGSidxCyln" %i +" = bool_(name='Cylindric Shape', default=presets[j][EGSidxCyln], description='Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns.')")
 
         # Update fromula assistant submenu according to the chosen element group
-        exec("assistant_menu = enum_(name='Type of Building Material', items=assistant_menu_data, default=elemGrps[j][EGSidxAsst]['ID'])")
+        exec("assistant_menu = enum_(name='Type of Building Material', items=assistant_menu_data, default=presets[j][EGSidxAsst]['ID'])")
 
     ###### Update menu properties from global vars
     def props_update_menu(self):
 
         ### Update main class properties
         elemGrps = mem["elemGrps"]
-        for i in range(len(elemGrps)):
-            exec("self.elemGrp_%d_EGSidxName" %i +" = elemGrps[i][EGSidxName]")
-            exec("self.elemGrp_%d_EGSidxRqVP" %i +" = elemGrps[i][EGSidxRqVP]")
-            exec("self.elemGrp_%d_EGSidxMatP" %i +" = elemGrps[i][EGSidxMatP]")
-            exec("self.elemGrp_%d_EGSidxDens" %i +" = elemGrps[i][EGSidxDens]")
-            exec("self.elemGrp_%d_EGSidxCTyp" %i +" = elemGrps[i][EGSidxCTyp]")
-            exec("self.elemGrp_%d_EGSidxBTC" %i +" = elemGrps[i][EGSidxBTC].replace('*a','')")
-            exec("self.elemGrp_%d_EGSidxBTT" %i +" = elemGrps[i][EGSidxBTT].replace('*a','')")
-            exec("self.elemGrp_%d_EGSidxBTS" %i +" = elemGrps[i][EGSidxBTS].replace('*a','')")
-            exec("self.elemGrp_%d_EGSidxBTS9" %i +" = elemGrps[i][EGSidxBTS9].replace('*a','')")
-            exec("self.elemGrp_%d_EGSidxBTB" %i +" = elemGrps[i][EGSidxBTB].replace('*a','')")
-            exec("self.elemGrp_%d_EGSidxBTB9" %i +" = elemGrps[i][EGSidxBTB9].replace('*a','')")
-            exec("self.elemGrp_%d_EGSidxSStf" %i +" = elemGrps[i][EGSidxSStf]")
-            exec("self.elemGrp_%d_EGSidxTl1D" %i +" = elemGrps[i][EGSidxTl1D]")
-            exec("self.elemGrp_%d_EGSidxTl1R" %i +" = elemGrps[i][EGSidxTl1R]")
-            exec("self.elemGrp_%d_EGSidxTl2D" %i +" = elemGrps[i][EGSidxTl2D]")
-            exec("self.elemGrp_%d_EGSidxTl2R" %i +" = elemGrps[i][EGSidxTl2R]")
-            exec("self.elemGrp_%d_EGSidxBevl" %i +" = elemGrps[i][EGSidxBevl]")
-            exec("self.elemGrp_%d_EGSidxScal" %i +" = elemGrps[i][EGSidxScal]")
-            exec("self.elemGrp_%d_EGSidxFacg" %i +" = elemGrps[i][EGSidxFacg]")
-            exec("self.elemGrp_%d_EGSidxCyln" %i +" = elemGrps[i][EGSidxCyln]")
-        
-        # Update fromula assistant submenu according to the chosen element group
-        i = self.menu_selectedElemGrp
-        try: self.assistant_menu = elemGrps[i][EGSidxAsst]['ID']
-        except: self.assistant_menu = "None"
-        
-        ### Update also the other classes properties
-        props_asst_con_rei_beam = bpy.context.window_manager.bcb_asst_con_rei_beam
-        props_asst_con_rei_wall = bpy.context.window_manager.bcb_asst_con_rei_wall
-        props_asst_con_rei_beam.props_update_menu()
-        props_asst_con_rei_wall.props_update_menu()
+        if len(elemGrps) > 0:
+            for i in range(len(elemGrps)):
+                exec("self.elemGrp_%d_EGSidxName" %i +" = elemGrps[i][EGSidxName]")
+                exec("self.elemGrp_%d_EGSidxRqVP" %i +" = elemGrps[i][EGSidxRqVP]")
+                exec("self.elemGrp_%d_EGSidxMatP" %i +" = elemGrps[i][EGSidxMatP]")
+                exec("self.elemGrp_%d_EGSidxDens" %i +" = elemGrps[i][EGSidxDens]")
+                exec("self.elemGrp_%d_EGSidxCTyp" %i +" = elemGrps[i][EGSidxCTyp]")
+                exec("self.elemGrp_%d_EGSidxBTC" %i +" = elemGrps[i][EGSidxBTC].replace('*a','')")
+                exec("self.elemGrp_%d_EGSidxBTT" %i +" = elemGrps[i][EGSidxBTT].replace('*a','')")
+                exec("self.elemGrp_%d_EGSidxBTS" %i +" = elemGrps[i][EGSidxBTS].replace('*a','')")
+                exec("self.elemGrp_%d_EGSidxBTS9" %i +" = elemGrps[i][EGSidxBTS9].replace('*a','')")
+                exec("self.elemGrp_%d_EGSidxBTB" %i +" = elemGrps[i][EGSidxBTB].replace('*a','')")
+                exec("self.elemGrp_%d_EGSidxBTB9" %i +" = elemGrps[i][EGSidxBTB9].replace('*a','')")
+                exec("self.elemGrp_%d_EGSidxSStf" %i +" = elemGrps[i][EGSidxSStf]")
+                exec("self.elemGrp_%d_EGSidxTl1D" %i +" = elemGrps[i][EGSidxTl1D]")
+                exec("self.elemGrp_%d_EGSidxTl1R" %i +" = elemGrps[i][EGSidxTl1R]")
+                exec("self.elemGrp_%d_EGSidxTl2D" %i +" = elemGrps[i][EGSidxTl2D]")
+                exec("self.elemGrp_%d_EGSidxTl2R" %i +" = elemGrps[i][EGSidxTl2R]")
+                exec("self.elemGrp_%d_EGSidxBevl" %i +" = elemGrps[i][EGSidxBevl]")
+                exec("self.elemGrp_%d_EGSidxScal" %i +" = elemGrps[i][EGSidxScal]")
+                exec("self.elemGrp_%d_EGSidxFacg" %i +" = elemGrps[i][EGSidxFacg]")
+                exec("self.elemGrp_%d_EGSidxCyln" %i +" = elemGrps[i][EGSidxCyln]")
+            
+            # Update fromula assistant submenu according to the chosen element group
+            i = self.menu_selectedElemGrp
+            try: self.assistant_menu = elemGrps[i][EGSidxAsst]['ID']
+            except: self.assistant_menu = "None"
+
+            ### Update also the other classes properties
+            props_asst_con_rei_beam = bpy.context.window_manager.bcb_asst_con_rei_beam
+            props_asst_con_rei_wall = bpy.context.window_manager.bcb_asst_con_rei_wall
+            props_asst_con_rei_beam.props_update_menu()
+            props_asst_con_rei_wall.props_update_menu()
             
     ###### Update global vars from menu properties
     def props_update_globals(self):
 
         elemGrps = mem["elemGrps"]
-        for i in range(len(elemGrps)):
-            elemGrps[i][EGSidxName] = eval("self.elemGrp_%d_EGSidxName" %i)
-            elemGrps[i][EGSidxRqVP] = eval("self.elemGrp_%d_EGSidxRqVP" %i)
-            elemGrps[i][EGSidxMatP] = eval("self.elemGrp_%d_EGSidxMatP" %i)
-            elemGrps[i][EGSidxDens] = eval("self.elemGrp_%d_EGSidxDens" %i)
-            elemGrps[i][EGSidxCTyp] = eval("self.elemGrp_%d_EGSidxCTyp" %i)
-            elemGrps[i][EGSidxBTC] = eval("self.elemGrp_%d_EGSidxBTC" %i)
-            elemGrps[i][EGSidxBTT] = eval("self.elemGrp_%d_EGSidxBTT" %i)
-            elemGrps[i][EGSidxBTS] = eval("self.elemGrp_%d_EGSidxBTS" %i)
-            elemGrps[i][EGSidxBTS9] = eval("self.elemGrp_%d_EGSidxBTS9" %i)
-            elemGrps[i][EGSidxBTB] = eval("self.elemGrp_%d_EGSidxBTB" %i)
-            elemGrps[i][EGSidxBTB9] = eval("self.elemGrp_%d_EGSidxBTB9" %i)
-            elemGrps[i][EGSidxSStf] = eval("self.elemGrp_%d_EGSidxSStf" %i)
-            elemGrps[i][EGSidxTl1D] = eval("self.elemGrp_%d_EGSidxTl1D" %i)
-            elemGrps[i][EGSidxTl1R] = eval("self.elemGrp_%d_EGSidxTl1R" %i)
-            elemGrps[i][EGSidxTl2D] = eval("self.elemGrp_%d_EGSidxTl2D" %i)
-            elemGrps[i][EGSidxTl2R] = eval("self.elemGrp_%d_EGSidxTl2R" %i)
-            elemGrps[i][EGSidxBevl] = eval("self.elemGrp_%d_EGSidxBevl" %i)
-            elemGrps[i][EGSidxScal] = eval("self.elemGrp_%d_EGSidxScal" %i)
-            elemGrps[i][EGSidxFacg] = eval("self.elemGrp_%d_EGSidxFacg" %i)
-            elemGrps[i][EGSidxCyln] = eval("self.elemGrp_%d_EGSidxCyln" %i)
-            # Remove surface variable if existing (will be added in setConstraintSettings()
-            elemGrps[i][EGSidxBTC] = elemGrps[i][EGSidxBTC].replace('*a','')
-            elemGrps[i][EGSidxBTT] = elemGrps[i][EGSidxBTT].replace('*a','')
-            elemGrps[i][EGSidxBTS] = elemGrps[i][EGSidxBTS].replace('*a','')
-            elemGrps[i][EGSidxBTS9] = elemGrps[i][EGSidxBTS9].replace('*a','')
-            elemGrps[i][EGSidxBTB] = elemGrps[i][EGSidxBTB].replace('*a','')
-            elemGrps[i][EGSidxBTB9] = elemGrps[i][EGSidxBTB9].replace('*a','')
+        if len(elemGrps) > 0:
+            for i in range(len(elemGrps)):
+                elemGrps[i][EGSidxName] = eval("self.elemGrp_%d_EGSidxName" %i)
+                elemGrps[i][EGSidxRqVP] = eval("self.elemGrp_%d_EGSidxRqVP" %i)
+                elemGrps[i][EGSidxMatP] = eval("self.elemGrp_%d_EGSidxMatP" %i)
+                elemGrps[i][EGSidxDens] = eval("self.elemGrp_%d_EGSidxDens" %i)
+                elemGrps[i][EGSidxCTyp] = eval("self.elemGrp_%d_EGSidxCTyp" %i)
+                elemGrps[i][EGSidxBTC] = eval("self.elemGrp_%d_EGSidxBTC" %i)
+                elemGrps[i][EGSidxBTT] = eval("self.elemGrp_%d_EGSidxBTT" %i)
+                elemGrps[i][EGSidxBTS] = eval("self.elemGrp_%d_EGSidxBTS" %i)
+                elemGrps[i][EGSidxBTS9] = eval("self.elemGrp_%d_EGSidxBTS9" %i)
+                elemGrps[i][EGSidxBTB] = eval("self.elemGrp_%d_EGSidxBTB" %i)
+                elemGrps[i][EGSidxBTB9] = eval("self.elemGrp_%d_EGSidxBTB9" %i)
+                elemGrps[i][EGSidxSStf] = eval("self.elemGrp_%d_EGSidxSStf" %i)
+                elemGrps[i][EGSidxTl1D] = eval("self.elemGrp_%d_EGSidxTl1D" %i)
+                elemGrps[i][EGSidxTl1R] = eval("self.elemGrp_%d_EGSidxTl1R" %i)
+                elemGrps[i][EGSidxTl2D] = eval("self.elemGrp_%d_EGSidxTl2D" %i)
+                elemGrps[i][EGSidxTl2R] = eval("self.elemGrp_%d_EGSidxTl2R" %i)
+                elemGrps[i][EGSidxBevl] = eval("self.elemGrp_%d_EGSidxBevl" %i)
+                elemGrps[i][EGSidxScal] = eval("self.elemGrp_%d_EGSidxScal" %i)
+                elemGrps[i][EGSidxFacg] = eval("self.elemGrp_%d_EGSidxFacg" %i)
+                elemGrps[i][EGSidxCyln] = eval("self.elemGrp_%d_EGSidxCyln" %i)
+                # Remove surface variable if existing (will be added in setConstraintSettings()
+                elemGrps[i][EGSidxBTC] = elemGrps[i][EGSidxBTC].replace('*a','')
+                elemGrps[i][EGSidxBTT] = elemGrps[i][EGSidxBTT].replace('*a','')
+                elemGrps[i][EGSidxBTS] = elemGrps[i][EGSidxBTS].replace('*a','')
+                elemGrps[i][EGSidxBTS9] = elemGrps[i][EGSidxBTS9].replace('*a','')
+                elemGrps[i][EGSidxBTB] = elemGrps[i][EGSidxBTB].replace('*a','')
+                elemGrps[i][EGSidxBTB9] = elemGrps[i][EGSidxBTB9].replace('*a','')
 
-        ### If different formula assistant ID from that stored in element group then update with defaults
-        i = self.menu_selectedElemGrp
-        if self.assistant_menu != elemGrps[i][EGSidxAsst]['ID']:
-            # Add formula assistant settings to element group
-            for formAssist in formulaAssistants:
-                if self.assistant_menu == formAssist['ID']:
-                    elemGrps[i][EGSidxAsst] = formAssist.copy()
+            ### If different formula assistant ID from that stored in element group then update with defaults
+            i = self.menu_selectedElemGrp
+            if self.assistant_menu != elemGrps[i][EGSidxAsst]['ID']:
+                # Add formula assistant settings to element group
+                for formAssist in formulaAssistants:
+                    if self.assistant_menu == formAssist['ID']:
+                        elemGrps[i][EGSidxAsst] = formAssist.copy()
 
-        ### Update global vars also from the other classes properties
-        props_asst_con_rei_beam = bpy.context.window_manager.bcb_asst_con_rei_beam
-        props_asst_con_rei_wall = bpy.context.window_manager.bcb_asst_con_rei_wall
-        props_asst_con_rei_beam.props_update_globals()
-        props_asst_con_rei_wall.props_update_globals()        
+            ### Update global vars also from the other classes properties
+            props_asst_con_rei_beam = bpy.context.window_manager.bcb_asst_con_rei_beam
+            props_asst_con_rei_wall = bpy.context.window_manager.bcb_asst_con_rei_wall
+            props_asst_con_rei_beam.props_update_globals()
+            props_asst_con_rei_wall.props_update_globals()        

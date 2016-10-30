@@ -48,16 +48,24 @@ def storeConfigDataInScene(scene):
 
     scene["bcb_prop_preprocTools_grp"] = props.preprocTools_grp
     scene["bcb_prop_preprocTools_mod"] = props.preprocTools_mod
+    scene["bcb_prop_preprocTools_ctr"] = props.preprocTools_ctr
     scene["bcb_prop_preprocTools_sep"] = props.preprocTools_sep
     scene["bcb_prop_preprocTools_dis"] = props.preprocTools_dis
     scene["bcb_prop_preprocTools_rbs"] = props.preprocTools_rbs
     scene["bcb_prop_preprocTools_fix"] = props.preprocTools_fix
+    scene["bcb_prop_preprocTools_gnd"] = props.preprocTools_gnd
 
     scene["bcb_prop_preprocTools_grp_sep"] = props.preprocTools_grp_sep
     scene["bcb_prop_preprocTools_dis_siz"] = props.preprocTools_dis_siz
     scene["bcb_prop_preprocTools_dis_jus"] = props.preprocTools_dis_jus
-    scene["bcb_prop_preprocTools_fix_gnd"] = props.preprocTools_fix_gnd
-    scene["bcb_prop_preprocTools_fix_obj"] = props.preprocTools_fix_obj
+    scene["bcb_prop_preprocTools_fix_lev"] = props.preprocTools_fix_lev
+    scene["bcb_prop_preprocTools_fix_nam"] = props.preprocTools_fix_nam
+    scene["bcb_prop_preprocTools_gnd_obj"] = props.preprocTools_gnd_obj
+    scene["bcb_prop_preprocTools_gnd_nac"] = props.preprocTools_gnd_nac
+    scene["bcb_prop_preprocTools_gnd_nap"] = props.preprocTools_gnd_nap
+    scene["bcb_prop_preprocTools_gnd_nfq"] = props.preprocTools_gnd_nfq
+    scene["bcb_prop_preprocTools_gnd_ndu"] = props.preprocTools_gnd_ndu
+    scene["bcb_prop_preprocTools_gnd_nsd"] = props.preprocTools_gnd_nsd
 
     scene["bcb_prop_stepsPerSecond"] = props.stepsPerSecond
     scene["bcb_prop_constraintUseBreaking"] = props.constraintUseBreaking
@@ -112,6 +120,8 @@ def getConfigDataFromScene(scene):
         props.preprocTools_grp = scene["bcb_prop_preprocTools_grp"]
     if "bcb_prop_preprocTools_mod" in scene.keys():
         props.preprocTools_mod = scene["bcb_prop_preprocTools_mod"]
+    if "bcb_prop_preprocTools_ctr" in scene.keys():
+        props.preprocTools_ctr = scene["bcb_prop_preprocTools_ctr"]
     if "bcb_prop_preprocTools_sep" in scene.keys():
         props.preprocTools_sep = scene["bcb_prop_preprocTools_sep"]
     if "bcb_prop_preprocTools_dis" in scene.keys():
@@ -127,10 +137,22 @@ def getConfigDataFromScene(scene):
         props.preprocTools_dis_siz = scene["bcb_prop_preprocTools_dis_siz"]
     if "bcb_prop_preprocTools_dis_jus" in scene.keys():
         props.preprocTools_dis_jus = scene["bcb_prop_preprocTools_dis_jus"]
-    if "bcb_prop_preprocTools_fix_gnd" in scene.keys():
-        props.preprocTools_fix_gnd = scene["bcb_prop_preprocTools_fix_gnd"]
-    if "bcb_prop_preprocTools_fix_obj" in scene.keys():
-        props.preprocTools_fix_obj = scene["bcb_prop_preprocTools_fix_obj"]
+    if "bcb_prop_preprocTools_fix_lev" in scene.keys():
+        props.preprocTools_fix_lev = scene["bcb_prop_preprocTools_fix_lev"]
+    if "bcb_prop_preprocTools_fix_nam" in scene.keys():
+        props.preprocTools_fix_nam = scene["bcb_prop_preprocTools_fix_nam"]
+    if "bcb_prop_preprocTools_gnd_obj" in scene.keys():
+        props.preprocTools_gnd_obj = scene["bcb_prop_preprocTools_gnd_obj"]
+    if "bcb_prop_preprocTools_gnd_nac" in scene.keys():
+        props.preprocTools_gnd_nac = scene["bcb_prop_preprocTools_gnd_nac"]
+    if "bcb_prop_preprocTools_gnd_nap" in scene.keys():
+        props.preprocTools_gnd_nap = scene["bcb_prop_preprocTools_gnd_nap"]
+    if "bcb_prop_preprocTools_gnd_nfq" in scene.keys():
+        props.preprocTools_gnd_nfq = scene["bcb_prop_preprocTools_gnd_nfq"]
+    if "bcb_prop_preprocTools_gnd_ndu" in scene.keys():
+        props.preprocTools_gnd_ndu = scene["bcb_prop_preprocTools_gnd_ndu"]
+    if "bcb_prop_preprocTools_gnd_nsd" in scene.keys():
+        props.preprocTools_gnd_nsd = scene["bcb_prop_preprocTools_gnd_nsd"]
 
     if "bcb_prop_stepsPerSecond" in scene.keys():
         props.stepsPerSecond = scene["bcb_prop_stepsPerSecond"]

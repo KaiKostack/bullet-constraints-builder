@@ -181,6 +181,7 @@ classes = [ \
     
     bcb_report,
     bcb_panel,
+    bcb_add_preset,
     
     OBJECT_OT_bcb_set_config,
     OBJECT_OT_bcb_get_config,
@@ -192,22 +193,27 @@ classes = [ \
     OBJECT_OT_bcb_export_ascii,
     OBJECT_OT_bcb_export_ascii_fm,
     OBJECT_OT_bcb_bake,
+    
     OBJECT_OT_bcb_add,
+    OBJECT_OT_bcb_dup,
     OBJECT_OT_bcb_del,
     OBJECT_OT_bcb_move_up,
     OBJECT_OT_bcb_move_down,
     OBJECT_OT_bcb_up,
     OBJECT_OT_bcb_down,
     OBJECT_OT_bcb_reset,
+    
     OBJECT_OT_bcb_asst_update,
     OBJECT_OT_bcb_tool_estimate_cluster_radius,
     OBJECT_OT_bcb_tool_do_all_steps_at_once,
     OBJECT_OT_bcb_tool_create_groups_from_names,
     OBJECT_OT_bcb_tool_apply_all_modifiers,
+    OBJECT_OT_bcb_tool_center_model,
     OBJECT_OT_bcb_tool_separate_loose,
     OBJECT_OT_bcb_tool_discretize,
     OBJECT_OT_bcb_tool_enable_rigid_bodies,
-    OBJECT_OT_bcb_tool_fix_foundation
+    OBJECT_OT_bcb_tool_fix_foundation,
+    OBJECT_OT_bcb_tool_ground_motion
     ]
 
 ################################################################################
