@@ -76,7 +76,6 @@ class bcb_add_preset(bpy.types.Menu):
         layout = self.layout
         #layout.operator("wm.open_mainfile")
         for i in range(len(presets)):
-            print(i)
             pres_EGSidxName = eval("presets[%d][EGSidxName]" %i)
             pres_EGSidxMatP = eval("presets[%d][EGSidxMatP]" %i)
             pres_EGSidxDens = eval("presets[%d][EGSidxDens]" %i)
@@ -123,101 +122,120 @@ class bcb_panel(bpy.types.Panel):
         box = layout.box()
         box.prop(props, "submenu_preprocTools", text="Preprocessing Tools", icon=self.icon_pulldown(props.submenu_preprocTools), emboss = False)
         if props.submenu_preprocTools:
-            row = box.row(); split = row.split(percentage=.08, align=False)
+            col = box.column(align=1)
+
+            row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.label(text="", icon="LINKED")
             split.operator("bcb.tool_do_all_steps_at_once", icon="DOTSUP")
-            box.separator()
+            col.separator()
             
-            row = box.row(); split = row.split(percentage=.08, align=False)
+            row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_grp", text="")
             box2 = split.box()
             box2.operator("bcb.tool_create_groups_from_names", icon="DOT")
-            row2 = box2.row(); row2.prop(props, "preprocTools_grp_sep")
+            row2 = box2.row(align=1); row2.prop(props, "preprocTools_grp_sep")
 
-            row = box.row(); split = row.split(percentage=.08, align=False)
+            row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_mod", text="")
             box2 = split.box()
             box2.operator("bcb.tool_apply_all_modifiers", icon="DOT")
 
-            row = box.row(); split = row.split(percentage=.08, align=False)
+            row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_ctr", text="")
             box2 = split.box()
             box2.operator("bcb.tool_center_model", icon="DOT")
 
-            row = box.row(); split = row.split(percentage=.08, align=False)
+            row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_sep", text="")
             box2 = split.box()
             box2.operator("bcb.tool_separate_loose", icon="DOT")
 
-            row = box.row(); split = row.split(percentage=.08, align=False)
+            row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_dis", text="")
             box2 = split.box()
             box2.operator("bcb.tool_discretize", icon="DOT")
-            row2 = box2.row(); row2.prop(props, "preprocTools_dis_siz")
-            row2 = box2.row(); row2.prop(props, "preprocTools_dis_jus")
+            col2 = box2.column(align=1)
+            row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_siz")
+            row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_jus")
 
-            row = box.row(); split = row.split(percentage=.08, align=False)
+            row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_rbs", text="")
             box2 = split.box()
             box2.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
 
-            row = box.row(); split = row.split(percentage=.08, align=False)
+            row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_fix", text="")
             box2 = split.box()
             box2.operator("bcb.tool_fix_foundation", icon="DOT")
-            row2 = box2.row(); row2.prop(props, "preprocTools_fix_lev")
-            if len(props.preprocTools_fix_nam) > 0: row2.enabled = 0
-            row2 = box2.row(); row2.prop(props, "preprocTools_fix_nam")
+            col2 = box2.column(align=1)
+            row = col2.row(align=1); row.prop(props, "preprocTools_fix_nam")
+            row = col2.row(align=1); row.prop(props, "preprocTools_fix_cac")
+            row2 = col2.row(align=1); row2.prop(props, "preprocTools_fix_rng")
+            row3 = col2.row(align=1)
+            row3.prop(props, "preprocTools_fix_axp")
+            row3.prop(props, "preprocTools_fix_ayp")
+            row3.prop(props, "preprocTools_fix_azp")
+            row4 = col2.row(align=1)
+            row4.prop(props, "preprocTools_fix_axn")
+            row4.prop(props, "preprocTools_fix_ayn")
+            row4.prop(props, "preprocTools_fix_azn")
+            if not props.preprocTools_fix_cac:
+                row2.enabled = 0; row3.enabled = 0; row4.enabled = 0
             
-            row = box.row(); split = row.split(percentage=.08, align=False)
+            row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_gnd", text="")
             box2 = split.box()
             box2.operator("bcb.tool_ground_motion", icon="DOT")
-            row2 = box2.row(); row2.prop(props, "preprocTools_gnd_obj")
-            row2 = box2.row(); row2.prop(props, "preprocTools_gnd_nac")
-            row2 = box2.row(); split2 = row2.split(percentage=.5, align=False)
-            split2.prop(props, "preprocTools_gnd_nap")
-            split2.prop(props, "preprocTools_gnd_nfq")
-            if not props.preprocTools_gnd_nac: row2.enabled = 0
-            row2 = box2.row(); split2 = row2.split(percentage=.5, align=False)
-            split2.prop(props, "preprocTools_gnd_ndu")
-            split2.prop(props, "preprocTools_gnd_nsd")
-            if not props.preprocTools_gnd_nac: row2.enabled = 0
-
-        layout.separator()
-        row = layout.row()
+            col2 = box2.column(align=1)
+            row2 = col2.row(align=1); row2.prop(props, "preprocTools_gnd_obj")
+            row2 = col2.row(align=1); row2.prop(props, "preprocTools_gnd_nac")
+            row = col2.row(align=1)
+            row.prop(props, "preprocTools_gnd_nap")
+            row.prop(props, "preprocTools_gnd_nfq")
+            row2 = col2.row(align=1)
+            row2.prop(props, "preprocTools_gnd_ndu")
+            row2.prop(props, "preprocTools_gnd_nsd")
+            if not props.preprocTools_gnd_nac:
+                row.enabled = 0; row2.enabled = 0
+        
+            layout.separator()
+            
+        col = layout.column(align=1)
+        row = col.row(align=1)
         if not props.menu_gotData: 
-            split = row.split(percentage=.85, align=False)
+            split = row.split(percentage=.85, align=1)
             split.operator("bcb.build", icon="MOD_SKIN")
-            split2 = split.split(align=False)
+            split2 = split.split(align=1)
             if not props.menu_gotConfig:
                 if not "bcb_prop_elemGrps" in scene.keys(): split2.enabled = 0
                 split2.operator("bcb.get_config", icon="FILE_REFRESH")
             else: split2.operator("bcb.clear", icon="CANCEL")
 
-            row = layout.row()
-            split = row.split(percentage=.85, align=False)
+            row = col.row(align=1)
+            split = row.split(percentage=.85, align=1)
             split.operator("bcb.bake", icon="REC")
-            split2 = split.split(align=False)
+            split2 = split.split(align=1)
             split2.operator("bcb.set_config", icon="NEW")
         else:
-            split = row.split(percentage=.85, align=False)
+            split = row.split(percentage=.85, align=1)
             split.operator("bcb.update", icon="FILE_REFRESH")
-            split2 = split.split(align=False)
+            split2 = split.split(align=1)
             split2.operator("bcb.clear", icon="CANCEL")
 
-            row = layout.row()
-            split = row.split(percentage=.85, align=False)
+            row = col.row(align=1)
+            split = row.split(percentage=.85, align=1)
             split.operator("bcb.bake", icon="REC")
-            split2 = split.split(align=False)
+            split2 = split.split(align=1)
             split2.operator("bcb.set_config", icon="NEW")
 
-        row = layout.row()
+        col = layout.column(align=1)
+
+        row = col.row(align=1)
         if props.menu_gotData: row.enabled = 0
         row.prop(props, "searchDistance")
-        
-        row = layout.row()
-        split = row.split(percentage=.85, align=False)
+
+        row = col.row(align=1)
+        split = row.split(percentage=.85, align=1)
         if props.menu_gotData: split.enabled = 0
         split.prop(props, "clusterRadius")
         split.operator("bcb.tool_estimate_cluster_radius", icon="AUTO")
@@ -227,88 +245,95 @@ class bcb_panel(bpy.types.Panel):
         box = layout.box()
         box.prop(props, "submenu_advancedG", text="Advanced Global Settings", icon=self.icon_pulldown(props.submenu_advancedG), emboss = False)
         if props.submenu_advancedG:
-            row = box.row()
-            split = row.split(percentage=.85, align=False)
-            split2 = split.split(percentage=.5, align=False)
+            col = box.column(align=1)
+
+            row = col.row(align=1)
+            split = row.split(percentage=.85, align=1)
+            split2 = split.split(percentage=.5, align=1)
             split2.operator("bcb.export_ascii", icon="EXPORT")
             split2.operator("bcb.export_ascii_fm", icon="EXPORT")
             split.operator("bcb.import_config", icon="FILE_REFRESH")
-            row = box.row()
-            split = row.split(percentage=.85, align=False)
+
+            row = col.row(align=1)
+            split = row.split(percentage=.85, align=1)
             split.prop(props, "stepsPerSecond")
             split.operator("bcb.export_config", icon="NEW")
 
-            row = box.row()
-            split = row.split(percentage=.50, align=False)
+            row = col.row(align=1)
+            split = row.split(percentage=.50, align=1)
             split.prop(props, "constraintUseBreaking")
             split.prop(props, "disableCollision")
        
-            row = box.row()
-            split = row.split(percentage=.50, align=False)
+            row = col.row(align=1)
+            split = row.split(percentage=.50, align=1)
             split.prop(props, "automaticMode")
             split.prop(props, "saveBackups")
-            box.separator()
+            col.separator()
 
-            row = box.row()
-            split = row.split(percentage=.50, align=False)
+            row = col.row(align=1)
+            split = row.split(percentage=.50, align=1)
             split.prop(props, "snapToAreaOrient")
             split.prop(props, "lowerBrkThresPriority")
-            row = box.row()
+            row = col.row(align=1)
             if props.snapToAreaOrient: row.enabled = 0
             row.prop(props, "alignVertical")
-            box.separator()
+            col.separator()
 
-            row = box.row()
+            row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "useAccurateArea")
-#            row = box.row()
+#            row = col.row(align=1)
 #            if not props.useAccurateArea: row.enabled = 0
 #            row.prop(props, "nonManifoldThickness")
-            row = box.row()
+            row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "connectionCountLimit")
-            row = box.row()
+            row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "minimumElementSize")
 
-            row = box.row(); row.prop(props, "warmUpPeriod")
-            box.separator()
-            row = box.row(); row.prop(props, "timeScalePeriod")
-            row = box.row(); row.prop(props, "timeScalePeriodValue")
+            row = col.row(align=1); row.prop(props, "warmUpPeriod")
+            col.separator()
+            row = col.row(align=1); row.prop(props, "timeScalePeriod")
+            row = col.row(align=1); row.prop(props, "timeScalePeriodValue")
             if props.timeScalePeriod == 0: row.enabled = 0
-            box.separator()
+            col.separator()
 
-            row = box.row(); row.prop(props, "progrWeak")
-            row = box.row(); row.prop(props, "progrWeakLimit")
+            row = col.row(align=1); row.prop(props, "progrWeak")
+            row = col.row(align=1); row.prop(props, "progrWeakLimit")
             if props.progrWeak == 0: row.enabled = 0
-            row = box.row(); row.prop(props, "progrWeakStartFact")
+            row = col.row(align=1); row.prop(props, "progrWeakStartFact")
+
+            layout.separator()
 
         ###### Element groups box
         
-        layout.separator()
-        row = layout.row(); row.label(text="Element Groups", icon="MOD_BUILD")
-        box = layout.box()
-        row = box.split(align=False)
+        col = layout.column(align=1)
+        row = col.row(align=1); row.label(text="Element Groups", icon="MOD_BUILD")
+        box = col.box()
+        col2 = box.column(align=0)
+        row = col2.split(align=1)
         row.operator("bcb.add", icon="ZOOMIN")
         row.operator("bcb.dup", icon="PASTEDOWN")
         row.operator("bcb.del", icon="X")
         row.operator("bcb.reset", icon="CANCEL")
         row.operator("bcb.move_up", icon="TRIA_UP")
         row.operator("bcb.move_down", icon="TRIA_DOWN")
-        row = box.row()
-        split = row.split(percentage=.25, align=False)
+        row = col2.row(align=1)
+        split = col2.split(percentage=.25, align=1)
         split.label(text="GRP")
-        split2 = split.split(align=False)
+        split2 = split.split(align=1)
         split2.label(text="CT")
         split2.label(text="CPR")
         split2.label(text="TNS")
         split2.label(text="SHR")
         split2.label(text="BND")
         if len(elemGrps) == 0:  
-            row = box.row(); row.alignment = 'CENTER'
+            row = col2.row(align=1); row.alignment = 'CENTER'
             row.label(text="Press + button to add a group!", icon="INFO")
+            col2.separator()
             # These buttons are existing twice (see below)
-            row = box.row()
+            row = col2.row(align=1)
             row.operator("bcb.up", icon="TRIA_UP")
             row.operator("bcb.down", icon="TRIA_DOWN")
 
@@ -316,8 +341,8 @@ class bcb_panel(bpy.types.Panel):
         else:  
             for i in range(len(elemGrps)):
                 if i == props.menu_selectedElemGrp:
-                      row = box.box().row()
-                else: row = box.row()
+                      row = col2.box().row(align=1)
+                else: row = col2.row(align=1)
                 prop_EGSidxName = eval("props.elemGrp_%d_EGSidxName" %i)
                 prop_EGSidxCTyp = ct = eval("props.elemGrp_%d_EGSidxCTyp" %i)
                 try: connectType = connectTypes[ct]
@@ -330,17 +355,17 @@ class bcb_panel(bpy.types.Panel):
                 else: prop_EGSidxBTS = eval("props.elemGrp_%d_EGSidxBTS" %i)
                 if not connectType[2][3]: prop_EGSidxBTB = "-"
                 else: prop_EGSidxBTB = eval("props.elemGrp_%d_EGSidxBTB" %i)
-                split = row.split(percentage=.25, align=False)
+                split = row.split(percentage=.25, align=1)
                 if prop_EGSidxName == "": split.label(text="[Def.]")
                 else:                     split.label(text=str(prop_EGSidxName))
-                split2 = split.split(align=False)
+                split2 = split.split(align=1)
                 split2.label(text=str(prop_EGSidxCTyp))
                 split2.label(text=str(prop_EGSidxBTC))
                 split2.label(text=str(prop_EGSidxBTT))
                 split2.label(text=str(prop_EGSidxBTS))
                 split2.label(text=str(prop_EGSidxBTB))
             # These buttons are existing twice (see above)
-            row = box.row()
+            row = col2.row(align=1)
             row.operator("bcb.up", icon="TRIA_UP")
             row.operator("bcb.down", icon="TRIA_DOWN")
             
@@ -348,167 +373,178 @@ class bcb_panel(bpy.types.Panel):
             
             layout.separator()
             i = props.menu_selectedElemGrp
-            row = layout.row(); row.prop(props, "elemGrp_%d_EGSidxName" %i)
+            row = layout.row(align=1); row.prop(props, "elemGrp_%d_EGSidxName" %i)
 
             ###### Formula assistant box
 
             box = layout.box()
             box.prop(props, "submenu_assistant", text="Formula Assistant", icon=self.icon_pulldown(props.submenu_assistant), emboss = False)
             if props.submenu_assistant:
-                # Pull-down selector
-                row = box.row(); row.prop(props, "assistant_menu")
+                col = box.column(align=1)
 
+                # Pull-down selector
+                row = col.row(align=1); row.prop(props, "assistant_menu")
+                    
                 ### Reinforced Concrete (Beams & Columns)
                 if props.assistant_menu == "con_rei_beam":
-                    box.label(text="Strengths of Base Material and Reinforcement:")
-                    row = box.split(); row.prop(props_asst_con_rei_beam, "fc")
+                    col.separator()
+                    col.label(text="Strengths of Base Material and Reinforcement:")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_beam, "fc")
                     row.prop(props_asst_con_rei_beam, "fs")
-                    box.label(text="Geometry Parameters and Coefficients:")
-                    row = box.split(); row.prop(props_asst_con_rei_beam, "h")
+                    col.separator()
+                    col.label(text="Geometry Parameters and Coefficients:")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_beam, "h")
                     row.prop(props_asst_con_rei_beam, "w")
-                    row = box.split(); row.prop(props_asst_con_rei_beam, "c")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_beam, "c")
                     row.prop(props_asst_con_rei_beam, "s")
-                    row = box.split(); row.prop(props_asst_con_rei_beam, "ds")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_beam, "ds")
                     row.prop(props_asst_con_rei_beam, "dl")
-                    row = box.split(); row.prop(props_asst_con_rei_beam, "n")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_beam, "n")
                     if props.submenu_assistant_advanced:
                         row.prop(props_asst_con_rei_beam, "k")
                     else: row.label(text="")
-                    box.label(text="Automatic & Manual Input is Allowed Here:")
-                    row = box.row(); row.prop(props_asst_con_rei_beam, "exp_d")
-                    row = box.row(); row.prop(props_asst_con_rei_beam, "exp_e")
-                    row = box.row(); row.prop(props_asst_con_rei_beam, "exp_rho")
-                    row = box.row(); row.prop(props_asst_con_rei_beam, "exp_y")
-                    row = box.row(); row.prop(props_asst_con_rei_beam, "exp_e1")
+                    col.separator()
+                    col.label(text="Automatic & Manual Input is Allowed Here:")
+                    row = col.row(align=1); row.prop(props_asst_con_rei_beam, "exp_d")
+                    row = col.row(align=1); row.prop(props_asst_con_rei_beam, "exp_e")
+                    row = col.row(align=1); row.prop(props_asst_con_rei_beam, "exp_rho")
+                    row = col.row(align=1); row.prop(props_asst_con_rei_beam, "exp_y")
+                    row = col.row(align=1); row.prop(props_asst_con_rei_beam, "exp_e1")
                     if props.submenu_assistant_advanced:
-                        box.label(text="Breaking Threshold Formulas:")
-                        row = box.row(); row.prop(props_asst_con_rei_beam, "exp_Nn")
-                        row = box.row(); row.prop(props_asst_con_rei_beam, "exp_Np")
-                        row = box.row(); row.prop(props_asst_con_rei_beam, "exp_Vpn")
-                        row = box.row(); row.prop(props_asst_con_rei_beam, "exp_Mpn")
+                        col.separator()
+                        col.label(text="Breaking Threshold Formulas:")
+                        row = col.row(align=1); row.prop(props_asst_con_rei_beam, "exp_Nn")
+                        row = col.row(align=1); row.prop(props_asst_con_rei_beam, "exp_Np")
+                        row = col.row(align=1); row.prop(props_asst_con_rei_beam, "exp_Vpn")
+                        row = col.row(align=1); row.prop(props_asst_con_rei_beam, "exp_Mpn")
                     
                 ### Reinforced Concrete (Walls & Slabs)
                 if props.assistant_menu == "con_rei_wall":
-                    box.label(text="Strengths of Base Material and Reinforcement:")
-                    row = box.split(); row.prop(props_asst_con_rei_wall, "fc")
+                    col.separator()
+                    col.label(text="Strengths of Base Material and Reinforcement:")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_wall, "fc")
                     row.prop(props_asst_con_rei_wall, "fs")
-                    box.label(text="Geometry Parameters and Coefficients:")
-                    row = box.split(); row.prop(props_asst_con_rei_wall, "h")
+                    col.separator()
+                    col.label(text="Geometry Parameters and Coefficients:")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_wall, "h")
                     row.prop(props_asst_con_rei_wall, "w")
-                    row = box.split(); row.prop(props_asst_con_rei_wall, "c")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_wall, "c")
                     row.prop(props_asst_con_rei_wall, "s")
-                    row = box.split(); row.prop(props_asst_con_rei_wall, "ds")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_wall, "ds")
                     row.prop(props_asst_con_rei_wall, "dl")
-                    row = box.split(); row.prop(props_asst_con_rei_wall, "n")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_wall, "n")
                     if props.submenu_assistant_advanced:
                         row.prop(props_asst_con_rei_wall, "k")
                     else: row.label(text="")
-                    box.label(text="Automatic & Manual Input is Allowed Here:")
-                    row = box.row(); row.prop(props_asst_con_rei_wall, "exp_d")
-                    row = box.row(); row.prop(props_asst_con_rei_wall, "exp_e")
-                    row = box.row(); row.prop(props_asst_con_rei_wall, "exp_rho")
-                    row = box.row(); row.prop(props_asst_con_rei_wall, "exp_y")
-                    row = box.row(); row.prop(props_asst_con_rei_wall, "exp_e1")
+                    col.separator()
+                    col.label(text="Automatic & Manual Input is Allowed Here:")
+                    row = col.row(align=1); row.prop(props_asst_con_rei_wall, "exp_d")
+                    row = col.row(align=1); row.prop(props_asst_con_rei_wall, "exp_e")
+                    row = col.row(align=1); row.prop(props_asst_con_rei_wall, "exp_rho")
+                    row = col.row(align=1); row.prop(props_asst_con_rei_wall, "exp_y")
+                    row = col.row(align=1); row.prop(props_asst_con_rei_wall, "exp_e1")
                     if props.submenu_assistant_advanced:
-                        box.label(text="Breaking Threshold Formulas:")
-                        row = box.row(); row.prop(props_asst_con_rei_wall, "exp_Nn")
-                        row = box.row(); row.prop(props_asst_con_rei_wall, "exp_Np")
-                        row = box.row(); row.prop(props_asst_con_rei_wall, "exp_Vpn")
-                        row = box.row(); row.prop(props_asst_con_rei_wall, "exp_Mpn")
+                        col.separator()
+                        col.label(text="Breaking Threshold Formulas:")
+                        row = col.row(align=1); row.prop(props_asst_con_rei_wall, "exp_Nn")
+                        row = col.row(align=1); row.prop(props_asst_con_rei_wall, "exp_Np")
+                        row = col.row(align=1); row.prop(props_asst_con_rei_wall, "exp_Vpn")
+                        row = col.row(align=1); row.prop(props_asst_con_rei_wall, "exp_Mpn")
                     
                 if props.assistant_menu != "None":
-                    split = box.split(percentage=.85, align=False)
+                    col.separator()
+                    split = col.split(percentage=.85, align=1)
                     split.operator("bcb.asst_update", icon="PASTEDOWN")
-                    split2 = split.split(align=False)
+                    split2 = split.split(align=1)
                     split2.prop(props, "submenu_assistant_advanced")
                     
-            layout.separator()
-
             ###### Element group settings (more)        
 
-            row = layout.row(); row.prop(props, "elemGrp_%d_EGSidxCTyp" %i)
+            col = layout.column(align=1)
+            row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxCTyp" %i)
             if props.menu_gotData: row.enabled = 0
                 
             ct = eval("props.elemGrp_%d_EGSidxCTyp" %i)
             try: connectType = connectTypes[ct]
             except: connectType = connectTypes[0]  # In case the connection type is unknown (no constraints)
-            box = layout.box();
+            box = col.box();
             box.label(text=connectType[0])
 
-            row = layout.row(); row.label(text="Breaking Thresholds in [N or Nm] / mm²:")
+            col.separator()
+            row = col.row(align=1); row.label(text="Breaking Thresholds in [N or Nm] / mm²:")
 
             # Prepare possible expression variables
             a = h = w = b = s = 1   
 
             expression = eval("props.elemGrp_%d_EGSidxBTC" %i)
-            row = layout.row()
+            row = col.row(align=1)
             try: value = eval(expression)
             except: row.alert = 1; qAlert = 1
             else: qAlert = 0
             row.prop(props, "elemGrp_%d_EGSidxBTC" %i)
             if not connectType[2][0]: row.active = 0
-            if qAlert: row = layout.row(); row.label(text="Error in expression")
+            if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
             expression = eval("props.elemGrp_%d_EGSidxBTT" %i)
-            row = layout.row()
+            row = col.row(align=1)
             try: value = eval(expression)
             except: row.alert = 1; qAlert = 1
             else: qAlert = 0
             row.prop(props, "elemGrp_%d_EGSidxBTT" %i)
             if not connectType[2][1]: row.active = 0
-            if qAlert: row = layout.row(); row.label(text="Error in expression")
+            if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
             expression = eval("props.elemGrp_%d_EGSidxBTS" %i)
-            row = layout.row()
+            row = col.row(align=1)
             try: value = eval(expression)
             except: row.alert = 1; qAlert = 1
             else: qAlert = 0
             row.prop(props, "elemGrp_%d_EGSidxBTS" %i)
             if not connectType[2][2]: row.active = 0
-            if qAlert: row = layout.row(); row.label(text="Error in expression")
+            if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
             if props.submenu_assistant_advanced:
                 expression = eval("props.elemGrp_%d_EGSidxBTS9" %i)
                 if expression != "":
-                    row = layout.row()
+                    row = col.row(align=1)
                     try: value = eval(expression)
                     except: row.alert = 1; qAlert = 1
                     else: qAlert = 0
                     row.prop(props, "elemGrp_%d_EGSidxBTS9" %i)
                     if not connectType[2][2]: row.active = 0
-                    if qAlert: row = layout.row(); row.label(text="Error in expression")
+                    if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
             expression = eval("props.elemGrp_%d_EGSidxBTB" %i)
-            row = layout.row()
+            row = col.row(align=1)
             try: value = eval(expression)
             except: row.alert = 1; qAlert = 1
             else: qAlert = 0
             row.prop(props, "elemGrp_%d_EGSidxBTB" %i)
             if not connectType[2][3]: row.active = 0
-            if qAlert: row = layout.row(); row.label(text="Error in expression")
+            if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
             if props.submenu_assistant_advanced:
                 expression = eval("props.elemGrp_%d_EGSidxBTB9" %i)
                 if expression != "":
-                    row = layout.row()
+                    row = col.row(align=1)
                     try: value = eval(expression)
                     except: row.alert = 1; qAlert = 1
                     else: qAlert = 0
                     row.prop(props, "elemGrp_%d_EGSidxBTB9" %i)
                     if not connectType[2][3]: row.active = 0
-                    if qAlert: row = layout.row(); row.label(text="Error in expression")
+                    if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
-            layout.separator()
-            #row = layout.row(); row.prop(props, "elemGrp_%d_EGSidxRqVP" %i)
-            row = layout.row(); row.prop(props, "elemGrp_%d_EGSidxMatP" %i)
-            row = layout.row(); row.prop(props, "elemGrp_%d_EGSidxDens" %i)
+            col.separator()
+            #row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxRqVP" %i)
+            row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxMatP" %i)
+            row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxDens" %i)
             
-            layout.separator()
-            row = layout.row()
+            col.separator()
+            row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
+            row.prop(props, "elemGrp_%d_EGSidxCyln" %i)
             row.prop(props, "elemGrp_%d_EGSidxScal" %i)
-            row = layout.row(); row.prop(props, "elemGrp_%d_EGSidxCyln" %i)
-            row = layout.row()
+            row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxBevl" %i)
             prop_EGSidxBevl = eval("props.elemGrp_%d_EGSidxBevl" %i)
@@ -518,8 +554,8 @@ class bcb_panel(bpy.types.Panel):
             row.prop(props, "elemGrp_%d_EGSidxFacg" %i)
             
             if prop_EGSidxBevl and not prop_EGSidxFacg:
-                row = layout.row(); row.label(text="Warning: Disabled facing")
-                row = layout.row(); row.label(text="makes bevel permanent!")
+                row = col.row(align=1); row.label(text="Warning: Disabled facing")
+                row = col.row(align=1); row.label(text="makes bevel permanent!")
                 
             ###### Advanced element group settings box
             
@@ -527,16 +563,18 @@ class bcb_panel(bpy.types.Panel):
             box.prop(props, "submenu_advancedE", text="Advanced Element Settings", icon=self.icon_pulldown(props.submenu_advancedE), emboss = False)
 
             if props.submenu_advancedE:
-                row = box.row(); row.prop(props, "elemGrp_%d_EGSidxSStf" %i)
+                col = box.column(align=1)
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxSStf" %i)
                 if not connectType[2][4]: row.active = 0
-                row = box.row(); row.label(text="1st & 2nd Tolerance (Plastic & Breaking):")
-                row = box.row()
-                split = row.split(percentage=.50, align=False);
+                col.separator()
+                row = col.row(align=1); row.label(text="1st & 2nd Tolerance (Plastic & Breaking):")
+                row = col.row(align=1)
+                split = row.split(align=1);
                 split.prop(props, "elemGrp_%d_EGSidxTl1D" %i)
                 split.prop(props, "elemGrp_%d_EGSidxTl1R" %i)
                 if not connectType[2][5]: split.active = 0
-                row = box.row()
-                split = row.split(percentage=.50, align=False);
+                row = col.row(align=1)
+                split = row.split(align=1);
                 split.prop(props, "elemGrp_%d_EGSidxTl2D" %i)
                 split.prop(props, "elemGrp_%d_EGSidxTl2R" %i)
                 if not connectType[2][7]: split.active = 0

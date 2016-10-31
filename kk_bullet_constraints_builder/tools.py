@@ -216,7 +216,7 @@ def tool_centerModel(scene):
         # Calculate boundary box corners
         bbMin, bbMax, bbCenter = boundaryBox(obj, 1)
         if qFirst:
-            bbMin_all = bbMin; bbMax_all = bbMax
+            bbMin_all = bbMin.copy(); bbMax_all = bbMax.copy()
             qFirst = 0
         else:
             if bbMax_all[0] < bbMax[0]: bbMax_all[0] = bbMax[0]
@@ -502,6 +502,45 @@ def tool_enableRigidBodies(scene):
     
 ################################################################################
 
+def createBoxData(verts, edges, faces, corner1, corner2):
+    
+    ### Create box geometry from boundaries
+    x1 = corner1[0]; x2 = corner2[0]
+    y1 = corner1[1]; y2 = corner2[1]
+    z1 = corner1[2]; z2 = corner2[2]
+    i = len(verts)
+    # Create the vertices for the box corners
+    verts.append(Vector([x1, y1, z1]))
+    verts.append(Vector([x2, y1, z1]))
+    verts.append(Vector([x2, y2, z1]))
+    verts.append(Vector([x1, y2, z1]))
+    verts.append(Vector([x1, y1, z2]))
+    verts.append(Vector([x2, y1, z2]))
+    verts.append(Vector([x2, y2, z2]))
+    verts.append(Vector([x1, y2, z2]))
+#    # Generate 12 edges from the 8 vertices
+#    edges.append([i, i+1])
+#    edges.append([i+1, i+2])
+#    edges.append([i+2, i+3])
+#    edges.append([i+3, i])
+#    edges.append([i+4, i+5])
+#    edges.append([i+5, i+6])
+#    edges.append([i+6, i+7])
+#    edges.append([i+7, i+4])
+#    edges.append([i, i+4])
+#    edges.append([i+1, i+5])
+#    edges.append([i+2, i+6])
+#    edges.append([i+3, i+7])
+    # Generate the corresponding face
+    faces.append([i, i+1, i+2, i+3])
+    faces.append([i+4, i+5, i+6, i+7])
+    faces.append([i, i+1, i+5, i+4])
+    faces.append([i+1, i+2, i+6, i+5])
+    faces.append([i+2, i+3, i+7, i+6])
+    faces.append([i+3, i, i+4, i+7])
+
+########################################
+
 def tool_fixFoundation(scene):
 
     print("\nSearching foundation elements...")
@@ -514,26 +553,173 @@ def tool_fixFoundation(scene):
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None]
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
     if len(objs) == 0:
         print("No rigid body objects selected.")
         return
 
     props = bpy.context.window_manager.bcb
     
-    ### Foundation detection based on ground level 
-    if len(props.preprocTools_fix_nam) == 0:
-        for obj in objs:
-            if obj.location.z < props.preprocTools_fix_lev:
-                obj.rigid_body.type = 'PASSIVE'
-
     ### Foundation detection based on name
+    if not props.preprocTools_fix_cac:
+        if len(props.preprocTools_fix_nam) > 0:
+            cnt = 0
+            for obj in objs:
+                if props.preprocTools_fix_nam in obj.name:
+                    cnt += 1
+                    if obj.rigid_body != None:
+                        obj.rigid_body.type = 'PASSIVE'
+            if cnt == 0: print("No object with '%s' in its name found." %props.preprocTools_fix_nam)
+        else: print("No foundation object name defined in user interface.")
+
+    ### Foundation generation 
     else:
+        if len(props.preprocTools_fix_nam) > 0:
+              foundationName = props.preprocTools_fix_nam
+        else: foundationName = "Base"
+
+        ### Calculate boundary boxes for all objects
+        verts = []; edges = []; faces = []
+        objsBB = []
+        qFirst = 1
         for obj in objs:
-            if props.preprocTools_fix_nam in obj.name:
-                obj.rigid_body.type = 'PASSIVE'
+            # Calculate boundary box corners
+            bbMin, bbMax, bbCenter = boundaryBox(obj, 1)
+            objsBB.append([bbMin, bbMax])
+            if qFirst:
+                bbMin_all = bbMin.copy(); bbMax_all = bbMax.copy()
+                qFirst = 0
+            else:
+                if bbMax_all[0] < bbMax[0]: bbMax_all[0] = bbMax[0]
+                if bbMin_all[0] > bbMin[0]: bbMin_all[0] = bbMin[0]
+                if bbMax_all[1] < bbMax[1]: bbMax_all[1] = bbMax[1]
+                if bbMin_all[1] > bbMin[1]: bbMin_all[1] = bbMin[1]
+                if bbMax_all[2] < bbMax[2]: bbMax_all[2] = bbMax[2]
+                if bbMin_all[2] > bbMin[2]: bbMin_all[2] = bbMin[2]
+
+        ### Calculate geometry for adjacent foundation geometry for all sides
+        for bb in objsBB:
+            bbMin = bb[0]
+            bbMax = bb[1]
+
+            # X+
+            if props.preprocTools_fix_axp:
+                if bbMax[0] >= bbMax_all[0] -props.preprocTools_fix_rng:
+                    newCorner = Vector(( 2*bbMax[0]-bbMin[0], bbMin[1], bbMin[2] ))
+                    createBoxData(verts, edges, faces, bbMax, newCorner)
+            # X-
+            if props.preprocTools_fix_axn:
+                if bbMin[0] <= bbMin_all[0] +props.preprocTools_fix_rng:
+                    newCorner = Vector(( 2*bbMin[0]-bbMax[0], bbMax[1], bbMax[2] ))
+                    createBoxData(verts, edges, faces, newCorner, bbMin)
+            # Y+
+            if props.preprocTools_fix_ayp:
+                if bbMax[1] >= bbMax_all[1] -props.preprocTools_fix_rng:
+                    newCorner = Vector(( bbMin[0], 2*bbMax[1]-bbMin[1], bbMin[2] ))
+                    createBoxData(verts, edges, faces, bbMax, newCorner)
+            # Y-
+            if props.preprocTools_fix_ayn:
+                if bbMin[1] <= bbMin_all[1] +props.preprocTools_fix_rng:
+                    newCorner = Vector(( bbMax[0], 2*bbMin[1]-bbMax[1], bbMax[2] ))
+                    createBoxData(verts, edges, faces, newCorner, bbMin)
+            # Z+
+            if props.preprocTools_fix_azp:
+                if bbMax[2] >= bbMax_all[2] -props.preprocTools_fix_rng:
+                    newCorner = Vector(( bbMin[0], bbMin[1], 2*bbMax[2]-bbMin[2] ))
+                    createBoxData(verts, edges, faces, bbMax, newCorner)
+            # Z-
+            if props.preprocTools_fix_azn:
+                if bbMin[2] <= bbMin_all[2] +props.preprocTools_fix_rng:
+                    newCorner = Vector(( bbMax[0], bbMax[1], 2*bbMin[2]-bbMax[2] ))
+                    createBoxData(verts, edges, faces, newCorner, bbMin)
+
+        ### Create actual geometry and objects
+        # Create empty mesh object
+        me = bpy.data.meshes.new(foundationName)
+        # Add mesh data to new object
+        me.from_pydata(verts, [], faces)
+        obj = bpy.data.objects.new(foundationName, me)
+        scene.objects.link(obj)
+        
+        # Create a new group for the foundation object if not already existing
+        grpName = foundationName
+        if grpName not in bpy.data.groups:
+              grp = bpy.data.groups.new(grpName)
+        else: grp = bpy.data.groups[grpName]
+        # Add new object to group
+        grp.objects.link(obj)
+
+        # Deselect all objects.
+        bpy.ops.object.select_all(action='DESELECT')
+        
+        # Apply rigid body settings
+        obj.select = 1
+        bpy.context.scene.objects.active = obj
+        bpy.ops.rigidbody.objects_add()
+        obj.rigid_body.type = 'PASSIVE'
+
+        ### Split object into individual parts
+        bpy.context.tool_settings.mesh_select_mode = False, True, False
+        # Enter edit mode              
+        try: bpy.ops.object.mode_set(mode='EDIT')
+        except: pass 
+        # Select all elements
+        #try: bpy.ops.mesh.select_all(action='SELECT')
+        #except: pass
+        # Recalculate normals
+        #bpy.ops.mesh.normals_make_consistent(inside=False)
+        # Separate loose
+        try: bpy.ops.mesh.separate(type='LOOSE')
+        except: pass
+        # Leave edit mode
+        try: bpy.ops.object.mode_set(mode='OBJECT')
+        except: pass
+
+        # Set object centers to geometry origin
+        obj.select = 1
+        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+         
+    # Revert to start selection
+    for obj in selection: obj.select = 1
+    bpy.context.scene.objects.active = selectionActive
 
 ################################################################################
+
+def createOrReuseObjectAndMesh(scene, objName="Mesh"):
+
+    ### Create a fresh object and delete old one, the complexity is needed to avoid pollution with old mesh datablocks
+    ### Further, we cannot use the same mesh datablock that has already been used with from_pydata() so there is a workaround for this, too
+    objEmptyName = "$Temp$"
+    try:    obj = bpy.data.objects[objName]
+    except:
+            try:    me = bpy.data.meshes[objName]
+            except: 
+                    me = bpy.data.meshes.new(objName)
+                    obj = bpy.data.objects.new(objName, me)
+            else:
+                    obj = bpy.data.objects.new(objName, me)
+                    try:    meT = bpy.data.meshes[objEmptyName]
+                    except: meT = bpy.data.meshes.new(objEmptyName)
+                    obj.data = meT
+                    bpy.data.meshes.remove(me, do_unlink=1)
+                    me = bpy.data.meshes.new(objName)
+                    obj.data = me
+            scene.objects.link(obj)
+    else:
+            #obj = bpy.data.objects[objName]
+            me = obj.data
+            try:    meT = bpy.data.meshes[objEmptyName]
+            except: meT = bpy.data.meshes.new(objEmptyName)
+            obj.data = meT
+            bpy.data.meshes.remove(me, do_unlink=1)
+            me = bpy.data.meshes.new(objName)
+            obj.data = me
+            try: scene.objects.link(obj)
+            except: pass
+            
+    return obj
+
+########################################
 
 def tool_groundMotion(scene):
 
@@ -541,12 +727,26 @@ def tool_groundMotion(scene):
 
     props = bpy.context.window_manager.bcb
     q = 0
-    if len(props.preprocTools_gnd_obj) == 0: q = 1
-    try: objGnd = scene.objects[props.preprocTools_gnd_obj]
-    except: q = 1
-    if q:
-        print("No ground object defined.")
+    if len(props.preprocTools_gnd_obj) == 0:
+        print("No ground object name defined in user interface.")
         return
+    if props.preprocTools_gnd_obj in scene.objects:
+        objGnd = scene.objects[props.preprocTools_gnd_obj]
+    else: 
+        print("Ground object not found, creating new one...")
+        ### Create ground object data
+        verts = []; edges = []; faces = []
+        corner1 = Vector((500, 500, 0))
+        corner2 = Vector((-500,-500,-10))
+        createBoxData(verts, edges, faces, corner1, corner2)
+        # Create empty mesh object
+        #me = bpy.data.meshes.new(props.preprocTools_gnd_obj)
+        #objGnd = bpy.data.objects.new(props.preprocTools_gnd_obj, me)
+        #scene.objects.link(objGnd)
+        objGnd = createOrReuseObjectAndMesh(scene, objName=props.preprocTools_gnd_obj)
+        me = objGnd.data
+        # Add mesh data to new object
+        me.from_pydata(verts, [], faces)
 
     # Leave edit mode to make sure next operator works in object mode
     try: bpy.ops.object.mode_set(mode='OBJECT') 

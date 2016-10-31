@@ -273,7 +273,6 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
                 # Call menu
                 bpy.ops.wm.call_menu(name="bcb.add_preset")
             else:
-                print("EXECUTE")
                 props = context.window_manager.bcb
                 elemGrps = mem["elemGrps"]
                 # Add element group (syncing element group indices happens on execution)
@@ -534,7 +533,7 @@ class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_fix_foundation(bpy.types.Operator):
     bl_idname = "bcb.tool_fix_foundation"
     bl_label = "Fix Foundation"
-    bl_description = "Enables 'Passive' for all selected rigid body objects which meet the specified ground conditions."
+    bl_description = "Either uses name based search to find foundation objects or creates foundation objects for all objects touching the overall model boundary box. These foundation objects will be set to be 'Passive' rigid bodies."
     def execute(self, context):
         scene = bpy.context.scene
         tool_fixFoundation(scene)
