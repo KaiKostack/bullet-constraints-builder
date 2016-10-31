@@ -553,9 +553,9 @@ def tool_fixFoundation(scene):
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE']
     if len(objs) == 0:
-        print("No rigid body objects selected.")
+        print("No active rigid body objects selected.")
         return
 
     props = bpy.context.window_manager.bcb
@@ -567,8 +567,7 @@ def tool_fixFoundation(scene):
             for obj in objs:
                 if props.preprocTools_fix_nam in obj.name:
                     cnt += 1
-                    if obj.rigid_body != None:
-                        obj.rigid_body.type = 'PASSIVE'
+                    obj.rigid_body.type = 'PASSIVE'
             if cnt == 0: print("No object with '%s' in its name found." %props.preprocTools_fix_nam)
         else: print("No foundation object name defined in user interface.")
 
@@ -732,8 +731,39 @@ def tool_groundMotion(scene):
         return
     if props.preprocTools_gnd_obj in scene.objects:
         objGnd = scene.objects[props.preprocTools_gnd_obj]
-    else: 
+        qCreateGround = 0
+    else: qCreateGround = 1
+        
+    # Leave edit mode to make sure next operator works in object mode
+    try: bpy.ops.object.mode_set(mode='OBJECT') 
+    except: pass
+
+    # Backup selection
+    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selectionActive = bpy.context.scene.objects.active
+    # Find passive mesh objects in selection
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'PASSIVE']
+    if len(objs) == 0:
+        print("No passive rigid body mesh objects selected.")
+        return
+
+    if qCreateGround:
         print("Ground object not found, creating new one...")
+        # Find active mesh objects in selection
+        objsA = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE']
+        if len(objsA) > 0:
+            ### Calculate boundary boxes for all active objects
+            qFirst = 1
+            for obj in objsA:
+                # Calculate boundary box corners
+                bbMin, bbMax, bbCenter = boundaryBox(obj, 1)
+                if qFirst:
+                    bbMin_all = bbMin.copy()
+                    qFirst = 0
+                else:
+                    if bbMin_all[2] > bbMin[2]: bbMin_all[2] = bbMin[2]
+            height = bbMin_all[2]
+        else: height = 0
         ### Create ground object data
         verts = []; edges = []; faces = []
         corner1 = Vector((500, 500, 0))
@@ -747,19 +777,8 @@ def tool_groundMotion(scene):
         me = objGnd.data
         # Add mesh data to new object
         me.from_pydata(verts, [], faces)
-
-    # Leave edit mode to make sure next operator works in object mode
-    try: bpy.ops.object.mode_set(mode='OBJECT') 
-    except: pass
-
-    # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
-    selectionActive = bpy.context.scene.objects.active
-    # Find mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'PASSIVE']
-    if len(objs) == 0:
-        print("No passive rigid body mesh objects selected.")
-        return
+        # Set ground to the height of the lowest active rigid body
+        objGnd.location[2] = height
 
     ###### Parenting to ground object
     
