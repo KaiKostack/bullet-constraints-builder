@@ -41,14 +41,14 @@ bcb_version = (2, 4, 2)
 presets = [
 # 0                     1    2           3        4   5       6       7       8      9       10     11      12   13   14   15    16   17    18     19              20
 # Name                  RVP  Mat.preset  Density  CT  BTC     BTT     BTS     BTS90  BTB     BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.Assist.+Data  Cyl
-[ "",                   1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
-[ "RC Columns",         1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
-[ "RC Walls",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
-[ "RC Slabs",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
-[ "Masonry Walls",      1,   "Masonry",  1800,    6,  "10",   "2",    "0.3",  "",    "0.3",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
-[ "I-Beams Screwed",    1,   "Steel",    7800,    6,  "47.5", "23.5", "14.1", "",    "2.4",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
-[ "I-Beams Screwed 2",  1,   "Steel",    7800,    6,  "87.5", "33.8", "20.3", "",    "12.3", "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ],
-[ "HSS-Beams Welded",   1,   "Steel",    7800,    6,  "37.5", "75",   "45",   "",    "6.6",  "",    10**6,  .2,  .4,  .4,  1.6,  0,   .95,  0,     "None",         0 ]
+[ "",                   1,   "Concrete", 2400,    11, "35",   "5.2",  "155",  "",    "1.0",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "RC Columns",         1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "RC Walls",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "RC Slabs",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "Masonry Walls",      1,   "Masonry",  1800,    6,  "10",   "2",    "0.3",  "",    "0.3",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "I-Beams Screwed",    1,   "Steel",    7800,    6,  "47.5", "23.5", "14.1", "",    "2.4",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "I-Beams Screwed 2",  1,   "Steel",    7800,    6,  "87.5", "33.8", "20.3", "",    "12.3", "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "HSS-Beams Welded",   1,   "Steel",    7800,    6,  "37.5", "75",   "45",   "",    "6.6",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 # Actual element group list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)

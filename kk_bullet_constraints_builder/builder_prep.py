@@ -99,7 +99,7 @@ def gatherObjects(scene):
             # Clear object properties
             #for key in obj.keys(): del obj[key]
             # Detect if mesh or empty (constraint)
-            if obj.type == 'MESH' and len(obj.data.vertices) > 0:  # obj.rigid_body != None
+            if obj.type == 'MESH' and obj.rigid_body != None and len(obj.data.vertices) > 0:
                 objs.append(obj)
             elif obj.type == 'EMPTY' and obj.rigid_body_constraint != None:
                 sys.stdout.write('\r' +"%s      " %obj.name)

@@ -256,15 +256,16 @@ def tool_separateLoose(scene):
 
 def updateObjList(scene, objs):
     
-    ### Add new objects to the object list and remove deleted ones
+    ### Add new objects and selected objects to the object list and remove deleted ones
     for objTemp in scene.objects:
-        if objTemp.select and objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(scene):
+        if objTemp.select:
             if objTemp not in objs:
-                objs.append(objTemp)
-    for objTemp in objs:
-        if objTemp.name not in scene.objects:
-            objs.remove(objTemp)
-
+                if objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(scene):
+                    objs.append(objTemp)
+    for idx in reversed(range(len(objs))):
+        if objs[idx].name not in scene.objects:
+            del objs[idx]
+                
 ########################################
 
 def tool_discretize(scene):
@@ -282,9 +283,6 @@ def tool_discretize(scene):
         print("No mesh objects selected.")
         return
 
-    # Set object centers to geometry origin
-    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-
     # Create cutting plane to be used by external module
     bpy.ops.mesh.primitive_plane_add(radius=100, view_align=False, enter_editmode=False, location=Vector((0, 0, 0)))
     objC = bpy.context.scene.objects.active
@@ -300,15 +298,18 @@ def tool_discretize(scene):
 
     ###### External function
     props = bpy.context.window_manager.bcb
+    # Set object centers to geometry origin
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
     # Parameters: [qSplitAtJunctions, minimumSizeLimit, qTriangulate, halvingCutter]
     if props.preprocTools_dis_jus:
         print("\nDiscretization - Junction pass:")
         kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
-        ### Add new objects to the object list and remove deleted ones
-        updateObjList(scene, selection)
-        updateObjList(scene, objs)
+        # Set object centers to geometry origin
+        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
     print("\nDiscretization - Halving pass:")
     kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 0, 'BCB_CuttingPlane'], None)
+    # Set object centers to geometry origin
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
     ### Add new objects to the object list and remove deleted ones
     updateObjList(scene, selection)
     updateObjList(scene, objs)
@@ -331,14 +332,15 @@ def tool_discretize(scene):
         print("\nDiscretization - Triangulation pass (%d left):" %count)
         if props.preprocTools_dis_jus:
             kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
-            ### Add new objects to the object list and remove deleted ones
-            updateObjList(scene, selection)
-            updateObjList(scene, objs)
+            # Set object centers to geometry origin
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
         kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+        # Set object centers to geometry origin
+        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
         ### Add new objects to the object list and remove deleted ones
         updateObjList(scene, selection)
         updateObjList(scene, objs)
-
+    
     ### 2. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations),
     ### deselect all others and try discretization again with triangulation
     cnt = 0
@@ -356,9 +358,9 @@ def tool_discretize(scene):
     if count > 0:
         print("\nDiscretization - Non-manifolds pass (%d left):" %count)
         failedExt = []
+        # Deselect all objects.
+        bpy.ops.object.select_all(action='DESELECT')
         for obj in failed:
-            # Deselect all objects.
-            bpy.ops.object.select_all(action='DESELECT')
             bpy.context.scene.objects.active = obj
             # Enter edit mode              
             try: bpy.ops.object.mode_set(mode='EDIT')
@@ -411,13 +413,8 @@ def tool_discretize(scene):
             # Leave edit mode
             try: bpy.ops.object.mode_set(mode='OBJECT')
             except: pass
-            obj.select = 1
-            ### Add new objects to the object list and remove deleted ones
-            updateObjList(scene, selection)
-            updateObjList(scene, objs)
-            # Set object centers to geometry origin
-            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
             ### Remove doubles for new objects
+            obj.select = 1
             for objTemp in scene.objects:
                 if objTemp.select and objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(scene):
                     bpy.context.scene.objects.active = objTemp
@@ -432,18 +429,22 @@ def tool_discretize(scene):
                     # Leave edit mode
                     try: bpy.ops.object.mode_set(mode='OBJECT')
                     except: pass 
+        # Set object centers to geometry origin
+        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
         if props.preprocTools_dis_jus:
             kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
-            ### Add new objects to the object list and remove deleted ones
-            updateObjList(scene, selection)
-            updateObjList(scene, objs)
+            # Set object centers to geometry origin
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
         kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+        # Set object centers to geometry origin
+        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
         ### Add new objects to the object list and remove deleted ones
         updateObjList(scene, selection)
         updateObjList(scene, objs)
-    
+
     ### 3. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations)
     ### print warning message together with a list of the problematic objects
+    cnt = 0
     failed = []
     for obj in objs:
         ### Calculate diameter for each object
@@ -460,7 +461,7 @@ def tool_discretize(scene):
             print(obj.name)
     else: print("\nDiscretization verified and successful!")
     print("Final element count:", len(objs))
-            
+
     # Revert to start selection
     for obj in selection: obj.select = 1
     bpy.context.scene.objects.active = selectionActive
@@ -662,11 +663,6 @@ def tool_fixFoundation(scene):
         # Enter edit mode              
         try: bpy.ops.object.mode_set(mode='EDIT')
         except: pass 
-        # Select all elements
-        #try: bpy.ops.mesh.select_all(action='SELECT')
-        #except: pass
-        # Recalculate normals
-        #bpy.ops.mesh.normals_make_consistent(inside=False)
         # Separate loose
         try: bpy.ops.mesh.separate(type='LOOSE')
         except: pass

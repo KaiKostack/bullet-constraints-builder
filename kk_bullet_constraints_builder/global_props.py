@@ -79,7 +79,7 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_gnd = bool_(default=1)
     
     preprocTools_grp_sep = string_(name="Separator",               default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names.")
-    preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.5, min=0.0, max=1000, description="Minimum dimension for an element for still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller down to 50%.")
+    preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.9, min=0.0, max=1000, description="Minimum dimension for an element for still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller down to 50%.")
     preprocTools_dis_jus = bool_(name="Enable Junction Search",    default=1, description="Tries to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes.")
     preprocTools_fix_nam = string_(name="Obj. Name",               default='Base', description="Enter a name (or substring) for objects that should be set to 'Passive' in rigid body settings.")
     preprocTools_fix_cac = bool_(name="Create New Foundation Objects", default=0, description="Enables generation of additional rigid body objects to serve as anchors adjacent to the selected model objects.")
@@ -98,7 +98,7 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_gnd_nsd = float_(name="Random Seed", default=0, min=0.0, max=10000000, description="Seed number for the random noise function used to generate the artificial earthquake, modification will change the characteristics of the motion.")
     
     ### Element group properties
-    stepsPerSecond = int_(name="Steps Per Second",                        default=200, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
+    stepsPerSecond = int_(name="Steps Per Second",                        default=300, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
     constraintUseBreaking = bool_(name="Enable Breaking",                 default=1,                       description="Enables breaking for all constraints.")
     connectionCountLimit = int_(name="Con. Count Limit",                  default=100, min=0, max=10000,   description="Maximum count of connections per object pair (0 = disabled).")
     searchDistance = float_(name="Search Distance",                       default=0.02, min=0.0, max=1000, description="Search distance to neighbor geometry.")
