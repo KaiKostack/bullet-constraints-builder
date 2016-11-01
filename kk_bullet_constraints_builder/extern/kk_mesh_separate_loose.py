@@ -135,14 +135,14 @@ def run():
             # Enter edit mode              
             try: bpy.ops.object.mode_set(mode='EDIT')
             except: pass # continue
-            # select linked to make sure no undesired mesh splitting occurs
+            # Select linked to make sure no undesired mesh splitting occurs
             if qUVislands: bpy.ops.mesh.select_linked(delimit={'UV'})
             else: bpy.ops.mesh.select_linked()
             # Leave edit mode
             try: bpy.ops.object.mode_set(mode='OBJECT')
             except: pass # continue
             
-            # count selected verts to make sure old object won't be empty
+            # Count selected verts to make sure old object won't be empty
             sum = 0
             for vert in me.vertices:
                 if vert.select: sum += 1
@@ -152,26 +152,26 @@ def run():
         except: pass # continue
         
         if qUVislands:
-            # separate selection
+            # Separate selection
             try: bpy.ops.mesh.separate(type='SELECTED')
             except: objs.remove(obj)
         else:
-            # if no difference can be found try with regular separate loose
+            # If no difference can be found try with regular separate loose
             if not qObjectIsLargeEnough or sum == 0 or sum == len(me.vertices):
-                # select all geometry
+                # Select all geometry
                 bpy.ops.mesh.select_all(action='SELECT')
-                # separate loose
+                # Separate loose
                 try: bpy.ops.mesh.separate(type='LOOSE')
                 except: pass
-                objs.remove(obj)  # separate loose operator will always finish the object so it can be removed from list
+                objs.remove(obj)  # Separate loose operator will always finish the object so it can be removed from list
             else:
-                # separate selection
+                # Separate selection
                 try: bpy.ops.mesh.separate(type='SELECTED')
                 except: objs.remove(obj)
                 else:
-                    # append new objects to objs list
+                    # Append new objects to objs list
                     for objN in scene.objects:
-                        if objN.select and objN.type == 'MESH' and not objN.hide:
+                        if objN.select and objN.type == 'MESH' and not objN.hide and objN.is_visible(scene):
                             objs.append(objN)
         
         # Leave edit mode
@@ -180,7 +180,7 @@ def run():
         
         # Unlinking optimization: Append new objects to objsNew list so we can relink them back to scene after we finished, until then unlink them as well
         for objN in scene.objects:
-            if objN.select and objN.type == 'MESH' and not objN.hide:
+            if objN.select and objN.type == 'MESH' and not objN.hide and objN.is_visible(scene):
                 scene.objects.unlink(objN)   # Temporarily unlink again
                 if objN not in objsNew: objsNew.append(objN)
         
