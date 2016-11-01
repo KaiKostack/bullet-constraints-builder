@@ -835,7 +835,7 @@ def tool_groundMotion(scene):
     fmod = curveLocX.modifiers.new(type='NOISE')
     fmod.scale = fps_rate /frequency
     fmod.phase = seed
-    fmod.strength = amplitude *4
+    fmod.strength = amplitude *6
     fmod.depth = 1
     fmod.use_restricted_range = True
     fmod.frame_start = 1
@@ -847,7 +847,7 @@ def tool_groundMotion(scene):
     fmod = curveLocY.modifiers.new(type='NOISE')
     fmod.scale = fps_rate /frequency
     fmod.phase = seed +1000
-    fmod.strength = amplitude *4
+    fmod.strength = amplitude *6
     fmod.depth = 1
     fmod.use_restricted_range = True
     fmod.frame_start = 1
@@ -859,7 +859,7 @@ def tool_groundMotion(scene):
     fmod = curveLocZ.modifiers.new(type='NOISE')
     fmod.scale = fps_rate /frequency
     fmod.phase = seed +2000
-    fmod.strength = amplitude
+    fmod.strength = amplitude *1.5
     fmod.depth = 1
     fmod.use_restricted_range = True
     fmod.frame_start = 1

@@ -92,8 +92,8 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_fix_azn = bool_(name="Z -",                       default=1, description="Enables this side of the overall model boundary for which fixed foundation objects will be created.")
     preprocTools_gnd_obj = string_(name="Obj. Name", default='Ground_Motion', description="Enter the name of a ground motion object here and the passive objects will automatically be attached to it.")
     preprocTools_gnd_nac = bool_(name="Create Artificial Earthquake Motion", default=0, description="Enables generation of artificial ground motion data based on noise functions, this can be useful if there is no real world ground motion data available.")
-    preprocTools_gnd_nap = float_(name="Amplitude",   default=0.4, min=0.0, max=1000, description="Amplitude of the artificial earthquake to be generated in m (because of the random nature of the noise function this should be taken as approximation).")
-    preprocTools_gnd_nfq = float_(name="Frequency",   default=0.6, min=0.0, max=1000, description="Frequency of the artificial earthquake to be generated in Hz (because of the random nature of the noise function this should be taken as approximation).")
+    preprocTools_gnd_nap = float_(name="Amplitude",   default=1, min=0.0, max=1000, description="Amplitude of the artificial earthquake to be generated in m (because of the random nature of the noise function this should be taken as approximation).")
+    preprocTools_gnd_nfq = float_(name="Frequency",   default=0.7, min=0.0, max=1000, description="Frequency of the artificial earthquake to be generated in Hz (because of the random nature of the noise function this should be taken as approximation).")
     preprocTools_gnd_ndu = float_(name="Duration",    default=10, min=0.0, max=1000, description="Duration of the artificial earthquake to be generated in seconds.")
     preprocTools_gnd_nsd = float_(name="Random Seed", default=0, min=0.0, max=10000000, description="Seed number for the random noise function used to generate the artificial earthquake, modification will change the characteristics of the motion.")
     
