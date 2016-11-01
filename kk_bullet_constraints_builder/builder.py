@@ -51,8 +51,6 @@ def build():
         props = bpy.context.window_manager.bcb
         scene = bpy.context.scene
         
-        # Display progress bar
-        bpy.context.window_manager.progress_begin(0, 100)
         # Leave edit mode
         try: bpy.ops.object.mode_set(mode='OBJECT') 
         except: pass
@@ -129,17 +127,20 @@ def build():
                     
                     ###### No connections found   
                     else:
-                        print('No connections found. Probably the search distance is too small.')       
+                        print('No connections found. Probably the search distance is too small.')
+                        return 1 
                 
                 ###### No element assigned to element group found
                 else:
                     print('Please make sure that at least two mesh objects are assigned to element groups.')       
-                    print('Nothing done.')       
+                    print('Nothing done.')
+                    return 1
 
             ###### No selected input found   
             else:
                 print('Please select at least two mesh objects to connect.')       
-                print('Nothing done.')       
+                print('Nothing done.')
+                return 1     
        
         ##########################################     
         ###### Update already existing constraints
@@ -179,16 +180,17 @@ def build():
                 print('-- Time total: %0.2f s\n' %(time.time()-time_start))
                 print('Constraints:', len(emptyObjs), '| Elements:', len(objs), '| Children:', len(childObjs))
                 print('Done.')
+                return 0
 
             ###### No input found   
             else:
                 print('Neither mesh objects to connect nor constraint empties for updating selected.')       
                 print('Nothing done.')
+                return 1
                      
     ###### No RigidBodyWorld group found   
     else:
         print('No "RigidBodyWorld" group found in scene. Please create rigid bodies first.')       
         print('Nothing done.')       
+        return 1
         
-    # Terminate progress bar
-    bpy.context.window_manager.progress_end()

@@ -47,6 +47,7 @@ class bcb_props(bpy.types.PropertyGroup):
     
     ###### Menu properties
 
+    menu_gotPreproc =      int_(default=0)
     menu_gotConfig =       int_(default=0)
     menu_gotData =         int_(default=0)
     menu_selectedElemGrp = int_(default=0)

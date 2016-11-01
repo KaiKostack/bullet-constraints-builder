@@ -115,8 +115,12 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
             obj = bpy.data.groups["RigidBodyWorld"].objects[0]
             obj.location = obj.location
         ###### Execute main building process from scratch
-        build()
-        props.menu_gotData = 1
+        # Display progress bar
+        bpy.context.window_manager.progress_begin(0, 100)
+        error = build()
+        if not error: props.menu_gotData = 1
+        # Terminate progress bar
+        bpy.context.window_manager.progress_end()
         return{'FINISHED'} 
 
 ########################################
@@ -126,22 +130,7 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
     bl_label = "Update"
     bl_description = "Updates constraints generated from a previous built."
     def execute(self, context):
-        props = context.window_manager.bcb
-        scene = bpy.context.scene
-        # Go to start frame for cache data removal
-        scene.frame_current = scene.frame_start
-        ### Free previous bake data
-        contextFix = bpy.context.copy()
-        contextFix['point_cache'] = scene.rigidbody_world.point_cache
-        bpy.ops.ptcache.free_bake(contextFix)
-        ### Invalidate point cache to enforce a full bake without using previous cache data
-        if "RigidBodyWorld" in bpy.data.groups:
-            obj = bpy.data.groups["RigidBodyWorld"].objects[0]
-            obj.location = obj.location
-        ###### Execute update of all existing constraints with new settings
-        build()
-        # Update menu related properties from global vars
-        props.props_update_menu()
+        OBJECT_OT_bcb_build.execute(self, context)
         return{'FINISHED'} 
 
 ########################################
@@ -182,8 +171,7 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         props.asciiExport = 1
-        ###### Execute main building process from scratch
-        build()
+        OBJECT_OT_bcb_build.execute(self, context)
         props.asciiExport = 0
         return{'FINISHED'}
     
@@ -200,25 +188,26 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             ###### Execute main building process from scratch
             scene = bpy.context.scene
             props = context.window_manager.bcb
-            props.asciiExport = 1
-            build()
-            props.asciiExport = 0
-            build_fm()
-            if "BCB_export.txt" in bpy.data.texts:
-                try:    bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"], do_unlink=1)
-                except: bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"])
-                ### Free previous bake data
-                contextFix = bpy.context.copy()
-                contextFix['point_cache'] = scene.rigidbody_world.point_cache
-                bpy.ops.ptcache.free_bake(contextFix)
-                if props.automaticMode:
-                    # Prepare event handler
-                    bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
-                    # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
-                    #bpy.ops.ptcache.bake(contextFix, bake=True)
-                    # Start animation playback and by that the baking process
-                    if not bpy.context.screen.is_animation_playing:
-                        bpy.ops.screen.animation_play()
+            if props.automaticMode and not props.menu_gotPreproc:
+                OBJECT_OT_bcb_tool_do_all_steps_at_once.execute(self, context)
+            OBJECT_OT_bcb_export_ascii.execute(self, context)
+            if props.menu_gotData:
+                build_fm()
+                if "BCB_export.txt" in bpy.data.texts:
+                    try:    bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"], do_unlink=1)
+                    except: bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"])
+                    ### Free previous bake data
+                    contextFix = bpy.context.copy()
+                    contextFix['point_cache'] = scene.rigidbody_world.point_cache
+                    bpy.ops.ptcache.free_bake(contextFix)
+                    if props.automaticMode:
+                        # Prepare event handler
+                        bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
+                        # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
+                        #bpy.ops.ptcache.bake(contextFix, bake=True)
+                        # Start animation playback and by that the baking process
+                        if not bpy.context.screen.is_animation_playing:
+                            bpy.ops.screen.animation_play()
         return{'FINISHED'} 
 
 ########################################
@@ -230,8 +219,14 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
-        ### Only start baking when we have constraints set
-        if props.menu_gotData:
+        ### Build constraints if required (menu_gotData will be set afterwards and this operator restarted)
+        if not props.menu_gotData:
+            if props.automaticMode and not props.menu_gotPreproc:
+                OBJECT_OT_bcb_tool_do_all_steps_at_once.execute(self, context)
+            OBJECT_OT_bcb_build.execute(self, context)
+            if props.menu_gotData: OBJECT_OT_bcb_bake.execute(self, context)
+        ### Start baking when we have constraints set
+        else:
             print('\nInit BCB monitor event handler.')
             # Free old monitor data if still in memory (can happen if user stops baking before finished)
             monitor_freeBuffers(scene)
@@ -251,10 +246,6 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
             # Start animation playback and by that the baking process
             if not bpy.context.screen.is_animation_playing:
                 bpy.ops.screen.animation_play()
-        ### Otherwise build constraints if required
-        else:
-            OBJECT_OT_bcb_build.execute(self, context)
-            OBJECT_OT_bcb_bake.execute(self, context)
         return{'FINISHED'} 
 
 ########################################
@@ -405,7 +396,6 @@ class OBJECT_OT_bcb_reset(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         # Overwrite element group with original backup (syncing element group indices happens on execution)
-        print("ELEMENT GRP CNT:", len(mem["elemGrps"]), len(elemGrpsBak))
         mem["elemGrps"] = elemGrpsBak.copy()
         # Update menu selection
         props.menu_selectedElemGrp = 0
@@ -460,6 +450,7 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         if props.preprocTools_rbs: tool_enableRigidBodies(scene)
         if props.preprocTools_fix: tool_fixFoundation(scene)
         if props.preprocTools_gnd: tool_groundMotion(scene)
+        props.menu_gotPreproc = 1
         return{'FINISHED'}
 
 ########################################
