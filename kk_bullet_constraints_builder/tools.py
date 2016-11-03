@@ -38,6 +38,7 @@ from builder_prep import *     # Contains preparation steps functions called by 
 
 import kk_mesh_separate_loose
 import kk_mesh_fracture
+import kk_select_intersecting_objects
 
 ################################################################################
 
@@ -99,7 +100,7 @@ def tool_createGroupsFromNames(scene):
     grpsObjs = []
     for obj in objs:
         if props.preprocTools_grp_sep in obj.name:
-            grpName = obj.name.split(props.preprocTools_grp_sep)[0]
+            grpName = obj.name.rsplit(props.preprocTools_grp_sep, 1)[0]
             if len(grpName) > 0:
                 if grpName not in grps:
                     grps.append(grpName)
@@ -226,8 +227,8 @@ def tool_centerModel(scene):
             if bbMax_all[2] < bbMax[2]: bbMax_all[2] = bbMax[2]
             if bbMin_all[2] > bbMin[2]: bbMin_all[2] = bbMin[2]
     center = (bbMin_all +bbMax_all) /2
-    # Set cursor at X and Y location but keep height unchanged
-    bpy.context.scene.cursor_location = Vector((center[0], center[1], 0))
+    # Set cursor to X and Y location of the center, and Z of the bottom boundary of the structure
+    bpy.context.scene.cursor_location = Vector((center[0], center[1], bbMin_all[2]))
     # Set mesh origins to cursor location
     bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
     # Reset locations to center of world space
@@ -469,6 +470,39 @@ def tool_discretize(scene):
     # Delete cutting plane object
     bpy.context.scene.objects.unlink(objC)
 
+################################################################################
+
+def tool_removeIntersections(scene, mode=0):
+    
+    # Leave edit mode to make sure next operator works in object mode
+    try: bpy.ops.object.mode_set(mode='OBJECT') 
+    except: pass
+    
+    # Backup selection
+    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selectionActive = bpy.context.scene.objects.active
+    # Find mesh objects in selection
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
+    if len(objs) == 0:
+        print("No mesh objects selected.")
+        return
+
+    ###### External function
+    # [encaseTol, qSelectByVertCnt, qSelectSmallerVol, qSelectA, qSelectB]
+    # Auto: [0.02, 1, 1, 0, 0]; Show selection: [0, 0, 0, 1, 1]
+    if mode == 0 or mode == 2:
+        kk_select_intersecting_objects.run('BCB', [0.02, 1, 1, 0, 0])
+    elif mode == 1:
+        kk_select_intersecting_objects.run('BCB', [0, 0, 0, 1, 1])
+
+    if mode == 0:
+        ### Delete all selected objects
+        bpy.ops.object.delete(use_global=True)
+
+        # Revert to start selection
+        for obj in selection: obj.select = 1
+        bpy.context.scene.objects.active = selectionActive
+    
 ################################################################################
 
 def tool_enableRigidBodies(scene):
@@ -856,13 +890,13 @@ def tool_groundMotion(scene):
     fmod.blend_out = (duration *fps_rate) /2
 
     # Z axis
-    fmod = curveLocZ.modifiers.new(type='NOISE')
-    fmod.scale = fps_rate /frequency
-    fmod.phase = seed +2000
-    fmod.strength = amplitude *1.5
-    fmod.depth = 1
-    fmod.use_restricted_range = True
-    fmod.frame_start = 1
-    fmod.frame_end = duration *fps_rate
-    fmod.blend_in = (duration *fps_rate) /2
-    fmod.blend_out = (duration *fps_rate) /2
+#    fmod = curveLocZ.modifiers.new(type='NOISE')
+#    fmod.scale = fps_rate /frequency
+#    fmod.phase = seed +2000
+#    fmod.strength = amplitude *1.5
+#    fmod.depth = 1
+#    fmod.use_restricted_range = True
+#    fmod.frame_start = 1
+#    fmod.frame_end = duration *fps_rate
+#    fmod.blend_in = (duration *fps_rate) /2
+#    fmod.blend_out = (duration *fps_rate) /2

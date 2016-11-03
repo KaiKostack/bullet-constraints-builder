@@ -117,6 +117,9 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
         ###### Execute main building process from scratch
         # Display progress bar
         bpy.context.window_manager.progress_begin(0, 100)
+        # Toggle console
+        #bpy.ops.wm.console_toggle()
+        ### Build
         error = build()
         if not error: props.menu_gotData = 1
         # Terminate progress bar
@@ -188,7 +191,7 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             ###### Execute main building process from scratch
             scene = bpy.context.scene
             props = context.window_manager.bcb
-            if props.automaticMode and not props.menu_gotPreproc:
+            if props.automaticMode and props.preprocTools_aut:
                 OBJECT_OT_bcb_tool_do_all_steps_at_once.execute(self, context)
             OBJECT_OT_bcb_export_ascii.execute(self, context)
             if props.menu_gotData:
@@ -221,7 +224,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         scene = bpy.context.scene
         ### Build constraints if required (menu_gotData will be set afterwards and this operator restarted)
         if not props.menu_gotData:
-            if props.automaticMode and not props.menu_gotPreproc:
+            if props.automaticMode and props.preprocTools_aut:
                 OBJECT_OT_bcb_tool_do_all_steps_at_once.execute(self, context)
             OBJECT_OT_bcb_build.execute(self, context)
             if props.menu_gotData: OBJECT_OT_bcb_bake.execute(self, context)
@@ -447,10 +450,20 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         if props.preprocTools_ctr: tool_centerModel(scene)
         if props.preprocTools_sep: tool_separateLoose(scene)
         if props.preprocTools_dis: tool_discretize(scene)
+        if props.preprocTools_int: tool_removeIntersections(scene)
         if props.preprocTools_rbs: tool_enableRigidBodies(scene)
         if props.preprocTools_fix: tool_fixFoundation(scene)
         if props.preprocTools_gnd: tool_groundMotion(scene)
-        props.menu_gotPreproc = 1
+        props.preprocTools_aut = 0
+        props.preprocTools_grp = 0
+        props.preprocTools_mod = 0
+        props.preprocTools_ctr = 0
+        props.preprocTools_sep = 0
+        props.preprocTools_dis = 0
+        props.preprocTools_int = 0
+        props.preprocTools_rbs = 0
+        props.preprocTools_fix = 0
+        props.preprocTools_gnd = 0
         return{'FINISHED'}
 
 ########################################
@@ -460,8 +473,11 @@ class OBJECT_OT_bcb_tool_create_groups_from_names(bpy.types.Operator):
     bl_label = "Create Groups From Names"
     bl_description = "Creates groups for all selected objects based on a specified naming convention and adds them also to the element groups list."
     def execute(self, context):
+        props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_createGroupsFromNames(scene)
+        props.preprocTools_aut = 0
+        props.preprocTools_grp = 0
         return{'FINISHED'}
 
 ########################################
@@ -471,8 +487,11 @@ class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
     bl_label = "Apply All Modifiers"
     bl_description = "Applies all modifiers on all selected objects."
     def execute(self, context):
+        props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_applyAllModifiers(scene)
+        props.preprocTools_aut = 0
+        props.preprocTools_mod = 0
         return{'FINISHED'}
 
 ########################################
@@ -480,10 +499,13 @@ class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_center_model(bpy.types.Operator):
     bl_idname = "bcb.tool_center_model"
     bl_label = "Center Model"
-    bl_description = "Shifts all selected objects as a whole to the world center of the scene. The height, however, won't be changed, so the ground levels will stay the same."
+    bl_description = "Shifts all selected objects as a whole to the world center of the scene."
     def execute(self, context):
+        props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_centerModel(scene)
+        props.preprocTools_aut = 0
+        props.preprocTools_ctr = 0
         return{'FINISHED'}
 
 ########################################
@@ -493,8 +515,11 @@ class OBJECT_OT_bcb_tool_separate_loose(bpy.types.Operator):
     bl_label = "Separate Loose"
     bl_description = "Separates all loose (not connected) mesh elements within an object into separate objects, this is done for all selected objects."
     def execute(self, context):
+        props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_separateLoose(scene)
+        props.preprocTools_aut = 0
+        props.preprocTools_sep = 0
         return{'FINISHED'}
 
 ########################################
@@ -504,10 +529,29 @@ class OBJECT_OT_bcb_tool_discretize(bpy.types.Operator):
     bl_label = "Discretize"
     bl_description = "Discretizes (subdivides) all selected objects into smaller segments by splitting them into halves as long as a specified minimum size is reached."
     def execute(self, context):
+        props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_discretize(scene)
+        props.preprocTools_aut = 0
+        props.preprocTools_dis = 0
         return{'FINISHED'}
 
+########################################
+
+class OBJECT_OT_bcb_tool_remove_intersections(bpy.types.Operator):
+    bl_idname = "bcb.tool_remove_intersections"
+    bl_label = "Intersection Removal"
+    bl_description = "Detects and removes intersecting objects (one per found pair). Intesecting objects can be caused by several reasons: accidental object duplication, forgotten boolean cutout objects, careless modeling etc."
+    int_ =    bpy.props.IntProperty 
+    menuIdx = int_(default = 0)
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_removeIntersections(scene, mode=self.menuIdx)
+        props.preprocTools_aut = 0
+        props.preprocTools_int = 0
+        return{'FINISHED'}
+    
 ########################################
 
 class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
@@ -515,8 +559,11 @@ class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
     bl_label = "Enable Rigid Bodies"
     bl_description = "Enables rigid body settings for all selected objects."
     def execute(self, context):
+        props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_enableRigidBodies(scene)
+        props.preprocTools_aut = 0
+        props.preprocTools_rbs = 0
         return{'FINISHED'}
 
 ########################################
@@ -526,8 +573,11 @@ class OBJECT_OT_bcb_tool_fix_foundation(bpy.types.Operator):
     bl_label = "Fix Foundation"
     bl_description = "Either uses name based search to find foundation objects or creates foundation objects for all objects touching the overall model boundary box. These foundation objects will be set to be 'Passive' rigid bodies."
     def execute(self, context):
+        props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_fixFoundation(scene)
+        props.preprocTools_aut = 0
+        props.preprocTools_fix = 0
         return{'FINISHED'}
 
 ########################################
@@ -537,6 +587,9 @@ class OBJECT_OT_bcb_tool_ground_motion(bpy.types.Operator):
     bl_label = "Ground Motion"
     bl_description = "Attaches all selected passive rigid body objects to a specified and animated ground object. This can be useful for simulating earthquakes through a pre-animated ground motion object like a virtual shake table."
     def execute(self, context):
+        props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_groundMotion(scene)
+        props.preprocTools_aut = 0
+        props.preprocTools_gnd = 0
         return{'FINISHED'}

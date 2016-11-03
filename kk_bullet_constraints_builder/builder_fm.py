@@ -262,7 +262,10 @@ def build_fm():
         objParent.select = 1
         bpy.context.scene.objects.active = objParent
         print("Parenting", ob.name, "to", objParent.name, "...")
-        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        try: bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        except:
+            print("Error: Parenting failed. This can happen when not only the structure")
+            print("was selected but also the ground.")
         objParent.select = 0
         bpy.context.scene.objects.active = ob
 

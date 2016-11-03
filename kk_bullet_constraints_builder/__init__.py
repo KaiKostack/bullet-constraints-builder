@@ -211,6 +211,7 @@ classes = [ \
     OBJECT_OT_bcb_tool_center_model,
     OBJECT_OT_bcb_tool_separate_loose,
     OBJECT_OT_bcb_tool_discretize,
+    OBJECT_OT_bcb_tool_remove_intersections,
     OBJECT_OT_bcb_tool_enable_rigid_bodies,
     OBJECT_OT_bcb_tool_fix_foundation,
     OBJECT_OT_bcb_tool_ground_motion

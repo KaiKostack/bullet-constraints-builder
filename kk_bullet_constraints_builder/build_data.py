@@ -51,6 +51,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_preprocTools_ctr"] = props.preprocTools_ctr
     scene["bcb_prop_preprocTools_sep"] = props.preprocTools_sep
     scene["bcb_prop_preprocTools_dis"] = props.preprocTools_dis
+    scene["bcb_prop_preprocTools_int"] = props.preprocTools_int
     scene["bcb_prop_preprocTools_rbs"] = props.preprocTools_rbs
     scene["bcb_prop_preprocTools_fix"] = props.preprocTools_fix
     scene["bcb_prop_preprocTools_gnd"] = props.preprocTools_gnd
@@ -98,7 +99,7 @@ def storeConfigDataInScene(scene):
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     elemGrps = mem["elemGrps"]
     elemGrpsInverted = []
-    for i in range(len(elemGrps[0])):
+    for i in range(len(presets[0])):
         column = []
         for j in range(len(elemGrps)):
             column.append(elemGrps[j][i])
@@ -133,10 +134,14 @@ def getConfigDataFromScene(scene):
         props.preprocTools_sep = scene["bcb_prop_preprocTools_sep"]
     if "bcb_prop_preprocTools_dis" in scene.keys():
         props.preprocTools_dis = scene["bcb_prop_preprocTools_dis"]
+    if "bcb_prop_preprocTools_int" in scene.keys():
+        props.preprocTools_int = scene["bcb_prop_preprocTools_int"]
     if "bcb_prop_preprocTools_rbs" in scene.keys():
         props.preprocTools_rbs = scene["bcb_prop_preprocTools_rbs"]
     if "bcb_prop_preprocTools_fix" in scene.keys():
         props.preprocTools_fix = scene["bcb_prop_preprocTools_fix"]
+    if "bcb_prop_preprocTools_gnd" in scene.keys():
+        props.preprocTools_gnd = scene["bcb_prop_preprocTools_gnd"]
 
     if "bcb_prop_preprocTools_grp_sep" in scene.keys():
         props.preprocTools_grp_sep = scene["bcb_prop_preprocTools_grp_sep"]
@@ -232,7 +237,7 @@ def getConfigDataFromScene(scene):
                 if j != EGSidxAsst:
                       column.append(elemGrpsProp[j][i])
                 else: column.append(dict(elemGrpsProp[j][i]).copy())
-            missingColumns = len(elemGrps[0]) -len(column)
+            missingColumns = len(presets[0]) -len(column)
             if missingColumns:
                 print("Error: elemGrp property missing, BCB scene settings are probably outdated.")
                 print("Clear all BCB data, double-check your settings and rebuild constraints.")
@@ -511,16 +516,23 @@ def clearAllDataFromScene(scene):
         for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
         # Save file
         bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
-        print("Bake blend saved. (You can terminate Blender now if you don't want to wait for")
-        print("the slow Depsgraph to finish, just reloading the blend file can be faster.)") 
-        ### Bring back unlinked objects for regular deletion now
-        # Link modified elements back to scene
-        for parentObj in parentTmpObjs: scene.objects.link(parentObj)
-        # Link constraint empty objects back to scene
-        for emptyObj in emptyObjs: scene.objects.link(emptyObj)
+        if len(objs) +len(emptyObjs) < 4000:
+            print("Bake blend saved. (You can terminate Blender now if you don't want to wait for")
+            print("the slow Depsgraph to finish, just reloading the blend file can be faster.)") 
+            ### Bring back unlinked objects for regular deletion now
+            # Link modified elements back to scene
+            for parentObj in parentTmpObjs: scene.objects.link(parentObj)
+            # Link constraint empty objects back to scene
+            for emptyObj in emptyObjs: scene.objects.link(emptyObj)
 
-    ### Delete all selected objects
-    bpy.ops.object.delete(use_global=True)
+    if len(objs) +len(emptyObjs) < 4000:
+        ### Delete all selected objects
+        bpy.ops.object.delete(use_global=True)
+    else:
+        print("You have a large amount of objects which can take very long to delete,")
+        print("to reduce waiting time they will just be marked for deletion (unlinked).")
+        print("Please save and reload the blend file so that the database can clean up.")
+        print("(Doing not so can cause problems on immediate rebuild and simulation.)")
             
     # Set layers as in original scene
     scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)

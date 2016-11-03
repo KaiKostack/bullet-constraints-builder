@@ -45,9 +45,8 @@ class bcb_props(bpy.types.PropertyGroup):
     string_ = bpy.props.StringProperty
     enum_ =   bpy.props.EnumProperty
     
-    ###### Menu properties
+    ###### Menu properties (volatile)
 
-    menu_gotPreproc =      int_(default=0)
     menu_gotConfig =       int_(default=0)
     menu_gotData =         int_(default=0)
     menu_selectedElemGrp = int_(default=0)
@@ -69,11 +68,13 @@ class bcb_props(bpy.types.PropertyGroup):
     ###### Properties to be stored in blend file
 
     ### Preprocessing tools properties
+    preprocTools_aut = bool_(default=1, name="Run On Automatic Mode", description="Enables that preprocessing will be performed on Automatic Mode. To avoid accidental double execution, this will be disabled whenever a preprocessing tool is activated manually, but it can activated again at any time.")
     preprocTools_grp = bool_(default=1)
     preprocTools_mod = bool_(default=1)
     preprocTools_ctr = bool_(default=1)
     preprocTools_sep = bool_(default=1)
     preprocTools_dis = bool_(default=1)
+    preprocTools_int = bool_(default=1)
     preprocTools_rbs = bool_(default=1)
     preprocTools_fix = bool_(default=1)
     preprocTools_gnd = bool_(default=1)
@@ -81,7 +82,7 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_grp_sep = string_(name="Separator",               default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names.")
     preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.9, min=0.0, max=1000, description="Minimum dimension for an element for still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller down to 50%.")
     preprocTools_dis_jus = bool_(name="Enable Junction Search",    default=1, description="Tries to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes.")
-    preprocTools_fix_nam = string_(name="Obj. Name",               default='Base', description="Enter a name (or substring) for objects that should be set to 'Passive' in rigid body settings.")
+    preprocTools_fix_nam = string_(name="Obj. Name",               default='Base', description="Enter a name (or substring) for objects which should be set to 'Passive' in rigid body settings.")
     preprocTools_fix_cac = bool_(name="Create New Foundation Objects", default=0, description="Enables generation of additional rigid body objects to serve as anchors adjacent to the selected model objects.")
     preprocTools_fix_rng = float_(name="Boundary Range",           default=0.3, min=0, max=1000, description="Internal margin in m for the model boundary box to include also objects within a certain distance from the outer border.")
     preprocTools_fix_axp = bool_(name="X+",                        default=0, description="Enables this side of the overall model boundary for which fixed foundation objects will be created.")
