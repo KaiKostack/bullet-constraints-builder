@@ -105,7 +105,7 @@ def tool_selectGroup(scene):
 
 ################################################################################
 
-def createElementGroup(grpName):
+def createElementGroup(grpName, presetNo=0):
     
     ### Create new element group
     props = bpy.context.window_manager.bcb
@@ -118,8 +118,7 @@ def createElementGroup(grpName):
     if not qExists:
         if len(elemGrps) < maxMenuElementGroupItems:
             # Add element group (syncing element group indices happens on execution)
-            j = 0  # Use preset 0 as dummy data 
-            elemGrps.append(presets[j].copy())
+            elemGrps.append(presets[presetNo].copy())
             # Update menu selection
             props.menu_selectedElemGrp = len(elemGrps) -1
         else:
@@ -186,7 +185,7 @@ def tool_createGroupsFromNames(scene):
     ### Create also element groups from data
     for k in range(len(grps)):
         grpName = grps[k]
-        createElementGroup(grpName)
+        createElementGroup(grpName, presetNo=0)
     # Update menu related properties from global vars
     props.props_update_menu()
     
@@ -254,6 +253,9 @@ def tool_centerModel(scene):
     if len(objs) == 0:
         print("No mesh objects selected.")
         return
+
+    # Remove instances
+    bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True, material=False, texture=False, animation=False)
 
     ### Calculate boundary boxes for all objects
     qFirst = 1
@@ -340,6 +342,8 @@ def tool_discretize(scene):
     
     # Remove rigid body settings because the second scene optimization in the external module can produce ghost objects in RBW otherwise
     bpy.ops.rigidbody.objects_remove()
+    # Remove instances
+    bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True, material=False, texture=False, animation=False)
 
     ###### External function
     props = bpy.context.window_manager.bcb
@@ -733,11 +737,8 @@ def tool_fixFoundation(scene):
         # Add new object to group
         grp.objects.link(obj)
 
-        ### Create also element group from data
-        createElementGroup(grpName)
-        ### Assign group name
-        elemGrps = mem["elemGrps"]
-        elemGrps[props.menu_selectedElemGrp][EGSidxCTyp] = 0
+        ### Create also element group from data and use passive preset for it
+        createElementGroup(grpName, presetNo=1)
         # Update menu related properties from global vars
         props.props_update_menu()
 
