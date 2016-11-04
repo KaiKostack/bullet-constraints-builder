@@ -35,7 +35,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 4, 3)
+bcb_version = (2, 4, 4)
 
 ### Customizable element group presets
 presets = [
@@ -82,7 +82,7 @@ EGSidxCyln = 20   # Cylindrical Shape        | Interpret connection area as roun
 
 ### Connection Types:
 connectTypes = [           # Cnt C T S B S T T T T      CT
-[ "UNDEFINED",               0, [0,0,0,0,0,1,1,0,0]], # 0. Undefined (reserved)
+[ "PASSIVE",                 0, [0,0,0,0,0,0,0,0,0]], # 0. Passive (all other connection types will have priority over it)
 [ "1x FIXED",                1, [1,0,0,0,0,1,1,0,0]], # 1. Linear omni-directional + bending breaking threshold
 [ "1x POINT",                1, [1,0,0,0,0,1,1,0,0]], # 2. Linear omni-directional breaking threshold
 [ "1x POINT + 1x FIXED",     2, [1,0,0,1,0,1,1,0,0]], # 3. Linear omni-directional and bending breaking thresholds
@@ -175,7 +175,7 @@ formulaAssistants = [
 debug = 0                            # 0     | Enables verbose console output for debugging purposes
 logPath = r"/tmp"                    #       | Path to log files if debugging is enabled
 commandStop = r"/tmp/bcb-stop"       #       | For very large simulations Blender can become unresponsive on baking, in this case you can create this file to make the BCB aware you want to stop
-maxMenuElementGroupItems = 100       # 100   | Maximum allowed element group entries in menu 
+maxMenuElementGroupItems = 300       # 300   | Maximum allowed element group entries in menu 
 emptyDrawSize = 0.25                 # 0.25  | Display size of constraint empty objects as radius in meters
 asciiExportName = "BCB_export.txt"   #       | Name of ASCII text file to be exported
   

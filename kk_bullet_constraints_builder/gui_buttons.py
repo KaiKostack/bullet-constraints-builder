@@ -435,6 +435,17 @@ class OBJECT_OT_bcb_tool_estimate_cluster_radius(bpy.types.Operator):
             # Update menu related properties from global vars
             props.props_update_menu()
         return{'FINISHED'}
+    
+################################################################################
+
+class OBJECT_OT_bcb_tool_select_group(bpy.types.Operator):
+    bl_idname = "bcb.tool_select_group"
+    bl_label = ""
+    bl_description = "Selects objects belonging to this element group in viewport."
+    def execute(self, context):
+        scene = bpy.context.scene
+        tool_selectGroup(scene)
+        return{'FINISHED'}
 
 ########################################
 

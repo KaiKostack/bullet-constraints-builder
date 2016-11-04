@@ -76,6 +76,61 @@ def tool_estimateClusterRadius(scene):
 
 ################################################################################
 
+def tool_selectGroup(scene):
+    
+    ### Selects objects belonging to this element group in viewport.
+    props = bpy.context.window_manager.bcb
+    elemGrps = mem["elemGrps"]
+
+    # Check if element group name corresponds to scene group
+    grpName = elemGrps[props.menu_selectedElemGrp][EGSidxName]
+    try: grp = bpy.data.groups[grpName]
+    except: return
+    
+    # Leave edit mode to make sure next operator works in object mode
+    try: bpy.ops.object.mode_set(mode='OBJECT') 
+    except: pass
+    
+    # Deselect all objects.
+    bpy.ops.object.select_all(action='DESELECT')
+
+    # Select all objects from that group       
+    qFirst = 1
+    for obj in grp.objects:
+        if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
+            obj.select = 1
+            if qFirst:
+                bpy.context.scene.objects.active = obj
+                qFirst = 0
+
+################################################################################
+
+def createElementGroup(grpName):
+    
+    ### Create new element group
+    props = bpy.context.window_manager.bcb
+    elemGrps = mem["elemGrps"]
+    # Check if group name is already in element group list
+    qExists = 0
+    for i in range(len(elemGrps)):
+        if grpName == elemGrps[i][EGSidxName]:
+            qExists = 1; break
+    if not qExists:
+        if len(elemGrps) < maxMenuElementGroupItems:
+            # Add element group (syncing element group indices happens on execution)
+            j = 0  # Use preset 0 as dummy data 
+            elemGrps.append(presets[j].copy())
+            # Update menu selection
+            props.menu_selectedElemGrp = len(elemGrps) -1
+        else:
+            bpy.context.window_manager.bcb.message = "Maximum allowed element group count reached."
+            bpy.ops.bcb.report('INVOKE_DEFAULT')  # Create popup message box
+        ### Assign group name
+        i = props.menu_selectedElemGrp
+        elemGrps[i][EGSidxName] = grpName
+
+########################################
+
 def tool_createGroupsFromNames(scene):
 
     print("\nCreating groups from object names...")
@@ -99,15 +154,23 @@ def tool_createGroupsFromNames(scene):
     grps = []
     grpsObjs = []
     for obj in objs:
+        qAdd = 0
         if props.preprocTools_grp_sep in obj.name:
             grpName = obj.name.rsplit(props.preprocTools_grp_sep, 1)[0]
-            if len(grpName) > 0:
-                if grpName not in grps:
-                    grps.append(grpName)
-                    grpsObjs.append([])
-                    grpIdx = len(grpsObjs)-1
-                else: grpIdx = grps.index(grpName)
-                grpsObjs[grpIdx].append(obj)
+            # If name convention is detected add object to the corresponding group or create a new one
+            if len(grpName) > 0: qAdd = 1
+            # If name is invalid then add object to a default group
+            else: grpName = "Default"; qAdd = 1
+        # If name could not match the convention then add object to a default group
+        else: grpName = "Default"; qAdd = 1
+        # Actual linking into group happens here
+        if qAdd:
+            if grpName not in grps:
+                grps.append(grpName)
+                grpsObjs.append([])
+                grpIdx = len(grpsObjs)-1
+            else: grpIdx = grps.index(grpName)
+            grpsObjs[grpIdx].append(obj)
         
     ### Create actual object groups from data
     for k in range(len(grps)):
@@ -121,28 +184,9 @@ def tool_createGroupsFromNames(scene):
                 grp.objects.link(obj)
          
     ### Create also element groups from data
-    elemGrps = mem["elemGrps"]
     for k in range(len(grps)):
         grpName = grps[k]
-        # Check if group name is already in element group list
-        qExists = 0
-        for i in range(len(elemGrps)):
-            if grpName == elemGrps[i][EGSidxName]:
-                qExists = 1; break
-        if not qExists:
-            ### Create new element group
-            if len(elemGrps) < maxMenuElementGroupItems:
-                # Add element group (syncing element group indices happens on execution)
-                j = 0  # Use preset 0 as dummy data 
-                elemGrps.append(presets[j].copy())
-                # Update menu selection
-                props.menu_selectedElemGrp = len(elemGrps) -1
-            else:
-                bpy.context.window_manager.bcb.message = "Maximum allowed element group count reached."
-                bpy.ops.bcb.report('INVOKE_DEFAULT')  # Create popup message box
-            ### Assign group name
-            i = props.menu_selectedElemGrp
-            elemGrps[i][EGSidxName] = grpName
+        createElementGroup(grpName)
     # Update menu related properties from global vars
     props.props_update_menu()
     
@@ -675,13 +719,21 @@ def tool_fixFoundation(scene):
         obj = bpy.data.objects.new(foundationName, me)
         scene.objects.link(obj)
         
-        # Create a new group for the foundation object if not already existing
+        ### Create a new group for the foundation object if not already existing
         grpName = foundationName
         if grpName not in bpy.data.groups:
               grp = bpy.data.groups.new(grpName)
         else: grp = bpy.data.groups[grpName]
         # Add new object to group
         grp.objects.link(obj)
+
+        ### Create also element group from data
+        createElementGroup(grpName)
+        ### Assign group name
+        elemGrps = mem["elemGrps"]
+        elemGrps[props.menu_selectedElemGrp][EGSidxCTyp] = 0
+        # Update menu related properties from global vars
+        props.props_update_menu()
 
         # Deselect all objects.
         bpy.ops.object.select_all(action='DESELECT')
@@ -691,7 +743,7 @@ def tool_fixFoundation(scene):
         bpy.context.scene.objects.active = obj
         bpy.ops.rigidbody.objects_add()
         obj.rigid_body.type = 'PASSIVE'
-
+        
         ### Split object into individual parts
         bpy.context.tool_settings.mesh_select_mode = False, True, False
         # Enter edit mode              
@@ -771,11 +823,6 @@ def tool_groundMotion(scene):
     # Backup selection
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
-    # Find passive mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'PASSIVE']
-    if len(objs) == 0:
-        print("No passive rigid body mesh objects selected.")
-        return
 
     if qCreateGround:
         print("Ground object not found, creating new one...")
@@ -814,27 +861,33 @@ def tool_groundMotion(scene):
     
     # Deselect all objects.
     bpy.ops.object.select_all(action='DESELECT')
-    # Select passive mesh objects
-    for obj in objs: obj.select = 1
 
-    ### Make obj parent for selected objects
-    bpy.context.scene.objects.active = objGnd  # Parent
-    bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+    # Find passive mesh objects in selection
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'PASSIVE']
+    if len(objs) == 0:
+        print("No passive rigid body mesh objects selected.")
+    else:
+        # Select passive mesh objects
+        for obj in objs: obj.select = 1
 
-    # Apply rigid body settings to ground object
-    if objGnd.rigid_body == None:
-        # Deselect all objects.
-        bpy.ops.object.select_all(action='DESELECT')
-        # Apply rigid body settings
-        objGnd.select = 1
-        bpy.context.scene.objects.active = objGnd
-        bpy.ops.rigidbody.objects_add()
-        objGnd.select = 0
-    objGnd.rigid_body.type = 'PASSIVE'
-    
-    # Enable animated flag for all passive rigid bodies so that Bullet takes their motion into account
-    for obj in objs: obj.rigid_body.kinematic = True
-    objGnd.rigid_body.kinematic = True
+        ### Make obj parent for selected objects
+        bpy.context.scene.objects.active = objGnd  # Parent
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+
+        # Apply rigid body settings to ground object
+        if objGnd.rigid_body == None:
+            # Deselect all objects.
+            bpy.ops.object.select_all(action='DESELECT')
+            # Apply rigid body settings
+            objGnd.select = 1
+            bpy.context.scene.objects.active = objGnd
+            bpy.ops.rigidbody.objects_add()
+            objGnd.select = 0
+        objGnd.rigid_body.type = 'PASSIVE'
+        
+        # Enable animated flag for all passive rigid bodies so that Bullet takes their motion into account
+        for obj in objs: obj.rigid_body.kinematic = True
+        objGnd.rigid_body.kinematic = True
 
     # Revert to start selection
     for obj in selection: obj.select = 1
@@ -842,61 +895,61 @@ def tool_groundMotion(scene):
 
     ###### Creating artificial earthquak motion curves for ground object
 
-    if not props.preprocTools_gnd_nac: return
-    
-    ### Create animation curve with one keyframe as base
-    obj = objGnd
-    obj.animation_data_create()
-    # If current action is already a "Motion" one then output a hint
-    if obj.animation_data.action != None and "Motion" in obj.animation_data.action.name:
-        print("There is already a Motion action, creating a new one...")
-    obj.animation_data.action = bpy.data.actions.new(name="Motion")
-    curveLocX = obj.animation_data.action.fcurves.new(data_path="delta_location", index=0)  
-    curveLocY = obj.animation_data.action.fcurves.new(data_path="delta_location", index=1)  
-    curveLocZ = obj.animation_data.action.fcurves.new(data_path="delta_location", index=2)  
-    curveLocX.keyframe_points.add(1)
-    curveLocY.keyframe_points.add(1)
-    curveLocZ.keyframe_points.add(1)
+    if props.preprocTools_gnd_nac:
+        
+        ### Create animation curve with one keyframe as base
+        obj = objGnd
+        obj.animation_data_create()
+        # If current action is already a "Motion" one then output a hint
+        if obj.animation_data.action != None and "Motion" in obj.animation_data.action.name:
+            print("There is already a Motion action, creating a new one...")
+        obj.animation_data.action = bpy.data.actions.new(name="Motion")
+        curveLocX = obj.animation_data.action.fcurves.new(data_path="delta_location", index=0)  
+        curveLocY = obj.animation_data.action.fcurves.new(data_path="delta_location", index=1)  
+        curveLocZ = obj.animation_data.action.fcurves.new(data_path="delta_location", index=2)  
+        curveLocX.keyframe_points.add(1)
+        curveLocY.keyframe_points.add(1)
+        curveLocZ.keyframe_points.add(1)
 
-    ### Creating noise function modifier
-    fps_rate = scene.render.fps
-    amplitude = props.preprocTools_gnd_nap
-    frequency = props.preprocTools_gnd_nfq
-    duration = props.preprocTools_gnd_ndu
-    seed = props.preprocTools_gnd_nsd
-    
-    # X axis
-    fmod = curveLocX.modifiers.new(type='NOISE')
-    fmod.scale = fps_rate /frequency
-    fmod.phase = seed
-    fmod.strength = amplitude *6
-    fmod.depth = 1
-    fmod.use_restricted_range = True
-    fmod.frame_start = 1
-    fmod.frame_end = duration *fps_rate
-    fmod.blend_in = (duration *fps_rate) /2
-    fmod.blend_out = (duration *fps_rate) /2
+        ### Creating noise function modifier
+        fps_rate = scene.render.fps
+        amplitude = props.preprocTools_gnd_nap
+        frequency = props.preprocTools_gnd_nfq
+        duration = props.preprocTools_gnd_ndu
+        seed = props.preprocTools_gnd_nsd
+        
+        # X axis
+        fmod = curveLocX.modifiers.new(type='NOISE')
+        fmod.scale = fps_rate /frequency
+        fmod.phase = seed
+        fmod.strength = amplitude *6
+        fmod.depth = 1
+        fmod.use_restricted_range = True
+        fmod.frame_start = 1
+        fmod.frame_end = duration *fps_rate
+        fmod.blend_in = (duration *fps_rate) /2
+        fmod.blend_out = (duration *fps_rate) /2
 
-    # Y axis
-    fmod = curveLocY.modifiers.new(type='NOISE')
-    fmod.scale = fps_rate /frequency
-    fmod.phase = seed +1000
-    fmod.strength = amplitude *6
-    fmod.depth = 1
-    fmod.use_restricted_range = True
-    fmod.frame_start = 1
-    fmod.frame_end = duration *fps_rate
-    fmod.blend_in = (duration *fps_rate) /2
-    fmod.blend_out = (duration *fps_rate) /2
+        # Y axis
+        fmod = curveLocY.modifiers.new(type='NOISE')
+        fmod.scale = fps_rate /frequency
+        fmod.phase = seed +1000
+        fmod.strength = amplitude *6
+        fmod.depth = 1
+        fmod.use_restricted_range = True
+        fmod.frame_start = 1
+        fmod.frame_end = duration *fps_rate
+        fmod.blend_in = (duration *fps_rate) /2
+        fmod.blend_out = (duration *fps_rate) /2
 
-    # Z axis
-#    fmod = curveLocZ.modifiers.new(type='NOISE')
-#    fmod.scale = fps_rate /frequency
-#    fmod.phase = seed +2000
-#    fmod.strength = amplitude *1.5
-#    fmod.depth = 1
-#    fmod.use_restricted_range = True
-#    fmod.frame_start = 1
-#    fmod.frame_end = duration *fps_rate
-#    fmod.blend_in = (duration *fps_rate) /2
-#    fmod.blend_out = (duration *fps_rate) /2
+        # Z axis
+#        fmod = curveLocZ.modifiers.new(type='NOISE')
+#        fmod.scale = fps_rate /frequency
+#        fmod.phase = seed +2000
+#        fmod.strength = amplitude *1.5
+#        fmod.depth = 1
+#        fmod.use_restricted_range = True
+#        fmod.frame_start = 1
+#        fmod.frame_end = duration *fps_rate
+#        fmod.blend_in = (duration *fps_rate) /2
+#        fmod.blend_out = (duration *fps_rate) /2

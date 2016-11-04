@@ -83,7 +83,7 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.9, min=0.0, max=1000, description="Minimum dimension for an element for still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller down to 50%.")
     preprocTools_dis_jus = bool_(name="Enable Junction Search",    default=1, description="Tries to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes.")
     preprocTools_fix_nam = string_(name="Obj. Name",               default='Base', description="Enter a name (or substring) for objects which should be set to 'Passive' in rigid body settings.")
-    preprocTools_fix_cac = bool_(name="Create New Foundation Objects", default=0, description="Enables generation of additional rigid body objects to serve as anchors adjacent to the selected model objects.")
+    preprocTools_fix_cac = bool_(name="Create New Foundation Objects", default=1, description="Enables generation of additional rigid body objects to serve as anchors adjacent to the selected model objects.")
     preprocTools_fix_rng = float_(name="Boundary Range",           default=0.3, min=0, max=1000, description="Internal margin in m for the model boundary box to include also objects within a certain distance from the outer border.")
     preprocTools_fix_axp = bool_(name="X+",                        default=0, description="Enables this side of the overall model boundary for which fixed foundation objects will be created.")
     preprocTools_fix_axn = bool_(name="X -",                       default=0, description="Enables this side of the overall model boundary for which fixed foundation objects will be created.")
@@ -125,7 +125,7 @@ class bcb_props(bpy.types.PropertyGroup):
         elemGrps = mem["elemGrps"]
         j = 0  # Use preset 0 as dummy data 
         exec("elemGrp_%d_EGSidxName" %i +" = string_(name='Grp. Name', default=presets[j][EGSidxName], description='The name of the element group.')")
-        exec("elemGrp_%d_EGSidxCTyp" %i +" = int_(name='Connection Type', default=presets[j][EGSidxCTyp], min=1, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
+        exec("elemGrp_%d_EGSidxCTyp" %i +" = int_(name='Connection Type', default=presets[j][EGSidxCTyp], min=0, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
 
         exec("elemGrp_%d_EGSidxBTC" %i +" = string_(name='Compressive', default=presets[j][EGSidxBTC], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties.')")
         exec("elemGrp_%d_EGSidxBTT" %i +" = string_(name='Tensile', default=presets[j][EGSidxBTT], description='Math expression for the material´s real world tensile breaking threshold in N/mm^2 together with related geometry properties.')")

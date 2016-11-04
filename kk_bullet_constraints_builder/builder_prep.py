@@ -72,15 +72,19 @@ def createElementGroupIndex(objs):
             q = 1
         elif len(objGrpsTmp) == 0: q = 1
         else: q = 0
+        ### If selected object is not part of any scene group try to find an element group with empty name to use (default group)
         if q:
             for elemGrp in elemGrps:
                 elemGrpName = elemGrp[EGSidxName]
                 if elemGrpName == '':
                     objGrpsTmp = [elemGrps.index(elemGrp)]
                     break
+        # If empty name is found assign object to it
         if len(objGrpsTmp) > 0:
               objsEGrp.append(objGrpsTmp[0])
               cnt += 1
+        # If not even a default group is available then use element group 0 as fallback
+        # (Todo: flag the group as -1 and deal with it later, but that's also complex)
         else: objsEGrp.append(0)
 
     return objsEGrp, cnt
@@ -817,32 +821,47 @@ def createConnectionData(objsEGrp, connectsPair):
     elemGrps = mem["elemGrps"]
     connectsConsts = []
     constsConnect = []
-    constCnt = 0
+    constCntOfs = 0
     for i in range(len(connectsPair)):
         pair = connectsPair[i]
+
         ### Count constraints by connection type preset
         elemGrpA = objsEGrp[pair[0]]
         elemGrpB = objsEGrp[pair[1]]
-        ### First check if connection type is valid for both groups
-        connectTypeIdxA = elemGrps[elemGrpA][EGSidxCTyp]
-        try: connectTypeA = connectTypes[connectTypeIdxA]
-        except: connectTypeA = [None, 0]
-        connectTypeIdxB = elemGrps[elemGrpB][EGSidxCTyp]
-        try: connectTypeB = connectTypes[connectTypeIdxB]
-        except: connectTypeB = [None, 0]
-        ### Use the connection type with the smaller count of constraints for connection between different element groups
-        ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-        if connectTypeA[1] <= connectTypeB[1]:
-              connectType = connectTypeA
-        else: connectType = connectTypeB
-        if connectType[0] == None: connectsConsts.append([])  # In case the connection type is unknown (no constraints)
+        CT_A = elemGrps[elemGrpA][EGSidxCTyp]
+        CT_B = elemGrps[elemGrpB][EGSidxCTyp]
+
+        ### Check for passive groups and decide which group settings should be used
+        constCnt = 0
+        if CT_A != 0:  # A is active group
+            try: constCntA = connectTypes[CT_A][1]  # Check if CT is valid
+            except: constCntA = 0
+        if CT_B != 0:  # B is active group
+            try: constCntB = connectTypes[CT_B][1]  # Check if CT is valid
+            except: constCntB = 0
+        if CT_A != 0 and CT_B != 0:  # Both A and B are active groups
+            ### Use the connection type with the smaller count of constraints for connection between different element groups
+            ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+            if constCntA <= constCntB:
+                  constCnt = constCntA
+            else: constCnt = constCntB
+        elif CT_A != 0 and CT_B == 0:  # Only A is active and B is passive group
+            constCnt = constCntA
+        elif CT_A == 0 and CT_B != 0:  # Only B is active and A is passive group
+            constCnt = constCntB
+        else:  # Both A and B are passive objects
+            constCnt = 0
+
+        # In case the connection type is passive or unknown reserve no space for constraints
+        if constCnt == 0: connectsConsts.append([])
+        # Otherwise reserve space for the predefined constraints count
         else:
             items = []
-            for j in range(connectType[1]):
-                items.append(constCnt +j)
+            for j in range(constCnt):
+                items.append(constCntOfs +j)
                 constsConnect.append(i)
             connectsConsts.append(items)
-            constCnt += len(items)
+            constCntOfs += len(items)
             
     return connectsPair, connectsConsts, constsConnect
 

@@ -205,6 +205,8 @@ classes = [ \
     
     OBJECT_OT_bcb_asst_update,
     OBJECT_OT_bcb_tool_estimate_cluster_radius,
+    OBJECT_OT_bcb_tool_select_group,
+
     OBJECT_OT_bcb_tool_do_all_steps_at_once,
     OBJECT_OT_bcb_tool_create_groups_from_names,
     OBJECT_OT_bcb_tool_apply_all_modifiers,

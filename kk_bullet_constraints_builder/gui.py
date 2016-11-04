@@ -388,7 +388,9 @@ class bcb_panel(bpy.types.Panel):
             
             layout.separator()
             i = props.menu_selectedElemGrp
-            row = layout.row(align=1); row.prop(props, "elemGrp_%d_EGSidxName" %i)
+            split = layout.split(percentage=.85, align=1)
+            split.prop(props, "elemGrp_%d_EGSidxName" %i)
+            split.operator("bcb.tool_select_group", icon="UV_ISLANDSEL")
 
             ###### Formula assistant box
 

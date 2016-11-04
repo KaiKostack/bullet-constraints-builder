@@ -261,51 +261,70 @@ def monitor_initBuffers(scene):
         objB = objs[pair[1]]
         elemGrpA = objsEGrp[pair[0]]
         elemGrpB = objsEGrp[pair[1]]
-        
-        ### Use the connection type with the smaller count of constraints for connection between different element groups
-        ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-        if connectTypes[elemGrps[elemGrpA][EGSidxCTyp]][1] <= connectTypes[elemGrps[elemGrpB][EGSidxCTyp]][1]:
-              elemGrp = elemGrpA
-        else: elemGrp = elemGrpB
-        springStiff = elemGrps[elemGrp][EGSidxSStf]
-        tol1dist = elemGrps[elemGrp][EGSidxTl1D]
-        tol1rot = elemGrps[elemGrp][EGSidxTl1R]
-        tol2dist = elemGrps[elemGrp][EGSidxTl2D]
-        tol2rot = elemGrps[elemGrp][EGSidxTl2R]
-        
-        # Calculate distance between both elements of the connection
-        distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
-        # Calculate angle between two elements
-        quat0 = objA.matrix_world.to_quaternion()
-        quat1 = objB.matrix_world.to_quaternion()
-        angle = quat0.rotation_difference(quat1).angle
-        consts = []
-        constsEnabled = []
-        constsUseBrk = []
-        constsBrkThres = []
-        mode = 1
-        for const in connectsConsts[d -1]:
-            emptyObj = emptyObjs[const]
-            consts.append(emptyObj)
-            if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
-                # Backup original settings
-                constsEnabled.append(emptyObj.rigid_body_constraint.enabled)
-                constsUseBrk.append(emptyObj.rigid_body_constraint.use_breaking)
-                constsBrkThres.append(emptyObj.rigid_body_constraint.breaking_threshold)
-                # Disable breakability for warm up time
-                if props.warmUpPeriod: emptyObj.rigid_body_constraint.use_breaking = 0
-                # Set initial mode state if plastic or not (activate plastic mode only if the connection constists exclusively of springs)
-                if emptyObj.rigid_body_constraint.type != 'GENERIC_SPRING': mode = 0
-            else:
-                if not qWarning:
-                    qWarning = 1
-                    print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
-                print("(%s)" %emptyObj.name)
-                constsEnabled.append(0)
-                constsUseBrk.append(0)
-                constsBrkThres.append(0)
-        #                0                1                2         3      4       5              6             7            8         9        10        11       12    13
-        connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsEnabled, constsUseBrk, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode, constsBrkThres])
+        CT_A = elemGrps[elemGrpA][EGSidxCTyp]
+        CT_B = elemGrps[elemGrpB][EGSidxCTyp]
+
+        ### Check for passive groups and decide which group settings should be used
+        constCnt = 0
+        if CT_A != 0:  # A is active group
+            try: constCntA = connectTypes[CT_A][1]  # Check if CT is valid
+            except: constCntA = 0
+        if CT_B != 0:  # B is active group
+            try: constCntB = connectTypes[CT_B][1]  # Check if CT is valid
+            except: constCntB = 0
+        if CT_A != 0 and CT_B != 0:  # Both A and B are active groups
+            ### Use the connection type with the smaller count of constraints for connection between different element groups
+            ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+            if constCntA <= constCntB:
+                  elemGrp = elemGrpA
+            else: elemGrp = elemGrpB
+        elif CT_A != 0 and CT_B == 0:  # Only A is active and B is passive group
+            elemGrp = elemGrpA
+        elif CT_A == 0 and CT_B != 0:  # Only B is active and A is passive group
+            elemGrp = elemGrpB
+        else:  # Both A and B are passive objects
+            elemGrp = None
+
+        if elemGrp != None:
+            springStiff = elemGrps[elemGrp][EGSidxSStf]
+            tol1dist = elemGrps[elemGrp][EGSidxTl1D]
+            tol1rot = elemGrps[elemGrp][EGSidxTl1R]
+            tol2dist = elemGrps[elemGrp][EGSidxTl2D]
+            tol2rot = elemGrps[elemGrp][EGSidxTl2R]
+            
+            # Calculate distance between both elements of the connection
+            distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+            # Calculate angle between two elements
+            quat0 = objA.matrix_world.to_quaternion()
+            quat1 = objB.matrix_world.to_quaternion()
+            angle = quat0.rotation_difference(quat1).angle
+            consts = []
+            constsEnabled = []
+            constsUseBrk = []
+            constsBrkThres = []
+            mode = 1
+            for const in connectsConsts[d -1]:
+                emptyObj = emptyObjs[const]
+                consts.append(emptyObj)
+                if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
+                    # Backup original settings
+                    constsEnabled.append(emptyObj.rigid_body_constraint.enabled)
+                    constsUseBrk.append(emptyObj.rigid_body_constraint.use_breaking)
+                    constsBrkThres.append(emptyObj.rigid_body_constraint.breaking_threshold)
+                    # Disable breakability for warm up time
+                    if props.warmUpPeriod: emptyObj.rigid_body_constraint.use_breaking = 0
+                    # Set initial mode state if plastic or not (activate plastic mode only if the connection constists exclusively of springs)
+                    if emptyObj.rigid_body_constraint.type != 'GENERIC_SPRING': mode = 0
+                else:
+                    if not qWarning:
+                        qWarning = 1
+                        print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
+                    print("(%s)" %emptyObj.name)
+                    constsEnabled.append(0)
+                    constsUseBrk.append(0)
+                    constsBrkThres.append(0)
+            #                0                1                2         3      4       5              6             7            8         9        10        11       12    13
+            connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsEnabled, constsUseBrk, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode, constsBrkThres])
 
     print("Connections")
         
