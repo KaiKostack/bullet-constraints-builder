@@ -470,7 +470,7 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         if count > 0:
             # Switch found intersecting objects to 'Mesh' collision shape (some might have only overlapping boundary boxes while the geometry could still not intersecting)
             for obj in scene.objects:
-                if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None:
+                if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None:
                     obj.rigid_body.collision_shape = 'MESH'
                     obj.rigid_body.collision_margin = 0
             # Throw warning anyway
