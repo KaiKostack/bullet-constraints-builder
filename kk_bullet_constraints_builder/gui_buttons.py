@@ -468,6 +468,12 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         # Check for intersections and warn if some are left
         count = tool_removeIntersections(scene, mode=1)
         if count > 0:
+            # Switch found intersecting objects to 'Mesh' collision shape (some might have only overlapping boundary boxes while the geometry could still not intersecting)
+            for obj in scene.objects:
+                if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None:
+                    obj.rigid_body.collision_shape = 'MESH'
+                    obj.rigid_body.collision_margin = 0
+            # Throw warning anyway
             bpy.context.window_manager.bcb.message = "Warning: Some element intersections could not automatically be resolved, please review selected objects."
             bpy.ops.bcb.report('INVOKE_DEFAULT')  # Create popup message box
         props.preprocTools_aut = 0
