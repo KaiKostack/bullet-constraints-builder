@@ -88,49 +88,48 @@ def run(source=None, parameters=None):
                     objA = objs[connectsPair[k][0]]
                     objB = objs[connectsPair[k][1]]
                     if len(objA.data.vertices) < len(objB.data.vertices):
-                        objA.select = 1; count += 1
+                        if not objA.select: objA.select = 1; count += 1
                     elif len(objA.data.vertices) > len(objB.data.vertices):
-                        objB.select = 1; count += 1
+                        if not objB.select: objB.select = 1; count += 1
                     elif qSelectSmallerVol:
                         if connectsArea[k][0] <= connectsArea[k][1]:
-                            objA.select = 1; count += 1
+                            if not objA.select: objA.select = 1; count += 1
                         else: 
-                            objB.select = 1; count += 1
+                            if not objB.select: objB.select = 1; count += 1
             elif qSelectByVertCnt == 2:
                 for k in range(len(connectsPair)):
                     objA = objs[connectsPair[k][0]]
                     objB = objs[connectsPair[k][1]]
                     if len(objA.data.vertices) < len(objB.data.vertices):
-                        objB.select = 1; count += 1
+                        if not objB.select: objB.select = 1; count += 1
                     elif len(objA.data.vertices) > len(objB.data.vertices):
-                        objA.select = 1; count += 1
+                        if not objA.select: objA.select = 1; count += 1
                     elif qSelectSmallerVol:
                         if connectsArea[k][0] <= connectsArea[k][1]:
-                            objA.select = 1; count += 1
+                            if not objA.select: objA.select = 1; count += 1
                         else: 
-                            objB.select = 1; count += 1
+                            if not objB.select: objB.select = 1; count += 1
         elif qSelectSmallerVol:
             for k in range(len(connectsPair)):
                 objA = objs[connectsPair[k][0]]
                 objB = objs[connectsPair[k][1]]
                 if connectsArea[k][0] <= connectsArea[k][1]:
-                    objA.select = 1; count += 1
+                    if not objA.select: objA.select = 1; count += 1
                 else: 
-                    objB.select = 1; count += 1
+                    if not objB.select: objB.select = 1; count += 1
         else:
             if qSelectA:
                 for k in range(len(connectsPair)):
                     objA = objs[connectsPair[k][0]]
-                    if not objA.select:
-                        objA.select = 1; count += 1
+                    if not objA.select: objA.select = 1; count += 1
             if qSelectB:
                 for k in range(len(connectsPair)):
                     objB = objs[connectsPair[k][1]]
-                    if not objB.select:
-                        objB.select = 1; count += 1
+                    if not objB.select: objB.select = 1; count += 1
    
     print('\nObjects selected:', count)
     print('Done.')
+    return count
     
 ################################################################################   
 

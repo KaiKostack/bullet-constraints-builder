@@ -456,25 +456,21 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
-        if props.preprocTools_grp: tool_createGroupsFromNames(scene)
-        if props.preprocTools_mod: tool_applyAllModifiers(scene)
-        if props.preprocTools_ctr: tool_centerModel(scene)
-        if props.preprocTools_sep: tool_separateLoose(scene)
-        if props.preprocTools_dis: tool_discretize(scene)
-        if props.preprocTools_int: tool_removeIntersections(scene)
-        if props.preprocTools_rbs: tool_enableRigidBodies(scene)
-        if props.preprocTools_fix: tool_fixFoundation(scene)
-        if props.preprocTools_gnd: tool_groundMotion(scene)
+        if props.preprocTools_grp: tool_createGroupsFromNames(scene); props.preprocTools_grp = 0
+        if props.preprocTools_mod: tool_applyAllModifiers(scene); props.preprocTools_mod = 0
+        if props.preprocTools_ctr: tool_centerModel(scene); props.preprocTools_ctr = 0
+        if props.preprocTools_sep: tool_separateLoose(scene); props.preprocTools_sep = 0
+        if props.preprocTools_dis: tool_discretize(scene); props.preprocTools_dis = 0
+        if props.preprocTools_int: tool_removeIntersections(scene); props.preprocTools_int = 0
+        if props.preprocTools_rbs: tool_enableRigidBodies(scene); props.preprocTools_rbs = 0
+        if props.preprocTools_fix: tool_fixFoundation(scene); props.preprocTools_fix = 0
+        if props.preprocTools_gnd: tool_groundMotion(scene); props.preprocTools_gnd = 0
+        # Check for intersections and warn if some are left
+        count = tool_removeIntersections(scene, mode=1)
+        if count > 0:
+            bpy.context.window_manager.bcb.message = "Warning: Some element intersections could not automatically be resolved, please review selected objects."
+            bpy.ops.bcb.report('INVOKE_DEFAULT')  # Create popup message box
         props.preprocTools_aut = 0
-        props.preprocTools_grp = 0
-        props.preprocTools_mod = 0
-        props.preprocTools_ctr = 0
-        props.preprocTools_sep = 0
-        props.preprocTools_dis = 0
-        props.preprocTools_int = 0
-        props.preprocTools_rbs = 0
-        props.preprocTools_fix = 0
-        props.preprocTools_gnd = 0
         return{'FINISHED'}
 
 ########################################

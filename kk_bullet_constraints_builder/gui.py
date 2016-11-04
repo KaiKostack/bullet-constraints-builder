@@ -54,9 +54,11 @@ class bcb_report(bpy.types.Operator):
     def invoke(self, context, event):
         wm = context.window_manager
         props = context.window_manager.bcb
+        print(props.message)
         # Calculate safe width in pixel from char count of the string
         strSize = len(props.message)
-        widthPx = (strSize*12+40) /dpifac100()
+        # widthPx = (strSize*12+40) /dpifac100()  # Approx. width for capitals
+        widthPx = (strSize*8+30) /dpifac100()   # Approx. width for normal text
         #return wm.invoke_props_dialog(self)
         return wm.invoke_popup(self, width=widthPx, height=300)
     def draw(self, context):
@@ -87,7 +89,7 @@ class bcb_add_preset(bpy.types.Menu):
                 preset = "%s  |  Density: %s kg/m³    CPR: %s N/mm²    SHR: %s N/mm²    CT: %d" \
                 %(pres_EGSidxName, pres_EGSidxDens, pres_EGSidxBTC, pres_EGSidxBTS, pres_EGSidxCTyp)
             else:
-                preset = "%s  |  Density: -    CPR: -    SHR: -    CT: %d" \
+                preset = "%s  |  Passive & Indestructible    CT: %d" \
                 %(pres_EGSidxName, pres_EGSidxCTyp)
             qNewCategory = 0
             if i > 0:

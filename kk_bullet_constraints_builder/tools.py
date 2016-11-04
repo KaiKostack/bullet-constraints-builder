@@ -134,7 +134,7 @@ def createElementGroup(grpName):
 def tool_createGroupsFromNames(scene):
 
     print("\nCreating groups from object names...")
-    
+
     props = bpy.context.window_manager.bcb
     if len(props.preprocTools_grp_sep) == 0: return
 
@@ -533,11 +533,10 @@ def tool_removeIntersections(scene, mode=0):
 
     ###### External function
     # [encaseTol, qSelectByVertCnt, qSelectSmallerVol, qSelectA, qSelectB]
-    # Auto: [0.02, 1, 1, 0, 0]; Show selection: [0, 0, 0, 1, 1]
-    if mode == 0 or mode == 2:
-        kk_select_intersecting_objects.run('BCB', [0.02, 1, 1, 0, 0])
-    elif mode == 1:
-        kk_select_intersecting_objects.run('BCB', [0, 0, 0, 1, 1])
+    if mode == 0 or mode == 2:  # Auto: [0.02, 1, 1, 0, 0]; 
+        count = kk_select_intersecting_objects.run('BCB', [0.02, 1, 1, 0, 0])
+    elif mode == 1:  # Show selection: [0, 0, 0, 1, 1]
+        count = kk_select_intersecting_objects.run('BCB', [0, 0, 0, 1, 1])
 
     if mode == 0:
         ### Delete all selected objects
@@ -546,6 +545,13 @@ def tool_removeIntersections(scene, mode=0):
         # Revert to start selection
         for obj in selection: obj.select = 1
         bpy.context.scene.objects.active = selectionActive
+
+    if count == 0:
+        # Revert to start selection
+        for obj in selection: obj.select = 1
+        bpy.context.scene.objects.active = selectionActive
+
+    return count
     
 ################################################################################
 
