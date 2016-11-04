@@ -250,12 +250,11 @@ def monitor_initBuffers(scene):
     except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
     
     ### Create original transform data array
-    d = 0
+    cCnt = 1; d = 0
     qWarning = 0
     for pair in connectsPair:
-        d += 1
         if not qWarning:
-            sys.stdout.write('\r' +"%d " %d)
+            sys.stdout.write('\r' +"%d " %cCnt)
         
         objA = objs[pair[0]]
         objB = objs[pair[1]]
@@ -265,7 +264,6 @@ def monitor_initBuffers(scene):
         CT_B = elemGrps[elemGrpB][EGSidxCTyp]
 
         ### Check for passive groups and decide which group settings should be used
-        constCnt = 0
         if CT_A != 0:  # A is active group
             try: constCntA = connectTypes[CT_A][1]  # Check if CT is valid
             except: constCntA = 0
@@ -303,7 +301,7 @@ def monitor_initBuffers(scene):
             constsUseBrk = []
             constsBrkThres = []
             mode = 1
-            for const in connectsConsts[d -1]:
+            for const in connectsConsts[d]:
                 emptyObj = emptyObjs[const]
                 consts.append(emptyObj)
                 if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
@@ -325,8 +323,10 @@ def monitor_initBuffers(scene):
                     constsBrkThres.append(0)
             #                0                1                2         3      4       5              6             7            8         9        10        11       12    13
             connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsEnabled, constsUseBrk, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode, constsBrkThres])
-
-    print("Connections")
+            cCnt += 1
+        d += 1
+        
+    print("connections")
         
 ################################################################################
 

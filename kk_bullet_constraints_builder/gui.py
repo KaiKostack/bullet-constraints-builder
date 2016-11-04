@@ -79,12 +79,16 @@ class bcb_add_preset(bpy.types.Menu):
             pres_EGSidxName = eval("presets[%d][EGSidxName]" %i)
             pres_EGSidxMatP = eval("presets[%d][EGSidxMatP]" %i)
             pres_EGSidxDens = eval("presets[%d][EGSidxDens]" %i)
-            #pres_EGSidxCTyp = eval("presets[%d][EGSidxCTyp]" %i)
+            pres_EGSidxCTyp = eval("presets[%d][EGSidxCTyp]" %i)
             pres_EGSidxBTC = eval("presets[%d][EGSidxBTC]" %i)
             pres_EGSidxBTS = eval("presets[%d][EGSidxBTS]" %i)
             if pres_EGSidxName == "": pres_EGSidxName = "[Default]"
-            preset = "%s  |  Density: %s kg/m³    CPR: %s N/mm²    SHR: %s N/mm²" \
-            %(pres_EGSidxName, pres_EGSidxDens, pres_EGSidxBTC, pres_EGSidxBTS)
+            if pres_EGSidxCTyp != 0:
+                preset = "%s  |  Density: %s kg/m³    CPR: %s N/mm²    SHR: %s N/mm²    CT: %d" \
+                %(pres_EGSidxName, pres_EGSidxDens, pres_EGSidxBTC, pres_EGSidxBTS, pres_EGSidxCTyp)
+            else:
+                preset = "%s  |  Density: -    CPR: -    SHR: -    CT: %d" \
+                %(pres_EGSidxName, pres_EGSidxCTyp)
             qNewCategory = 0
             if i > 0:
                 pres_EGSidxMatP_last = eval("presets[%d][EGSidxMatP]" %(i-1))
