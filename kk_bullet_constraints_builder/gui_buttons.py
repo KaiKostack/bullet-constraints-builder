@@ -465,18 +465,24 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         if props.preprocTools_rbs: tool_enableRigidBodies(scene); props.preprocTools_rbs = 0
         if props.preprocTools_fix: tool_fixFoundation(scene); props.preprocTools_fix = 0
         if props.preprocTools_gnd: tool_groundMotion(scene); props.preprocTools_gnd = 0
-        # Check for intersections and warn if some are left
-        count = tool_removeIntersections(scene, mode=1)
-        if count > 0:
-            # Switch found intersecting objects to 'Mesh' collision shape (some might have only overlapping boundary boxes while the geometry could still not intersecting)
-            for obj in scene.objects:
-                if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None:
-                    obj.rigid_body.collision_shape = 'MESH'
-                    obj.rigid_body.collision_margin = 0
-            # Throw warning anyway
-            bpy.context.window_manager.bcb.message = "Warning: Some element intersections could not automatically be resolved, please review selected objects."
-            bpy.ops.bcb.report('INVOKE_DEFAULT')  # Create popup message box
         props.preprocTools_aut = 0
+
+        if not props.automaticMode:
+            ### Check for intersections and warn if some are left
+            count = tool_removeIntersections(scene, mode=1)
+            if count > 0:
+                # Switch found intersecting objects to 'Mesh' collision shape (some might have only overlapping boundary boxes while the geometry could still not intersecting)
+                qFirst = 1
+                for obj in scene.objects:
+                    if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None:
+                        obj.rigid_body.collision_shape = 'MESH'
+                        obj.rigid_body.collision_margin = 0
+                        if qFirst:
+                            bpy.context.scene.objects.active = obj
+                            qFirst = 0
+                # Throw warning anyway
+                bpy.context.window_manager.bcb.message = "Warning: Some element intersections could not automatically be resolved, please review selected objects."
+                bpy.ops.bcb.report('INVOKE_DEFAULT')  # Create popup message box
         return{'FINISHED'}
 
 ########################################

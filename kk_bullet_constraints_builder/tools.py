@@ -149,6 +149,15 @@ def tool_createGroupsFromNames(scene):
         print("No mesh objects selected. Nothing done.")
         return
     
+    ### Create one main group for all objects
+    grpName = "BCB_Building"
+    if grpName not in bpy.data.groups:
+          grp = bpy.data.groups.new(grpName)
+    else: grp = bpy.data.groups[grpName]
+    for obj in objs:
+        if obj.name not in grp.objects:
+            grp.objects.link(obj)
+
     ### Create group data with objects
     grps = []
     grpsObjs = []
@@ -721,7 +730,7 @@ def tool_fixFoundation(scene):
                     newCorner = Vector(( bbMax[0], bbMax[1], 2*bbMin[2]-bbMax[2] ))
                     createBoxData(verts, edges, faces, newCorner, bbMin)
 
-        ### Create actual geometry and objects
+        ### Create actual geometry and object
         # Create empty mesh object
         me = bpy.data.meshes.new(foundationName)
         # Add mesh data to new object
@@ -729,6 +738,12 @@ def tool_fixFoundation(scene):
         obj = bpy.data.objects.new(foundationName, me)
         scene.objects.link(obj)
         
+        ### Add to main group
+        grpName = "BCB_Building"
+        if grpName in bpy.data.groups:
+            grp = bpy.data.groups[grpName]
+            grp.objects.link(obj)
+
         ### Create a new group for the foundation object if not already existing
         grpName = foundationName
         if grpName not in bpy.data.groups:
