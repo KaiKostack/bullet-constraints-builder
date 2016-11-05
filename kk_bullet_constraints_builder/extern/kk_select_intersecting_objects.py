@@ -39,12 +39,15 @@ def run(source=None, parameters=None):
     mode = 1              # 1   | Search mode: 1 = boundary boxes 
     searchDistance = .02  # .02 | Near distance limit (object centers in range of selected mesh's vertices)
     minimumVolume = .2    # .2  | Minimum intersection volume, object pairs with a shared volume equal or above that value will be selected (0 = off)
-    encaseTol = 0.02      # .02 | Restricts one of the objects of a pair to be encased into the other by this specific tolerance (0 = off)
+    encaseTol = 0         # .02 | Restricts one of the objects of a pair to be encased into the other by this specific tolerance (0 = off)
                           # This can help to avoid selection of objects whose boundary boxes are intersecting but are actually non-intersecting meshes
-    qSelectByVertCnt = 1  # 1   | Prefer less vertices (= 1) over more for found object pairs (0 = off, 2 = more over less)
-    qSelectSmallerVol = 1 # 1   | Select the smaller object of found object pairs by volume in case qSelectByVertCnt finds the same vertex counts
+    qSelectByVertCnt = 0  # 1   | Prefer less vertices (= 1) over more for found object pairs (0 = off, 2 = more over less)
+    qSelectSmallerVol = 0 # 1   | Select the smaller object of found object pairs by volume in case qSelectByVertCnt finds the same vertex counts
     qSelectA = 1          # 1   | Select first object of found object pairs (for qSelectByVertCnt = 0 & qSelectSmallerVol = 0)
     qSelectB = 1          # 0   | Select second object of found object pairs (for qSelectByVertCnt = 0 & qSelectSmallerVol = 0)
+    qDelete = 0           # 0   | Deletes object duplicates (instead of selection only)
+
+    qBool = 1             # 0   | Use boolean subtraction to resolve overlappings (overrides all above selection settings)
 
     ### Internal vars for BCB related functions
     connectionCountLimit = 0
@@ -57,6 +60,9 @@ def run(source=None, parameters=None):
         qSelectSmallerVol = parameters[2]
         qSelectA = parameters[3]
         qSelectB = parameters[4]
+        qDelete = parameters[5]
+        qBool = parameters[6]
+        qSilentVerbose = 1
 
     ###
 
@@ -82,53 +88,89 @@ def run(source=None, parameters=None):
         bpy.ops.object.select_all(action='DESELECT')
 
         count = 0
-        if qSelectByVertCnt:
-            if qSelectByVertCnt == 1:
-                for k in range(len(connectsPair)):
-                    objA = objs[connectsPair[k][0]]
-                    objB = objs[connectsPair[k][1]]
-                    if len(objA.data.vertices) < len(objB.data.vertices):
-                        if not objA.select: objA.select = 1; count += 1
-                    elif len(objA.data.vertices) > len(objB.data.vertices):
-                        if not objB.select: objB.select = 1; count += 1
-                    elif qSelectSmallerVol:
-                        if connectsArea[k][0] <= connectsArea[k][1]:
-                            if not objA.select: objA.select = 1; count += 1
-                        else: 
-                            if not objB.select: objB.select = 1; count += 1
-            elif qSelectByVertCnt == 2:
-                for k in range(len(connectsPair)):
-                    objA = objs[connectsPair[k][0]]
-                    objB = objs[connectsPair[k][1]]
-                    if len(objA.data.vertices) < len(objB.data.vertices):
-                        if not objB.select: objB.select = 1; count += 1
-                    elif len(objA.data.vertices) > len(objB.data.vertices):
-                        if not objA.select: objA.select = 1; count += 1
-                    elif qSelectSmallerVol:
-                        if connectsArea[k][0] <= connectsArea[k][1]:
-                            if not objA.select: objA.select = 1; count += 1
-                        else: 
-                            if not objB.select: objB.select = 1; count += 1
-        elif qSelectSmallerVol:
+        
+        if qBool:
+
             for k in range(len(connectsPair)):
                 objA = objs[connectsPair[k][0]]
                 objB = objs[connectsPair[k][1]]
-                if connectsArea[k][0] <= connectsArea[k][1]:
-                    if not objA.select: objA.select = 1; count += 1
-                else: 
-                    if not objB.select: objB.select = 1; count += 1
-        else:
-            if qSelectA:
+                
+                if qSelectA and not objA.select: objA.select = 1; count += 1
+                if qSelectB and not objB.select: objB.select = 1; count += 1
+                
+                ### Add boolean modifier to subtract B from A
+                bpy.context.scene.objects.active = objA
+                objA.modifiers.new(name="Boolean_Intersect", type='BOOLEAN')
+                mod = objA.modifiers["Boolean_Intersect"]
+                mod.operation = 'DIFFERENCE'
+                try: mod.solver = 'CARVE'
+                except: pass
+                mod.object = objB
+                # Apply boolean modifier
+                try: bpy.ops.object.modifier_apply(apply_as='DATA', modifier=mod.name)
+                except: bpy.ops.object.modifier_remove(modifier=mod.name)
+                count += 1
+                
+            print('\nObjects modified (one per pair):', count)
+            print('Done.')
+
+        elif not qBool:
+
+            if qSelectByVertCnt:
+                if qSelectByVertCnt == 1:
+                    for k in range(len(connectsPair)):
+                        objA = objs[connectsPair[k][0]]
+                        objB = objs[connectsPair[k][1]]
+                        if len(objA.data.vertices) < len(objB.data.vertices):
+                            if not objA.select: objA.select = 1; count += 1
+                        elif len(objA.data.vertices) > len(objB.data.vertices):
+                            if not objB.select: objB.select = 1; count += 1
+                        elif qSelectSmallerVol:
+                            if connectsArea[k][0] <= connectsArea[k][1]:
+                                if not objA.select: objA.select = 1; count += 1
+                            else: 
+                                if not objB.select: objB.select = 1; count += 1
+                elif qSelectByVertCnt == 2:
+                    for k in range(len(connectsPair)):
+                        objA = objs[connectsPair[k][0]]
+                        objB = objs[connectsPair[k][1]]
+                        if len(objA.data.vertices) < len(objB.data.vertices):
+                            if not objB.select: objB.select = 1; count += 1
+                        elif len(objA.data.vertices) > len(objB.data.vertices):
+                            if not objA.select: objA.select = 1; count += 1
+                        elif qSelectSmallerVol:
+                            if connectsArea[k][0] <= connectsArea[k][1]:
+                                if not objA.select: objA.select = 1; count += 1
+                            else: 
+                                if not objB.select: objB.select = 1; count += 1
+            elif qSelectSmallerVol:
                 for k in range(len(connectsPair)):
                     objA = objs[connectsPair[k][0]]
-                    if not objA.select: objA.select = 1; count += 1
-            if qSelectB:
-                for k in range(len(connectsPair)):
                     objB = objs[connectsPair[k][1]]
-                    if not objB.select: objB.select = 1; count += 1
-   
-    print('\nObjects selected:', count)
-    print('Done.')
+                    if connectsArea[k][0] <= connectsArea[k][1]:
+                        if not objA.select: objA.select = 1; count += 1
+                    else: 
+                        if not objB.select: objB.select = 1; count += 1
+            else:
+                if qSelectA:
+                    for k in range(len(connectsPair)):
+                        objA = objs[connectsPair[k][0]]
+                        if not objA.select: objA.select = 1; count += 1
+                if qSelectB:
+                    for k in range(len(connectsPair)):
+                        objB = objs[connectsPair[k][1]]
+                        if not objB.select: objB.select = 1; count += 1
+       
+            if qDelete:
+                ### Delete all selected objects
+                bpy.ops.object.delete(use_global=True)
+
+                print('\nObjects deleted:', count)
+                print('Done.')
+            else:
+                print('\nObjects selected:', count)
+                print('Done.')
+
     return count
     
 ################################################################################   

@@ -461,28 +461,22 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         if props.preprocTools_ctr: tool_centerModel(scene); props.preprocTools_ctr = 0
         if props.preprocTools_sep: tool_separateLoose(scene); props.preprocTools_sep = 0
         if props.preprocTools_dis: tool_discretize(scene); props.preprocTools_dis = 0
-        if props.preprocTools_int: tool_removeIntersections(scene); props.preprocTools_int = 0
         if props.preprocTools_rbs: tool_enableRigidBodies(scene); props.preprocTools_rbs = 0
+        if props.preprocTools_int: tool_removeIntersections(scene); props.preprocTools_int = 0
         if props.preprocTools_fix: tool_fixFoundation(scene); props.preprocTools_fix = 0
         if props.preprocTools_gnd: tool_groundMotion(scene); props.preprocTools_gnd = 0
         props.preprocTools_aut = 0
-
-        if not props.automaticMode:
+        if not props.automaticMode and not props.preprocTools_int_bol:
             ### Check for intersections and warn if some are left
-            count = tool_removeIntersections(scene, mode=1)
+            count = tool_removeIntersections(scene, mode=3)
             if count > 0:
-                # Switch found intersecting objects to 'Mesh' collision shape (some might have only overlapping boundary boxes while the geometry could still not intersecting)
-                qFirst = 1
-                for obj in scene.objects:
-                    if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None:
-                        obj.rigid_body.collision_shape = 'MESH'
-                        obj.rigid_body.collision_margin = 0
-                        if qFirst:
-                            bpy.context.scene.objects.active = obj
-                            qFirst = 0
-                # Throw warning anyway
+                # Throw warning
                 bpy.context.window_manager.bcb.message = "Warning: Some element intersections could not automatically be resolved, please review selected objects."
                 bpy.ops.bcb.report('INVOKE_DEFAULT')  # Create popup message box
+
+        ###### Store menu config data in scene
+        storeConfigDataInScene(scene)
+        props.menu_gotConfig = 1
         return{'FINISHED'}
 
 ########################################
@@ -557,22 +551,6 @@ class OBJECT_OT_bcb_tool_discretize(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_remove_intersections(bpy.types.Operator):
-    bl_idname = "bcb.tool_remove_intersections"
-    bl_label = "Intersection Removal"
-    bl_description = "Detects and removes intersecting objects (one per found pair). Intesecting objects can be caused by several reasons: accidental object duplication, forgotten boolean cutout objects, careless modeling etc."
-    int_ =    bpy.props.IntProperty 
-    menuIdx = int_(default = 0)
-    def execute(self, context):
-        props = context.window_manager.bcb
-        scene = bpy.context.scene
-        tool_removeIntersections(scene, mode=self.menuIdx)
-        props.preprocTools_aut = 0
-        props.preprocTools_int = 0
-        return{'FINISHED'}
-    
-########################################
-
 class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
     bl_idname = "bcb.tool_enable_rigid_bodies"
     bl_label = "Enable Rigid Bodies"
@@ -585,6 +563,23 @@ class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
         props.preprocTools_rbs = 0
         return{'FINISHED'}
 
+########################################
+
+class OBJECT_OT_bcb_tool_remove_intersections(bpy.types.Operator):
+    bl_idname = "bcb.tool_remove_intersections"
+    bl_label = "Intersection Removal"
+    bl_description = "Detects and removes intersecting objects (one per found pair). Intesecting objects can be caused by several reasons: accidental object duplication, forgotten boolean cutout objects, careless modeling etc."
+    int_ =    bpy.props.IntProperty 
+    menuIdx = int_(default = 0)
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_removeIntersections(scene, mode=self.menuIdx)
+        props.preprocTools_aut = 0
+        props.preprocTools_int = 0
+        self.menuIdx = 0
+        return{'FINISHED'}
+    
 ########################################
 
 class OBJECT_OT_bcb_tool_fix_foundation(bpy.types.Operator):

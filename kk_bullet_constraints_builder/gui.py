@@ -169,20 +169,21 @@ class bcb_panel(bpy.types.Panel):
             row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_jus")
 
             row = col.row(align=1); split = row.split(percentage=.08, align=0)
+            split.prop(props, "preprocTools_rbs", text="")
+            box2 = split.box()
+            box2.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
+
+            row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_int", text="")
             box2 = split.box()
-            box2.operator("bcb.tool_remove_intersections", icon="DOT")
+            box2.operator("bcb.tool_remove_intersections", icon="DOT").menuIdx = 0
             col2 = box2.column(align=1)
             row2 = col2.row(align=1)
             row2.label(text="Select Instead Of Deletion (Diagnostic):")
             row2 = col2.row(align=1)
             row2.operator("bcb.tool_remove_intersections", text="Select All Pairs").menuIdx = 1
             row2.operator("bcb.tool_remove_intersections", text="Select Removal").menuIdx = 2
-
-            row = col.row(align=1); split = row.split(percentage=.08, align=0)
-            split.prop(props, "preprocTools_rbs", text="")
-            box2 = split.box()
-            box2.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
+            row2 = col2.row(align=1); row2.prop(props, "preprocTools_int_bol")
 
             row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_fix", text="")

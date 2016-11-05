@@ -46,19 +46,21 @@ def storeConfigDataInScene(scene):
     props = bpy.context.window_manager.bcb
     scene["bcb_version"] = bcb_version
 
+    scene["bcb_prop_preprocTools_aut"] = props.preprocTools_aut
     scene["bcb_prop_preprocTools_grp"] = props.preprocTools_grp
     scene["bcb_prop_preprocTools_mod"] = props.preprocTools_mod
     scene["bcb_prop_preprocTools_ctr"] = props.preprocTools_ctr
     scene["bcb_prop_preprocTools_sep"] = props.preprocTools_sep
     scene["bcb_prop_preprocTools_dis"] = props.preprocTools_dis
-    scene["bcb_prop_preprocTools_int"] = props.preprocTools_int
     scene["bcb_prop_preprocTools_rbs"] = props.preprocTools_rbs
+    scene["bcb_prop_preprocTools_int"] = props.preprocTools_int
     scene["bcb_prop_preprocTools_fix"] = props.preprocTools_fix
     scene["bcb_prop_preprocTools_gnd"] = props.preprocTools_gnd
 
     scene["bcb_prop_preprocTools_grp_sep"] = props.preprocTools_grp_sep
     scene["bcb_prop_preprocTools_dis_siz"] = props.preprocTools_dis_siz
     scene["bcb_prop_preprocTools_dis_jus"] = props.preprocTools_dis_jus
+    scene["bcb_prop_preprocTools_int_bol"] = props.preprocTools_int_bol
     scene["bcb_prop_preprocTools_fix_nam"] = props.preprocTools_fix_nam
     scene["bcb_prop_preprocTools_fix_cac"] = props.preprocTools_fix_cac
     scene["bcb_prop_preprocTools_fix_rng"] = props.preprocTools_fix_rng
@@ -124,6 +126,8 @@ def getConfigDataFromScene(scene):
                 warning = "Configuration settings from an older BCB version detected which is known to be incompatible with this one.\nTry to clear settings and reconfigure your scene from scratch."
     else:   warning = "Configuration settings from an older BCB version detected which is known to be incompatible with this one.\nTry to clear settings and reconfigure your scene from scratch."
 
+    if "bcb_prop_preprocTools_aut" in scene.keys():
+        props.preprocTools_aut = scene["bcb_prop_preprocTools_aut"]
     if "bcb_prop_preprocTools_grp" in scene.keys():
         props.preprocTools_grp = scene["bcb_prop_preprocTools_grp"]
     if "bcb_prop_preprocTools_mod" in scene.keys():
@@ -134,10 +138,10 @@ def getConfigDataFromScene(scene):
         props.preprocTools_sep = scene["bcb_prop_preprocTools_sep"]
     if "bcb_prop_preprocTools_dis" in scene.keys():
         props.preprocTools_dis = scene["bcb_prop_preprocTools_dis"]
-    if "bcb_prop_preprocTools_int" in scene.keys():
-        props.preprocTools_int = scene["bcb_prop_preprocTools_int"]
     if "bcb_prop_preprocTools_rbs" in scene.keys():
         props.preprocTools_rbs = scene["bcb_prop_preprocTools_rbs"]
+    if "bcb_prop_preprocTools_int" in scene.keys():
+        props.preprocTools_int = scene["bcb_prop_preprocTools_int"]
     if "bcb_prop_preprocTools_fix" in scene.keys():
         props.preprocTools_fix = scene["bcb_prop_preprocTools_fix"]
     if "bcb_prop_preprocTools_gnd" in scene.keys():
@@ -149,6 +153,8 @@ def getConfigDataFromScene(scene):
         props.preprocTools_dis_siz = scene["bcb_prop_preprocTools_dis_siz"]
     if "bcb_prop_preprocTools_dis_jus" in scene.keys():
         props.preprocTools_dis_jus = scene["bcb_prop_preprocTools_dis_jus"]
+    if "bcb_prop_preprocTools_int_bol" in scene.keys():
+        props.preprocTools_int_bol = scene["bcb_prop_preprocTools_int_bol"]
     if "bcb_prop_preprocTools_fix_nam" in scene.keys():
         props.preprocTools_fix_nam = scene["bcb_prop_preprocTools_fix_nam"]
     if "bcb_prop_preprocTools_fix_cac" in scene.keys():
@@ -309,21 +315,21 @@ def getBuildDataFromScene(scene):
     objs = []
     for name in names:
         try: objs.append(scnObjs[name])
-        except: print("Error: Object %s missing, rebuilding constraints is required." %name)
+        except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
 
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
     emptyObjs = []
     for name in names:
         try: emptyObjs.append(scnEmptyObjs[name])
-        except: print("Error: Object %s missing, rebuilding constraints is required." %name)
+        except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
 
     try: names = scene["bcb_childObjs"]
     except: names = []; print("Error: bcb_childObjs property not found, rebuilding constraints is required.")
     childObjs = []
     for name in names:
         try: childObjs.append(scnObjs[name])
-        except: print("Error: Object %s missing, rebuilding constraints is required." %name)
+        except: childObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
 
     try: connectsPair = scene["bcb_connectsPair"]
     except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
@@ -390,21 +396,21 @@ def clearAllDataFromScene(scene):
     objs = []
     for name in names:
         try: objs.append(scnObjs[name])
-        except: print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        except: objs.append(None); print("Warning: Object %s missing, cleanup may be incomplete." %name)
 
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Warning: bcb_emptyObjs property not found, cleanup may be incomplete.")
     emptyObjs = []
     for name in names:
         try: emptyObjs.append(scnEmptyObjs[name])
-        except: print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        except: emptyObjs.append(None); print("Warning: Object %s missing, cleanup may be incomplete." %name)
 
     try: names = scene["bcb_childObjs"]
     except: names = []; print("Warning: bcb_childObjs property not found, cleanup may be incomplete.")
     childObjs = []
     for name in names:
         try: childObjs.append(scnObjs[name])
-        except: print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        except: childObjs.append(None); print("Warning: Object %s missing, cleanup may be incomplete." %name)
 
     try: connectsPairParent = scene["bcb_connectsPairParent"]
     except: connectsPairParent = []; print("Warning: bcb_connectsPairParent property not found, cleanup may be incomplete.")
@@ -472,14 +478,14 @@ def clearAllDataFromScene(scene):
     objs = []
     for name in names:
         try: objs.append(scnObjs[name])
-        except: pass #print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        except: objs.append(None) #; print("Warning: Object %s missing, cleanup may be incomplete." %name)
 
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Warning: bcb_emptyObjs property not found, cleanup may be incomplete.")
     emptyObjs = []
     for name in names:
         try: emptyObjs.append(scnEmptyObjs[name])
-        except: pass #print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        except: emptyObjs.append(None) #; print("Warning: Object %s missing, cleanup may be incomplete." %name)
 
     ### Revert element scaling
     for k in range(len(objs)):

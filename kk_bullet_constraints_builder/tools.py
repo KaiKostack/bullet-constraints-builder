@@ -258,7 +258,7 @@ def tool_centerModel(scene):
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
     if len(objs) == 0:
         print("No mesh objects selected.")
         return
@@ -545,21 +545,29 @@ def tool_removeIntersections(scene, mode=0):
         return
 
     ###### External function
-    # [encaseTol, qSelectByVertCnt, qSelectSmallerVol, qSelectA, qSelectB]
-    if mode == 0 or mode == 2:  # Auto: [0.02, 1, 1, 0, 0]; 
-        count = kk_select_intersecting_objects.run('BCB', [0.02, 1, 1, 0, 0])
-    elif mode == 1:  # Show selection: [0, 0, 0, 1, 1]
-        count = kk_select_intersecting_objects.run('BCB', [0, 0, 0, 1, 1])
+    props = bpy.context.window_manager.bcb
+    # [encaseTol, qSelectByVertCnt, qSelectSmallerVol, qSelectA, qSelectB, qDelete, qBool]
+    if mode == 0:  # Resolve intersections
+        if props.preprocTools_int_bol:
+              count = kk_select_intersecting_objects.run('BCB', [0,    0, 0, 1, 1, 0, 1])
+        else: count = kk_select_intersecting_objects.run('BCB', [0.02, 1, 1, 0, 0, 1, 0])
+    elif mode == 1 or mode == 3:  # Selection of all intersections
+              count = kk_select_intersecting_objects.run('BCB', [0,    0, 0, 1, 1, 0, 0])
+    elif mode == 2:  # Selection for intersections which require booleans
+              count = kk_select_intersecting_objects.run('BCB', [0.02, 1, 1, 0, 0, 0, 0])
 
-    if mode == 0:
-        ### Delete all selected objects
-        bpy.ops.object.delete(use_global=True)
-
-        # Revert to start selection
-        for obj in selection: obj.select = 1
-        bpy.context.scene.objects.active = selectionActive
-
-    if count == 0:
+    if count > 0:
+        ### Switch found intersecting objects to 'Mesh' collision shape
+        ### (some might have only overlapping boundary boxes while the geometry could still not intersecting)
+        # Switch the collision shape for the entire selection 
+        obj = bpy.context.scene.objects.active
+        if obj.rigid_body != None:
+            bpy.ops.rigidbody.shape_change(type='MESH')
+            objs = [obj for obj in bpy.context.scene.objects if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
+            for obj in objs:
+                obj.rigid_body.collision_margin = 0
+            
+    if mode == 0 or (mode == 3 and count == 0):
         # Revert to start selection
         for obj in selection: obj.select = 1
         bpy.context.scene.objects.active = selectionActive
@@ -651,7 +659,7 @@ def tool_fixFoundation(scene):
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE']
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE' and len(obj.data.vertices) > 0]
     if len(objs) == 0:
         print("No active rigid body objects selected.")
         return
@@ -849,7 +857,7 @@ def tool_groundMotion(scene):
     if qCreateGround:
         print("Ground object not found, creating new one...")
         # Find active mesh objects in selection
-        objsA = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE']
+        objsA = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE' and len(obj.data.vertices) > 0]
         if len(objsA) > 0:
             ### Calculate boundary boxes for all active objects
             qFirst = 1

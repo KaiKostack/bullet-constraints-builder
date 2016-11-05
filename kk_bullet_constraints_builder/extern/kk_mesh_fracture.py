@@ -350,9 +350,9 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         obj.modifiers.new(name="Boolean", type='BOOLEAN')
                         mod = obj.modifiers["Boolean"]
                         mod.operation = 'UNION'
-                        mod.object = objCdup
                         try: mod.solver = 'CARVE'
                         except: pass
+                        mod.object = objCdup
                         meA = obj.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
                         # Clean boolean result in case it is corrupted, because otherwise Blender sometimes crashes with "Error: EXCEPTION_ACCESS_VIOLATION"
                         qBadResult = meA.validate(verbose=False, clean_customdata=False)
@@ -639,9 +639,9 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         obj.modifiers.new(name="Boolean", type='BOOLEAN')
                         mod = obj.modifiers["Boolean"]
                         mod.operation = 'INTERSECT'
-                        mod.object = objC
                         try: mod.solver = 'CARVE'
                         except: pass
+                        mod.object = objC
                         meA = obj.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
                         # Clean boolean result in case it is corrupted, because otherwise Blender sometimes crashes with "Error: EXCEPTION_ACCESS_VIOLATION"
                         qBadResult = meA.validate(verbose=False, clean_customdata=False)
