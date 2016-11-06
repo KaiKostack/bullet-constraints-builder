@@ -520,6 +520,8 @@ def clearAllDataFromScene(scene):
         for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
         # Delete (unlink) constraint empty objects from scene
         for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
+        # Unlink 'RigidBodyConstraints' group from scene so that the unlinked empties have no more users and will be discarted on saving
+        bpy.data.groups.remove(bpy.data.groups["RigidBodyConstraints"], do_unlink=True)
         # Save file
         bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
         if len(objs) +len(emptyObjs) < 4000:

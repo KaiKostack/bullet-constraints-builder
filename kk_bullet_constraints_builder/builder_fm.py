@@ -120,14 +120,15 @@ def build_fm():
 #        print(obj.name, objSorted.name)
     objs = objsSortedFiltered
 
-#    ### Workaround for wrong object centering in FM (should be fixed!)
-#    # Deselect all objects.
+    ### Workaround attempt for wrong object centering in FM (should be fixed!)
+    # Deselect all objects.
 #    bpy.ops.object.select_all(action='DESELECT')
-#    # Select mesh objects
+    # Select mesh objects
 #    for obj in objs: obj.select = 1
-#    # Set object centers to geometry origin
-#    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+    # Set object centers to geometry origin
+#    #bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 #    #bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+#    bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS')
 
     ### Create mesh islands    
     objParent = None
