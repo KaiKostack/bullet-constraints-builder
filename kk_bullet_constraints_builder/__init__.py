@@ -109,10 +109,10 @@ else:
 ### Ultimate attempt to import SymPy
 if module_exists("sympy"):
     import sympy
-    #print("SymPy module found.")
+    print("SymPy module found.")
     qSymPy = 1
 else:
-    #print("No SymPy module found, continuing without formula simplification feature...")
+    print("No SymPy module found, continuing without formula simplification feature...")
     qSymPy = 0
 
 ########################################
@@ -227,18 +227,15 @@ def register():
     bpy.types.WindowManager.bcb = bpy.props.PointerProperty(type=bcb_props)
     bpy.types.WindowManager.bcb_asst_con_rei_beam = bpy.props.PointerProperty(type=bcb_asst_con_rei_beam_props)
     bpy.types.WindowManager.bcb_asst_con_rei_wall = bpy.props.PointerProperty(type=bcb_asst_con_rei_wall_props)
-    # Reinitialize menu for convenience reasons when running from text window
-    props = bpy.context.window_manager.bcb
-    props.menu_gotConfig = 0
-    props.menu_gotData = 0
-    props.props_update_menu()
-
+    
            
 def unregister():
     for c in classes:
         try: bpy.utils.unregister_class(c) 
         except: pass
     del bpy.types.WindowManager.bcb
+    del bpy.types.WindowManager.bcb_asst_con_rei_beam
+    del bpy.types.WindowManager.bcb_asst_con_rei_wall
 
  
 if __name__ == "__main__":

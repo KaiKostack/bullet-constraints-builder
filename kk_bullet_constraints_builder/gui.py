@@ -329,7 +329,6 @@ class bcb_panel(bpy.types.Panel):
             layout.separator()
 
         ###### Element groups box
-        
         col = layout.column(align=1)
         row = col.row(align=1); row.label(text="Element Groups", icon="MOD_BUILD")
         box = col.box()
@@ -350,7 +349,7 @@ class bcb_panel(bpy.types.Panel):
         split2.label(text="TNS")
         split2.label(text="SHR")
         split2.label(text="BND")
-        if len(elemGrps) == 0:  
+        if len(elemGrps) == 0 or props.menu_init:  # Hide list also on first draw just to make sure element groups are up-to-date
             row = col2.row(align=1); row.alignment = 'CENTER'
             row.label(text="Press + button to add a group!", icon="INFO")
             col2.separator()
@@ -386,6 +385,7 @@ class bcb_panel(bpy.types.Panel):
                 split2.label(text=str(prop_EGSidxBTT))
                 split2.label(text=str(prop_EGSidxBTS))
                 split2.label(text=str(prop_EGSidxBTB))
+
             # These buttons are existing twice (see above)
             row = col2.row(align=1)
             row.operator("bcb.up", icon="TRIA_UP")
@@ -605,3 +605,4 @@ class bcb_panel(bpy.types.Panel):
             
         ### Update global vars from menu related properties
         props.props_update_globals()
+        

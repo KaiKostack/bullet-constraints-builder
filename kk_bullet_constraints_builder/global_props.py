@@ -47,6 +47,7 @@ class bcb_props(bpy.types.PropertyGroup):
     
     ###### Menu properties (volatile)
 
+    menu_init =            bool_(default=1)
     menu_gotConfig =       int_(default=0)
     menu_gotData =         int_(default=0)
     menu_selectedElemGrp = int_(default=0)
@@ -192,6 +193,10 @@ class bcb_props(bpy.types.PropertyGroup):
             
     ###### Update global vars from menu properties
     def props_update_globals(self):
+        ### On loading a new scene properties are lost, in this case reset element groups to defaults
+        if self.menu_init:
+            elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+            self.menu_init = 0
 
         elemGrps = mem["elemGrps"]
         if len(elemGrps) > 0:
