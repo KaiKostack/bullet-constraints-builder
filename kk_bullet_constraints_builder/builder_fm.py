@@ -40,6 +40,8 @@ from global_vars import *      # Contains global variables
 
 def build_fm():
 
+    props = bpy.context.window_manager.bcb
+
     ### Exports all constraint data to the Fracture Modifier (special Blender version required).
     print()
     print("Creating fracture modifier mesh from BCB data...")
@@ -53,7 +55,25 @@ def build_fm():
         return
     consts = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
 
-    # Create object to use the fracture modifier on
+    ### Set up warm up timer via gravity (not exactly the way it works via BCB build but it helps to stabilize the simulation anyway)
+    scene.animation_data_create()
+    scene.animation_data.action = bpy.data.actions.new(name="Gravity")
+    curve = scene.animation_data.action.fcurves.new(data_path="gravity", index=2)  
+    curve.keyframe_points.add(2)
+    frame = scene.frame_start
+    curveP = curve.keyframe_points[0]; curveP.co = frame, 0
+    curveP.handle_left = curveP.co; curveP.handle_right = curveP.co; curveP.handle_left_type = 'AUTO_CLAMPED'; curveP.handle_right_type = 'AUTO_CLAMPED'
+    frame = scene.frame_start +props.warmUpPeriod
+    curveP = curve.keyframe_points[1]; curveP.co = frame, -9.81
+    curveP.handle_left = curveP.co; curveP.handle_right = curveP.co; curveP.handle_left_type = 'AUTO_CLAMPED'; curveP.handle_right_type = 'AUTO_CLAMPED'
+    ### Fix smooth curves as handles are not automatically being set correctly
+    # Stupid Blender design hack, enforcing context to be accepted by operators
+    areaType_bak = bpy.context.area.type; bpy.context.area.type = 'GRAPH_EDITOR'
+    bpy.ops.graph.handle_type(type='AUTO_CLAMPED')
+    #bpy.ops.graph.clean(channels=True)
+    bpy.context.area.type = areaType_bak
+        
+    ### Create object to use the fracture modifier on
     bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), rotation=(0, 0, 0))
     ob = bpy.context.scene.objects.active
     ob.name = "BCB_export"
@@ -141,7 +161,7 @@ def build_fm():
     plastic_off = 0
     noplastic = 0
     for i in range(len(consts)):
-        prop_index = 0
+        cProp_index = 0
         j = 0
         name = consts[i][j]
         j += 1
@@ -192,11 +212,11 @@ def build_fm():
         j += 2
                 
         # 7 - empty.rigid_body_constraint (dictionary of attributes)
-        props = consts[i][j]
-        prop_index = j
+        cProps = consts[i][j]
+        cProp_index = j
         
         #peek the type...
-        type = props["type"]
+        type = cProps["type"]
         if type != "GENERIC_SPRING":
             noplastic -= 1
         
@@ -215,12 +235,12 @@ def build_fm():
             con.plastic_angle = plastic_angle
             con.name = name
                
-            for p in props.items():
+            for p in cProps.items():
                 if p[0] not in {"name","type", "object1", "object2"}:
                     #print("Set: ", p[0], p[1])
                     setattr(con, p[0], p[1])
             
-            #con.id = props["name"]
+            #con.id = cProps["name"]
             #if con.type == 'GENERIC_SPRING':
             #    con.spring_stiffness_x = 1000000
             #    con.spring_stiffness_y = 1000000
@@ -237,7 +257,7 @@ def build_fm():
             #con.breaking_distance = 0.1
             #con.plastic = False
             
-    #        ind = prop_index+1
+    #        ind = cProp_index+1
     #        if len(consts[i][ind]) == 3 and consts[i][ind][0] == "BREAK":
     #            con.breaking_distance = consts[i][ind][1] # this is normed to 0...1, odd... why not absolute ?
     #            con.breaking_angle = consts[i][ind][2] * math.pi
