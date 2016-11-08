@@ -601,7 +601,10 @@ def tool_enableRigidBodies(scene):
     bpy.context.scene.objects.active = objs[0]
     # Apply rigid body settings
     bpy.ops.rigidbody.objects_add()
-
+    # Set friction for all to 1.0
+    for obj in objs:
+        obj.rigid_body.friction = 1
+    
     # Revert to start selection
     for obj in selection: obj.select = 1
     bpy.context.scene.objects.active = selectionActive
@@ -681,7 +684,7 @@ def tool_fixFoundation(scene):
     else:
         if len(props.preprocTools_fix_nam) > 0:
               foundationName = props.preprocTools_fix_nam
-        else: foundationName = "Base"
+        else: foundationName = "Foundation"
 
         ### Calculate boundary boxes for all objects
         verts = []; edges = []; faces = []
@@ -773,6 +776,8 @@ def tool_fixFoundation(scene):
         bpy.context.scene.objects.active = obj
         bpy.ops.rigidbody.objects_add()
         obj.rigid_body.type = 'PASSIVE'
+        # Set friction to 1.0
+        obj.rigid_body.friction = 1
         
         ### Split object into individual parts
         bpy.context.tool_settings.mesh_select_mode = False, True, False
@@ -913,6 +918,9 @@ def tool_groundMotion(scene):
             bpy.context.scene.objects.active = objGnd
             bpy.ops.rigidbody.objects_add()
             objGnd.select = 0
+            # Set friction for all to 1.0
+            objGnd.rigid_body.friction = 1
+
         objGnd.rigid_body.type = 'PASSIVE'
         
         # Enable animated flag for all passive rigid bodies so that Bullet takes their motion into account
