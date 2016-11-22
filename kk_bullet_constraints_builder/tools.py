@@ -162,17 +162,13 @@ def tool_createGroupsFromNames(scene):
     grps = []
     grpsObjs = []
     for obj in objs:
-        qAdd = 0
         if props.preprocTools_grp_sep in obj.name:
+            # grpName can also be ""
             grpName = obj.name.rsplit(props.preprocTools_grp_sep, 1)[0]
-            # If name convention is detected add object to the corresponding group or create a new one
-            if len(grpName) > 0: qAdd = 1
-            # If name is invalid then add object to a default group
-            else: grpName = "Default"; qAdd = 1
         # If name could not match the convention then add object to a default group
-        else: grpName = "Default"; qAdd = 1
+        else: grpName = ""
         # Actual linking into group happens here
-        if qAdd:
+        if grpName != "":
             if grpName not in grps:
                 grps.append(grpName)
                 grpsObjs.append([])
