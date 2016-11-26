@@ -1339,7 +1339,8 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         
         materialPreset = elemGrp[EGSidxMatP]
         materialDensity = elemGrp[EGSidxDens]
-        if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
+        if not materialDensity:
+            if materialPreset != "": bpy.ops.rigidbody.mass_calculate(material=materialPreset)
         else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
 
     # Deselect all objects

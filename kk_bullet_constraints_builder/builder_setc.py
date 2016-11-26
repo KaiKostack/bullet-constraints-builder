@@ -423,6 +423,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             ### Calculate orientation between the two elements
             # Center to center orientation
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+            distObjAB = dirVec.length
             if props.snapToAreaOrient:
                 # Use contact area for orientation (axis closest to thickness)
                 if geoAxisNormal == 1:   dirVecNew = Vector((1, 0, 0))
@@ -976,7 +977,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
-            springStiff = value *dirVec.length /(correction *tol2dist) /constCount
+            springStiff = value *distObjAB /(correction *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(3):
                 cIdx = consts[cInc]; cInc += 1
@@ -1021,7 +1022,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
-            springStiff = value *dirVec.length /(correction *tol2dist) /constCount
+            springStiff = value *distObjAB /(correction *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(4):
                 cIdx = consts[cInc]; cInc += 1
@@ -1074,7 +1075,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             value = brkThresValueS
             brkThres3 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
             value = brkThresValueP
-            springStiff = value *dirVec.length /(correction *tol2dist) /constCount
+            springStiff = value *distObjAB /(correction *tol2dist) /constCount
             # Loop through all constraints of this connection
             for j in range(3):
 
@@ -1186,7 +1187,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             value = brkThresValueS
             brkThres3 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
             value = brkThresValueP
-            springStiff = value *dirVec.length /(correction *tol2dist) /constCount
+            springStiff = value *distObjAB /(correction *tol2dist) /constCount
             # Loop through all constraints of this connection
             for j in range(4):
 
