@@ -527,16 +527,15 @@ class bcb_panel(bpy.types.Panel):
             if not connectType[2][2]: row.active = 0
             if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
-            if props.submenu_assistant_advanced:
-                expression = eval("props.elemGrp_%d_EGSidxBTS9" %i)
-                if expression != "":
-                    row = col.row(align=1)
-                    try: value = eval(expression)
-                    except: row.alert = 1; qAlert = 1
-                    else: qAlert = 0
-                    row.prop(props, "elemGrp_%d_EGSidxBTS9" %i)
-                    if not connectType[2][2]: row.active = 0
-                    if qAlert: row = col.row(align=1); row.label(text="Error in expression")
+            expression = eval("props.elemGrp_%d_EGSidxBTS9" %i)
+            if expression != "":
+                row = col.row(align=1)
+                try: value = eval(expression)
+                except: row.alert = 1; qAlert = 1
+                else: qAlert = 0
+                row.prop(props, "elemGrp_%d_EGSidxBTS9" %i)
+                if not connectType[2][2]: row.active = 0
+                if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
             expression = eval("props.elemGrp_%d_EGSidxBTB" %i)
             row = col.row(align=1)
@@ -547,40 +546,31 @@ class bcb_panel(bpy.types.Panel):
             if not connectType[2][3]: row.active = 0
             if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
-            if props.submenu_assistant_advanced:
-                expression = eval("props.elemGrp_%d_EGSidxBTB9" %i)
-                if expression != "":
-                    row = col.row(align=1)
-                    try: value = eval(expression)
-                    except: row.alert = 1; qAlert = 1
-                    else: qAlert = 0
-                    row.prop(props, "elemGrp_%d_EGSidxBTB9" %i)
-                    if not connectType[2][3]: row.active = 0
-                    if qAlert: row = col.row(align=1); row.label(text="Error in expression")
+            expression = eval("props.elemGrp_%d_EGSidxBTB9" %i)
+            if expression != "":
+                row = col.row(align=1)
+                try: value = eval(expression)
+                except: row.alert = 1; qAlert = 1
+                else: qAlert = 0
+                row.prop(props, "elemGrp_%d_EGSidxBTB9" %i)
+                if not connectType[2][3]: row.active = 0
+                if qAlert: row = col.row(align=1); row.label(text="Error in expression")
+
+            expression = eval("props.elemGrp_%d_EGSidxBTP" %i)
+            if expression != "":
+                row = col.row(align=1)
+                try: value = eval(expression)
+                except: row.alert = 1; qAlert = 1
+                else: qAlert = 0
+                row.prop(props, "elemGrp_%d_EGSidxBTP" %i)
+                if not connectType[2][4]: row.active = 0
+                if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
             col.separator()
             #row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxRqVP" %i)
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxMatP" %i)
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxDens" %i)
-            
-            col.separator()
-            row = col.row(align=1)
-            if props.menu_gotData: row.enabled = 0
-            row.prop(props, "elemGrp_%d_EGSidxCyln" %i)
-            row.prop(props, "elemGrp_%d_EGSidxScal" %i)
-            row = col.row(align=1)
-            if props.menu_gotData: row.enabled = 0
-            row.prop(props, "elemGrp_%d_EGSidxBevl" %i)
-            prop_EGSidxBevl = eval("props.elemGrp_%d_EGSidxBevl" %i)
-            prop_EGSidxFacg = eval("props.elemGrp_%d_EGSidxFacg" %i)
-            if prop_EGSidxBevl and not prop_EGSidxFacg: row.alert = 1
-            if props.menu_gotData: row.enabled = 0
-            row.prop(props, "elemGrp_%d_EGSidxFacg" %i)
-            
-            if prop_EGSidxBevl and not prop_EGSidxFacg:
-                row = col.row(align=1); row.label(text="Warning: Disabled facing")
-                row = col.row(align=1); row.label(text="makes bevel permanent!")
-                
+                            
             ###### Advanced element group settings box
             
             box = layout.box()
@@ -588,9 +578,7 @@ class bcb_panel(bpy.types.Panel):
 
             if props.submenu_advancedE:
                 col = box.column(align=1)
-                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxSStf" %i)
-                if not connectType[2][4]: row.active = 0
-                col.separator()
+
                 row = col.row(align=1); row.label(text="1st & 2nd Tolerance (Plastic & Breaking):")
                 row = col.row(align=1)
                 split = row.split(align=1);
@@ -602,7 +590,25 @@ class bcb_panel(bpy.types.Panel):
                 split.prop(props, "elemGrp_%d_EGSidxTl2D" %i)
                 split.prop(props, "elemGrp_%d_EGSidxTl2R" %i)
                 if not connectType[2][7]: split.active = 0
-            
+
+                col.separator()
+                row = col.row(align=1)
+                if props.menu_gotData: row.enabled = 0
+                row.prop(props, "elemGrp_%d_EGSidxCyln" %i)
+                row.prop(props, "elemGrp_%d_EGSidxScal" %i)
+                row = col.row(align=1)
+                if props.menu_gotData: row.enabled = 0
+                row.prop(props, "elemGrp_%d_EGSidxBevl" %i)
+                prop_EGSidxBevl = eval("props.elemGrp_%d_EGSidxBevl" %i)
+                prop_EGSidxFacg = eval("props.elemGrp_%d_EGSidxFacg" %i)
+                if prop_EGSidxBevl and not prop_EGSidxFacg: row.alert = 1
+                if props.menu_gotData: row.enabled = 0
+                row.prop(props, "elemGrp_%d_EGSidxFacg" %i)
+                
+                if prop_EGSidxBevl and not prop_EGSidxFacg:
+                    row = col.row(align=1); row.label(text="Warning: Disabled facing")
+                    row = col.row(align=1); row.label(text="makes bevel permanent!")
+
         ### Update global vars from menu related properties
         props.props_update_globals()
         

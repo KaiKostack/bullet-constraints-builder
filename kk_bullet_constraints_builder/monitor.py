@@ -285,7 +285,6 @@ def monitor_initBuffers(scene):
                 elemGrp = None
 
             if elemGrp != None:
-                springStiff = elemGrps[elemGrp][EGSidxSStf]
                 tol1dist = elemGrps[elemGrp][EGSidxTl1D]
                 tol1rot = elemGrps[elemGrp][EGSidxTl1R]
                 tol2dist = elemGrps[elemGrp][EGSidxTl2D]
@@ -322,8 +321,8 @@ def monitor_initBuffers(scene):
                         constsEnabled.append(0)
                         constsUseBrk.append(0)
                         constsBrkThres.append(0)
-                #                0                1                2         3      4       5              6             7            8         9        10        11       12    13
-                connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsEnabled, constsUseBrk, springStiff, tol1dist, tol1rot, tol2dist, tol2rot, mode, constsBrkThres])
+                #                0                1                2         3      4       5              6             7 (unused) 8         9        10        11       12    13
+                connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsEnabled, constsUseBrk, None,      tol1dist, tol1rot, tol2dist, tol2rot, mode, constsBrkThres])
                 cCnt += 1
         d += 1
         
@@ -347,7 +346,6 @@ def monitor_checkForChange(scene):
             if consts[0].rigid_body_constraint.use_breaking:
                 objA = connect[0][0]
                 objB = connect[1][0]
-                springStiff = connect[7]
                 toleranceDist = connect[8]
                 toleranceRot = connect[9]
                 

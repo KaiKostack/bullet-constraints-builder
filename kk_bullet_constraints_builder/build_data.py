@@ -241,7 +241,12 @@ def getConfigDataFromScene(scene):
             column = []
             for j in range(len(elemGrpsProp)):
                 if j != EGSidxAsst:
-                      column.append(elemGrpsProp[j][i])
+                    # Check if stored types are identical then copy stored data, otherwise fall back to preset default data.
+                    # But do this only if one is a string type as numeric values can have different types, because they would convert like int to float.
+                    # Next line means: if not type(elemGrpsProp[j][i]) == type("") xor type(presets[i][j]) == type(""):
+                    if not bool(type(elemGrpsProp[j][i]) == type("")) != bool(type(presets[i][j]) == type("")):
+                          column.append(elemGrpsProp[j][i])
+                    else: column.append(presets[0][j])
                 else: column.append(dict(elemGrpsProp[j][i]).copy())
             missingColumns = len(presets[0]) -len(column)
             if missingColumns:
@@ -510,9 +515,13 @@ def clearAllDataFromScene(scene):
     print("Deleting objects...")
 
     ### Select modified elements for deletion from scene 
-    for parentObj in parentTmpObjs: parentObj.select = 1
+    for parentObj in parentTmpObjs:
+        try: parentObj.select = 1  # Try in case object has been deleted by user
+        except: pass
     ### Select constraint empty objects for deletion from scene
-    for emptyObj in emptyObjs: emptyObj.select = 1
+    for emptyObj in emptyObjs:
+        try: emptyObj.select = 1  # Try in case object has been deleted by user
+        except: pass
     
     if props.automaticMode and props.saveBackups:
         ### Quick and dirty delete function (faster but can cause problems on immediate rebuilding, requires saving and reloading first)

@@ -135,8 +135,8 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxBTS9" %i +" = string_(name='Shear 90°', default=presets[j][EGSidxBTS9], description='Math expression for the material´s real world shearing breaking threshold with h and w swapped (rotated by 90°) in N/mm^2 together with related geometry properties.')")
         exec("elemGrp_%d_EGSidxBTB" %i +" = string_(name='Bend', default=presets[j][EGSidxBTB], description='Math expression for the material´s real world bending breaking threshold in Nm/mm^2 together with related geometry properties.')")
         exec("elemGrp_%d_EGSidxBTB9" %i +" = string_(name='Bend 90°', default=presets[j][EGSidxBTB9], description='Math expression for the material´s real world bending breaking threshold with h and w swapped (rotated by 90°) in Nm/mm^2 together with related geometry properties.')")
+        exec("elemGrp_%d_EGSidxBTP" %i +" = string_(name='Plastic', default=presets[j][EGSidxBTP], description='Math expression for the material´s real world ultimate tensile breaking threshold in N/mm^2. Also the stiffness for Generic Spring constraints is derived from that value.')")
 
-        exec("elemGrp_%d_EGSidxSStf" %i +" = float_(name='Spring Stiffness', default=presets[j][EGSidxSStf], min=0.0, max=10**20, description='Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.')")
         exec("elemGrp_%d_EGSidxRqVP" %i +" = int_(name='Req. Vertex Pairs', default=presets[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
         exec("elemGrp_%d_EGSidxMatP" %i +" = string_(name='Mat. Preset', default=presets[j][EGSidxMatP], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
         exec("elemGrp_%d_EGSidxDens" %i +" = float_(name='Density', default=presets[j][EGSidxDens], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
@@ -170,7 +170,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxBTS9" %i +" = elemGrps[i][EGSidxBTS9].replace('*a','')")
                 exec("self.elemGrp_%d_EGSidxBTB" %i +" = elemGrps[i][EGSidxBTB].replace('*a','')")
                 exec("self.elemGrp_%d_EGSidxBTB9" %i +" = elemGrps[i][EGSidxBTB9].replace('*a','')")
-                exec("self.elemGrp_%d_EGSidxSStf" %i +" = elemGrps[i][EGSidxSStf]")
+                exec("self.elemGrp_%d_EGSidxBTP" %i +" = elemGrps[i][EGSidxBTP]")
                 exec("self.elemGrp_%d_EGSidxTl1D" %i +" = elemGrps[i][EGSidxTl1D]")
                 exec("self.elemGrp_%d_EGSidxTl1R" %i +" = elemGrps[i][EGSidxTl1R]")
                 exec("self.elemGrp_%d_EGSidxTl2D" %i +" = elemGrps[i][EGSidxTl2D]")
@@ -212,7 +212,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxBTS9] = eval("self.elemGrp_%d_EGSidxBTS9" %i)
                 elemGrps[i][EGSidxBTB] = eval("self.elemGrp_%d_EGSidxBTB" %i)
                 elemGrps[i][EGSidxBTB9] = eval("self.elemGrp_%d_EGSidxBTB9" %i)
-                elemGrps[i][EGSidxSStf] = eval("self.elemGrp_%d_EGSidxSStf" %i)
+                elemGrps[i][EGSidxBTP] = eval("self.elemGrp_%d_EGSidxBTP" %i)
                 elemGrps[i][EGSidxTl1D] = eval("self.elemGrp_%d_EGSidxTl1D" %i)
                 elemGrps[i][EGSidxTl1R] = eval("self.elemGrp_%d_EGSidxTl1R" %i)
                 elemGrps[i][EGSidxTl2D] = eval("self.elemGrp_%d_EGSidxTl2D" %i)
@@ -228,6 +228,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxBTS9] = elemGrps[i][EGSidxBTS9].replace('*a','')
                 elemGrps[i][EGSidxBTB] = elemGrps[i][EGSidxBTB].replace('*a','')
                 elemGrps[i][EGSidxBTB9] = elemGrps[i][EGSidxBTB9].replace('*a','')
+                elemGrps[i][EGSidxBTP] = elemGrps[i][EGSidxBTP].replace('*a','')
 
             ### If different formula assistant ID from that stored in element group then update with defaults
             i = self.menu_selectedElemGrp

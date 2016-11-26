@@ -253,18 +253,23 @@ def combineExpressions():
                     except: Mpn = Mpn.replace(symbol, eval(symbol))
                     cnt += len(Mpn)
             
+            # Derive spring breaking threshold from tensile threshold x 2 for now, should have a custom ultimate steel strength input in the future
+            Sp = "(" +Np +")*2"
+            
             if qSymPy:
                 # Simplify formulas when SymPy module is available
                 Nn = str(sympy.simplify(Nn))
                 Np = str(sympy.simplify(Np))
                 Vpn = str(sympy.simplify(Vpn))
                 Mpn = str(sympy.simplify(Mpn))
+                Sp = str(sympy.simplify(Sp))
 
             if not qHWswapped:
                 elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
                 elemGrps[i][EGSidxBTT] = splitAndApplyPrecisionToFormula(Np)
                 elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
                 elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
+                elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
             else:
                 Vpn9 = splitAndApplyPrecisionToFormula(Vpn)
                 Mpn9 = splitAndApplyPrecisionToFormula(Mpn)
@@ -357,6 +362,9 @@ def combineExpressions():
                     try:    Mpn = Mpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
                     except: Mpn = Mpn.replace(symbol, eval(symbol))
                     cnt += len(Mpn)
+
+            # Derive spring breaking threshold from tensile threshold x 2 for now, should have a custom ultimate steel strength input in the future
+            Sp = "(" +Np +")*2"
             
             if qSymPy:
                 # Simplify formulas when SymPy module is available
@@ -364,12 +372,14 @@ def combineExpressions():
                 Np = str(sympy.simplify(Np))
                 Vpn = str(sympy.simplify(Vpn))
                 Mpn = str(sympy.simplify(Mpn))
+                Sp = str(sympy.simplify(Sp))
 
             if not qHWswapped:
                 elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
                 elemGrps[i][EGSidxBTT] = splitAndApplyPrecisionToFormula(Np)
                 elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
                 elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
+                elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
             else:
                 Vpn9 = splitAndApplyPrecisionToFormula(Vpn)
                 Mpn9 = splitAndApplyPrecisionToFormula(Mpn)

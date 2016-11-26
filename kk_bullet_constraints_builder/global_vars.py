@@ -35,21 +35,21 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 4, 6)
+bcb_version = (2, 4, 7)
 
 ### Customizable element group presets
 presets = [
-# 0                     1    2           3        4   5       6       7       8      9       10     11      12   13   14   15    16   17    18     19              20
-# Name                  RVP  Mat.preset  Density  CT  BTC     BTT     BTS     BTS90  BTB     BTB90  Stiff.  T1D. T1R. T2D. T2R.  Bev. Scale Facing F.Assist.+Data  Cyl
-[ "",                   1,   "Uncategorized", 2400, 3, "35",  "5.2",  "155",  "",    "1.0",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
-[ "Base",               1,   "Uncategorized", 1,    0, "0",   "0",    "0",    "",    "0",    "",        0,   0,   0,   0,   0,   0,   .95,  0,     "None",         0 ],
-[ "RC Columns",         1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
-[ "RC Walls",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
-[ "RC Slabs",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
-[ "Masonry Walls",      1,   "Masonry",  1800,    6,  "10",   "2",    "0.3",  "",    "0.3",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
-[ "I-Beams Screwed",    1,   "Steel",    7800,    6,  "47.5", "23.5", "14.1", "",    "2.4",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
-[ "I-Beams Screwed 2",  1,   "Steel",    7800,    6,  "87.5", "33.8", "20.3", "",    "12.3", "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
-[ "HSS-Beams Welded",   1,   "Steel",    7800,    6,  "37.5", "75",   "45",   "",    "6.6",  "",    10**6,  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ]
+# 0                     1    2           3        4   5       6       7       8      9       10     11       12   13   14   15    16   17    18     19              20
+# Name                  RVP  Mat.preset  Density  CT  BTC     BTT     BTS     BTS90  BTB     BTB90  BTP      T1D  T1R  T2D  T2R   Bev. Scale Facing F.Assist.+Data  Cyl
+[ "",                   1,   "Uncategorized", 2400, 3, "35",  "5.2",  "155",  "",    "1.0",  "",    "10.4",  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "Base",               1,   "Uncategorized", 1,    0, "0",   "0",    "0",    "",    "0",    "",    "0",      0,   0,   0,   0,   0,   .95,  0,     "None",         0 ],
+[ "RC Columns",         1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    "10.4",  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "RC Walls",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "10.4",  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "RC Slabs",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "10.4",  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "Masonry Walls",      1,   "Masonry",  1800,    6,  "10",   "2",    "0.3",  "",    "0.3",  "",    "4",     .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "I-Beams Screwed",    1,   "Steel",    7800,    6,  "47.5", "23.5", "14.1", "",    "2.4",  "",    "47",    .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "I-Beams Screwed 2",  1,   "Steel",    7800,    6,  "87.5", "33.8", "20.3", "",    "12.3", "",    "67.6",  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ],
+[ "HSS-Beams Welded",   1,   "Steel",    7800,    6,  "37.5", "75",   "45",   "",    "6.6",  "",    "150",   .1,  .2,  .2,  .8,   0,   .95,  0,     "None",         0 ]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 # Actual element group list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
@@ -70,7 +70,7 @@ EGSidxBTS  = 7    # Break.Thresh.Shear       | Real world material shearing brea
 EGSidxBTS9 = 8    # Break.Thresh.Shear 90
 EGSidxBTB  = 9    # Break.Thresh.Bend        | Real world material bending breaking threshold in N/mm^2.
 EGSidxBTB9 = 10   # Break.Thresh.Bend 90
-EGSidxSStf = 11   # Spring Stiffness         | Stiffness to be used for Generic Spring constraints. Maximum stiffness is highly depending on the constraint solver iteration count as well, which can be found in the Rigid Body World panel.
+EGSidxBTP  = 11   # Break.Thresh.Plastic     | Real world material ultimate tensile breaking threshold in N/mm^2. Also the stiffness for Generic Spring constraints is derived from that value.
 EGSidxTl1D = 12   # Tolerance 1st Def.Dist.  | For baking: First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %)
 EGSidxTl1R = 13   # Tolerance 1st Def.Rot.   | For baking: First deformation tolerance limit for angular change in radian for connection removal or plastic deformation
 EGSidxTl2D = 14   # Tolerance 2nd Def.Dist.  | For baking: Second deformation tolerance limit for distance change in percent for connection removal (1.00 = 100 %)
