@@ -498,15 +498,16 @@ def clearAllDataFromScene(scene):
         except: pass
         else:
             obj = objs[k]
-            if scale != 0 and scale != 1:
+            if obj != None and scale != 0 and scale != 1:
                 obj.scale /= scale
 
     print("Removing ID properties...")
     
     ### Clear object properties
     for obj in objs:
-        for key in obj.keys():
-            if "bcb_" in key: del obj[key]
+        if obj != None:
+            for key in obj.keys():
+                if "bcb_" in key: del obj[key]
 
     ### Remove ID property build data (leaves menu props in place)
     for key in scene.keys():
@@ -516,12 +517,12 @@ def clearAllDataFromScene(scene):
 
     ### Select modified elements for deletion from scene 
     for parentObj in parentTmpObjs:
-        try: parentObj.select = 1  # Try in case object has been deleted by user
-        except: pass
+        if parentObj != None:
+            parentObj.select = 1
     ### Select constraint empty objects for deletion from scene
     for emptyObj in emptyObjs:
-        try: emptyObj.select = 1  # Try in case object has been deleted by user
-        except: pass
+        if emptyObj != None:
+            emptyObj.select = 1
     
     if props.automaticMode and props.saveBackups:
         ### Quick and dirty delete function (faster but can cause problems on immediate rebuilding, requires saving and reloading first)
@@ -556,7 +557,8 @@ def clearAllDataFromScene(scene):
 
     ### Revert selection back to original state and clear ID properties from objects
     for obj in objs:
-        obj.select = 1
+        if obj != None:
+            obj.select = 1
 
     print('-- Time: %0.2f s' %(time.time()-time_start))
     print()
