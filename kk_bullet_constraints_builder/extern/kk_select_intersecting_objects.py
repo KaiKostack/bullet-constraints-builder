@@ -38,7 +38,7 @@ def run(source=None, parameters=None):
     ### Vars
     mode = 1              # 1   | Search mode: 1 = boundary boxes 
     searchDistance = .02  # .02 | Near distance limit (object centers in range of selected mesh's vertices)
-    minimumVolume = .01   # .01 | Minimum intersection volume, object pairs with a shared volume equal or above that value will be selected (0 = off)
+    minimumVolume = .0001 # .01 | Minimum intersection volume, object pairs with a shared volume equal or above that value will be selected (0 = off)
     encaseTol = 0         # .02 | Restricts one of the objects of a pair to be encased into the other by this specific tolerance (0 = off)
                           # This can help to avoid selection of objects whose boundary boxes are intersecting but are actually non-intersecting meshes
     qSelectByVertCnt = 0  # 1   | Prefer less vertices (= 1) over more for found object pairs (0 = off, 2 = more over less)
@@ -113,7 +113,7 @@ def run(source=None, parameters=None):
                 objB.modifiers.new(name="Displace", type='DISPLACE')
                 mod = objB.modifiers["Displace"]
                 mod.mid_level = 0
-                mod.strength = random.uniform(0, 0.001)
+                mod.strength = random.uniform(0.00001, 0.001)
 
                 ### Add boolean modifier to subtract B from A
                 bpy.context.scene.objects.active = objA
