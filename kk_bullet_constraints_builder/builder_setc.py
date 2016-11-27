@@ -399,7 +399,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             if not props.asciiExport:
                 objConst0 = emptyObjs[consts[0]]
                 tol2dist = _elemGrps_elemGrp[EGSidxTl2D]
-
+                
                 # Store value as ID property for debug purposes
                 for idx in consts: emptyObjs[idx]['ContactArea'] = geoContactArea
                 ### Check if full update is necessary (optimization)

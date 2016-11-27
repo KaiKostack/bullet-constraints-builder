@@ -369,6 +369,8 @@ def monitor_checkForChange(scene):
                         # Disable non-spring constraints for this connection
                         else: const.rigid_body_constraint.enabled = 0
                     if qPlastic:
+                        # Update distance in comparison list so we use the last elastic deformation
+                        connect[2] = distance
                         # Flag connection as being in plastic mode
                         connect[12] += 1
                         cntP += 1
