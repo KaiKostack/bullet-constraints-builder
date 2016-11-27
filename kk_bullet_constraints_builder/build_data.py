@@ -244,7 +244,7 @@ def getConfigDataFromScene(scene):
                     # Check if stored types are identical then copy stored data, otherwise fall back to preset default data.
                     # But do this only if one is a string type as numeric values can have different types, because they would convert like int to float.
                     # Next line means: if not type(elemGrpsProp[j][i]) == type("") xor type(presets[i][j]) == type(""):
-                    if not bool(type(elemGrpsProp[j][i]) == type("")) != bool(type(presets[i][j]) == type("")):
+                    if not bool(type(elemGrpsProp[j][i]) == type("")) != bool(type(presets[0][j]) == type("")):
                           column.append(elemGrpsProp[j][i])
                     else: column.append(presets[0][j])
                 else: column.append(dict(elemGrpsProp[j][i]).copy())
