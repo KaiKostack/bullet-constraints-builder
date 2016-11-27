@@ -108,29 +108,44 @@ def run(source=None, parameters=None):
                     volB = objB.dimensions[0] *objB.dimensions[1] *objB.dimensions[2]      
                     if volA < volB: objA, objB = objB, objA
                 
-                ### Add displacement modifier to B with a small random variation which can help to avoid boolean errors for exact overlapping geometry
+                ### Add triangulation modifier to A
+                bpy.context.scene.objects.active = objA
+                bpy.context.scene.objects.active.modifiers.new(name="Triangulate", type='TRIANGULATE')
+                mod = bpy.context.scene.objects.active.modifiers["Triangulate"]
+                mod.quad_method = 'BEAUTY'
+                # Apply modifier
+                try: bpy.ops.object.modifier_apply(apply_as='DATA', modifier=mod.name)
+                except: bpy.ops.object.modifier_remove(modifier=mod.name)
+                
+                ### Add triangulation modifier to B
                 bpy.context.scene.objects.active = objB
-                objB.modifiers.new(name="Displace", type='DISPLACE')
-                mod = objB.modifiers["Displace"]
+                bpy.context.scene.objects.active.modifiers.new(name="Triangulate", type='TRIANGULATE')
+                mod = bpy.context.scene.objects.active.modifiers["Triangulate"]
+                mod.quad_method = 'BEAUTY'
+
+                ### Add displacement modifier to B with a small random variation which can help to avoid boolean errors for exact overlapping geometry
+                bpy.context.scene.objects.active.modifiers.new(name="Displace", type='DISPLACE')
+                mod = bpy.context.scene.objects.active.modifiers["Displace"]
                 mod.mid_level = 0
                 mod.strength = random.uniform(0.00001, 0.001)
 
                 ### Add boolean modifier to subtract B from A
                 bpy.context.scene.objects.active = objA
-                objA.modifiers.new(name="Boolean_Intersect", type='BOOLEAN')
-                mod = objA.modifiers["Boolean_Intersect"]
+                bpy.context.scene.objects.active.modifiers.new(name="Boolean_Intersect", type='BOOLEAN')
+                mod = bpy.context.scene.objects.active.modifiers["Boolean_Intersect"]
                 mod.operation = 'DIFFERENCE'
                 try: mod.solver = 'CARVE'
                 except: pass
                 mod.object = objB
-                # Apply boolean modifier
+                # Apply modifier
                 try: bpy.ops.object.modifier_apply(apply_as='DATA', modifier=mod.name)
                 except: bpy.ops.object.modifier_remove(modifier=mod.name)
                 
-                # Remove displacement modifier
+                # Remove modifiers
                 bpy.context.scene.objects.active = objB
+                bpy.ops.object.modifier_remove(modifier="Triangulate")
                 bpy.ops.object.modifier_remove(modifier="Displace")
-
+               
                 count += 1
                 
             print('\nObjects modified (one per pair):', count)
