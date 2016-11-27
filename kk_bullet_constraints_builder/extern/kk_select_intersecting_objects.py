@@ -28,7 +28,7 @@
 
 debug = 0
 
-import bpy, sys, mathutils 
+import bpy, sys, mathutils, random
 from mathutils import *
 
 ################################################################################   
@@ -68,6 +68,7 @@ def run(source=None, parameters=None):
 
     print('\nStart detecting intersection objects...')
 
+    random.seed(0)
     bpy.context.tool_settings.mesh_select_mode = True, False, False 
     scene = bpy.context.scene
     if mode == 1:
@@ -94,10 +95,26 @@ def run(source=None, parameters=None):
             for k in range(len(connectsPair)):
                 objA = objs[connectsPair[k][0]]
                 objB = objs[connectsPair[k][1]]
-                
                 if qSelectA and not objA.select: objA.select = 1; count += 1
                 if qSelectB and not objB.select: objB.select = 1; count += 1
+
+                locA = objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                locB = objB.matrix_world.to_translation()
+                # Always subtract the higher located object from the lower one (based on centroids) so swap objects if necessary
+                if locA[2] > locB[2]: objA, objB = objB, objA
+                # In case of same Z location for both objects subtract the one with the smaller volume so swap objects if necessary
+                elif locA[2] == locB[2]:
+                    volA = objA.dimensions[0] *objA.dimensions[1] *objA.dimensions[2]      
+                    volB = objB.dimensions[0] *objB.dimensions[1] *objB.dimensions[2]      
+                    if volA < volB: objA, objB = objB, objA
                 
+                ### Add displacement modifier to B with a small random variation which can help to avoid boolean errors for exact overlapping geometry
+                bpy.context.scene.objects.active = objB
+                objB.modifiers.new(name="Displace", type='DISPLACE')
+                mod = objB.modifiers["Displace"]
+                mod.mid_level = 0
+                mod.strength = random.uniform(0, 0.001)
+
                 ### Add boolean modifier to subtract B from A
                 bpy.context.scene.objects.active = objA
                 objA.modifiers.new(name="Boolean_Intersect", type='BOOLEAN')
@@ -109,6 +126,11 @@ def run(source=None, parameters=None):
                 # Apply boolean modifier
                 try: bpy.ops.object.modifier_apply(apply_as='DATA', modifier=mod.name)
                 except: bpy.ops.object.modifier_remove(modifier=mod.name)
+                
+                # Remove displacement modifier
+                bpy.context.scene.objects.active = objB
+                bpy.ops.object.modifier_remove(modifier="Displace")
+
                 count += 1
                 
             print('\nObjects modified (one per pair):', count)
