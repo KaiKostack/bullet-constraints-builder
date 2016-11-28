@@ -143,7 +143,9 @@ class bcb_panel(bpy.types.Panel):
             split.prop(props, "preprocTools_grp", text="")
             box2 = split.box()
             box2.operator("bcb.tool_create_groups_from_names", icon="DOT")
-            row2 = box2.row(align=1); row2.prop(props, "preprocTools_grp_sep")
+            row2 = box2.row(align=1)
+            row2.prop(props, "preprocTools_grp_sep")
+            row2.prop(props, "preprocTools_grp_occ")
 
             row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_mod", text="")

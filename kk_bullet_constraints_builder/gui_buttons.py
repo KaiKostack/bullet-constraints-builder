@@ -456,6 +456,7 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
+        time_start = time.time()
         if props.preprocTools_grp: tool_createGroupsFromNames(scene); props.preprocTools_grp = 0
         if props.preprocTools_mod: tool_applyAllModifiers(scene); props.preprocTools_mod = 0
         if props.preprocTools_ctr: tool_centerModel(scene); props.preprocTools_ctr = 0
@@ -473,6 +474,8 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
                 # Throw warning
                 bpy.context.window_manager.bcb.message = "Warning: Some element intersections could not automatically be resolved, please review selected objects."
                 bpy.ops.bcb.report('INVOKE_DEFAULT')  # Create popup message box
+        print('-- Time total: %0.2f s' %(time.time()-time_start))
+        print()
 
         ###### Store menu config data in scene
         storeConfigDataInScene(scene)

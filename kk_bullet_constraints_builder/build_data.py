@@ -58,6 +58,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_preprocTools_gnd"] = props.preprocTools_gnd
 
     scene["bcb_prop_preprocTools_grp_sep"] = props.preprocTools_grp_sep
+    scene["bcb_prop_preprocTools_grp_occ"] = props.preprocTools_grp_occ
     scene["bcb_prop_preprocTools_dis_siz"] = props.preprocTools_dis_siz
     scene["bcb_prop_preprocTools_dis_jus"] = props.preprocTools_dis_jus
     scene["bcb_prop_preprocTools_int_bol"] = props.preprocTools_int_bol
@@ -149,6 +150,8 @@ def getConfigDataFromScene(scene):
 
     if "bcb_prop_preprocTools_grp_sep" in scene.keys():
         props.preprocTools_grp_sep = scene["bcb_prop_preprocTools_grp_sep"]
+    if "bcb_prop_preprocTools_grp_occ" in scene.keys():
+        props.preprocTools_grp_occ = scene["bcb_prop_preprocTools_grp_occ"]
     if "bcb_prop_preprocTools_dis_siz" in scene.keys():
         props.preprocTools_dis_siz = scene["bcb_prop_preprocTools_dis_siz"]
     if "bcb_prop_preprocTools_dis_jus" in scene.keys():

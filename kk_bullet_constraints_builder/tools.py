@@ -164,7 +164,9 @@ def tool_createGroupsFromNames(scene):
     for obj in objs:
         if props.preprocTools_grp_sep in obj.name:
             # grpName can also be ""
-            grpName = obj.name.rsplit(props.preprocTools_grp_sep, 1)[0]
+            if props.preprocTools_grp_occ:
+                  grpName = obj.name.split(props.preprocTools_grp_sep)[0]
+            else: grpName = obj.name.rsplit(props.preprocTools_grp_sep, 1)[0]
         # If name could not match the convention then add object to a default group
         else: grpName = ""
         # Actual linking into group happens here
