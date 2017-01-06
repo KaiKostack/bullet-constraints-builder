@@ -35,7 +35,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 4, 7)
+bcb_version = (2, 4, 8)
 
 ### Customizable element group presets
 presets = [
@@ -101,7 +101,11 @@ connectTypes = [           # Cnt C T S B S T T T T      CT
 [ "6x GENERIC",              6, [1,1,1,1,0,1,1,0,0]], # 15. Compressive, tensile, shearing XY and bending XY breaking thresholds
 [ "7x GENERIC",              7, [1,1,1,1,0,1,1,0,0]], # 16. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds
 [ "6x GENERIC + 3x SPRING",  9, [1,1,1,1,1,1,1,1,1]], # 17. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability
-[ "7x GENERIC + 3x SPRING", 10, [1,1,1,1,1,1,1,1,1]]  # 18. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability
+[ "7x GENERIC + 3x SPRING", 10, [1,1,1,1,1,1,1,1,1]], # 18. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability
+[ "1x FIXED + 1x SPRING",    2, [1,0,0,0,1,1,1,1,1]], # 19. Linear omni-directional + bending breaking threshold with plastic deformability
+[ "4x GENERIC + 1x SPRING",  5, [1,1,1,1,1,1,1,1,1]], # 20. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
+[ "6x GENERIC + 1x SPRING",  7, [1,1,1,1,1,1,1,1,1]], # 21. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability
+[ "7x GENERIC + 1x SPRING",  8, [1,1,1,1,1,1,1,1,1]]  # 22. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability
 ]
 # To add further connection types changes to following functions are necessary:
 # setConstraintSettings() and bcb_panel() for the UI

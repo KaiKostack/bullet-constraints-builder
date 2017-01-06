@@ -554,6 +554,13 @@ def clearAllDataFromScene(scene):
         print("to reduce waiting time they will just be marked for deletion (unlinked).")
         print("Please save and reload the blend file so that the database can clean up.")
         print("(Doing not so can cause problems on immediate rebuild and simulation.)")
+        ### Quick and dirty delete function (faster but can cause problems on immediate rebuilding, requires saving and reloading first)
+        # Delete (unlink) modified elements from scene 
+        for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
+        # Delete (unlink) constraint empty objects from scene
+        for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
+        # Unlink 'RigidBodyConstraints' group from scene so that the unlinked empties have no more users and will be discarted on saving
+        bpy.data.groups.remove(bpy.data.groups["RigidBodyConstraints"], do_unlink=True)
             
     # Set layers as in original scene
     scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
