@@ -138,7 +138,8 @@ def build():
 
             ###### No selected input found   
             else:
-                print('Please select at least two mesh objects to connect.')       
+                print('Please select at least two mesh objects to connect. Note that these objects')
+                print('also need rigid body set enabled, preprocessing tools can be used to do this.')       
                 print('Nothing done.')
                 return 1     
        

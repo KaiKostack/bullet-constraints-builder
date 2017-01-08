@@ -457,6 +457,7 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         time_start = time.time()
+        if props.preprocTools_rps: tool_runPythonScript(scene); props.preprocTools_rps = 0
         if props.preprocTools_grp: tool_createGroupsFromNames(scene); props.preprocTools_grp = 0
         if props.preprocTools_mod: tool_applyAllModifiers(scene); props.preprocTools_mod = 0
         if props.preprocTools_ctr: tool_centerModel(scene); props.preprocTools_ctr = 0
@@ -482,6 +483,20 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         props.menu_gotConfig = 1
         return{'FINISHED'}
 
+########################################
+
+class OBJECT_OT_bcb_tool_run_python_script(bpy.types.Operator):
+    bl_idname = "bcb.tool_run_python_script"
+    bl_label = "Run Python Script"
+    bl_description = "Executes a user-defined Python script for customizable automatization purposes (e.g. batch import or general scene management)."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_runPythonScript(scene)
+        props.preprocTools_aut = 0
+        props.preprocTools_rps = 0
+        return{'FINISHED'}
+    
 ########################################
 
 class OBJECT_OT_bcb_tool_create_groups_from_names(bpy.types.Operator):

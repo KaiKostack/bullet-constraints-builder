@@ -208,6 +208,7 @@ classes = [ \
     OBJECT_OT_bcb_tool_select_group,
 
     OBJECT_OT_bcb_tool_do_all_steps_at_once,
+    OBJECT_OT_bcb_tool_run_python_script,
     OBJECT_OT_bcb_tool_create_groups_from_names,
     OBJECT_OT_bcb_tool_apply_all_modifiers,
     OBJECT_OT_bcb_tool_center_model,

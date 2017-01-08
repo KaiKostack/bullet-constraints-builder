@@ -105,6 +105,25 @@ def tool_selectGroup(scene):
 
 ################################################################################
 
+def tool_runPythonScript(scene):
+
+    print("\nExecuting user-defined Python script...")
+
+    props = bpy.context.window_manager.bcb
+    if len(props.preprocTools_rps_nam) == 0: print("No script defined."); return
+
+    try: s = bpy.data.texts[props.preprocTools_rps_nam].as_string()
+    except: print("Script not found."); return
+
+    # Leave edit mode to make sure next operator works in object mode
+    try: bpy.ops.object.mode_set(mode='OBJECT') 
+    except: pass
+
+    result = exec(s)
+    print("Finished and returned:", result)
+    
+################################################################################
+
 def createElementGroup(grpName, presetNo=0):
     
     ### Create new element group

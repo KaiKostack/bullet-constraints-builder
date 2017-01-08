@@ -76,6 +76,7 @@ def build_fm():
     ### Create object to use the fracture modifier on
     bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), rotation=(0, 0, 0))
     ob = bpy.context.scene.objects.active
+    ob.data.use_auto_smooth = True
     ob.name = "BCB_export"
     ob.data.name = "BCB_export"
 

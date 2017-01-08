@@ -70,6 +70,7 @@ class bcb_props(bpy.types.PropertyGroup):
 
     ### Preprocessing tools properties
     preprocTools_aut = bool_(default=1, name="Run On Automatic Mode", description="Enables that preprocessing will be performed on Automatic Mode. To avoid accidental double execution, this will be disabled whenever a preprocessing tool is activated manually, but it can activated again at any time.")
+    preprocTools_rps = bool_(default=1)
     preprocTools_grp = bool_(default=1)
     preprocTools_mod = bool_(default=1)
     preprocTools_ctr = bool_(default=1)
@@ -80,6 +81,7 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_fix = bool_(default=1)
     preprocTools_gnd = bool_(default=1)
     
+    preprocTools_rps_nam = string_(name="Script Name",             default='', description="Enter the name of an existing Python script.")
     preprocTools_grp_sep = string_(name="Separator",               default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names.")
     preprocTools_grp_occ = bool_(name="First Occurrence",          default=1, description="Enables first occurrence search of the separator within an element name for cases when there are more than one separator included, if disabled the last occurrence is used.")
     preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.9, min=0.0, max=1000, description="Minimum dimension for an element for still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller down to 50%.")
@@ -111,7 +113,7 @@ class bcb_props(bpy.types.PropertyGroup):
     useAccurateArea = bool_(name="Accur. Contact Area Calculation",       default=0,                       description="Enables accurate contact area calculation using booleans for the cost of an slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.")
     nonManifoldThickness = float_(name="Non-solid Thickness",             default=0.1, min=0.0, max=10,    description="Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.")
     minimumElementSize = float_(name="Min. Element Size",                 default=0, min=0.0, max=10,      description="Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.")
-    automaticMode = bool_(name="Automatic Mode",                          default=0,                       description="Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore. After clicking Build these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene.")
+    automaticMode = bool_(name="Automatic Mode",                          default=0,                       description="Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore. After clicking Bake (not Build) these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene.")
     saveBackups = bool_(name="Backup",                                    default=0,                       description="Enables saving of a backup .blend file after each step for automatic mode, whereby the name of the new .blend ends with `_BCB´.")
     timeScalePeriod = int_(name="Time Scale Period",                      default=0, min=0, max=10000,     description="For baking: Use a different time scale for an initial period of the simulation until this many frames has passed (0 = disabled).")
     timeScalePeriodValue = float_(name="Initial Time Scale",              default=0.001, min=0.0, max=100, description="For baking: Use this time scale for the initial period of the simulation, after that it is switching back to default time scale and updating breaking thresholds accordingly during runtime.")
