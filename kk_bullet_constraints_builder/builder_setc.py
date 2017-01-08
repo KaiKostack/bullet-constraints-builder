@@ -29,14 +29,25 @@
 
 ################################################################################
 
-import bpy, mathutils, sys
+import bpy, mathutils, sys, copy
 from mathutils import Vector
 mem = bpy.app.driver_namespace
 
 ### Import submodules
 from global_vars import *      # Contains global variables
 from file_io import *          # Contains file input & output functions
+from tools import *            # Contains smaller independently working tools
 
+################################################################################
+
+def setAttribsOfConstraint(objConst, props):
+
+    ### Overwrite all attributes of the given constraint empty object with the values of the dictionary provided    
+    con = objConst.rigid_body_constraint
+    for prop in props.items():
+        attr = getattr(con, prop[0])
+        if attr != prop[1]: setattr(con, prop[0], prop[1])
+                                
 ################################################################################
 
 def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsConsts, connectsLoc, constsConnect, exData):
@@ -155,8 +166,20 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
     props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
     elemGrps = mem["elemGrps"]
-    
+    rbw_steps_per_second = scene.rigidbody_world.steps_per_second
+    rbw_time_scale = scene.rigidbody_world.time_scale
+
+    ### Prepare dictionary of element indices for faster item search (optimization)
+    objsDict = {}
+    for i in range(len(objs)):
+        objsDict[objs[i]] = i
+
     if props.asciiExport:
+        ### Unlink all elements from scene (speed optimization, rigid body settings will be lost)
+        #passiveObjs = []  # Backup RB type
+        #for obj in objs:
+        #    if obj.rigid_body.type == 'PASSIVE': passiveObjs.append(obj)
+        #    scene.objects.unlink(obj)
         ### Create temporary empty object (will only be used for exporting constraint settings)
         objConst = bpy.data.objects.new('Constraint', None)
         bpy.context.scene.objects.link(objConst)
@@ -174,13 +197,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         consts = connectsConsts[k]
         # Geometry array: [area, height, width, surfThick, axisNormal, axisHeight, axisWidth]
         # Height is always smaller than width
-        geoContactArea = connectsGeo[k][0]
-        geoHeight = connectsGeo[k][1]
-        geoWidth = connectsGeo[k][2]
-        geoSurfThick = connectsGeo[k][3]
-        geoAxisNormal = connectsGeo[k][4]
-        geoAxisHeight = connectsGeo[k][5]
-        geoAxisWidth = connectsGeo[k][6]
+        connectsGeo_k = connectsGeo[k]
+        geoContactArea = connectsGeo_k[0]
+        geoHeight = connectsGeo_k[1]
+        geoWidth = connectsGeo_k[2]
+        geoSurfThick = connectsGeo_k[3]
+        geoAxisNormal = connectsGeo_k[4]
+        geoAxisHeight = connectsGeo_k[5]
+        geoAxisWidth = connectsGeo_k[6]
         ax = [geoAxisNormal, geoAxisHeight, geoAxisWidth]
 
         ### Postponed geoContactArea calculation step from calculateContactAreaBasedOnBoundaryBoxesForPair() is being done now (update hack, could be better organized)
@@ -193,11 +217,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         h = geoHeight *1000
         w = geoWidth *1000
         s = geoSurfThick *1000
-                
-        objA = objs[connectsPair[k][0]]
-        objB = objs[connectsPair[k][1]]
-        elemGrpA = objsEGrp[objs.index(objA)]
-        elemGrpB = objsEGrp[objs.index(objB)]
+        
+        connectsPair_k = connectsPair[k]    
+        objA = objs[connectsPair_k[0]]
+        objB = objs[connectsPair_k[1]]
+        elemGrpA = objsEGrp[objsDict[objA]] 
+        elemGrpB = objsEGrp[objsDict[objB]]
         _elemGrps_elemGrpA = elemGrps[elemGrpA]
         _elemGrps_elemGrpB = elemGrps[elemGrpB]
 
@@ -414,7 +439,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 tol2dist = _elemGrps_elemGrp[EGSidxTl2D]
                 
                 # Store value as ID property for debug purposes
-                for idx in consts: emptyObjs[idx]['ContactArea'] = geoContactArea
+                #for idx in consts: emptyObjs[idx]['ContactArea'] = geoContactArea
                 ### Check if full update is necessary (optimization)
                 if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == CT: qUpdateComplete = 0
                 else: objConst0['ConnectType'] = CT; qUpdateComplete = 1
@@ -509,7 +534,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueC
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED')
             if props.asciiExport:
@@ -525,7 +550,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueC
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT')
             if props.asciiExport:
@@ -543,7 +568,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueC
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT')
             if props.asciiExport:
@@ -556,7 +581,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueB
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED')
             if props.asciiExport:
@@ -573,7 +598,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueC
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -599,7 +624,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueT
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -623,7 +648,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueT
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -645,7 +670,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueS
-            brkThres = value /scene.rigidbody_world.steps_per_second *correction /constCount 
+            brkThres = value /rbw_steps_per_second *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -669,7 +694,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueT
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -693,7 +718,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueS
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -715,7 +740,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueB
-            brkThres = value /scene.rigidbody_world.steps_per_second *correction /constCount 
+            brkThres = value /rbw_steps_per_second *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -747,7 +772,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -787,7 +812,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             if brkThresValueS9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
-                brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+                brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -820,7 +845,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-            brkThres = value /scene.rigidbody_world.steps_per_second *correction /constCount 
+            brkThres = value /rbw_steps_per_second *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -860,7 +885,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             if brkThresValueB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
-                brkThres = value /scene.rigidbody_world.steps_per_second *correction /constCount 
+                brkThres = value /rbw_steps_per_second *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -893,7 +918,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -933,7 +958,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             if brkThresValueB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
-                brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+                brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -954,7 +979,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
 
-            try: value = values[0]  # Use the smaller value from either standard or 90n° bending thresholds as base for torsion
+            try: value = values[0]  # Use the smaller value from either standard or 90n
             except: pass
             value *= .5  # Use 50% of the bending thresholds for torsion (we really need a formula for that)
 
@@ -968,7 +993,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 #                value = values[0]  # Find and use smaller value (to be used along h axis)
 #            value /= 2  # Use half of the smaller shearing breaking thresholds for torsion
 
-            brkThres = value /scene.rigidbody_world.steps_per_second *correction /constCount 
+            brkThres = value /rbw_steps_per_second *correction /constCount 
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
@@ -991,7 +1016,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             constCount = 3  # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
             value = brkThresValueP
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             springStiff = value *distObjAB /(correction *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(3):
@@ -1036,7 +1061,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             constCount = 4   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
             value = brkThresValueP
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             springStiff = value *distObjAB /(correction *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(4):
@@ -1085,7 +1110,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 objConst = emptyObjs[cIdx]
             else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
             value = brkThresValueP
-            brkThres = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             springStiff = value *distObjAB /(correction *tol2dist) /constCount
             ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
             setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
@@ -1111,11 +1136,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             constCount = 3   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
             value = brkThresValueC
-            brkThres1 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres1 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueT
-            brkThres2 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres2 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueS
-            brkThres3 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres3 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueP
             springStiff = value *distObjAB /(correction *tol2dist) /constCount
             # Loop through all constraints of this connection
@@ -1223,11 +1248,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             constCount = 4   # Divided by the count of constraints which are sharing the same degree of freedom
             radius = geoHeight /2
             value = brkThresValueC
-            brkThres1 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres1 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueT
-            brkThres2 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres2 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueS
-            brkThres3 = value /scene.rigidbody_world.steps_per_second *scene.rigidbody_world.time_scale *correction /constCount 
+            brkThres3 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueP
             springStiff = value *distObjAB /(correction *tol2dist) /constCount
             # Loop through all constraints of this connection
@@ -1377,5 +1402,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         bpy.ops.rigidbody.constraint_remove()
         # Delete temporary empty object
         scene.objects.unlink(objConst)
+        ### Relink all elements back into scene (speed optimization, rigid body settings are lost)
+        #for obj in objs:
+        #    obj.select = 1
+        #    scene.objects.link(obj)
+        ## Activate rigid bodies again because of the unlinking speed optimization in builder_setc.py the RB data is lost
+        #tool_enableRigidBodies(scene)
+        ## Restore RB type from backup (masses will be calculated later anyway)
+        #for obj in passiveObjs:
+        #    obj.rigid_body.type = 'PASSIVE'
         
     print()

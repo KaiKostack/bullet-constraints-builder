@@ -216,13 +216,12 @@ def build_fm():
         cProps = consts[i][j]
         cProp_index = j
         
-        #peek the type...
+        # Peek the type...
         type = cProps["type"]
         if type != "GENERIC_SPRING":
             noplastic -= 1
         
-        #ok first check whether the mi exists
-        #via is object in group (else its double)
+        # OK, first check whether the mi exists via is object in group (else it's double)
         try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], type)
         except: pass
         else:
@@ -237,10 +236,12 @@ def build_fm():
             con.name = name
                
             for p in cProps.items():
-                if p[0] not in {"name","type", "object1", "object2"}:
-                    #print("Set: ", p[0], p[1])
-                    setattr(con, p[0], p[1])
-            
+                if p[0] not in {"type", "object1", "object2"}:
+                    attr = getattr(con, p[0])
+                    if attr != p[1]:
+                        #print("Set: ", p[0], p[1])
+                        setattr(con, p[0], p[1])
+                
             #con.id = cProps["name"]
             #if con.type == 'GENERIC_SPRING':
             #    con.spring_stiffness_x = 1000000
@@ -263,7 +264,7 @@ def build_fm():
     #            con.breaking_distance = consts[i][ind][1] # this is normed to 0...1, odd... why not absolute ?
     #            con.breaking_angle = consts[i][ind][2] * math.pi
 
-    #clumsy, but could work: disable plastic globally, when no plastic has been found at all
+    # Clumsy, but could work: disable plastic globally, when no plastic has been found at all
     #if plastic_on == 0 and plastic_off == 0:
     #    for i in range(len(consts)):
     #        md.mesh_constraints[i].plastic_angle = -1

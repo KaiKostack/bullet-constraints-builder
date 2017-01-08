@@ -173,23 +173,14 @@ def getAttribsOfConstraint(objConst):
     props = {}
     for prop in con.bl_rna.properties:
         if not prop.is_hidden:
-            if prop.type == 'POINTER':
-                attr = getattr(con, prop.identifier)
-                props[prop.identifier] = None
-                if attr is not None:
-                    props[prop.identifier] = attr.name    
-            else:   props[prop.identifier] = getattr(con, prop.identifier)
+            if prop.identifier not in {"object1", "object2"}:
+                if prop.type == 'POINTER':
+                    attr = getattr(con, prop.identifier)
+                    props[prop.identifier] = None
+                    if attr is not None:
+                        props[prop.identifier] = attr.name    
+                else:   props[prop.identifier] = getattr(con, prop.identifier)
     return props
-        
-########################################
-
-def setAttribsOfConstraint(objConst, props):
-
-    ### Overwrite all attributes of the given constraint empty object with the values of the dictionary provided    
-    con = objConst.rigid_body_constraint    
-    for prop in props.items():
-        try: setattr(con, prop[0], prop[1])
-        except: print("Error: Failed to set attribute:", prop[0], prop[1])
         
 ########################################
 
