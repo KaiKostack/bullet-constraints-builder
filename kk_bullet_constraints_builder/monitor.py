@@ -79,6 +79,38 @@ def monitor_eventHandler(scene):
         ###### Function
         monitor_initBuffers(scene)
 
+        ### Set up warm up timer via gravity (taken from Fracture Modifier FM export module, original warm up method has been commented out for now)
+        if "Gravity" in bpy.data.actions.keys() and scene.animation_data.action != None:
+            # Delete previous gravity animation while preserving the end value
+            curve = scene.animation_data.action.fcurves.find(data_path="gravity", index=2)  
+            curveP = curve.keyframe_points[-1]
+            frame, value = curveP.co
+            #curve.keyframe_points.remove(curveP, fast=False)
+            bpy.data.actions.remove(bpy.data.actions["Gravity"])
+            bpy.context.scene.gravity[2] = value
+        if props.warmUpPeriod:
+            ### Create new gravity animation curve 0 to full strength
+            scene.animation_data_create()
+            scene.animation_data.action = bpy.data.actions.new(name="Gravity")
+            curve = scene.animation_data.action.fcurves.new(data_path="gravity", index=2)  
+            curve.keyframe_points.add(2)
+            frame = scene.frame_start
+            curveP = curve.keyframe_points[0]; curveP.co = frame, 0
+            curveP.handle_left = frame -props.warmUpPeriod/2, 0
+            curveP.handle_right = frame +props.warmUpPeriod/2, 0
+            #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
+            frame = scene.frame_start +props.warmUpPeriod
+            curveP = curve.keyframe_points[1]; curveP.co = frame, bpy.context.scene.gravity[2]
+            curveP.handle_left = frame -props.warmUpPeriod/2, bpy.context.scene.gravity[2]
+            curveP.handle_right = frame +props.warmUpPeriod/2, bpy.context.scene.gravity[2]
+            #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
+            ### Fix smooth curves as handles are not automatically being set correctly
+            # Stupid Blender design hack, enforcing context to be accepted by operators
+            #areaType_bak = bpy.context.area.type; bpy.context.area.type = 'GRAPH_EDITOR'
+            #bpy.ops.graph.handle_type(type='AUTO_CLAMPED')
+            # Alternative: bpy.ops.graph.clean(channels=True)
+            #bpy.context.area.type = areaType_bak
+
         ### Time scale correction with rebuild
         if props.timeScalePeriod:
             # Backup original time scale
@@ -310,7 +342,7 @@ def monitor_initBuffers(scene):
                         constsUseBrk.append(emptyObj.rigid_body_constraint.use_breaking)
                         constsBrkThres.append(emptyObj.rigid_body_constraint.breaking_threshold)
                         # Disable breakability for warm up time
-                        if props.warmUpPeriod: emptyObj.rigid_body_constraint.use_breaking = 0
+                        #if props.warmUpPeriod: emptyObj.rigid_body_constraint.use_breaking = 0
                         # Set initial mode state if plastic or not (activate plastic mode only if the connection constists exclusively of springs)
                         if emptyObj.rigid_body_constraint.type != 'GENERIC_SPRING': mode = 0
                     else:
@@ -409,13 +441,13 @@ def monitor_checkForChange(scene):
                     cntB += 1
 
         ### Enable original breakability for all constraints when warm up time is over
-        if props.warmUpPeriod:
-            if scene.frame_current == scene.frame_start +props.warmUpPeriod:
-                consts = connect[4]
-                constsUseBrk = connect[6]
-                for i in range(len(consts)):
-                    const = consts[i]
-                    const.rigid_body_constraint.use_breaking = constsUseBrk[i]
+#        if props.warmUpPeriod:
+#            if scene.frame_current == scene.frame_start +props.warmUpPeriod:
+#                consts = connect[4]
+#                constsUseBrk = connect[6]
+#                for i in range(len(consts)):
+#                    const = consts[i]
+#                    const.rigid_body_constraint.use_breaking = constsUseBrk[i]
            
     sys.stdout.write(" - Con: %di & %dp" %(d, e))
     if cntP > 0: sys.stdout.write(" | Plst: %d" %cntP)

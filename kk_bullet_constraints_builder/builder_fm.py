@@ -55,24 +55,38 @@ def build_fm():
         return
     consts = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
 
-    ### Set up warm up timer via gravity (not exactly the way it works via BCB build but it helps to stabilize the simulation anyway)
-    scene.animation_data_create()
-    scene.animation_data.action = bpy.data.actions.new(name="Gravity")
-    curve = scene.animation_data.action.fcurves.new(data_path="gravity", index=2)  
-    curve.keyframe_points.add(2)
-    frame = scene.frame_start
-    curveP = curve.keyframe_points[0]; curveP.co = frame, 0
-    curveP.handle_left = curveP.co; curveP.handle_right = curveP.co; curveP.handle_left_type = 'AUTO_CLAMPED'; curveP.handle_right_type = 'AUTO_CLAMPED'
-    frame = scene.frame_start +props.warmUpPeriod
-    curveP = curve.keyframe_points[1]; curveP.co = frame, -9.81
-    curveP.handle_left = curveP.co; curveP.handle_right = curveP.co; curveP.handle_left_type = 'AUTO_CLAMPED'; curveP.handle_right_type = 'AUTO_CLAMPED'
-    ### Fix smooth curves as handles are not automatically being set correctly
-    # Stupid Blender design hack, enforcing context to be accepted by operators
-    areaType_bak = bpy.context.area.type; bpy.context.area.type = 'GRAPH_EDITOR'
-    bpy.ops.graph.handle_type(type='AUTO_CLAMPED')
-    #bpy.ops.graph.clean(channels=True)
-    bpy.context.area.type = areaType_bak
-        
+    ### Set up warm up timer via gravity
+    if "Gravity" in bpy.data.actions.keys() and scene.animation_data.action != None:
+        # Delete previous gravity animation while preserving the end value
+        curve = scene.animation_data.action.fcurves.find(data_path="gravity", index=2)  
+        curveP = curve.keyframe_points[-1]
+        frame, value = curveP.co
+        #curve.keyframe_points.remove(curveP, fast=False)
+        bpy.data.actions.remove(bpy.data.actions["Gravity"])
+        bpy.context.scene.gravity[2] = value
+    if props.warmUpPeriod:
+        ### Create new gravity animation curve 0 to full strength
+        scene.animation_data_create()
+        scene.animation_data.action = bpy.data.actions.new(name="Gravity")
+        curve = scene.animation_data.action.fcurves.new(data_path="gravity", index=2)  
+        curve.keyframe_points.add(2)
+        frame = scene.frame_start
+        curveP = curve.keyframe_points[0]; curveP.co = frame, 0
+        curveP.handle_left = frame -props.warmUpPeriod/2, 0
+        curveP.handle_right = frame +props.warmUpPeriod/2, 0
+        #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
+        frame = scene.frame_start +props.warmUpPeriod
+        curveP = curve.keyframe_points[1]; curveP.co = frame, bpy.context.scene.gravity[2]
+        curveP.handle_left = frame -props.warmUpPeriod/2, bpy.context.scene.gravity[2]
+        curveP.handle_right = frame +props.warmUpPeriod/2, bpy.context.scene.gravity[2]
+        #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
+        ### Fix smooth curves as handles are not automatically being set correctly
+        # Stupid Blender design hack, enforcing context to be accepted by operators
+        #areaType_bak = bpy.context.area.type; bpy.context.area.type = 'GRAPH_EDITOR'
+        #bpy.ops.graph.handle_type(type='AUTO_CLAMPED')
+        # Alternative: bpy.ops.graph.clean(channels=True)
+        #bpy.context.area.type = areaType_bak
+    
     ### Create object to use the fracture modifier on
     bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), rotation=(0, 0, 0))
     ob = bpy.context.scene.objects.active
