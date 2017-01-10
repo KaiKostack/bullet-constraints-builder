@@ -55,8 +55,6 @@ def build():
         try: bpy.ops.object.mode_set(mode='OBJECT') 
         except: pass
         
-        exData = []
-
         #########################
         ###### Create new empties
         if not "bcb_objs" in scene.keys():
@@ -115,8 +113,6 @@ def build():
                             emptyObjs = [None for i in range(len(constsConnect))]  # if this is the case emptyObjs is filled with an empty array on None
                         ###### Bundling close empties into clusters, merge locations and count connections per cluster
                         if props.clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
-                        ###### Add constraint base settings to empties
-                        addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsConsts, connectsLoc, constsConnect, exData)
                         # Restore old layers state
                         scene.update()  # Required to update empty locations before layer switching
                         scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
@@ -162,7 +158,7 @@ def build():
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
                 if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
-                setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, connectsConsts, constsConnect, exData)
+                exData = setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect)
                 ### Restore old layers state
                 if not props.asciiExport:
                     scene.update()  # Required to update empty locations before layer switching
@@ -170,7 +166,7 @@ def build():
                 ###### Calculate mass for all mesh objects
                 calculateMass(scene, objs, objsEGrp, childObjs)
                 ###### Exporting data into internal ASCII text file
-                if props.asciiExport: exportDataToText(exData)
+                if props.asciiExport and exData != None: exportDataToText(exData)
             
                 if not props.asciiExport:
                     # Deselect all objects

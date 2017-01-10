@@ -166,73 +166,31 @@ def importConfigData(scene):
 
 ################################################################################   
 
-def getAttribsOfConstraint(objConst):
+def getAttribsOfConstraint(const):
 
     ### Create a dictionary of all attributes with values from the given constraint empty object    
-    con = objConst.rigid_body_constraint
     props = {}
-    for prop in con.bl_rna.properties:
+    for prop in const.bl_rna.properties:
         if not prop.is_hidden:
             if prop.identifier not in {"object1", "object2"}:
                 if prop.type == 'POINTER':
-                    attr = getattr(con, prop.identifier)
+                    attr = getattr(const, prop.identifier)
                     props[prop.identifier] = None
                     if attr is not None:
                         props[prop.identifier] = attr.name    
-                else:   props[prop.identifier] = getattr(con, prop.identifier)
+                else:   props[prop.identifier] = getattr(const, prop.identifier)
     return props
-        
+
 ########################################
 
-def export(exData, idx=None, objC=None, name=None, loc=None, obj1=None, obj2=None, tol1=None, tol2=None, rotm=None, rot=None, attr=None):
+def setAttribsOfConstraint(const, props):
 
-    ### Adds data to the export data array
-    # export(exData, idx=1, objC=objConst, name=1, loc=1, obj1=1, obj2=1, tol1=[tol1dist, tol1rot], tol2=[tol2dist, tol2rot], rotm=1, rot=1, attr=1)
-    
-    if idx == None:
-        exData.append([])
-        idx = len(exData) -1
-        for i in range(9):
-            exData[idx].append(None)
-    if name != None and objC != None: exData[idx][0] = objC.name
-    elif name != None:                exData[idx][0] = name
-    if loc != None and objC != None:  exData[idx][1] = objC.location.to_tuple()
-    elif loc != None:                 exData[idx][1] = loc
-    if obj1 != None and objC != None: exData[idx][2] = objC.rigid_body_constraint.object1.name
-    elif obj1 != None:                exData[idx][2] = obj1
-    if obj2 != None and objC != None: exData[idx][3] = objC.rigid_body_constraint.object2.name
-    elif obj2 != None:                exData[idx][3] = obj2
-    if tol1 != None and objC != None: exData[idx][4] = ["TOLERANCE", 0, 0]  # Undefined special case
-    elif tol1 != None:                exData[idx][4] = tol1                 # Should always get data
-    if tol2 != None and objC != None: exData[idx][5] = ["PLASTIC", 0, 0]  # Undefined special case
-    elif tol2 != None:                exData[idx][5] = tol2               # Should always get data
-    if rotm != None and objC != None: exData[idx][6] = objC.rotation_mode
-    elif rotm != None:                exData[idx][6] = rotm
-    if rot != None and objC != None:  exData[idx][7] = Vector(objC.rotation_quaternion).to_tuple()
-    elif rot != None:                 exData[idx][7] = rot
-    if attr != None and objC != None: exData[idx][8] = getAttribsOfConstraint(objC)
-    elif attr != None:                exData[idx][8] = attr
-
-    # Data structure ("[]" means not always present, will be None instead):
-    # 0 - empty.name
-    # 1 - empty.location
-    # 2 - obj1.name
-    # 3 - obj2.name
-    # 4 - [ ["TOLERANCE", tol1dist, tol1rot] ]
-    # 5 - [ ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot] ]
-    # 6 - [empty.rotation_mode]
-    # 7 - [empty.rotation_quaternion]
-    # 8 - empty.rigid_body_constraint (dictionary of attributes)
-    #
-    # Pseudo code for special constraint treatment:
-    #
-    # If tol1dist or tol1rot is exceeded:
-    #     If normal constraint: It will be detached
-    #     If spring constraint: It will be set to active
-    # If tol2dist or tol2rot is exceeded:
-    #     If spring constraint: It will be detached
-
-    return exData
+    ### Overwrite all attributes of the given constraint empty object with the values of the dictionary provided    
+    for prop in props.items():
+        try: attr = getattr(const, prop[0])
+        except: pass
+        else:
+            if attr != prop[1]: setattr(const, prop[0], prop[1])
 
 ########################################
 

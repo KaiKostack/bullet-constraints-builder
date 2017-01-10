@@ -35,6 +35,7 @@ mem = bpy.app.driver_namespace
 
 ### Import submodules
 from global_vars import *      # Contains global variables
+from file_io import *          # Contains file input & output functions
 
 ################################################################################
 
@@ -62,7 +63,7 @@ def build_fm():
         curveP = curve.keyframe_points[-1]
         frame, value = curveP.co
         #curve.keyframe_points.remove(curveP, fast=False)
-        bpy.data.actions.remove(bpy.data.actions["Gravity"])
+        bpy.data.actions.remove(bpy.data.actions["Gravity"], do_unlink=True)
         bpy.context.scene.gravity[2] = value
     if props.warmUpPeriod:
         ### Create new gravity animation curve 0 to full strength
@@ -157,8 +158,7 @@ def build_fm():
 
     ### Create mesh islands    
     objParent = None
-    for i in range(len(objs)):
-        obj = objs[i]
+    for obj in objs:
         if obj.name not in indexmap.keys():
             indexmap[obj.name] = md.mesh_islands.new(obj)
             #indexmap[objFM].rigidbody.use_margin = True
@@ -171,6 +171,19 @@ def build_fm():
     print('Time mesh islands: %0.2f s' %(time.time()-time_start))
     time_const = time.time()
     
+    ###### Constraints
+
+    ### Create temporary empty object to get the default attributes
+    objConst = bpy.data.objects.new('Constraint', None)
+    bpy.context.scene.objects.link(objConst)
+    bpy.context.scene.objects.active = objConst
+    bpy.ops.rigidbody.constraint_add()
+    cDef = getAttribsOfConstraint(objConst.rigid_body_constraint)
+    rot = objConst.rotation_quaternion
+    # Remove constraint settings and delete temporary empty object again
+    bpy.ops.rigidbody.constraint_remove()
+    scene.objects.unlink(objConst)
+
     ### Create constraints
     plastic_on = 0
     plastic_off = 0
@@ -178,20 +191,21 @@ def build_fm():
     for i in range(len(consts)):
         cProp_index = 0
         j = 0
+        # 0 - empty.location
         name = consts[i][j]
         j += 1
         
-        # 0 - empty.location
+        # 1 - empty.location
         pos = mathutils.Vector(consts[i][j])
         j += 1
         
-        # 1 - obj1.name
-        # 2 - obj2.name
+        # 2 - obj1.name
+        # 3 - obj2.name
         ob1 = consts[i][j]
         ob2 = consts[i][j+1]
         j += 2
         
-        # 3 - [ ["TOLERANCE", tol1dist, tol1rot] ]
+        # 4 - [ ["TOLERANCE", tol1dist, tol1rot] ]
         if consts[i][j] is not None and len(consts[i][j]) == 3 and consts[i][j][0] in {"TOLERANCE"}:
             breaking_distance = consts[i][j][1]
             breaking_angle = consts[i][j][2]
@@ -200,8 +214,8 @@ def build_fm():
             breaking_angle = -1
         j += 1
         
-        # 4 - [ ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot] ]
-        if consts[i][j] is not None and len(consts[i][j]) == 3 and consts[i][j][0] in {"PLASTIC", "PLASTIC_OFF"}: #ugh, variable length ?
+        # 5 - [ ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot] ]
+        if consts[i][j] is not None and len(consts[i][j]) == 3 and consts[i][j][0] in {"PLASTIC", "PLASTIC_OFF"}: # Ugh, variable length ?
             plastic_distance = consts[i][j][1]
             plastic_angle = consts[i][j][2]
             
@@ -218,22 +232,23 @@ def build_fm():
             noplastic += 1
         j += 1    
         
-        # 5 - [empty.rotation_mode]
-        # 6 - [empty.rotation_quaternion]
+        # 6 - [empty.rotation_mode]
+        # 7 - [empty.rotation_quaternion]
         if consts[i][j] == "QUATERNION":  # If no quaternion exists we assume no rotation is available
             rot = mathutils.Quaternion(consts[i][j+1])
         else:  # If None or EULER then no rotation is available
             rot = mathutils.Quaternion((1.0, 0.0, 0.0, 0.0))
         j += 2
                 
-        # 7 - empty.rigid_body_constraint (dictionary of attributes)
+        # 8 - empty.rigid_body_constraint (dictionary of attributes)
         cProps = consts[i][j]
         cProp_index = j
         
         # Peek the type...
-        type = cProps["type"]
-        if type != "GENERIC_SPRING":
-            noplastic -= 1
+        if "type" in cProps:
+            type = cProps["type"]
+            if type != "GENERIC_SPRING":
+                noplastic -= 1
         
         # OK, first check whether the mi exists via is object in group (else it's double)
         try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], type)
@@ -248,14 +263,23 @@ def build_fm():
             con.plastic_distance = plastic_distance
             con.plastic_angle = plastic_angle
             con.name = name
-               
+            
+            ### Write constraint defaults first (FM doesn't set constraint to Blender defaults)
+            for p in cDef.items():
+                if p[0] not in {"type", "object1", "object2"} \
+                and "bcb_" not in p[0]:        # Filter also custom BCB attributes
+                    attr = getattr(con, p[0])  # Current value
+                    if p[1] != attr:           # Overwrite only when different
+                        setattr(con, p[0], p[1])
+            ### Write own changed parameters (because it's a diff based on defaults)
             for p in cProps.items():
-                if p[0] not in {"type", "object1", "object2"}:
-                    attr = getattr(con, p[0])
-                    if attr != p[1]:
+                if p[0] not in {"type", "object1", "object2"} \
+                and "bcb_" not in p[0]:        # Filter also custom BCB attributes
+                    attr = getattr(con, p[0])  # Current value
+                    if p[1] != attr:           # Overwrite only when different
                         #print("Set: ", p[0], p[1])
                         setattr(con, p[0], p[1])
-                
+                            
             #con.id = cProps["name"]
             #if con.type == 'GENERIC_SPRING':
             #    con.spring_stiffness_x = 1000000

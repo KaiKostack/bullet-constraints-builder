@@ -37,131 +37,90 @@ mem = bpy.app.driver_namespace
 from global_vars import *      # Contains global variables
 from file_io import *          # Contains file input & output functions
 from tools import *            # Contains smaller independently working tools
-
+                            
 ################################################################################
 
-def setAttribsOfConstraint(objConst, props):
+def setConstParams(cData,cDef, name=None,loc=None,obj1=None,obj2=None,tol1=None,tol2=None,rotm=None,rot=None,
+    e=None,bt=None,ub=None,dc=None,ct=None,
+    ullx=None,ully=None,ullz=None,llxl=None,llxu=None,llyl=None,llyu=None,llzl=None,llzu=None,
+    ulax=None,ulay=None,ulaz=None,laxl=None,laxu=None,layl=None,layu=None,lazl=None,lazu=None,
+    uslx=None,usly=None,uslz=None,sdlx=None,sdly=None,sdlz=None,sslx=None,ssly=None,sslz=None,
+    usax=None,usay=None,usaz=None,sdax=None,sday=None,sdaz=None,ssax=None,ssay=None,ssaz=None):
 
-    ### Overwrite all attributes of the given constraint empty object with the values of the dictionary provided    
-    con = objConst.rigid_body_constraint
-    for prop in props.items():
-        attr = getattr(con, prop[0])
-        if attr != prop[1]: setattr(con, prop[0], prop[1])
-                                
-################################################################################
+    # setConstParams(cData,cDef, name,loc,obj1,obj2,tol1,tol2,rotm,rot, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
 
-def addBaseConstraintSettings(objs, emptyObjs, connectsPair, connectsConsts, connectsLoc, constsConnect, exData):
-    
-    ### Add base constraint settings to empties
-    print("Adding base constraint settings to empties... (%d)" %len(emptyObjs))
-    
-    props = bpy.context.window_manager.bcb
+    ### Base parameters (BCB specific)
+    if name != None: cData["bcb_name"] = name
+    if loc  != None: cData["bcb_loc"]  = loc
+    if obj1 != None: cData["bcb_obj1"] = obj1
+    if obj2 != None: cData["bcb_obj2"] = obj2
+    if tol1 != None: cData["bcb_tol1"] = tol1   # Should always get data
+    if tol2 != None: cData["bcb_tol2"] = tol2   # Should always get data
+    if rotm != None: cData["bcb_rotm"] = rotm
+    if rot  != None: cData["bcb_rot"]  = rot
 
-    ### Add further settings
-    for k in range(len(emptyObjs)):
-        sys.stdout.write('\r' +"%d" %k)
-        # Update progress bar
-        bpy.context.window_manager.progress_update(k /len(emptyObjs))
-
-        l = constsConnect[k]
-        if not props.asciiExport:
-            objConst = emptyObjs[k]
-            objConst.location = connectsLoc[l]
-            objConst.rigid_body_constraint.object1 = objs[connectsPair[l][0]]
-            objConst.rigid_body_constraint.object2 = objs[connectsPair[l][1]]
-        else:
-            export(exData, loc=connectsLoc[l].to_tuple(), obj1=objs[connectsPair[l][0]].name, obj2=objs[connectsPair[l][1]].name)
-              
-    ### Naming of the constraints according to their connection participation
-    for k in range(len(connectsPair)):
-        i = 1
-        for cIdx in connectsConsts[k]:
-            name = "Con.%03d.%d" %(k, i)
-            if not props.asciiExport: emptyObjs[cIdx].name = name
-            else:               export(exData, idx=cIdx, name=name)
-            i += 1
-            
-    print()
-                
-################################################################################
-
-def setConstParams(objConst, axs=None,e=None,bt=None,ub=None,dc=None,ct=None,
-    ullx=None,ully=None,ullz=None, llxl=None,llxu=None,llyl=None,llyu=None,llzl=None,llzu=None,
-    ulax=None,ulay=None,ulaz=None, laxl=None,laxu=None,layl=None,layu=None,lazl=None,lazu=None,
-    uslx=None,usly=None,uslz=None, sdlx=None,sdly=None,sdlz=None, sslx=None,ssly=None,sslz=None,
-    usax=None,usay=None,usaz=None, sdax=None,sday=None,sdaz=None, ssax=None,ssay=None,ssaz=None):
-    
-    # setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-
-    constData = objConst.rigid_body_constraint
-    
-    # Draw size
-    #objConst.object.empty_draw_type = 'CUBE'  # This is set before duplication for performance reasons
-    if axs != None:
-        objConst.empty_draw_size = .502  # Scale size slightly larger to make lines visible over solid elements
-        objConst.scale = axs  # Scale the cube to the dimensions of the connection area
-
+    ### Constraint attributes (compatible with Blender class)
     # s,e,bt,ub,dc,ct
-    if e != None: constData.enabled = e
-    if bt != None: constData.breaking_threshold = bt
-    if ub != None: constData.use_breaking = ub
-    if dc != None: constData.disable_collisions = dc
-    if ct != None: constData.type = ct
-
+    if e  != None and e  != cDef["enabled"]:            cData["enabled"] = e
+    if bt != None and bt != cDef["breaking_threshold"]: cData["breaking_threshold"] = bt
+    if ub != None and ub != cDef["use_breaking"]:       cData["use_breaking"] = ub
+    if dc != None and dc != cDef["disable_collisions"]: cData["disable_collisions"] = dc
+    if ct != None and ct != cDef["type"]:               cData["type"] = ct
+    
     # Limits Linear
     # ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu
-    if ullx != None: constData.use_limit_lin_x = ullx
-    if ully != None: constData.use_limit_lin_y = ully
-    if ullz != None: constData.use_limit_lin_z = ullz
-    if llxl != None: constData.limit_lin_x_lower = llxl
-    if llxu != None: constData.limit_lin_x_upper = llxu
-    if llyl != None: constData.limit_lin_y_lower = llyl
-    if llyu != None: constData.limit_lin_y_upper = llyu
-    if llzl != None: constData.limit_lin_z_lower = llzl
-    if llzu != None: constData.limit_lin_z_upper = llzu
+    if ullx != None and ullx != cDef["use_limit_lin_x"]:   cData["use_limit_lin_x"] = ullx
+    if ully != None and ully != cDef["use_limit_lin_y"]:   cData["use_limit_lin_y"] = ully
+    if ullz != None and ullz != cDef["use_limit_lin_z"]:   cData["use_limit_lin_z"] = ullz
+    if llxl != None and llxl != cDef["limit_lin_x_lower"]: cData["limit_lin_x_lower"] = llxl
+    if llxu != None and llxu != cDef["limit_lin_x_upper"]: cData["limit_lin_x_upper"] = llxu
+    if llyl != None and llyl != cDef["limit_lin_y_lower"]: cData["limit_lin_y_lower"] = llyl
+    if llyu != None and llyu != cDef["limit_lin_y_upper"]: cData["limit_lin_y_upper"] = llyu
+    if llzl != None and llzl != cDef["limit_lin_z_lower"]: cData["limit_lin_z_lower"] = llzl
+    if llzu != None and llzu != cDef["limit_lin_z_upper"]: cData["limit_lin_z_upper"] = llzu
 
     # Limits Angular
     # ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu
-    if ulax != None: constData.use_limit_ang_x = ulax
-    if ulay != None: constData.use_limit_ang_y = ulay
-    if ulaz != None: constData.use_limit_ang_z = ulaz
-    if laxl != None: constData.limit_ang_x_lower = laxl
-    if laxu != None: constData.limit_ang_x_upper = laxu
-    if layl != None: constData.limit_ang_y_lower = layl
-    if layu != None: constData.limit_ang_y_upper = layu
-    if lazl != None: constData.limit_ang_z_lower = lazl
-    if lazu != None: constData.limit_ang_z_upper = lazu
+    if ulax != None and ulax != cDef["use_limit_ang_x"]:   cData["use_limit_ang_x"] = ulax
+    if ulay != None and ulay != cDef["use_limit_ang_y"]:   cData["use_limit_ang_y"] = ulay
+    if ulaz != None and ulaz != cDef["use_limit_ang_z"]:   cData["use_limit_ang_z"] = ulaz
+    if laxl != None and laxl != cDef["limit_ang_x_lower"]: cData["limit_ang_x_lower"] = laxl
+    if laxu != None and laxu != cDef["limit_ang_x_upper"]: cData["limit_ang_x_upper"] = laxu
+    if layl != None and layl != cDef["limit_ang_y_lower"]: cData["limit_ang_y_lower"] = layl
+    if layu != None and layu != cDef["limit_ang_y_upper"]: cData["limit_ang_y_upper"] = layu
+    if lazl != None and lazl != cDef["limit_ang_z_lower"]: cData["limit_ang_z_lower"] = lazl
+    if lazu != None and lazu != cDef["limit_ang_z_upper"]: cData["limit_ang_z_upper"] = lazu
 
     # Spring Linear
     # uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz
-    if uslx != None: constData.use_spring_x = uslx
-    if usly != None: constData.use_spring_y = usly
-    if uslz != None: constData.use_spring_z = uslz
-    if sdlx != None: constData.spring_damping_x = sdlx
-    if sdly != None: constData.spring_damping_y = sdly
-    if sdlz != None: constData.spring_damping_z = sdlz
-    if sslx != None: constData.spring_stiffness_x = sslx
-    if ssly != None: constData.spring_stiffness_y = ssly
-    if sslz != None: constData.spring_stiffness_z = sslz
+    if uslx != None and uslx != cDef["use_spring_x"]:       cData["use_spring_x"] = uslx
+    if usly != None and usly != cDef["use_spring_y"]:       cData["use_spring_y"] = usly
+    if uslz != None and uslz != cDef["use_spring_z"]:       cData["use_spring_z"] = uslz
+    if sdlx != None and sdlx != cDef["spring_damping_x"]:   cData["spring_damping_x"] = sdlx
+    if sdly != None and sdly != cDef["spring_damping_y"]:   cData["spring_damping_y"] = sdly
+    if sdlz != None and sdlz != cDef["spring_damping_z"]:   cData["spring_damping_z"] = sdlz
+    if sslx != None and sslx != cDef["spring_stiffness_x"]: cData["spring_stiffness_x"] = sslx
+    if ssly != None and ssly != cDef["spring_stiffness_y"]: cData["spring_stiffness_y"] = ssly
+    if sslz != None and sslz != cDef["spring_stiffness_z"]: cData["spring_stiffness_z"] = sslz
     
     # Spring Angular
     # usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz
-    if usax != None: constData.use_spring_ang_x = usax
-    if usay != None: constData.use_spring_ang_y = usay
-    if usaz != None: constData.use_spring_ang_z = usaz
-    if sdax != None: constData.spring_damping_ang_x = sdax
-    if sday != None: constData.spring_damping_ang_y = sday
-    if sdaz != None: constData.spring_damping_ang_z = sdaz
-    if ssax != None: constData.spring_stiffness_ang_x = ssax
-    if ssay != None: constData.spring_stiffness_ang_y = ssay
-    if ssaz != None: constData.spring_stiffness_ang_z = ssaz
+    if usax != None and usax != cDef["use_spring_ang_x"]:       cData["use_spring_ang_x"] = usax
+    if usay != None and usay != cDef["use_spring_ang_y"]:       cData["use_spring_ang_y"] = usay
+    if usaz != None and usaz != cDef["use_spring_ang_z"]:       cData["use_spring_ang_z"] = usaz
+    if sdax != None and sdax != cDef["spring_damping_ang_x"]:   cData["spring_damping_ang_x"] = sdax
+    if sday != None and sday != cDef["spring_damping_ang_y"]:   cData["spring_damping_ang_y"] = sday
+    if sdaz != None and sdaz != cDef["spring_damping_ang_z"]:   cData["spring_damping_ang_z"] = sdaz
+    if ssax != None and ssax != cDef["spring_stiffness_ang_x"]: cData["spring_stiffness_ang_x"] = ssax
+    if ssay != None and ssay != cDef["spring_stiffness_ang_y"]: cData["spring_stiffness_ang_y"] = ssay
+    if ssaz != None and ssaz != cDef["spring_stiffness_ang_z"]: cData["spring_stiffness_ang_z"] = ssaz
 
 ########################################
     
-def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, connectsConsts, constsConnect, exData):
+def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect):
     
     ### Set constraint settings
-    print("Adding main constraint settings... (%d)" %len(connectsPair))
+    print("Generating main constraint settings... (%d)" %len(connectsPair))
     
     props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
@@ -174,37 +133,51 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
     for i in range(len(objs)):
         objsDict[objs[i]] = i
 
+    ### Allocate export data array and reserve sufficient space
     if props.asciiExport:
-        ### Unlink all elements from scene (speed optimization, rigid body settings will be lost)
-        #passiveObjs = []  # Backup RB type
-        #for obj in objs:
-        #    if obj.rigid_body.type == 'PASSIVE': passiveObjs.append(obj)
-        #    scene.objects.unlink(obj)
-        ### Create temporary empty object (will only be used for exporting constraint settings)
-        objConst = bpy.data.objects.new('Constraint', None)
-        bpy.context.scene.objects.link(objConst)
-        objConst.empty_draw_type = 'SPHERE'
-        bpy.context.scene.objects.active = objConst
-        bpy.ops.rigidbody.constraint_add()
-        constSettingsBak = getAttribsOfConstraint(objConst)
+        exData = []
+        for objConst in emptyObjs:
+            exData.append([])
+            cExData = exData[-1]
+            for i in range(9):
+                cExData.append(None)
 
-    count = 0
+    ### Create temporary empty object to get the default attributes
+    objConst = bpy.data.objects.new('Constraint', None)
+    bpy.context.scene.objects.link(objConst)
+    bpy.context.scene.objects.active = objConst
+    bpy.ops.rigidbody.constraint_add()
+    cDef = getAttribsOfConstraint(objConst.rigid_body_constraint)
+    rot = objConst.rotation_quaternion
+    # Remove constraint settings and delete temporary empty object again
+    bpy.ops.rigidbody.constraint_remove()
+    scene.objects.unlink(objConst)
+
+    ### Generate settings and prepare the attributes but only store those which are different from the defaults
+    constsData = []
+    connectsConsts_iter = iter(connectsConsts)
+    connectsLoc_iter = iter(connectsLoc)
+    connectsGeo_iter = iter(connectsGeo)
+    connectsPair_iter = iter(connectsPair)
     for k in range(len(connectsPair)):
         sys.stdout.write('\r' +"%d" %k)
         # Update progress bar
         bpy.context.window_manager.progress_update(k /len(connectsPair))
         
-        consts = connectsConsts[k]
+        pair = next(connectsPair_iter)   
+        consts = next(connectsConsts_iter)
+        loc = Vector(next(connectsLoc_iter))
+        geo = next(connectsGeo_iter)
+        
         # Geometry array: [area, height, width, surfThick, axisNormal, axisHeight, axisWidth]
         # Height is always smaller than width
-        connectsGeo_k = connectsGeo[k]
-        geoContactArea = connectsGeo_k[0]
-        geoHeight = connectsGeo_k[1]
-        geoWidth = connectsGeo_k[2]
-        geoSurfThick = connectsGeo_k[3]
-        geoAxisNormal = connectsGeo_k[4]
-        geoAxisHeight = connectsGeo_k[5]
-        geoAxisWidth = connectsGeo_k[6]
+        geoContactArea = geo[0]
+        geoHeight = geo[1]
+        geoWidth = geo[2]
+        geoSurfThick = geo[3]
+        geoAxisNormal = geo[4]
+        geoAxisHeight = geo[5]
+        geoAxisWidth = geo[6]
         ax = [geoAxisNormal, geoAxisHeight, geoAxisWidth]
 
         ### Postponed geoContactArea calculation step from calculateContactAreaBasedOnBoundaryBoxesForPair() is being done now (update hack, could be better organized)
@@ -218,29 +191,28 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         w = geoWidth *1000
         s = geoSurfThick *1000
         
-        connectsPair_k = connectsPair[k]    
-        objA = objs[connectsPair_k[0]]
-        objB = objs[connectsPair_k[1]]
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
         elemGrpA = objsEGrp[objsDict[objA]] 
         elemGrpB = objsEGrp[objsDict[objB]]
-        _elemGrps_elemGrpA = elemGrps[elemGrpA]
-        _elemGrps_elemGrpB = elemGrps[elemGrpB]
+        elemGrps_elemGrpA = elemGrps[elemGrpA]
+        elemGrps_elemGrpB = elemGrps[elemGrpB]
 
         ###### Decision of which material settings from both groups will be used for connection
 
-        CT_A = _elemGrps_elemGrpA[EGSidxCTyp]
-        CT_B = _elemGrps_elemGrpB[EGSidxCTyp]
+        CT_A = elemGrps_elemGrpA[EGSidxCTyp]
+        CT_B = elemGrps_elemGrpB[EGSidxCTyp]
 
         # A is active group
         if CT_A != 0:
             ### Prepare expression strings
-            brkThresExprC_A = _elemGrps_elemGrpA[EGSidxBTC]
-            brkThresExprT_A = _elemGrps_elemGrpA[EGSidxBTT]
-            brkThresExprS_A = _elemGrps_elemGrpA[EGSidxBTS]
-            brkThresExprS9_A = _elemGrps_elemGrpA[EGSidxBTS9]
-            brkThresExprB_A = _elemGrps_elemGrpA[EGSidxBTB]
-            brkThresExprB9_A = _elemGrps_elemGrpA[EGSidxBTB9]
-            brkThresExprP_A = _elemGrps_elemGrpA[EGSidxBTP]
+            brkThresExprC_A = elemGrps_elemGrpA[EGSidxBTC]
+            brkThresExprT_A = elemGrps_elemGrpA[EGSidxBTT]
+            brkThresExprS_A = elemGrps_elemGrpA[EGSidxBTS]
+            brkThresExprS9_A = elemGrps_elemGrpA[EGSidxBTS9]
+            brkThresExprB_A = elemGrps_elemGrpA[EGSidxBTB]
+            brkThresExprB9_A = elemGrps_elemGrpA[EGSidxBTB9]
+            brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
             ### Add surface variable
             if len(brkThresExprC_A): brkThresExprC_A += "*a"
             if len(brkThresExprT_A): brkThresExprT_A += "*a"
@@ -279,13 +251,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         # B is active group
         if CT_B != 0:
             ### Prepare expression strings
-            brkThresExprC_B = _elemGrps_elemGrpB[EGSidxBTC]
-            brkThresExprT_B = _elemGrps_elemGrpB[EGSidxBTT]
-            brkThresExprS_B = _elemGrps_elemGrpB[EGSidxBTS]
-            brkThresExprS9_B = _elemGrps_elemGrpB[EGSidxBTS9]
-            brkThresExprB_B = _elemGrps_elemGrpB[EGSidxBTB]
-            brkThresExprB9_B = _elemGrps_elemGrpB[EGSidxBTB9]
-            brkThresExprP_B = _elemGrps_elemGrpB[EGSidxBTP]
+            brkThresExprC_B = elemGrps_elemGrpB[EGSidxBTC]
+            brkThresExprT_B = elemGrps_elemGrpB[EGSidxBTT]
+            brkThresExprS_B = elemGrps_elemGrpB[EGSidxBTS]
+            brkThresExprS9_B = elemGrps_elemGrpB[EGSidxBTS9]
+            brkThresExprB_B = elemGrps_elemGrpB[EGSidxBTB]
+            brkThresExprB9_B = elemGrps_elemGrpB[EGSidxBTB9]
+            brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
             ### Add surface variable
             if len(brkThresExprC_B): brkThresExprC_B += "*a"
             if len(brkThresExprT_B): brkThresExprT_B += "*a"
@@ -324,11 +296,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         # Both A and B are active groups
         if CT_A != 0 and CT_B != 0:
             # Area correction calculation for cylinders (*pi/4)
-            if _elemGrps_elemGrpA[EGSidxCyln] or _elemGrps_elemGrpB[EGSidxCyln]: a *= 0.7854
+            if elemGrps_elemGrpA[EGSidxCyln] or elemGrps_elemGrpB[EGSidxCyln]: a *= 0.7854
 
             ### Use the connection type with the smaller count of constraints for connection between different element groups
             ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-            if connectTypes[_elemGrps_elemGrpA[EGSidxCTyp]][1] <= connectTypes[_elemGrps_elemGrpB[EGSidxCTyp]][1]:
+            if connectTypes[elemGrps_elemGrpA[EGSidxCTyp]][1] <= connectTypes[elemGrps_elemGrpB[EGSidxCTyp]][1]:
                 CT = CT_A
                 elemGrp = elemGrpA
             else:
@@ -396,7 +368,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         # Only A is active and B is passive group
         elif CT_A != 0 and CT_B == 0:
             # Area correction calculation for cylinders (*pi/4)
-            if _elemGrps_elemGrpA[EGSidxCyln]: a *= 0.7854
+            if elemGrps_elemGrpA[EGSidxCyln]: a *= 0.7854
             CT = CT_A
             elemGrp = elemGrpA
             brkThresValueC = brkThresValueC_A
@@ -412,7 +384,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         # Only B is active and A is passive group
         elif CT_A == 0 and CT_B != 0:
             # Area correction calculation for cylinders (*pi/4)
-            if _elemGrps_elemGrpB[EGSidxCyln]: a *= 0.7854
+            if elemGrps_elemGrpB[EGSidxCyln]: a *= 0.7854
             CT = CT_B
             elemGrp = elemGrpB
             brkThresValueC = brkThresValueC_B
@@ -432,11 +404,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
         ######
         
         if CT > 0:
-            _elemGrps_elemGrp = elemGrps[elemGrp]
+            elemGrps_elemGrp = elemGrps[elemGrp]
 
             if not props.asciiExport:
                 objConst0 = emptyObjs[consts[0]]
-                tol2dist = _elemGrps_elemGrp[EGSidxTl2D]
+                tol2dist = elemGrps_elemGrp[EGSidxTl2D]
                 
                 # Store value as ID property for debug purposes
                 #for idx in consts: emptyObjs[idx]['ContactArea'] = geoContactArea
@@ -444,19 +416,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == CT: qUpdateComplete = 0
                 else: objConst0['ConnectType'] = CT; qUpdateComplete = 1
             else:
-                objConst0 = objConst
-                tol1dist = _elemGrps_elemGrp[EGSidxTl1D]
-                tol1rot = _elemGrps_elemGrp[EGSidxTl1R]
-                tol2dist = _elemGrps_elemGrp[EGSidxTl2D]
-                tol2rot = _elemGrps_elemGrp[EGSidxTl2R]
-
-                objConst.rotation_mode = 'XYZ'  # Overwrite temporary object to default (Euler)
-                cIdx = consts[0]
-                objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
-                # This is not nice as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
+                tol1dist = elemGrps_elemGrp[EGSidxTl1D]
+                tol1rot = elemGrps_elemGrp[EGSidxTl1R]
+                tol2dist = elemGrps_elemGrp[EGSidxTl2D]
+                tol2rot = elemGrps_elemGrp[EGSidxTl2R]
                 qUpdateComplete = 1
-            centerLoc = objConst0.location.copy()
 
             ### Calculate orientation between the two elements
             # Center to center orientation
@@ -527,243 +491,185 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 
         ### 1x FIXED; Linear omni-directional + bending breaking threshold
         if CT == 1 or CT == 9 or CT == 10 or CT == 19:
-            correction = 1  # No correction required for this constraint type
-            constCount = 1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            constCount = 1; correction = 1  # No correction required for this constraint type
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED')
+            setConstParams(cData,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED')
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
-                
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
+            constsData.append(cData)
+
         ### 1x POINT; Linear omni-directional breaking threshold
         if CT == 2:
-            correction = 1  # No correction required for this constraint type
-            constCount = 1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            constCount = 1; correction = 1  # No correction required for this constraint type
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT')
+            setConstParams(cData,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT')
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
+            constsData.append(cData)
         
         ### 1x POINT + 1x FIXED; Linear omni-directional, bending breaking thresholds    
         if CT == 3:
-            correction = 1  # No correction required for this constraint type
-            constCount = 2  # As both constraints bear all load and forces are evenly distributed among them the breaking thresholds need to be divided by their count to compensate
-
+            constCount = 2; correction = 1  # No correction required for this constraint type
+            
             ### First constraint
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT')
+            setConstParams(cData,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT')
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
+            constsData.append(cData)
 
             ### Second constraint
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueB
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED')
+            setConstParams(cData,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED')
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
+            constsData.append(cData)
         
         ### 1x GENERIC; Compressive threshold
         if CT == 4 or CT == 5 or CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 20 or CT == 21 or CT == 22:
             ### First constraint
-            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-            constCount = 1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock all directions for the compressive force
                 ### I left Y and Z unlocked because for this CT we have no separate breaking threshold for lateral force, the tensile constraint and its breaking threshold should apply for now
                 ### Also rotational forces should only be carried by the tensile constraint
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0)
+                setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation to that vector
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
+            constsData.append(cData)
 
         ### 1x GENERIC; Tensile (3D)
         if CT == 4:
             ### Second constraint
-            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-            constCount = 1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock all directions for the tensile force
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
+            constsData.append(cData)
             
         ### 2x GENERIC; Tensile + shearing (3D), bending (3D) breaking thresholds
         if CT == 5:
             ### Tensile + shearing constraint (3D)
-            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-            constCount = 1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock directions for shearing force
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
+            constsData.append(cData)
 
             ### Bending constraint (3D)
-            correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
-            constCount = 1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            constCount = 1; correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueS
             brkThres = value /rbw_steps_per_second *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock directions for bending force
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
             
         ### 3x GENERIC; Tensile constraint (1D) breaking threshold
         if CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 20 or CT == 21 or CT == 22:
             ### Tensile constraint (1D)
-            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-            constCount = 1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock direction for tensile force
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0)
+                setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
 
         ### 3x GENERIC; Shearing constraint (2D), bending constraint (3D) breaking thresholds
         if CT == 6 or CT == 11 or CT == 12 or CT == 20:
             ### Shearing constraint (2D)
-            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-            constCount = 1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueS
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock directions for shearing force
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, ct='GENERIC', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
 
             ### Bending constraint (3D)
-            correction = 1
-            constCount = 1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            constCount = 1; correction = 1
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueB
             brkThres = value /rbw_steps_per_second *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock directions for bending force
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
 
         ### 2x GENERIC; Shearing (1D) breaking thresholds
         if CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 21 or CT == 22:
-            correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-            constCount = 1
-
+            constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+            
             ### Shearing constraint #1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueS
             if brkThresValueS9 != -1:
                 value1 = value
@@ -773,12 +679,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
-                matInv = objConst.rotation_quaternion.to_matrix().inverted()
+                matInv = rot.to_matrix().inverted()
                 if geoAxisHeight == 1:   vecAxis = Vector((1, 0, 0))
                 elif geoAxisHeight == 2: vecAxis = Vector((0, 1, 0))
                 else:                    vecAxis = Vector((0, 0, 1))
@@ -796,47 +701,39 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
                     else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                if constAxisToLock == 2:   setConstParams(objConst, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
-                elif constAxisToLock == 3: setConstParams(objConst, ct='GENERIC', ully=0,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                if constAxisToLock == 2:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                elif constAxisToLock == 3: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=0,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
 
             ### Shearing constraint #2
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             if brkThresValueS9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
-                elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ully=0,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                if constAxisToLock == 3:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                elif constAxisToLock == 2: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=0,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
             
         ### 2x GENERIC; Bending + torsion (1D) breaking thresholds
         if CT == 15 or CT == 17 or CT == 21:
-            correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
-            constCount = 1
-
+            constCount = 1; correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
+            
             ### Bending with torsion constraint #1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueB
             if brkThresValueB9 != -1:
                 value1 = value
@@ -846,12 +743,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             brkThres = value /rbw_steps_per_second *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
-                matInv = objConst.rotation_quaternion.to_matrix().inverted()
+                matInv = rot.to_matrix().inverted()
                 if geoAxisHeight == 1:   vecAxis = Vector((1, 0, 0))
                 elif geoAxisHeight == 2: vecAxis = Vector((0, 1, 0))
                 else:                    vecAxis = Vector((0, 0, 1))
@@ -869,47 +765,39 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
                     else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                if constAxisToLock == 2:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-                elif constAxisToLock == 3: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 2:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                elif constAxisToLock == 3: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
 
             ### Bending with torsion constraint #2
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             if brkThresValueB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = value /rbw_steps_per_second *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-                elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 3:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                elif constAxisToLock == 2: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
 
         ### 3x GENERIC; Bending (1D), torsion (1D) breaking thresholds
         if CT == 16 or CT == 18 or CT == 22:
-            correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
-            constCount = 1
-
+            constCount = 1; correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
+            
             ### Bending without torsion constraint #1
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueB
             if brkThresValueB9 != -1:
                 value1 = value
@@ -919,12 +807,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
-                matInv = objConst.rotation_quaternion.to_matrix().inverted()
+                matInv = rot.to_matrix().inverted()
                 if geoAxisHeight == 1:   vecAxis = Vector((1, 0, 0))
                 elif geoAxisHeight == 2: vecAxis = Vector((0, 1, 0))
                 else:                    vecAxis = Vector((0, 0, 1))
@@ -942,43 +829,36 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
                     if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
                     else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                if constAxisToLock == 2:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-                elif constAxisToLock == 3: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 2:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                elif constAxisToLock == 3: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
 
             ### Bending without torsion constraint #2
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             if brkThresValueB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-                elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 3:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                elif constAxisToLock == 2: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
 
             ### Torsion constraint
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-
+            cData = {}; cIdx = consts[cInc]; cInc += 1
+            
             try: value = values[0]  # Use the smaller value from either standard or 90n
             except: pass
             value *= .5  # Use 50% of the bending thresholds for torsion (we really need a formula for that)
@@ -994,146 +874,114 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
 #            value /= 2  # Use half of the smaller shearing breaking thresholds for torsion
 
             brkThres = value /rbw_steps_per_second *correction /constCount 
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
-                objConst.rotation_mode = 'QUATERNION'
+                rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                if constAxisToLock == 3:   setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-                elif constAxisToLock == 2: setConstParams(objConst, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 3:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                elif constAxisToLock == 2: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             # Align constraint rotation like above
-            objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+            rotN = dirVec.to_track_quat('X','Z')
+            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, rotm=1, rot=1, attr=1)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+            constsData.append(cData)
 
         ###### Springs (additional)
 
         ### 3x SPRING; Circular placed for plastic deformability
         if CT == 7 or CT == 9 or CT == 11 or CT == 17 or CT == 18:
-            correction = 2  # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
-            constCount = 3  # Divided by the count of constraints which are sharing the same degree of freedom
+            constCount = 3; correction = 2  # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             springStiff = value *distObjAB /(correction *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(3):
-                cIdx = consts[cInc]; cInc += 1
-                if not props.asciiExport:
-                    objConst = emptyObjs[cIdx]
-                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                if props.asciiExport:
-                    objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
-                    # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                    # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                cData = {}; cIdx = consts[cInc]; cInc += 1
+                setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
                 if qUpdateComplete:
-                    objConst.rotation_mode = 'QUATERNION'
-                    objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    rotm = 'QUATERNION'
+                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   i == 0: vec = Vector((0, radius, radius))
                     elif i == 1: vec = Vector((0, radius, -radius))
                     elif i == 2: vec = Vector((0, -radius, 0))
-                    vec.rotate(objConst.rotation_quaternion)
-                    objConst.location = centerLoc +vec
+                    vec.rotate(rotN)
+                    locN = loc +vec
                     ### Enable linear spring
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDef, loc=locN,rotm=rotm,rot=rotN, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if CT != 7:
                     # Disable springs on start (requires plastic activation during simulation)
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, e=0)
+                    setConstParams(cData,cDef, e=0)
                 if props.asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
                     if CT == 7:
-                           export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
-                    else:  export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC_OFF", tol2dist, tol2rot])
+                          setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
+                    else: setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC_OFF",tol2dist,tol2rot])
+                constsData.append(cData)
+                          
                 
         ### 4x SPRING; Circular placed for plastic deformability
         if CT == 8 or CT == 10 or CT == 12:
-            correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
-            constCount = 4   # Divided by the count of constraints which are sharing the same degree of freedom
+            constCount = 4; correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             springStiff = value *distObjAB /(correction *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(4):
-                cIdx = consts[cInc]; cInc += 1
-                if not props.asciiExport:
-                    objConst = emptyObjs[cIdx]
-                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                if props.asciiExport:
-                    objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
-                    # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                    # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                cData = {}; cIdx = consts[cInc]; cInc += 1
+                setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
                 if qUpdateComplete:
-                    objConst.rotation_mode = 'QUATERNION'
-                    objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    rotm = 'QUATERNION'
+                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   i == 0: vec = Vector((0, radius, radius))
                     elif i == 1: vec = Vector((0, radius, -radius))
                     elif i == 2: vec = Vector((0, -radius, -radius))
                     elif i == 3: vec = Vector((0, -radius, radius))
-                    vec.rotate(objConst.rotation_quaternion)
-                    objConst.location = centerLoc +vec
+                    vec.rotate(rotN)
+                    locN = loc +vec
                     ### Enable linear spring
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDef, loc=locN,rotm=rotm,rot=rotN, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if CT != 8:
                     # Disable springs on start (requires plastic activation during simulation)
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, e=0)
+                    setConstParams(cData,cDef, e=0)
                 if props.asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
                     if CT == 8:
-                           export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
-                    else:  export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC_OFF", tol2dist, tol2rot])
+                          setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
+                    else: setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC_OFF",tol2dist,tol2rot])
+                constsData.append(cData)
 
         ### 1x SPRING; Now with angular limits circular placement is not required for plastic deformability anymore
         if CT == 19 or CT == 20 or CT == 21 or CT == 22:
-            correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
-            constCount = 1   # Divided by the count of constraints which are sharing the same degree of freedom
-            cIdx = consts[cInc]; cInc += 1
-            if not props.asciiExport:
-                objConst = emptyObjs[cIdx]
-            else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
+            constCount = 1; correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
+            cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueP
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             springStiff = value *distObjAB /(correction *tol2dist) /constCount
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
             if qUpdateComplete:
                 ### Enable linear and angular spring
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, usax=1,usay=1,usaz=1, sdax=1,sday=1,sdaz=1)
+                setConstParams(cData,cDef, loc=loc, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, usax=1,usay=1,usaz=1, sdax=1,sday=1,sdaz=1)
             # Disable springs on start (requires plastic activation during simulation, comment out if not required)
-            ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-            setConstParams(objConst, e=0)
+            setConstParams(cData,cDef, e=0)
             if props.asciiExport:
-                export(exData, idx=cIdx, objC=objConst, attr=1)
                 # Enable springs on start (if this spring is not for plastic deformation, comment out if not required)
-                #export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
+                #setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 # Disable springs on start (requires plastic activation during simulation, comment out if not required)
-                export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC_OFF", tol2dist, tol2rot])
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC_OFF",tol2dist,tol2rot])
+            constsData.append(cData)
 
         ###### Springs only CTs
 
         ### 3 x 3x SPRING; Compressive (1D), tensile (1D), shearing (2D) breaking thresholds; circular placed for plastic deformability
         if CT == 13:
-            correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-            constCount = 3   # Divided by the count of constraints which are sharing the same degree of freedom
+            constCount = 3; correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             radius = geoHeight /2
             value = brkThresValueC
             brkThres1 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
@@ -1147,105 +995,77 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             for j in range(3):
 
                 ### First constraint
-                cIdx = consts[cInc]; cInc += 1
-                if not props.asciiExport:
-                    objConst = emptyObjs[cIdx]
-                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                if props.asciiExport:
-                    objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
-                    # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                    # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                cData = {}; cIdx = consts[cInc]; cInc += 1
+                setConstParams(cData,cDef, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision)
                 if qUpdateComplete:
-                    objConst.rotation_mode = 'QUATERNION'
-                    objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    rotm = 'QUATERNION'
+                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
                     elif j == 2: vec = Vector((0, -radius, 0))
-                    vec.rotate(objConst.rotation_quaternion)
-                    objConst.location = centerLoc +vec
+                    vec.rotate(rotN)
+                    locN = loc +vec
                     ### Lock direction for compressive force and enable linear spring
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 # Align constraint rotation to that vector
-                objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                rotN = dirVec.to_track_quat('X','Z')
+                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
-                    export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
-
+                    setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
+                constsData.append(cData)
+                    
                 ### Second constraint
-                cIdx = consts[cInc]; cInc += 1
-                if not props.asciiExport:
-                    objConst = emptyObjs[cIdx]
-                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                if props.asciiExport:
-                    objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
-                    # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                    # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                cData = {}; cIdx = consts[cInc]; cInc += 1
+                setConstParams(cData,cDef, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision)
                 if qUpdateComplete:
-                    objConst.rotation_mode = 'QUATERNION'
-                    objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    rotm = 'QUATERNION'
+                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
                     elif j == 2: vec = Vector((0, -radius, 0))
-                    vec.rotate(objConst.rotation_quaternion)
-                    objConst.location = centerLoc +vec
+                    vec.rotate(rotN)
+                    locN = loc +vec
                     ### Lock direction for tensile force and enable linear spring
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 # Align constraint rotation like above
-                objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                rotN = dirVec.to_track_quat('X','Z')
+                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
-                    export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
+                    setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
+                constsData.append(cData)
 
                 ### Third constraint
-                cIdx = consts[cInc]; cInc += 1
-                if not props.asciiExport:
-                    objConst = emptyObjs[cIdx]
-                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                if props.asciiExport:
-                    objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
-                    # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                    # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                cData = {}; cIdx = consts[cInc]; cInc += 1
+                setConstParams(cData,cDef, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision)
                 if qUpdateComplete:
-                    objConst.rotation_mode = 'QUATERNION'
-                    objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    rotm = 'QUATERNION'
+                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
                     elif j == 2: vec = Vector((0, -radius, 0))
-                    vec.rotate(objConst.rotation_quaternion)
-                    objConst.location = centerLoc +vec
+                    vec.rotate(rotN)
+                    locN = loc +vec
                     ### Lock directions for shearing force and enable linear spring
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 # Align constraint rotation like above
-                objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                rotN = dirVec.to_track_quat('X','Z')
+                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
-                    export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
+                    setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
+                constsData.append(cData)
 
         ### 3 x 4x SPRING; Compressive (1D), tensile (1D), shearing (2D) breaking thresholds; circular placed for plastic deformability
         if CT == 14:
-            correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
-            constCount = 4   # Divided by the count of constraints which are sharing the same degree of freedom
+            constCount = 4; correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             radius = geoHeight /2
             value = brkThresValueC
             brkThres1 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
@@ -1259,106 +1079,145 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             for j in range(4):
 
                 ### First constraint
-                cIdx = consts[cInc]; cInc += 1
-                if not props.asciiExport:
-                    objConst = emptyObjs[cIdx]
-                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                if props.asciiExport:
-                    objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
-                    # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                    # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                cData = {}; cIdx = consts[cInc]; cInc += 1
+                setConstParams(cData,cDef, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision)
                 if qUpdateComplete:
-                    objConst.rotation_mode = 'QUATERNION'
-                    objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    rotm = 'QUATERNION'
+                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
                     elif j == 2: vec = Vector((0, -radius, -radius))
                     elif j == 3: vec = Vector((0, -radius, radius))
-                    vec.rotate(objConst.rotation_quaternion)
-                    objConst.location = centerLoc +vec
+                    vec.rotate(rotN)
+                    locN = loc +vec
                     ### Lock direction for compressive force and enable linear spring
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 # Align constraint rotation to that vector
-                objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                rotN = dirVec.to_track_quat('X','Z')
+                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
-                    export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
+                    setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
+                constsData.append(cData)
 
                 ### Second constraint
-                cIdx = consts[cInc]; cInc += 1
-                if not props.asciiExport:
-                    objConst = emptyObjs[cIdx]
-                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                if props.asciiExport:
-                    objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
-                    # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                    # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                cData = {}; cIdx = consts[cInc]; cInc += 1
+                setConstParams(cData,cDef, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision)
                 if qUpdateComplete:
-                    objConst.rotation_mode = 'QUATERNION'
-                    objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    rotm = 'QUATERNION'
+                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
                     elif j == 2: vec = Vector((0, -radius, -radius))
                     elif j == 3: vec = Vector((0, -radius, radius))
-                    vec.rotate(objConst.rotation_quaternion)
-                    objConst.location = centerLoc +vec
+                    vec.rotate(rotN)
+                    locN = loc +vec
                     ### Lock direction for tensile force and enable linear spring
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 # Align constraint rotation like above
-                objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                rotN = dirVec.to_track_quat('X','Z')
+                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
-                    export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
+                    setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
+                constsData.append(cData)
 
                 ### Third constraint
-                cIdx = consts[cInc]; cInc += 1
-                if not props.asciiExport:
-                    objConst = emptyObjs[cIdx]
-                else: setAttribsOfConstraint(objConst, constSettingsBak)  # Overwrite temporary constraint object with default settings
-                if props.asciiExport:
-                    objConst.location = Vector(exData[cIdx][1])  # Move temporary constraint empty object to correct location
-                    # This is no nice solution as we reuse already exported data for further calculation as we have no access to earlier connectsLoc here.
-                    # TODO: Better would be to postpone writing of locations from addBaseConstraintSettings() to here but this requires locs to be stored as another scene property.
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                cData = {}; cIdx = consts[cInc]; cInc += 1
+                setConstParams(cData,cDef, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision)
                 if qUpdateComplete:
-                    objConst.rotation_mode = 'QUATERNION'
-                    objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                    rotm = 'QUATERNION'
+                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
                     elif j == 2: vec = Vector((0, -radius, -radius))
                     elif j == 3: vec = Vector((0, -radius, radius))
-                    vec.rotate(objConst.rotation_quaternion)
-                    objConst.location = centerLoc +vec
+                    vec.rotate(rotN)
+                    locN = loc +vec
                     ### Lock directions for shearing force and enable linear spring
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 # Set stiffness
-                ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                setConstParams(objConst, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 # Align constraint rotation like above
-                objConst.rotation_quaternion = dirVec.to_track_quat('X','Z')
+                rotN = dirVec.to_track_quat('X','Z')
+                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
-                    export(exData, idx=cIdx, objC=objConst, loc=1, rotm=1, rot=1, attr=1)
-                    export(exData, idx=cIdx, tol1=["TOLERANCE", tol1dist, tol1rot], tol2=["PLASTIC", tol2dist, tol2rot])
+                    setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
+                constsData.append(cData)
 
-        ### Calculate settings for drawing of directional constraints
-        if not props.asciiExport:
+    print()
+    if len(emptyObjs) != len(constsData):
+        print("WARNING: Size mismatch: emptyObjs, constsData;", len(emptyObjs), len(constsData))
+
+    ### Debug: Naming of the constraints according to their connection participation and storage of object names
+    connectsPair_iter = iter(connectsPair)
+    connectsConsts_iter = iter(connectsConsts)
+    for k in range(len(connectsPair)):
+        consts = next(connectsConsts_iter)
+        pair = next(connectsPair_iter)   
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
+        i = 1
+        for cIdx in consts:
+            objConst = emptyObjs[cIdx]
+            cData = constsData[cIdx]
+            name = "Con.%03d.%d" %(k, i)
+            # Store names and objects
+            setConstParams(cData,cDef, name=name, obj1=objA, obj2=objB)
+            i += 1
+
+    if not props.asciiExport:
+
+        ### Write constraint settings into constraint objects
+        print("Writing constraint settings into empty objects... (%d)" %len(emptyObjs))
+        emptyObjs_iter = iter(emptyObjs)
+        constsData_iter = iter(constsData)
+        for k in range(len(emptyObjs)):
+            sys.stdout.write('\r' +"%d" %k)
+            # Update progress bar
+            bpy.context.window_manager.progress_update(k /len(emptyObjs))
+            
+            objConst = next(emptyObjs_iter)
+            cData = next(constsData_iter)
+
+            ### Write empty object parameters (BCB specific attributes, commented out lines are defined elsewhere)
+            if "bcb_name" in cData: objConst.name                          = cData["bcb_name"]
+            if "bcb_loc"  in cData: objConst.location                      = cData["bcb_loc"]
+            if "bcb_obj1" in cData: objConst.rigid_body_constraint.object1 = cData["bcb_obj1"]
+            if "bcb_obj2" in cData: objConst.rigid_body_constraint.object2 = cData["bcb_obj2"]
+            if "bcb_rotm" in cData: objConst.rotation_mode                 = cData["bcb_rotm"]
+            if "bcb_rot"  in cData: objConst.rotation_quaternion           = cData["bcb_rot"]   
+            
+            ### Overwrite default constraint settings with new and different settings
+            setAttribsOfConstraint(objConst.rigid_body_constraint, cData)
+        print()
+
+        # Update names in database in case they were changed
+        scene["bcb_emptyObjs"] = [obj.name for obj in emptyObjs]
+
+        ### Calculating constraint widgets for drawing
+        print("Calculating constraint widgets for drawing... (%d)" %len(connectsPair))
+        connectsConsts_iter = iter(connectsConsts)
+        connectsGeo_iter = iter(connectsGeo)
+        for k in range(len(connectsPair)):
+            sys.stdout.write('\r' +"%d" %k)
+            # Update progress bar
+            bpy.context.window_manager.progress_update(k /len(connectsPair))
+            
+            consts = next(connectsConsts_iter)
+            geo = next(connectsGeo_iter)
+            geoContactArea = geo[0]
+            geoHeight = geo[1]
+            geoWidth = geo[2]
+            a = geoContactArea *1000000
+            h = geoHeight *1000
+            w = geoWidth *1000
+
             ### Gather values from constraints
             yl = 0; zl = 0; ya = 0; za = 0
             for cIdx in consts:
@@ -1390,26 +1249,66 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsGeo, 
             for cIdx in consts:
                 objConst = emptyObjs[cIdx]
                 constData = objConst.rigid_body_constraint
+                #objConst.object.empty_draw_type = 'CUBE'  # This is set before duplication for performance reasons
+                objConst.empty_draw_size = .502  # Scale size slightly larger to make lines visible over solid elements
+                # Scale the cube to the dimensions of the connection area
                 if constData.type == 'GENERIC' or (constData.type == 'GENERIC_SPRING' and constData.enabled):
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, axs=axs)
-                else:
-                    ###### setConstParams(objConst, axs,e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
-                    setConstParams(objConst, axs=axs_s)
-
-    if props.asciiExport:
-        # Remove constraint settings from temporary empty object
-        bpy.ops.rigidbody.constraint_remove()
-        # Delete temporary empty object
-        scene.objects.unlink(objConst)
-        ### Relink all elements back into scene (speed optimization, rigid body settings are lost)
-        #for obj in objs:
-        #    obj.select = 1
-        #    scene.objects.link(obj)
-        ## Activate rigid bodies again because of the unlinking speed optimization in builder_setc.py the RB data is lost
-        #tool_enableRigidBodies(scene)
-        ## Restore RB type from backup (masses will be calculated later anyway)
-        #for obj in passiveObjs:
-        #    obj.rigid_body.type = 'PASSIVE'
+                      objConst.scale = axs
+                else: objConst.scale = axs_s
+        print()
         
-    print()
+    elif props.asciiExport:
+        ### Export constraint settings
+        print("Exporting constraint settings... (%d)" %len(emptyObjs))
+        constsData_iter = iter(constsData)
+        exData_iter = iter(exData)
+        for k in range(len(emptyObjs)):
+            sys.stdout.write('\r' +"%d" %k)
+            # Update progress bar
+            bpy.context.window_manager.progress_update(k /len(emptyObjs))
+            
+            cData = next(constsData_iter)
+            cExData = next(exData_iter)
+
+            ### Export base parameters (BCB specific)
+            if "bcb_name" in cData: cExData[0] = cData["bcb_name"]
+            if "bcb_loc"  in cData: cExData[1] = cData["bcb_loc"].to_tuple()
+            if "bcb_obj1" in cData: cExData[2] = cData["bcb_obj1"].name
+            if "bcb_obj2" in cData: cExData[3] = cData["bcb_obj2"].name
+            if "bcb_tol1" in cData: cExData[4] = cData["bcb_tol1"]  # Should always get data
+            if "bcb_tol2" in cData: cExData[5] = cData["bcb_tol2"]  # Should always get data
+            if "bcb_rotm" in cData: cExData[6] = cData["bcb_rotm"]
+            if "bcb_rot"  in cData: cExData[7] = Vector(cData["bcb_rot"]).to_tuple()
+            ### Export constraint attributes with new and different settings
+            # TODO: All special variables above are stored in cData anyway and should be interpreted in builder_fm.py
+            for prop in cData.items():
+                id = prop[0]; value = prop[1]
+                if   id == "bcb_loc":  cData[id] = value.to_tuple()
+                elif id == "bcb_obj1": cData[id] = value.name
+                elif id == "bcb_obj2": cData[id] = value.name
+                elif id == "bcb_rotm": cData[id] = str(value)
+                elif id == "bcb_rot":  cData[id] = Vector(value).to_tuple()
+                else: cData[id] = value
+            cExData[8] = cData
+            
+            # Data structure ("[]" means not always present, will be None instead):
+            # 0 - empty.name
+            # 1 - empty.location
+            # 2 - obj1.name
+            # 3 - obj2.name
+            # 4 - [ ["TOLERANCE", tol1dist, tol1rot] ]
+            # 5 - [ ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot] ]
+            # 6 - [empty.rotation_mode]
+            # 7 - [empty.rotation_quaternion]
+            # 8 - empty.rigid_body_constraint (dictionary of attributes)
+            #
+            # Pseudo code for special constraint treatment:
+            #
+            # If tol1dist or tol1rot is exceeded:
+            #     If normal constraint: It will be detached
+            #     If spring constraint: It will be set to active
+            # If tol2dist or tol2rot is exceeded:
+            #     If spring constraint: It will be detached
+        print()
+        
+        return exData

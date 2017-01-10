@@ -86,7 +86,7 @@ def monitor_eventHandler(scene):
             curveP = curve.keyframe_points[-1]
             frame, value = curveP.co
             #curve.keyframe_points.remove(curveP, fast=False)
-            bpy.data.actions.remove(bpy.data.actions["Gravity"])
+            bpy.data.actions.remove(bpy.data.actions["Gravity"], do_unlink=True)
             bpy.context.scene.gravity[2] = value
         if props.warmUpPeriod:
             ### Create new gravity animation curve 0 to full strength
