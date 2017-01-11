@@ -107,20 +107,18 @@ def build_fm():
     md = ob.modifiers["Fracture"]
 
     objs = []; objsName = []
-    indexmap = dict()
     j = 0
     for i in range(len(consts)):
-        objN1 = consts[i][2]
-        objN2 = consts[i][3]
+        objN1 = consts[i]["bcb_obj1"]
+        objN2 = consts[i]["bcb_obj2"]
         if not objN1 in objsName:
-            try: obj1 = bpy.context.scene.objects[objN1]
+            try: obj1 = scene.objects[objN1]
             except: pass
             else:
                 objs.append(obj1)
                 objsName.append(objN1)
-                
         if not objN2 in objsName:
-            try: obj2 = bpy.context.scene.objects[objN2]
+            try: obj2 = scene.objects[objN2]
             except: pass
             else:
                 objs.append(obj2)
@@ -158,6 +156,7 @@ def build_fm():
 
     ### Create mesh islands    
     objParent = None
+    indexmap = dict()
     for obj in objs:
         if obj.name not in indexmap.keys():
             indexmap[obj.name] = md.mesh_islands.new(obj)
@@ -173,6 +172,14 @@ def build_fm():
     
     ###### Constraints
 
+    # Pseudo code for special constraint treatment:
+    #
+    # If tol1dist or tol1rot is exceeded:
+    #     If normal constraint: It will be detached
+    #     If spring constraint: It will be set to active
+    # If tol2dist or tol2rot is exceeded:
+    #     If spring constraint: It will be detached
+
     ### Create temporary empty object to get the default attributes
     objConst = bpy.data.objects.new('Constraint', None)
     bpy.context.scene.objects.link(objConst)
@@ -185,129 +192,79 @@ def build_fm():
     scene.objects.unlink(objConst)
 
     ### Create constraints
-    plastic_on = 0
-    plastic_off = 0
-    noplastic = 0
+    cnt = 0
     for i in range(len(consts)):
-        cProp_index = 0
-        j = 0
-        # 0 - empty.location
-        name = consts[i][j]
-        j += 1
+        cProps = consts[i]
         
-        # 1 - empty.location
-        pos = mathutils.Vector(consts[i][j])
-        j += 1
+        ### Get custom BCB attributes
+        name = cProps["bcb_name"]
+        loc  = cProps["bcb_loc"]
+        ob1  = cProps["bcb_obj1"]
+        ob2  = cProps["bcb_obj2"]
+        try:    tol1 = cProps["bcb_tol1"]
+        except: tol1 = None
+        try:    tol2 = cProps["bcb_tol2"]
+        except: tol2 = None
+        rotm = cProps["bcb_rotm"]
+        rot  = cProps["bcb_rot"]
         
-        # 2 - obj1.name
-        # 3 - obj2.name
-        ob1 = consts[i][j]
-        ob2 = consts[i][j+1]
-        j += 2
-        
-        # 4 - [ ["TOLERANCE", tol1dist, tol1rot] ]
-        if consts[i][j] is not None and len(consts[i][j]) == 3 and consts[i][j][0] in {"TOLERANCE"}:
-            breaking_distance = consts[i][j][1]
-            breaking_angle = consts[i][j][2]
+        ### Decode custom BCB attributes
+        # 1st tolerances (elastic -> plastic)
+        # ["TOLERANCE", tol1dist, tol1rot]
+        if tol1 is not None and tol1[0] in {"TOLERANCE"}:
+            tol1dist = tol1[1]
+            tol1rot = tol1[2]
         else:
-            breaking_distance = -1
-            breaking_angle = -1
-        j += 1
-        
-        # 5 - [ ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot] ]
-        if consts[i][j] is not None and len(consts[i][j]) == 3 and consts[i][j][0] in {"PLASTIC", "PLASTIC_OFF"}: # Ugh, variable length ?
-            plastic_distance = consts[i][j][1]
-            plastic_angle = consts[i][j][2]
-            
-            if consts[i][j][0] == "PLASTIC": 
-                plastic = True
-                plastic_on += 1
-            else:
-                plastic = False
-                plastic_off += 1
+            tol1dist = -1
+            tol1rot = -1
+        # 2nd tolerances (plastic -> broken)
+        # ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot]
+        if tol2 is not None and tol2[0] in {"PLASTIC", "PLASTIC_OFF"}:
+            tol2dist = tol2[1]
+            tol2rot = tol2[2]
+            if tol2[0] == "PLASTIC": plastic = True
+            else: plastic = False
         else:
-            plastic_distance = -1
-            plastic_angle = -1
+            tol2dist = -1
+            tol2rot = -1
             plastic = False
-            noplastic += 1
-        j += 1    
-        
-        # 6 - [empty.rotation_mode]
-        # 7 - [empty.rotation_quaternion]
-        if consts[i][j] == "QUATERNION":  # If no quaternion exists we assume no rotation is available
-            rot = mathutils.Quaternion(consts[i][j+1])
+        # Rotation
+        if rotm == "QUATERNION":  # If no quaternion exists we assume no rotation is available
+            rot = mathutils.Quaternion(rot)
         else:  # If None or EULER then no rotation is available
             rot = mathutils.Quaternion((1.0, 0.0, 0.0, 0.0))
-        j += 2
-                
-        # 8 - empty.rigid_body_constraint (dictionary of attributes)
-        cProps = consts[i][j]
-        cProp_index = j
         
-        # Peek the type...
-        if "type" in cProps:
-            type = cProps["type"]
-            if type != "GENERIC_SPRING":
-                noplastic -= 1
-        
+        ### Add settings to constraint
         # OK, first check whether the mi exists via is object in group (else it's double)
-        try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], type)
+        try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], cProps["type"])
         except: pass
         else:
-            con.location = pos # ob.matrix_world *pos
-            #rot.rotate(ob.matrix_world)
+            con.name = name
+            con.location = loc
             con.rotation = rot
             con.plastic = plastic
-            con.breaking_distance = breaking_distance
-            con.breaking_angle = breaking_angle
-            con.plastic_distance = plastic_distance
-            con.plastic_angle = plastic_angle
-            con.name = name
-            
+            con.breaking_distance = tol1dist
+            con.breaking_angle = tol1rot
+            con.plastic_distance = tol2dist
+            con.plastic_angle = tol2rot
+
             ### Write constraint defaults first (FM doesn't set constraint to Blender defaults)
             for p in cDef.items():
-                if p[0] not in {"type", "object1", "object2"} \
+                if p[0] not in {"object1", "object2"} \
                 and "bcb_" not in p[0]:        # Filter also custom BCB attributes
                     attr = getattr(con, p[0])  # Current value
                     if p[1] != attr:           # Overwrite only when different
                         setattr(con, p[0], p[1])
             ### Write own changed parameters (because it's a diff based on defaults)
             for p in cProps.items():
-                if p[0] not in {"type", "object1", "object2"} \
+                if p[0] not in {"object1", "object2"} \
                 and "bcb_" not in p[0]:        # Filter also custom BCB attributes
                     attr = getattr(con, p[0])  # Current value
                     if p[1] != attr:           # Overwrite only when different
                         #print("Set: ", p[0], p[1])
                         setattr(con, p[0], p[1])
-                            
-            #con.id = cProps["name"]
-            #if con.type == 'GENERIC_SPRING':
-            #    con.spring_stiffness_x = 1000000
-            #    con.spring_stiffness_y = 1000000
-            #    con.spring_stiffness_z = 1000000
-            #con.enabled = True
-            
-            #con.breaking_threshold = con.breaking_threshold * 150.0 / 200.0 
-            #con.breaking_angle = math.radians(con.breaking_angle)
-            #con.plastic_angle = math.radians(con.plastic_angle)
-            #con.plastic_angle *= 0.5
-            #con.breaking_angle *= 0.5
-            #con.breaking_threshold *= 0.5
-            #con.breaking_angle = math.radians(5.0)
-            #con.breaking_distance = 0.1
-            #con.plastic = False
-            
-    #        ind = cProp_index+1
-    #        if len(consts[i][ind]) == 3 and consts[i][ind][0] == "BREAK":
-    #            con.breaking_distance = consts[i][ind][1] # this is normed to 0...1, odd... why not absolute ?
-    #            con.breaking_angle = consts[i][ind][2] * math.pi
+            cnt += 1
 
-    # Clumsy, but could work: disable plastic globally, when no plastic has been found at all
-    #if plastic_on == 0 and plastic_off == 0:
-    #    for i in range(len(consts)):
-    #        md.mesh_constraints[i].plastic_angle = -1
-    #        md.mesh_constraints[i].plastic_distance = -1
-    
     print('Time constraints: %0.2f s' %(time.time()-time_const))
     
     #bpy.ops.object.fracture_refresh()
@@ -333,6 +290,6 @@ def build_fm():
 
     print('-- Time total: %0.2f s' %(time.time()-time_start))
     print()
-    print('Imported: %d Plastic ON,  %d Plastic OFF,  %d NOPLASTIC' % (plastic_on, plastic_off, noplastic))
+    print('Imported: %d constraints' %cnt)
     print('Done.')
     print()

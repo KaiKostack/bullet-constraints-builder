@@ -133,15 +133,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     for i in range(len(objs)):
         objsDict[objs[i]] = i
 
-    ### Allocate export data array and reserve sufficient space
-    if props.asciiExport:
-        exData = []
-        for objConst in emptyObjs:
-            exData.append([])
-            cExData = exData[-1]
-            for i in range(9):
-                cExData.append(None)
-
     ### Create temporary empty object to get the default attributes
     objConst = bpy.data.objects.new('Constraint', None)
     bpy.context.scene.objects.link(objConst)
@@ -1260,27 +1251,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     elif props.asciiExport:
         ### Export constraint settings
         print("Exporting constraint settings... (%d)" %len(emptyObjs))
+        # Data structure of exData is basically an array of empty.rigid_body_constraint (a diff of attributes)
+        # together with some BCB specific custom properties which have to be interpreted accordingly.
+        exData = []
         constsData_iter = iter(constsData)
-        exData_iter = iter(exData)
         for k in range(len(emptyObjs)):
             sys.stdout.write('\r' +"%d" %k)
             # Update progress bar
             bpy.context.window_manager.progress_update(k /len(emptyObjs))
             
             cData = next(constsData_iter)
-            cExData = next(exData_iter)
-
-            ### Export base parameters (BCB specific)
-            if "bcb_name" in cData: cExData[0] = cData["bcb_name"]
-            if "bcb_loc"  in cData: cExData[1] = cData["bcb_loc"].to_tuple()
-            if "bcb_obj1" in cData: cExData[2] = cData["bcb_obj1"].name
-            if "bcb_obj2" in cData: cExData[3] = cData["bcb_obj2"].name
-            if "bcb_tol1" in cData: cExData[4] = cData["bcb_tol1"]  # Should always get data
-            if "bcb_tol2" in cData: cExData[5] = cData["bcb_tol2"]  # Should always get data
-            if "bcb_rotm" in cData: cExData[6] = cData["bcb_rotm"]
-            if "bcb_rot"  in cData: cExData[7] = Vector(cData["bcb_rot"]).to_tuple()
-            ### Export constraint attributes with new and different settings
-            # TODO: All special variables above are stored in cData anyway and should be interpreted in builder_fm.py
             for prop in cData.items():
                 id = prop[0]; value = prop[1]
                 if   id == "bcb_loc":  cData[id] = value.to_tuple()
@@ -1289,26 +1269,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 elif id == "bcb_rotm": cData[id] = str(value)
                 elif id == "bcb_rot":  cData[id] = Vector(value).to_tuple()
                 else: cData[id] = value
-            cExData[8] = cData
-            
-            # Data structure ("[]" means not always present, will be None instead):
-            # 0 - empty.name
-            # 1 - empty.location
-            # 2 - obj1.name
-            # 3 - obj2.name
-            # 4 - [ ["TOLERANCE", tol1dist, tol1rot] ]
-            # 5 - [ ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot] ]
-            # 6 - [empty.rotation_mode]
-            # 7 - [empty.rotation_quaternion]
-            # 8 - empty.rigid_body_constraint (dictionary of attributes)
-            #
-            # Pseudo code for special constraint treatment:
-            #
-            # If tol1dist or tol1rot is exceeded:
-            #     If normal constraint: It will be detached
-            #     If spring constraint: It will be set to active
-            # If tol2dist or tol2rot is exceeded:
-            #     If spring constraint: It will be detached
+            exData.append(cData)
         print()
         
         return exData
