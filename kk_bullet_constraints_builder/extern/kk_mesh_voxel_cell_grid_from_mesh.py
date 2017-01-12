@@ -30,7 +30,7 @@ from mathutils import Vector
 def run(source=None, parameters=None):
     """"""
     ### Vars
-    gridRes = 0                      # Grid resolution related to object dimensions (0 = disabled, results might vary +/-1)
+    gridRes = 0                      # Grid resolution related to object dimensions (0 = disabled, [1,3,5..] = correct results, [2,4,6..] = wrong results)
     cellSize = Vector((1, 1, 1))     # For gridRes = 0: Custom cell size in world units
     qUseUnifiedSpace = 0             # For gridRes = 0: Use one unified space for all cells from all objects to avoid cell overlapping, different scalings and different rotations between objects
                                      # (For cellsToObjectsMode = 1 this is always true for now, could be improved though)
@@ -48,11 +48,12 @@ def run(source=None, parameters=None):
     ### Vars internal
     qTriangulate = 1                 # Enables automatic mesh triangulation
     #qSetWireView = 0                # Enables wire display mode for created objects
-    qSilentVerbose = 1               # Reduces text output to a minimum
+    qSilentVerbose = 0               # Reduces text output to a minimum
 
     ### Custom BCB parameter handling
     if source == 'BCB':
         cellSize = parameters[0]
+        qSilentVerbose = 1
 
     ###
 

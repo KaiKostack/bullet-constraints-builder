@@ -213,7 +213,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
             dim = obj.dimensions
             splitAtJunction_face = 0
             if dim.x > minimumSizeLimit or dim.y > minimumSizeLimit or dim.z > minimumSizeLimit \
-            or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and splitAtJunction_face <= junctionMaxFaceCnt):
+            or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and (not junctionMaxFaceCnt or splitAtJunction_face <= junctionMaxFaceCnt)):
                
                 if not qSilentVerbose: print(objectCount, '/', objectCountLimit, ':', obj.name)
                 else: sys.stdout.write('\r' +"%d" %objectCount)
@@ -272,7 +272,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                     
                     boolErrorCount = 0
                     while (boolErrorCount < boolErrorRetryLimit and not qSplitAtJunctions) \
-                    or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and splitAtJunction_face <= junctionMaxFaceCnt):
+                    or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and (not junctionMaxFaceCnt or splitAtJunction_face <= junctionMaxFaceCnt)):
                         
                         # Redraw Blenders viewport while script is running
                         #bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
@@ -570,7 +570,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                     
                     boolErrorCount = 0
                     while (boolErrorCount < boolErrorRetryLimit and not qSplitAtJunctions) \
-                    or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and splitAtJunction_face <= junctionMaxFaceCnt):
+                    or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and (not junctionMaxFaceCnt or splitAtJunction_face <= junctionMaxFaceCnt)):
                         
                         # Redraw Blenders viewport while script is running
                         #bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)

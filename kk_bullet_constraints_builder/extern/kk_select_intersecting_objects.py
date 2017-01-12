@@ -28,7 +28,7 @@
 
 debug = 0
 
-import bpy, sys, mathutils, random
+import bpy, sys, mathutils, random, time
 from mathutils import *
 
 ################################################################################   
@@ -68,6 +68,7 @@ def run(source=None, parameters=None):
 
     print('\nStart detecting intersection objects...')
 
+    time_start = time.time()
     random.seed(0)
     bpy.context.tool_settings.mesh_select_mode = True, False, False 
     scene = bpy.context.scene
@@ -93,6 +94,8 @@ def run(source=None, parameters=None):
         if qBool:
 
             for k in range(len(connectsPair)):
+                sys.stdout.write('\r' +"%d " %k)
+
                 objA = objs[connectsPair[k][0]]
                 objB = objs[connectsPair[k][1]]
                 if qSelectA and not objA.select: objA.select = 1; count += 1
@@ -147,8 +150,9 @@ def run(source=None, parameters=None):
                 bpy.ops.object.modifier_remove(modifier="Displace")
                
                 count += 1
-                
-            print('\nObjects modified (one per pair):', count)
+            print()
+    
+            print('Objects modified (one per pair):', count)
             print('Done.')
 
         elif not qBool:
@@ -202,11 +206,12 @@ def run(source=None, parameters=None):
                 ### Delete all selected objects
                 bpy.ops.object.delete(use_global=True)
 
-                print('\nObjects deleted:', count)
+                print('Objects deleted:', count)
                 print('Done.')
             else:
-                print('\nObjects selected:', count)
+                print('Objects selected:', count)
                 print('Done.')
+    print('Time: %0.2f s' %(time.time()-time_start))
 
     return count
     
