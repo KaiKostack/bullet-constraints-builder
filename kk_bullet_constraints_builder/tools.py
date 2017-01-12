@@ -38,6 +38,7 @@ from builder_prep import *     # Contains preparation steps functions called by 
 
 import kk_mesh_separate_loose
 import kk_mesh_fracture
+import kk_mesh_voxel_cell_grid_from_mesh
 import kk_select_intersecting_objects
 
 ################################################################################
@@ -356,193 +357,210 @@ def tool_discretize(scene):
         print("No mesh objects selected.")
         return
 
-    # Create cutting plane to be used by external module
-    bpy.ops.mesh.primitive_plane_add(radius=100, view_align=False, enter_editmode=False, location=Vector((0, 0, 0)))
-    objC = bpy.context.scene.objects.active
-    objC.name = "BCB_CuttingPlane"
-    objC.select = 0
-
-    # Select mesh objects
-    for obj in objs: obj.select = 1
-    bpy.context.scene.objects.active = selectionActive
-    
-    # Remove rigid body settings because the second scene optimization in the external module can produce ghost objects in RBW otherwise
-    bpy.ops.rigidbody.objects_remove()
-    # Remove instances
-    bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True, material=False, texture=False, animation=False)
-
-    ###### External function
     props = bpy.context.window_manager.bcb
-    # Set object centers to geometry origin
-    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-    # Parameters: [qSplitAtJunctions, minimumSizeLimit, qTriangulate, halvingCutter]
-    if props.preprocTools_dis_jus:
-        print("\nDiscretization - Junction pass:")
-        kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
-        # Set object centers to geometry origin
-        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-    print("\nDiscretization - Halving pass:")
-    kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 0, 'BCB_CuttingPlane'], None)
-    # Set object centers to geometry origin
-    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-    ### Add new objects to the object list and remove deleted ones
-    updateObjList(scene, selection)
-    updateObjList(scene, objs)
 
-    ### 1. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations),
-    ### deselect all others and try discretization again with triangulation
-    cnt = 0
-    failed = []
-    for obj in objs:
-        ### Calculate diameter for each object
-        dim = list(obj.dimensions)
-        dim.sort()
-        diameter = dim[2]   # Use the largest dimension axis as diameter
-        if diameter <= props.preprocTools_dis_siz:
-            obj.select = 0
-            cnt += 1
-        else: failed.append(obj)
-    count = len(objs) -cnt
-    if count > 0:
-        print("\nDiscretization - Triangulation pass (%d left):" %count)
-        if props.preprocTools_dis_jus:
-            kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
-            # Set object centers to geometry origin
-            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-        kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
-        # Set object centers to geometry origin
-        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-        ### Add new objects to the object list and remove deleted ones
-        updateObjList(scene, selection)
-        updateObjList(scene, objs)
+    ###### Voxel cell based discretization
+
+    if not props.preprocTools_dis_bol:
+        print("\nDiscretization:")
+
+        ###### External function
+        size = props.preprocTools_dis_siz
+        kk_mesh_voxel_cell_grid_from_mesh.run('BCB', [Vector((size, size, size))])
+
+        # We have to repeat separate loose here
+        tool_separateLoose(scene)
     
-    ### 2. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations),
-    ### deselect all others and try discretization again with triangulation
-    cnt = 0
-    failed = []
-    for obj in objs:
-        ### Calculate diameter for each object
-        dim = list(obj.dimensions)
-        dim.sort()
-        diameter = dim[2]   # Use the largest dimension axis as diameter
-        if diameter <= props.preprocTools_dis_siz:
-            obj.select = 0
-            cnt += 1
-        else: failed.append(obj)
-    count = len(objs) -cnt
-    if count > 0:
-        print("\nDiscretization - Non-manifolds pass (%d left):" %count)
-        failedExt = []
-        # Deselect all objects.
-        bpy.ops.object.select_all(action='DESELECT')
-        for obj in failed:
-            bpy.context.scene.objects.active = obj
-            # Enter edit mode              
-            try: bpy.ops.object.mode_set(mode='EDIT')
-            except: pass 
-            me = obj.data
-            bm = bmesh.from_edit_mesh(me)
+    ###### Boolean based discretization
 
-            ### Check if mesh has non-manifolds
-            bpy.context.tool_settings.mesh_select_mode = False, True, False
-            # Deselect all elements
-            try: bpy.ops.mesh.select_all(action='DESELECT')
-            except: pass 
-            # Select non-manifold elements
-            bpy.ops.mesh.select_non_manifold()
-            # Check mesh if there are selected elements found
-            qNonManifolds = 0
-            for edge in bm.edges:
-                if edge.select: qNonManifolds = 1; break
-            bm.verts.ensure_lookup_table()
-            
-            ### Rip all vertices belonging to non-manifold edges
-            if qNonManifolds:
-                bpy.context.tool_settings.mesh_select_mode = True, False, False
-                vertCos = []
-                start = -1
-                for i in range(len(bm.verts)):
-                    vert = bm.verts[i]
-                    if vert.select:
-                        vertCos.append(vert.co)
-                        if start < 0: start = i
-                found = 1
-                while found > 0:
-                    found = 0
-                    i = start
-                    while i < len(bm.verts):
-                        vert = bm.verts[i]
-                        if vert.co in vertCos:
-                            # Deselect all elements
-                            bpy.ops.mesh.select_all(action='DESELECT')
-                            vert.select = 1
-                            # Rip selection
-                            try: bpy.ops.mesh.rip('INVOKE_DEFAULT')                        
-                            except: pass
-                            else: i -= 1; found += 1
-                            bm.verts.ensure_lookup_table()
-                        i += 1
-            # Separate loose
-            try: bpy.ops.mesh.separate(type='LOOSE')
-            except: pass
-            # Leave edit mode
-            try: bpy.ops.object.mode_set(mode='OBJECT')
-            except: pass
-            ### Remove doubles for new objects
-            obj.select = 1
-            for objTemp in scene.objects:
-                if objTemp.select and objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(scene):
-                    bpy.context.scene.objects.active = objTemp
-                    # Enter edit mode              
-                    try: bpy.ops.object.mode_set(mode='EDIT')
-                    except: pass
-                    # Select all elements
-                    try: bpy.ops.mesh.select_all(action='SELECT')
-                    except: continue
-                    # Remove doubles
-                    bpy.ops.mesh.remove_doubles(threshold=0.0000000001)
-                    # Leave edit mode
-                    try: bpy.ops.object.mode_set(mode='OBJECT')
-                    except: pass 
+    elif props.preprocTools_dis_bol:
+
+        # Create cutting plane to be used by external module
+        bpy.ops.mesh.primitive_plane_add(radius=100, view_align=False, enter_editmode=False, location=Vector((0, 0, 0)))
+        objC = bpy.context.scene.objects.active
+        objC.name = "BCB_CuttingPlane"
+        objC.select = 0
+
+        # Select mesh objects
+        for obj in objs: obj.select = 1
+        bpy.context.scene.objects.active = selectionActive
+        
+        # Remove rigid body settings because the second scene optimization in the external module can produce ghost objects in RBW otherwise
+        bpy.ops.rigidbody.objects_remove()
+        # Remove instances
+        bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True, material=False, texture=False, animation=False)
+
+        ###### External function
         # Set object centers to geometry origin
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+        # Parameters: [qSplitAtJunctions, minimumSizeLimit, qTriangulate, halvingCutter]
         if props.preprocTools_dis_jus:
+            print("\nDiscretization - Junction pass:")
             kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
             # Set object centers to geometry origin
             bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-        kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+        print("\nDiscretization - Halving pass:")
+        kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 0, 'BCB_CuttingPlane'], None)
         # Set object centers to geometry origin
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
         ### Add new objects to the object list and remove deleted ones
         updateObjList(scene, selection)
         updateObjList(scene, objs)
 
-    ### 3. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations)
-    ### print warning message together with a list of the problematic objects
-    cnt = 0
-    failed = []
-    for obj in objs:
-        ### Calculate diameter for each object
-        dim = list(obj.dimensions)
-        dim.sort()
-        diameter = dim[2]   # Use the largest dimension axis as diameter
-        if diameter <= props.preprocTools_dis_siz:
-            cnt += 1
-        else: failed.append(obj)
-    count = len(objs) -cnt
-    if count > 0:
-        print("\nWarning: Following %d objects couldn't be discretized sufficiently:" %count)
-        for obj in failed:
-            print(obj.name)
-    else: print("\nDiscretization verified and successful!")
-    print("Final element count:", len(objs))
+        ### 1. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations),
+        ### deselect all others and try discretization again with triangulation
+        cnt = 0
+        failed = []
+        for obj in objs:
+            ### Calculate diameter for each object
+            dim = list(obj.dimensions)
+            dim.sort()
+            diameter = dim[2]   # Use the largest dimension axis as diameter
+            if diameter <= props.preprocTools_dis_siz:
+                obj.select = 0
+                cnt += 1
+            else: failed.append(obj)
+        count = len(objs) -cnt
+        if count > 0:
+            print("\nDiscretization - Triangulation pass (%d left):" %count)
+            if props.preprocTools_dis_jus:
+                kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
+                # Set object centers to geometry origin
+                bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+            kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+            # Set object centers to geometry origin
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+            ### Add new objects to the object list and remove deleted ones
+            updateObjList(scene, selection)
+            updateObjList(scene, objs)
+        
+        ### 2. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations),
+        ### deselect all others and try discretization again with triangulation
+        cnt = 0
+        failed = []
+        for obj in objs:
+            ### Calculate diameter for each object
+            dim = list(obj.dimensions)
+            dim.sort()
+            diameter = dim[2]   # Use the largest dimension axis as diameter
+            if diameter <= props.preprocTools_dis_siz:
+                obj.select = 0
+                cnt += 1
+            else: failed.append(obj)
+        count = len(objs) -cnt
+        if count > 0:
+            print("\nDiscretization - Non-manifolds pass (%d left):" %count)
+            failedExt = []
+            # Deselect all objects.
+            bpy.ops.object.select_all(action='DESELECT')
+            for obj in failed:
+                bpy.context.scene.objects.active = obj
+                # Enter edit mode              
+                try: bpy.ops.object.mode_set(mode='EDIT')
+                except: pass 
+                me = obj.data
+                bm = bmesh.from_edit_mesh(me)
 
-    # Revert to start selection
-    for obj in selection: obj.select = 1
-    bpy.context.scene.objects.active = selectionActive
+                ### Check if mesh has non-manifolds
+                bpy.context.tool_settings.mesh_select_mode = False, True, False
+                # Deselect all elements
+                try: bpy.ops.mesh.select_all(action='DESELECT')
+                except: pass 
+                # Select non-manifold elements
+                bpy.ops.mesh.select_non_manifold()
+                # Check mesh if there are selected elements found
+                qNonManifolds = 0
+                for edge in bm.edges:
+                    if edge.select: qNonManifolds = 1; break
+                bm.verts.ensure_lookup_table()
+                
+                ### Rip all vertices belonging to non-manifold edges
+                if qNonManifolds:
+                    bpy.context.tool_settings.mesh_select_mode = True, False, False
+                    vertCos = []
+                    start = -1
+                    for i in range(len(bm.verts)):
+                        vert = bm.verts[i]
+                        if vert.select:
+                            vertCos.append(vert.co)
+                            if start < 0: start = i
+                    found = 1
+                    while found > 0:
+                        found = 0
+                        i = start
+                        while i < len(bm.verts):
+                            vert = bm.verts[i]
+                            if vert.co in vertCos:
+                                # Deselect all elements
+                                bpy.ops.mesh.select_all(action='DESELECT')
+                                vert.select = 1
+                                # Rip selection
+                                try: bpy.ops.mesh.rip('INVOKE_DEFAULT')                        
+                                except: pass
+                                else: i -= 1; found += 1
+                                bm.verts.ensure_lookup_table()
+                            i += 1
+                # Separate loose
+                try: bpy.ops.mesh.separate(type='LOOSE')
+                except: pass
+                # Leave edit mode
+                try: bpy.ops.object.mode_set(mode='OBJECT')
+                except: pass
+                ### Remove doubles for new objects
+                obj.select = 1
+                for objTemp in scene.objects:
+                    if objTemp.select and objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(scene):
+                        bpy.context.scene.objects.active = objTemp
+                        # Enter edit mode              
+                        try: bpy.ops.object.mode_set(mode='EDIT')
+                        except: pass
+                        # Select all elements
+                        try: bpy.ops.mesh.select_all(action='SELECT')
+                        except: continue
+                        # Remove doubles
+                        bpy.ops.mesh.remove_doubles(threshold=0.0000000001)
+                        # Leave edit mode
+                        try: bpy.ops.object.mode_set(mode='OBJECT')
+                        except: pass 
+            # Set object centers to geometry origin
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+            if props.preprocTools_dis_jus:
+                kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
+                # Set object centers to geometry origin
+                bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+            kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+            # Set object centers to geometry origin
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+            ### Add new objects to the object list and remove deleted ones
+            updateObjList(scene, selection)
+            updateObjList(scene, objs)
 
-    # Delete cutting plane object
-    bpy.context.scene.objects.unlink(objC)
+        ### 3. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations)
+        ### print warning message together with a list of the problematic objects
+        cnt = 0
+        failed = []
+        for obj in objs:
+            ### Calculate diameter for each object
+            dim = list(obj.dimensions)
+            dim.sort()
+            diameter = dim[2]   # Use the largest dimension axis as diameter
+            if diameter <= props.preprocTools_dis_siz:
+                cnt += 1
+            else: failed.append(obj)
+        count = len(objs) -cnt
+        if count > 0:
+            print("\nWarning: Following %d objects couldn't be discretized sufficiently:" %count)
+            for obj in failed:
+                print(obj.name)
+        else: print("\nDiscretization verified and successful!")
+        print("Final element count:", len(objs))
+
+        # Delete cutting plane object
+        bpy.context.scene.objects.unlink(objC)
+
+        # Revert to start selection
+        for obj in selection: obj.select = 1
+        bpy.context.scene.objects.active = selectionActive
 
 ################################################################################
 

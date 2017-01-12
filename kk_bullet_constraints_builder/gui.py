@@ -175,8 +175,10 @@ class bcb_panel(bpy.types.Panel):
             box2.operator("bcb.tool_discretize", icon="DOT")
             col2 = box2.column(align=1)
             row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_siz")
-            row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_jus")
-
+            row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_bol")
+            row3 = col2.row(align=1); row3.prop(props, "preprocTools_dis_jus")
+            if not props.preprocTools_dis_bol: row3.enabled = 0; 
+            
             row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_rbs", text="")
             box2 = split.box()
@@ -201,7 +203,14 @@ class bcb_panel(bpy.types.Panel):
             col2 = box2.column(align=1)
             row = col2.row(align=1); row.prop(props, "preprocTools_fix_nam")
             row = col2.row(align=1); row.prop(props, "preprocTools_fix_cac")
-            row2 = col2.row(align=1); row2.prop(props, "preprocTools_fix_rng")
+            row2 = col2.row(align=1)
+            if props.preprocTools_fix_rng > props.preprocTools_dis_siz /2:
+                row2.alert = 1; qAlert = 1
+            else: qAlert = 0
+            row2.prop(props, "preprocTools_fix_rng")
+            if qAlert:
+                row5 = col2.row(align=1); row5.label(text="Warning: Range to large compared")
+                row5 = col2.row(align=1); row5.label(text="to Discr. Size => mesh overlaps")
             row3 = col2.row(align=1)
             row3.prop(props, "preprocTools_fix_axp")
             row3.prop(props, "preprocTools_fix_ayp")

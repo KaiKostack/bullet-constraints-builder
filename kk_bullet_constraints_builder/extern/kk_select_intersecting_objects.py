@@ -74,7 +74,7 @@ def run(source=None, parameters=None):
     if mode == 1:
         
         objs = []
-        for obj in bpy.data.objects:
+        for obj in scene.objects:
              if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(scene) and len(obj.data.vertices) > 0:
                 objs.append(obj)
         

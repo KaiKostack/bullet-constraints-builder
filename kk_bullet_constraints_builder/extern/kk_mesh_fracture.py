@@ -110,7 +110,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         ### Create object list of selected objects
         ### (because we add more objects with following function we need a separate list)
         objs = []
-        for obj in bpy.data.objects:
+        for obj in scene.objects:
             if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
                 objs.append(obj)
         print("%d objects found." %len(objs))
@@ -197,7 +197,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         # Deselect all objects
         bpy.ops.object.select_all(action='DESELECT')
            
-    ### main loop
+    ### Main loop
     objsHistoryList = []
     objsNewList = objs
     objectCount = objectCountOld = len(objs)
