@@ -441,11 +441,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         #       1x FIXED; Linear omni-directional + bending breaking threshold
         #   if CT == 2:
         #       1x POINT; Linear omni-directional breaking threshold
-        #   if CT == 3:
+        #   if CT == 3 or CT == 20:
         #       1x POINT + 1x FIXED; Linear omni-directional, bending breaking thresholds
 
         # Compressive:
-        #   if CT == 4 or CT == 5 or CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 20 or CT == 21 or CT == 22:
+        #   if CT == 4 or CT == 5 or CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 21 or CT == 22 or CT == 23:
         #       1x GENERIC; Compressive threshold
 
         # Tensile + Shearing:
@@ -453,15 +453,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         #       1x GENERIC; Tensile + bending (3D)
         #   if CT == 5:
         #       2x GENERIC; Tensile + shearing (3D), bending (3D) breaking thresholds
-        #   if CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 20 or CT == 21 or CT == 22:
+        #   if CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 21 or CT == 22 or CT == 23:
         #       3x GENERIC; Tensile constraint (1D) breaking thresholds
-        #   if CT == 6 or CT == 11 or CT == 12 or CT == 20:
+        #   if CT == 6 or CT == 11 or CT == 12 or CT == 21:
         #       1x GENERIC; Shearing (2D), bending (2D) breaking thresholds
-        #   if CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 21 or CT == 22:
+        #   if CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 22 or CT == 23:
         #       2x GENERIC; Shearing (1D) breaking thresholds
-        #   if CT == 15 or CT == 17 or CT == 21:
+        #   if CT == 15 or CT == 17 or CT == 22:
         #       2x GENERIC; Bending + torsion (1D) breaking thresholds
-        #   if CT == 16 or CT == 18 or CT == 22:
+        #   if CT == 16 or CT == 18 or CT == 23:
         #       3x GENERIC; Bending (1D), torsion (1D) breaking thresholds
         
         # Springs (additional):
@@ -503,7 +503,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constsData.append(cData)
         
         ### 1x POINT + 1x FIXED; Linear omni-directional, bending breaking thresholds    
-        if CT == 3:
+        if CT == 3 or CT == 20:
             constCount = 2; correction = 1  # No correction required for this constraint type
             
             ### First constraint
@@ -525,7 +525,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constsData.append(cData)
         
         ### 1x GENERIC; Compressive threshold
-        if CT == 4 or CT == 5 or CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 20 or CT == 21 or CT == 22:
+        if CT == 4 or CT == 5 or CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 21 or CT == 22 or CT == 23:
             ### First constraint
             constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cData = {}; cIdx = consts[cInc]; cInc += 1
@@ -601,7 +601,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constsData.append(cData)
             
         ### 3x GENERIC; Tensile constraint (1D) breaking threshold
-        if CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 20 or CT == 21 or CT == 22:
+        if CT == 6 or CT == 11 or CT == 12 or CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 21 or CT == 22 or CT == 23:
             ### Tensile constraint (1D)
             constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cData = {}; cIdx = consts[cInc]; cInc += 1
@@ -620,7 +620,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constsData.append(cData)
 
         ### 3x GENERIC; Shearing constraint (2D), bending constraint (3D) breaking thresholds
-        if CT == 6 or CT == 11 or CT == 12 or CT == 20:
+        if CT == 6 or CT == 11 or CT == 12 or CT == 21:
             ### Shearing constraint (2D)
             constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cData = {}; cIdx = consts[cInc]; cInc += 1
@@ -656,7 +656,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constsData.append(cData)
 
         ### 2x GENERIC; Shearing (1D) breaking thresholds
-        if CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 21 or CT == 22:
+        if CT == 15 or CT == 16 or CT == 17 or CT == 18 or CT == 22 or CT == 23:
             constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             
             ### Shearing constraint #1
@@ -720,7 +720,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constsData.append(cData)
             
         ### 2x GENERIC; Bending + torsion (1D) breaking thresholds
-        if CT == 15 or CT == 17 or CT == 21:
+        if CT == 15 or CT == 17 or CT == 22:
             constCount = 1; correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
             
             ### Bending with torsion constraint #1
@@ -784,7 +784,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constsData.append(cData)
 
         ### 3x GENERIC; Bending (1D), torsion (1D) breaking thresholds
-        if CT == 16 or CT == 18 or CT == 22:
+        if CT == 16 or CT == 18 or CT == 23:
             constCount = 1; correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
             
             ### Bending without torsion constraint #1
@@ -949,7 +949,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 constsData.append(cData)
 
         ### 1x SPRING; Now with angular limits circular placement is not required for plastic deformability anymore
-        if CT == 19 or CT == 20 or CT == 21 or CT == 22:
+        if CT == 19 or CT == 20 or CT == 21 or CT == 22 or CT == 23:
             constCount = 1; correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueP
