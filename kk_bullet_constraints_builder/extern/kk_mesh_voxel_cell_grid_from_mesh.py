@@ -308,7 +308,7 @@ def run(source=None, parameters=None):
                             objN = createMeshObjectFromData(vertsN, [], facesN)
                             scene.objects.link(objN)
                             objN.name = obj.name
-                            linkToSameGroups(objN, obj)
+                            copyCustomData(objN, obj)
                             if gridRes > 0: objN.matrix_world = obj.matrix_world
                             elif not qUseUnifiedSpace:
                                 objN.location = obj.location
@@ -323,7 +323,7 @@ def run(source=None, parameters=None):
                 objN = createMeshObjectFromData(vertsN, [], facesN)
                 scene.objects.link(objN)
                 objN.name = obj.name
-                linkToSameGroups(objN, obj)
+                copyCustomData(objN, obj)
                 if gridRes > 0: objN.matrix_world = obj.matrix_world
                 elif not qUseUnifiedSpace:
                     objN.location = obj.location
@@ -481,7 +481,7 @@ def run(source=None, parameters=None):
         objN = createMeshObjectFromData(vertsN, [], facesN)
         scene.objects.link(objN)
         objN.name = obj.name
-        linkToSameGroups(objN, obj)
+        copyCustomData(objN, obj)
         objsN.append(objN)
 
     # Deselect all objects
@@ -503,14 +503,25 @@ def run(source=None, parameters=None):
 
 ################################################################################
 
-def linkToSameGroups(objN, obj):
+def copyCustomData(obj, objSrc):
 
-    # Link new object to every group the original is linked to
+    ### Link new object to every group the original is linked to
     for grp in bpy.data.groups:
         for objG in grp.objects:
-            if objG.name == obj.name:
-                try: grp.objects.link(objN)
+            if objG.name == objSrc.name:
+                try: grp.objects.link(obj)
                 except: pass
+            
+    ### Copy materials    
+    bpy.context.scene.objects.active = obj
+    # Remove all materials from new object first
+    while len(obj.material_slots) > 0:
+        obj.active_material_index = 0
+        bpy.ops.object.material_slot_remove()
+    # Add materials slot by slot
+    for slot in objSrc.material_slots:
+        bpy.ops.object.material_slot_add() 
+        obj.material_slots[-1].material = slot.material
 
 ################################################################################
 
