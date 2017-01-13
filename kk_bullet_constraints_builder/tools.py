@@ -361,7 +361,7 @@ def tool_discretize(scene):
 
     ###### Junction splitting and preparation for boolean halving
     
-    if props.preprocTools_dis_bol or props.preprocTools_dis_jus:
+    if props.preprocTools_dis_cel or props.preprocTools_dis_jus:
         # Create cutting plane to be used by external module
         bpy.ops.mesh.primitive_plane_add(radius=100, view_align=False, enter_editmode=False, location=Vector((0, 0, 0)))
         objC = bpy.context.scene.objects.active
@@ -389,7 +389,7 @@ def tool_discretize(scene):
         
     ###### Voxel cell based discretization
 
-    if not props.preprocTools_dis_bol:
+    if not props.preprocTools_dis_cel:
         print("\nDiscretization:")
 
         ###### External function
@@ -401,7 +401,7 @@ def tool_discretize(scene):
     
     ###### Boolean based discretization
 
-    elif props.preprocTools_dis_bol:
+    elif props.preprocTools_dis_cel:
 
         print("\nDiscretization - Halving pass:")
         kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 0, 'BCB_CuttingPlane'], None)
@@ -562,11 +562,11 @@ def tool_discretize(scene):
     ###### Clean-up for junction splitting and boolean halving
     
     # Update selection list if boolean halving is not used but only junction search
-    if not props.preprocTools_dis_bol and props.preprocTools_dis_jus:
+    if not props.preprocTools_dis_cel and props.preprocTools_dis_jus:
         ### Add new objects to the object list and remove deleted ones
         updateObjList(scene, selection)
 
-    if props.preprocTools_dis_bol or props.preprocTools_dis_jus:
+    if props.preprocTools_dis_cel or props.preprocTools_dis_jus:
 
         # Delete cutting plane object
         bpy.context.scene.objects.unlink(objC)

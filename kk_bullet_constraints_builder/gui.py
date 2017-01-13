@@ -175,9 +175,9 @@ class bcb_panel(bpy.types.Panel):
             box2.operator("bcb.tool_discretize", icon="DOT")
             col2 = box2.column(align=1)
             row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_siz")
-            row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_bol")
+            row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_cel")
             row3 = col2.row(align=1); row3.prop(props, "preprocTools_dis_jus")
-            #if not props.preprocTools_dis_bol: row3.enabled = 0; 
+            #if not props.preprocTools_dis_cel: row3.enabled = 0; 
             
             row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_rbs", text="")

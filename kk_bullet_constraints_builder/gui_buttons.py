@@ -223,14 +223,14 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         ### Build constraints if required (menu_gotData will be set afterwards and this operator restarted)
-        if not props.menu_gotData:
+        ### If "BCB_export" exists then the use of Fracture Modifier is assumed and building is skipped
+        if not props.menu_gotData and not "BCB_export" in scene.objects:
             if props.automaticMode and props.preprocTools_aut:
                 OBJECT_OT_bcb_tool_do_all_steps_at_once.execute(self, context)
             OBJECT_OT_bcb_build.execute(self, context)
             if props.menu_gotData: OBJECT_OT_bcb_bake.execute(self, context)
         ### Start baking when we have constraints set
         else:
-            print('\nInit BCB monitor event handler.')
             # Free old monitor data if still in memory (can happen if user stops baking before finished)
             monitor_freeBuffers(scene)
             # Prepare event handlers

@@ -68,120 +68,123 @@ def monitor_eventHandler(scene):
         bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
         bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
 
-    #############################
-    ### What to do on start frame
-    if not "bcb_monitor" in bpy.app.driver_namespace:
-        print("Initializing buffers...")
+    # Only evaluate monitor when there are empties (for Fracture Modifier there are none)
+    if "bcb_emptyObjs" in scene.keys():
 
-        # Store frame time
-        bpy.app.driver_namespace["bcb_time"] = time.time()
-        
-        ###### Function
-        monitor_initBuffers(scene)
-
-        ### Set up warm up timer via gravity (taken from Fracture Modifier FM export module, original warm up method has been commented out for now)
-        if "Gravity" in bpy.data.actions.keys() and scene.animation_data.action != None:
-            # Delete previous gravity animation while preserving the end value
-            curve = scene.animation_data.action.fcurves.find(data_path="gravity", index=2)  
-            curveP = curve.keyframe_points[-1]
-            frame, value = curveP.co
-            #curve.keyframe_points.remove(curveP, fast=False)
-            bpy.data.actions.remove(bpy.data.actions["Gravity"], do_unlink=True)
-            bpy.context.scene.gravity[2] = value
-        if props.warmUpPeriod:
-            ### Create new gravity animation curve 0 to full strength
-            scene.animation_data_create()
-            scene.animation_data.action = bpy.data.actions.new(name="Gravity")
-            curve = scene.animation_data.action.fcurves.new(data_path="gravity", index=2)  
-            curve.keyframe_points.add(2)
-            frame = scene.frame_start
-            curveP = curve.keyframe_points[0]; curveP.co = frame, 0
-            curveP.handle_left = frame -props.warmUpPeriod/2, 0
-            curveP.handle_right = frame +props.warmUpPeriod/2, 0
-            #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
-            frame = scene.frame_start +props.warmUpPeriod
-            curveP = curve.keyframe_points[1]; curveP.co = frame, bpy.context.scene.gravity[2]
-            curveP.handle_left = frame -props.warmUpPeriod/2, bpy.context.scene.gravity[2]
-            curveP.handle_right = frame +props.warmUpPeriod/2, bpy.context.scene.gravity[2]
-            #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
-            ### Fix smooth curves as handles are not automatically being set correctly
-            # Stupid Blender design hack, enforcing context to be accepted by operators
-            #areaType_bak = bpy.context.area.type; bpy.context.area.type = 'GRAPH_EDITOR'
-            #bpy.ops.graph.handle_type(type='AUTO_CLAMPED')
-            # Alternative: bpy.ops.graph.clean(channels=True)
-            #bpy.context.area.type = areaType_bak
-
-        ### Time scale correction with rebuild
-        if props.timeScalePeriod:
-            # Backup original time scale
-            bpy.app.driver_namespace["bcb_monitor_originalTimeScale"] = scene.rigidbody_world.time_scale
-            bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"] = scene.rigidbody_world.solver_iterations
-            if scene.rigidbody_world.time_scale != props.timeScalePeriodValue:
-                ### Decrease precision for solver at extreme scale differences towards high-speed,
-                ### as high step and iteration rates on multi-constraint connections make simulation more instable
-                ratio = scene.rigidbody_world.time_scale /props.timeScalePeriodValue
-                if ratio >= 50: scene.rigidbody_world.solver_iterations /= 10
-                if ratio >= 500: scene.rigidbody_world.solver_iterations /= 10
-                if ratio >= 5000: scene.rigidbody_world.solver_iterations /= 10
-                ### Set new time scale
-                scene.rigidbody_world.time_scale = props.timeScalePeriodValue
-                ###### Execute update of all existing constraints with new time scale
-                build()
-
-        ### Init weakening
-        if props.progrWeak:
-            bpy.app.driver_namespace["bcb_progrWeakCurrent"] = 1
-            bpy.app.driver_namespace["bcb_progrWeakTmp"] = props.progrWeak
-        if props.progrWeakStartFact != 1:
-            progressiveWeakening(scene, props.progrWeakStartFact)
-                                            
-    ################################
-    ### What to do AFTER start frame
-    elif scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
-        time_last = bpy.app.driver_namespace["bcb_time"]
-        sys.stdout.write("Frm: %d - T: %0.2f s" %(scene.frame_current, time.time() -time_last))
-        bpy.app.driver_namespace["bcb_time"] = time.time()
-        if props.progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"]:
-            progrWeakCurrent = bpy.app.driver_namespace["bcb_progrWeakCurrent"]
-            sys.stdout.write(" - Wk: %0.3fx" %(progrWeakCurrent *props.progrWeakStartFact))
-    
-        ###### Function
-        cntBroken = monitor_checkForChange(scene)
-
-        # Debug: Stop on first broken connection
-        #if cntBroken > 0: bpy.ops.screen.animation_play()
+        #############################
+        ### What to do on start frame
+        if not "bcb_monitor" in bpy.app.driver_namespace:
+            print('Init BCB monitor event handler.')
             
-        ### Apply progressive weakening factor
-        if props.progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"] \
-        and (not props.timeScalePeriod or (props.timeScalePeriod and scene.frame_current > scene.frame_start +props.timeScalePeriod)) \
-        and (not props.warmUpPeriod or (props.warmUpPeriod and scene.frame_current > scene.frame_start +props.warmUpPeriod)):
-            if cntBroken < props.progrWeakLimit:
-                # Weaken further only if no new connections are broken
-                if cntBroken == 0:
-                    progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
-                    ###### Weakening function
-                    progressiveWeakening(scene, 1 -progrWeakTmp)
-                    progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
-                    bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
-            else:
-                print("Weakening limit exceeded, weakening disabled from now on.")
-                bpy.app.driver_namespace["bcb_progrWeakTmp"] = 0
-        
-        ### Check if intial time period frame is reached then switch time scale and update all constraint settings
-        if props.timeScalePeriod:
-            if scene.frame_current == scene.frame_start +props.timeScalePeriod:
-                # Set original time scale
-                scene.rigidbody_world.time_scale = bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
-                # Set original solver precision
-                scene.rigidbody_world.solver_iterations = bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
-                ###### Execute update of all existing constraints with new time scale
-                build()
-                ### Move detonator force fields to other layer to deactivate influence (Todo: Detonator not yet part of BCB)
-                if "Detonator" in bpy.data.groups:
-                    for obj in bpy.data.groups["Detonator"].objects:
-                        obj["Layers_BCB"] = obj.layers
-                        obj.layers = [False,False,False,False,False, False,False,False,False,False, False,False,False,False,False, False,False,False,False,True]
+            # Store frame time
+            bpy.app.driver_namespace["bcb_time"] = time.time()
             
+            ###### Function
+            monitor_initBuffers(scene)
+
+            ### Set up warm up timer via gravity (taken from Fracture Modifier FM export module, original warm up method has been commented out for now)
+            if "Gravity" in bpy.data.actions.keys() and scene.animation_data.action != None:
+                # Delete previous gravity animation while preserving the end value
+                curve = scene.animation_data.action.fcurves.find(data_path="gravity", index=2)  
+                curveP = curve.keyframe_points[-1]
+                frame, value = curveP.co
+                #curve.keyframe_points.remove(curveP, fast=False)
+                bpy.data.actions.remove(bpy.data.actions["Gravity"], do_unlink=True)
+                bpy.context.scene.gravity[2] = value
+            if props.warmUpPeriod:
+                ### Create new gravity animation curve 0 to full strength
+                scene.animation_data_create()
+                scene.animation_data.action = bpy.data.actions.new(name="Gravity")
+                curve = scene.animation_data.action.fcurves.new(data_path="gravity", index=2)  
+                curve.keyframe_points.add(2)
+                frame = scene.frame_start
+                curveP = curve.keyframe_points[0]; curveP.co = frame, 0
+                curveP.handle_left = frame -props.warmUpPeriod/2, 0
+                curveP.handle_right = frame +props.warmUpPeriod/2, 0
+                #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
+                frame = scene.frame_start +props.warmUpPeriod
+                curveP = curve.keyframe_points[1]; curveP.co = frame, bpy.context.scene.gravity[2]
+                curveP.handle_left = frame -props.warmUpPeriod/2, bpy.context.scene.gravity[2]
+                curveP.handle_right = frame +props.warmUpPeriod/2, bpy.context.scene.gravity[2]
+                #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
+                ### Fix smooth curves as handles are not automatically being set correctly
+                # Stupid Blender design hack, enforcing context to be accepted by operators
+                #areaType_bak = bpy.context.area.type; bpy.context.area.type = 'GRAPH_EDITOR'
+                #bpy.ops.graph.handle_type(type='AUTO_CLAMPED')
+                # Alternative: bpy.ops.graph.clean(channels=True)
+                #bpy.context.area.type = areaType_bak
+
+            ### Time scale correction with rebuild
+            if props.timeScalePeriod:
+                # Backup original time scale
+                bpy.app.driver_namespace["bcb_monitor_originalTimeScale"] = scene.rigidbody_world.time_scale
+                bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"] = scene.rigidbody_world.solver_iterations
+                if scene.rigidbody_world.time_scale != props.timeScalePeriodValue:
+                    ### Decrease precision for solver at extreme scale differences towards high-speed,
+                    ### as high step and iteration rates on multi-constraint connections make simulation more instable
+                    ratio = scene.rigidbody_world.time_scale /props.timeScalePeriodValue
+                    if ratio >= 50: scene.rigidbody_world.solver_iterations /= 10
+                    if ratio >= 500: scene.rigidbody_world.solver_iterations /= 10
+                    if ratio >= 5000: scene.rigidbody_world.solver_iterations /= 10
+                    ### Set new time scale
+                    scene.rigidbody_world.time_scale = props.timeScalePeriodValue
+                    ###### Execute update of all existing constraints with new time scale
+                    build()
+
+            ### Init weakening
+            if props.progrWeak:
+                bpy.app.driver_namespace["bcb_progrWeakCurrent"] = 1
+                bpy.app.driver_namespace["bcb_progrWeakTmp"] = props.progrWeak
+            if props.progrWeakStartFact != 1:
+                progressiveWeakening(scene, props.progrWeakStartFact)
+                                                
+        ################################
+        ### What to do AFTER start frame
+        elif scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
+            time_last = bpy.app.driver_namespace["bcb_time"]
+            sys.stdout.write("Frm: %d - T: %0.2f s" %(scene.frame_current, time.time() -time_last))
+            bpy.app.driver_namespace["bcb_time"] = time.time()
+            if props.progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"]:
+                progrWeakCurrent = bpy.app.driver_namespace["bcb_progrWeakCurrent"]
+                sys.stdout.write(" - Wk: %0.3fx" %(progrWeakCurrent *props.progrWeakStartFact))
+        
+            ###### Function
+            cntBroken = monitor_checkForChange(scene)
+
+            # Debug: Stop on first broken connection
+            #if cntBroken > 0: bpy.ops.screen.animation_play()
+                
+            ### Apply progressive weakening factor
+            if props.progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"] \
+            and (not props.timeScalePeriod or (props.timeScalePeriod and scene.frame_current > scene.frame_start +props.timeScalePeriod)) \
+            and (not props.warmUpPeriod or (props.warmUpPeriod and scene.frame_current > scene.frame_start +props.warmUpPeriod)):
+                if cntBroken < props.progrWeakLimit:
+                    # Weaken further only if no new connections are broken
+                    if cntBroken == 0:
+                        progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
+                        ###### Weakening function
+                        progressiveWeakening(scene, 1 -progrWeakTmp)
+                        progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
+                        bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
+                else:
+                    print("Weakening limit exceeded, weakening disabled from now on.")
+                    bpy.app.driver_namespace["bcb_progrWeakTmp"] = 0
+            
+            ### Check if intial time period frame is reached then switch time scale and update all constraint settings
+            if props.timeScalePeriod:
+                if scene.frame_current == scene.frame_start +props.timeScalePeriod:
+                    # Set original time scale
+                    scene.rigidbody_world.time_scale = bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
+                    # Set original solver precision
+                    scene.rigidbody_world.solver_iterations = bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
+                    ###### Execute update of all existing constraints with new time scale
+                    build()
+                    ### Move detonator force fields to other layer to deactivate influence (Todo: Detonator not yet part of BCB)
+                    if "Detonator" in bpy.data.groups:
+                        for obj in bpy.data.groups["Detonator"].objects:
+                            obj["Layers_BCB"] = obj.layers
+                            obj.layers = [False,False,False,False,False, False,False,False,False,False, False,False,False,False,False, False,False,False,False,True]
+                
 ################################################################################
 
 def automaticModeAfterStop():
@@ -216,7 +219,9 @@ def stop_eventHandler(scene):
 
     ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
     if not bpy.context.screen.is_animation_playing:
-        print('Removing BCB monitor event handler.')
+        # Only show monitor message when there are empties (for Fracture Modifier there are none)
+        if "bcb_emptyObjs" in scene.keys():
+            print('Removing BCB monitor event handler.')
         for i in range( len( bpy.app.handlers.frame_change_pre ) ):
              bpy.app.handlers.frame_change_pre.pop()
         # Convert animation point cache to fixed bake data 
