@@ -1,5 +1,5 @@
 ######################################
-# Mesh Fracture v1.70 by Kai Kostack #
+# Mesh Fracture v1.71 by Kai Kostack #
 ######################################
 
 # ##### BEGIN GPL LICENSE BLOCK #####
@@ -483,7 +483,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                             # Remove empty original object from original scene
                             try: sceneOriginal.objects.unlink(obj)
                             except: pass
-                        
+                            
                         ### Cutter object can be removed
                         bpy.context.scene.objects.active = objCdup
                         try: bpy.ops.object.mode_set(mode='EDIT')
@@ -529,7 +529,11 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                             scene.objects.unlink(obj)
                         else:
                             bpy.context.scene.objects.unlink(obj)
-                        
+                        # Remove object from all groups (so it won't stick in the .blend file forever)
+                        for grp in bpy.data.groups:
+                            try: grp.objects.unlink(obj)
+                            except: pass
+                                                    
                         ### Add new objects to the list
                         objectCount -= 1   # Remove original object
                         objA.select = 1
@@ -834,6 +838,10 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                             scene.objects.unlink(obj)
                         else:
                             bpy.context.scene.objects.unlink(obj)
+                        # Remove object from all groups (so it won't stick in the .blend file forever)
+                        for grp in bpy.data.groups:
+                            try: grp.objects.unlink(obj)
+                            except: pass
                         
                         ### Add new objects to the list
                         objectCount -= 1   # Remove original object
