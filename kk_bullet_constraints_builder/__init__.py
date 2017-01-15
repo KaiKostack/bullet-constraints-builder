@@ -201,6 +201,8 @@ classes = [ \
     OBJECT_OT_bcb_move_down,
     OBJECT_OT_bcb_up,
     OBJECT_OT_bcb_down,
+    OBJECT_OT_bcb_up_more,
+    OBJECT_OT_bcb_down_more,
     OBJECT_OT_bcb_reset,
     
     OBJECT_OT_bcb_asst_update,

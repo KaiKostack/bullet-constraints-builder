@@ -359,7 +359,7 @@ class bcb_panel(bpy.types.Panel):
         row.operator("bcb.move_up", icon="TRIA_UP")
         row.operator("bcb.move_down", icon="TRIA_DOWN")
         row = col2.row(align=1)
-        split = col2.split(percentage=.25, align=1)
+        split = col2.split(percentage=.40, align=1)
         split.label(text="GRP")
         split2 = split.split(align=1)
         split2.label(text="CT")
@@ -373,8 +373,13 @@ class bcb_panel(bpy.types.Panel):
             col2.separator()
             # These buttons are existing twice (see below)
             row = col2.row(align=1)
-            row.operator("bcb.up", icon="TRIA_UP")
-            row.operator("bcb.down", icon="TRIA_DOWN")
+            split = row.split(percentage=.50, align=1)
+            split2 = split.split(percentage=.30, align=1)
+            split2.operator("bcb.up_more", icon="PREV_KEYFRAME")
+            split2.operator("bcb.up", icon="TRIA_UP")
+            split2 = split.split(percentage=.70, align=1)
+            split2.operator("bcb.down", icon="TRIA_DOWN")
+            split2.operator("bcb.down_more", icon="NEXT_KEYFRAME")
 
         ### Everything below is only visible if at least one element group is existing
         else:  
@@ -394,7 +399,7 @@ class bcb_panel(bpy.types.Panel):
                 else: prop_EGSidxBTS = eval("props.elemGrp_%d_EGSidxBTS" %i)
                 if not connectType[2][3]: prop_EGSidxBTB = "-"
                 else: prop_EGSidxBTB = eval("props.elemGrp_%d_EGSidxBTB" %i)
-                split = row.split(percentage=.25, align=1)
+                split = row.split(percentage=.40, align=1)
                 if prop_EGSidxName == "": split.label(text="[Def.]")
                 else:                     split.label(text=str(prop_EGSidxName))
                 split2 = split.split(align=1)
@@ -406,8 +411,13 @@ class bcb_panel(bpy.types.Panel):
 
             # These buttons are existing twice (see above)
             row = col2.row(align=1)
-            row.operator("bcb.up", icon="TRIA_UP")
-            row.operator("bcb.down", icon="TRIA_DOWN")
+            split = row.split(percentage=.50, align=1)
+            split2 = split.split(percentage=.30, align=1)
+            split2.operator("bcb.up_more", icon="PREV_KEYFRAME")
+            split2.operator("bcb.up", icon="TRIA_UP")
+            split2 = split.split(percentage=.70, align=1)
+            split2.operator("bcb.down", icon="TRIA_DOWN")
+            split2.operator("bcb.down_more", icon="NEXT_KEYFRAME")
             
             ###### Element group settings
             

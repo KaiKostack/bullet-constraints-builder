@@ -365,7 +365,7 @@ class OBJECT_OT_bcb_move_down(bpy.types.Operator):
 class OBJECT_OT_bcb_up(bpy.types.Operator):
     bl_idname = "bcb.up"
     bl_label = " Previous"
-    bl_description = "Selects element group from list."
+    bl_description = "Selects previous element group from list."
     def execute(self, context):
         props = context.window_manager.bcb
         if props.menu_selectedElemGrp > 0:
@@ -379,7 +379,7 @@ class OBJECT_OT_bcb_up(bpy.types.Operator):
 class OBJECT_OT_bcb_down(bpy.types.Operator):
     bl_idname = "bcb.down"
     bl_label = " Next"
-    bl_description = "Selects element group from list."
+    bl_description = "Selects next element group from list."
     def execute(self, context):
         props = context.window_manager.bcb
         elemGrps = mem["elemGrps"]
@@ -387,6 +387,39 @@ class OBJECT_OT_bcb_down(bpy.types.Operator):
             props.menu_selectedElemGrp += 1
             # Update menu related properties from global vars
             props.props_update_menu()
+        return{'FINISHED'} 
+
+########################################
+
+class OBJECT_OT_bcb_up_more(bpy.types.Operator):
+    bl_idname = "bcb.up_more"
+    bl_label = ""
+    bl_description = "Selects previous element group from list. (x10)"
+    def execute(self, context):
+        props = context.window_manager.bcb
+        stepSize = 10
+        if props.menu_selectedElemGrp > 0 +stepSize:
+              props.menu_selectedElemGrp -= stepSize
+        else: props.menu_selectedElemGrp = 0
+        # Update menu related properties from global vars
+        props.props_update_menu()
+        return{'FINISHED'} 
+
+########################################
+
+class OBJECT_OT_bcb_down_more(bpy.types.Operator):
+    bl_idname = "bcb.down_more"
+    bl_label = ""
+    bl_description = "Selects next element group from list. (x10)"
+    def execute(self, context):
+        props = context.window_manager.bcb
+        elemGrps = mem["elemGrps"]
+        stepSize = 10
+        if props.menu_selectedElemGrp < len(elemGrps) -1 -stepSize:
+              props.menu_selectedElemGrp += stepSize
+        else: props.menu_selectedElemGrp = len(elemGrps) -1
+        # Update menu related properties from global vars
+        props.props_update_menu()
         return{'FINISHED'} 
 
 ########################################
