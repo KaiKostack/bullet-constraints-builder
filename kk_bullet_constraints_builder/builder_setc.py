@@ -204,6 +204,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprB_A = elemGrps_elemGrpA[EGSidxBTB]
             brkThresExprB9_A = elemGrps_elemGrpA[EGSidxBTB9]
             brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
+            brkThresValuePL_A = elemGrps_elemGrpA[EGSidxBTPL]
             ### Add surface variable
             if len(brkThresExprC_A): brkThresExprC_A += "*a"
             if len(brkThresExprT_A): brkThresExprT_A += "*a"
@@ -212,7 +213,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if len(brkThresExprB_A): brkThresExprB_A += "*a"
             if len(brkThresExprB9_A): brkThresExprB9_A += "*a"
             if len(brkThresExprP_A): brkThresExprP_A += "*a"
-
+            
             ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
             try: brkThresValueC_A = eval(brkThresExprC_A)
             except: print("\rError: Expression could not be evaluated:", brkThresExprC_A); brkThresValueC_A = 0
@@ -249,6 +250,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprB_B = elemGrps_elemGrpB[EGSidxBTB]
             brkThresExprB9_B = elemGrps_elemGrpB[EGSidxBTB9]
             brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
+            brkThresValuePL_B = elemGrps_elemGrpB[EGSidxBTPL]
             ### Add surface variable
             if len(brkThresExprC_B): brkThresExprC_B += "*a"
             if len(brkThresExprT_B): brkThresExprT_B += "*a"
@@ -327,6 +329,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     if brkThresValueP_A <= brkThresValueP_B: brkThresValueP = brkThresValueP_A
                     else:                                    brkThresValueP = brkThresValueP_B
 
+                if brkThresValuePL_A <= brkThresValuePL_B: brkThresValuePL = brkThresValuePL_A
+                else:                                      brkThresValuePL = brkThresValuePL_B
+
             else:
                 ### Use the stronger of both breaking thresholds for every degree of freedom
                 if brkThresValueC_A > brkThresValueC_B: brkThresValueC = brkThresValueC_A
@@ -355,6 +360,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 else:    
                     if brkThresValueP_A > brkThresValueP_B: brkThresValueP = brkThresValueP_A
                     else:                                   brkThresValueP = brkThresValueP_B
+
+                if brkThresValuePL_A > brkThresValuePL_B: brkThresValuePL = brkThresValuePL_A
+                else:                                     brkThresValuePL = brkThresValuePL_B
             
         # Only A is active and B is passive group
         elif CT_A != 0 and CT_B == 0:
@@ -371,6 +379,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if brkThresValueB9_A == -1: brkThresValueB9 = -1
             else: brkThresValueB9 = brkThresValueB9_A
             brkThresValueP = brkThresValueP_A
+            brkThresValuePL = brkThresValuePL_A
  
         # Only B is active and A is passive group
         elif CT_A == 0 and CT_B != 0:
@@ -387,6 +396,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if brkThresValueB9_B == -1: brkThresValueB9 = -1
             else: brkThresValueB9 = brkThresValueB9_B
             brkThresValueP = brkThresValueP_B
+            brkThresValuePL = brkThresValuePL_B
 
         # Both A and B are passive groups
         elif CT_A == 0 and CT_B == 0:
@@ -416,7 +426,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             ### Calculate orientation between the two elements
             # Center to center orientation
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-            distObjAB = dirVec.length
+            # Get spring length used later for stiffness calculation
+            if brkThresValuePL > 0: springLength = brkThresValuePL
+            else:                   springLength = dirVec.length
+            # Recalculate directional vector for better constraint alignment
             if props.snapToAreaOrient:
                 # Use contact area for orientation (axis closest to thickness)
                 if geoAxisNormal == 1:   dirVecNew = Vector((1, 0, 0))
@@ -886,7 +899,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            springStiff = value *distObjAB /(correction *tol2dist) /constCount
+            springStiff = value *springLength /(correction *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(3):
                 cData = {}; cIdx = consts[cInc]; cInc += 1
@@ -920,7 +933,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            springStiff = value *distObjAB /(correction *tol2dist) /constCount
+            springStiff = value *springLength /(correction *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(4):
                 cData = {}; cIdx = consts[cInc]; cInc += 1
@@ -954,7 +967,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueP
             brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            springStiff = value *distObjAB /(correction *tol2dist) /constCount
+            springStiff = value *springLength /(correction *tol2dist) /constCount
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
             if qUpdateComplete:
                 ### Enable linear and angular spring
@@ -981,7 +994,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             value = brkThresValueS
             brkThres3 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueP
-            springStiff = value *distObjAB /(correction *tol2dist) /constCount
+            springStiff = value *springLength /(correction *tol2dist) /constCount
             # Loop through all constraints of this connection
             for j in range(3):
 
@@ -1065,7 +1078,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             value = brkThresValueS
             brkThres3 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueP
-            springStiff = value *distObjAB /(correction *tol2dist) /constCount
+            springStiff = value *springLength /(correction *tol2dist) /constCount
             # Loop through all constraints of this connection
             for j in range(4):
 

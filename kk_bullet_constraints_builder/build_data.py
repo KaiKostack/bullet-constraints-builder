@@ -268,10 +268,10 @@ def getConfigDataFromScene(scene):
                 k = 0
                 for l in range(grpCnt):
                     if elemGrps[l][EGSidxName] == '': k = l
-                # Fill in missing data from found group
+                # Fill in missing data from preset default data
                 ofs = len(column)
                 for j in range(missingColumns):
-                    column.append(elemGrps[k][ofs +j])
+                    column.append(presets[0][ofs+j])
             elemGrpsInverted.append(column)
         mem["elemGrps"] = elemGrpsInverted
 

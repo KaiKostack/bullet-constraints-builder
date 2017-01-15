@@ -496,9 +496,16 @@ class bcb_panel(bpy.types.Panel):
                 if props.assistant_menu != "None":
                     col.separator()
                     split = col.split(percentage=.85, align=1)
-                    split.operator("bcb.asst_update", icon="PASTEDOWN")
-                    split2 = split.split(align=1)
-                    split2.prop(props, "submenu_assistant_advanced")
+                    split2 = split.split(percentage=.5, align=1)
+                    split2.operator("bcb.asst_update", icon="PASTEDOWN")
+                    split2.operator("bcb.asst_update_all", icon="SCRIPT")
+                    split3 = split.split(align=1)
+                else:
+                    col.separator()
+                    split = col.split(percentage=.85, align=1)
+                    split.operator("bcb.asst_update_all", icon="SCRIPT")
+                    split3 = split.split(align=1)
+                split3.prop(props, "submenu_assistant_advanced")
                     
             ###### Element group settings (more)        
 
@@ -546,14 +553,16 @@ class bcb_panel(bpy.types.Panel):
             if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
             expression = eval("props.elemGrp_%d_EGSidxBTS9" %i)
-            if expression != "":
+            if expression != "" or props.submenu_assistant_advanced:
                 row = col.row(align=1)
                 try: value = eval(expression)
-                except: row.alert = 1; qAlert = 1
+                except: qAlert = 1
                 else: qAlert = 0
+                if qAlert and expression != "": row.alert = 1
                 row.prop(props, "elemGrp_%d_EGSidxBTS9" %i)
                 if not connectType[2][2]: row.active = 0
-                if qAlert: row = col.row(align=1); row.label(text="Error in expression")
+                if qAlert and expression != "":
+                    row = col.row(align=1); row.label(text="Error in expression")
 
             expression = eval("props.elemGrp_%d_EGSidxBTB" %i)
             row = col.row(align=1)
@@ -565,24 +574,34 @@ class bcb_panel(bpy.types.Panel):
             if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
             expression = eval("props.elemGrp_%d_EGSidxBTB9" %i)
-            if expression != "":
+            if expression != "" or props.submenu_assistant_advanced:
                 row = col.row(align=1)
                 try: value = eval(expression)
-                except: row.alert = 1; qAlert = 1
+                except: qAlert = 1
                 else: qAlert = 0
+                if qAlert and expression != "": row.alert = 1
                 row.prop(props, "elemGrp_%d_EGSidxBTB9" %i)
                 if not connectType[2][3]: row.active = 0
-                if qAlert: row = col.row(align=1); row.label(text="Error in expression")
+                if qAlert and expression != "":
+                    row = col.row(align=1); row.label(text="Error in expression")
 
             expression = eval("props.elemGrp_%d_EGSidxBTP" %i)
-            if expression != "":
+            if expression != "" or props.submenu_assistant_advanced:
                 row = col.row(align=1)
                 try: value = eval(expression)
-                except: row.alert = 1; qAlert = 1
+                except: qAlert = 1
                 else: qAlert = 0
+                if qAlert and expression != "": row.alert = 1
                 row.prop(props, "elemGrp_%d_EGSidxBTP" %i)
                 if not connectType[2][4]: row.active = 0
-                if qAlert: row = col.row(align=1); row.label(text="Error in expression")
+                if qAlert and expression != "":
+                    row = col.row(align=1); row.label(text="Error in expression")
+
+            value = eval("props.elemGrp_%d_EGSidxBTPL" %i)
+            if value != 0 or props.submenu_assistant_advanced:
+                row = col.row(align=1)
+                row.prop(props, "elemGrp_%d_EGSidxBTPL" %i)
+                if not connectType[2][4]: row.active = 0
 
             col.separator()
             #row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxRqVP" %i)

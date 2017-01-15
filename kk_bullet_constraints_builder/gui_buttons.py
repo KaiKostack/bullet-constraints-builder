@@ -411,11 +411,35 @@ class OBJECT_OT_bcb_reset(bpy.types.Operator):
 class OBJECT_OT_bcb_asst_update(bpy.types.Operator):
     bl_idname = "bcb.asst_update"
     bl_label = "Evaluate"
-    bl_description = "Combines and evaluates all expressions for constraint breaking threshold calculation."
+    bl_description = "Combines and evaluates above expressions for constraint breaking threshold calculation. It is recommended to choose a Connection Type with 7x Generic constraints to get the best simulation results."
     def execute(self, context):
         props = context.window_manager.bcb
         ###### Execute expression evaluation
         combineExpressions()
+        # Update menu related properties from global vars
+        props.props_update_menu()
+        return{'FINISHED'}
+    
+########################################
+
+class OBJECT_OT_bcb_asst_update_all(bpy.types.Operator):
+    bl_idname = "bcb.asst_update_all"
+    bl_label = "Evaluate All"
+    bl_description = "Combines and evaluates expressions for every element groups with active Formula Assistant. Warning: Use this with care as it will overwrite also manually changed breaking thresholds for these element groups."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        elemGrps = mem["elemGrps"]
+        selElemGrp_bak = props.menu_selectedElemGrp
+        # Walk over all element groups and evaluate formula expressions
+        for i in range(len(elemGrps)):
+            props.menu_selectedElemGrp = i
+            # Update menu related properties from global vars
+            props.props_update_menu()
+            # Only evaluate if Formula Assistant is active
+            if props.assistant_menu != "None":
+                ###### Execute expression evaluation
+                combineExpressions()
+        props.menu_selectedElemGrp = selElemGrp_bak
         # Update menu related properties from global vars
         props.props_update_menu()
         return{'FINISHED'}

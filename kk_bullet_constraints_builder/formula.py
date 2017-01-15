@@ -173,7 +173,7 @@ def combineExpressions():
     ### Reinforced Concrete (Beams & Columns)
     if props.assistant_menu == "con_rei_beam":
         # Switch connection type to the recommended type
-        elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
+        #elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
         # Prepare also a height and width swapped (90
         for qHWswapped in range(2):
             if not qHWswapped:
@@ -269,7 +269,6 @@ def combineExpressions():
                 elemGrps[i][EGSidxBTT] = splitAndApplyPrecisionToFormula(Np)
                 elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
                 elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
-                elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
             else:
                 Vpn9 = splitAndApplyPrecisionToFormula(Vpn)
                 Mpn9 = splitAndApplyPrecisionToFormula(Mpn)
@@ -279,11 +278,13 @@ def combineExpressions():
                 else:           elemGrps[i][EGSidxBTS9] = ""
                 if Mpn9 != Mpn: elemGrps[i][EGSidxBTB9] = splitAndApplyPrecisionToFormula(Mpn9)
                 else:           elemGrps[i][EGSidxBTS9] = ""
+            elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
+            #elemGrps[i][EGSidxBTPL] = s /1000  # Output in m
        
     ### Reinforced Concrete (Walls & Slabs)
     elif props.assistant_menu == "con_rei_wall":
         # Switch connection type to the recommended type
-        elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
+        #elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
         # Prepare also a height and width swapped (90
         for qHWswapped in range(2):
             if not qHWswapped:
@@ -389,5 +390,7 @@ def combineExpressions():
                 else:           elemGrps[i][EGSidxBTS9] = ""
                 if Mpn9 != Mpn: elemGrps[i][EGSidxBTB9] = splitAndApplyPrecisionToFormula(Mpn9)
                 else:           elemGrps[i][EGSidxBTS9] = ""
+            elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
+            #elemGrps[i][EGSidxBTPL] = s /1000  # Output in m
                 
 ################################################################################

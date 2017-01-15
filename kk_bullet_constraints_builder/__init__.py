@@ -204,6 +204,7 @@ classes = [ \
     OBJECT_OT_bcb_reset,
     
     OBJECT_OT_bcb_asst_update,
+    OBJECT_OT_bcb_asst_update_all,
     OBJECT_OT_bcb_tool_estimate_cluster_radius,
     OBJECT_OT_bcb_tool_select_group,
 
