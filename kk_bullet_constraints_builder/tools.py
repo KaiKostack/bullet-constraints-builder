@@ -164,7 +164,7 @@ def tool_createGroupsFromNames(scene):
     # Backup selection
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     # Find mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
     if len(objs) == 0:
         print("No mesh objects selected. Nothing done.")
         return
@@ -352,7 +352,7 @@ def tool_discretize(scene):
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
     if len(objs) == 0:
         print("No mesh objects selected.")
         return
@@ -587,7 +587,7 @@ def tool_removeIntersections(scene, mode=0):
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
     if len(objs) == 0:
         print("No mesh objects selected.")
         return
@@ -607,7 +607,7 @@ def tool_removeIntersections(scene, mode=0):
     if count > 0:
         ### Switch found intersecting objects to 'Mesh' collision shape
         ### (some might have only overlapping boundary boxes while the geometry could still not intersecting)
-        objs = [obj for obj in bpy.context.scene.objects if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
+        objs = [obj for obj in bpy.context.scene.objects if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
         # Switch the collision shape for the entire selection 
         obj = objs[0]
         if obj.rigid_body != None:
@@ -636,7 +636,7 @@ def tool_enableRigidBodies(scene):
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
     if len(objs) == 0:
         print("No mesh objects selected.")
         return
@@ -946,7 +946,7 @@ def tool_groundMotion(scene):
     bpy.ops.object.select_all(action='DESELECT')
 
     # Find passive mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'PASSIVE']
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'PASSIVE' and len(obj.data.vertices) > 0]
     if len(objs) == 0:
         print("No passive rigid body mesh objects selected.")
     else:
