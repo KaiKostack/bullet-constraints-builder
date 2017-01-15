@@ -49,7 +49,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     qSplitAtJunctions = 0           # 1    | Try to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes
     junctionTol = .001              # .001 | Tolerance for junction detection to avoid cutting off of very thin geometry slices (requires normals consistently pointing outside)
     junctionTolMargin = .01         # .01  | Margin inside the object boundary box borders to skip junction detection (helps to avoid cutting of similar faces which can lead to hundreds of thin mesh slices, should be larger than junctionTol) 
-    junctionTolRect = .03           # .03  | Tolerance to enforce rectangular shapes in radian, larger values will allow more diagonal cuts (0 = no restriction)
+    junctionTolRect = .01           # .01  | Tolerance to enforce rectangular shapes in radian, larger values will allow more diagonal cuts (0 = no restriction)
     junctionMaxFaceCnt = 0          # 0    | Sets a limit to skip search for junctions after this many faces have been checked (helps to skip very dense meshes more quickly, 0 = disabled)
     halvingCutter = 'Plane'         #      | The "knife" object for halving, a larger flat plane is recommended but can be an arbitrary geometry as well
 
