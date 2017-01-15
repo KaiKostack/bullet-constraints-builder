@@ -376,11 +376,6 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objA.scale = obj.scale.copy()
                         objA.location = obj.location.copy()
                         objA.rotation_euler = obj.rotation_euler.copy()
-                        # Link new object to every group the original is linked to
-                        for grp in bpy.data.groups:
-                            for objG in grp.objects:
-                                if objG.name == obj.name:
-                                    grp.objects.link(objA)
                         
                         ### Prepare second object
                         if qDebugVerbose: print("## MF: Prepare second object")
@@ -421,12 +416,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objB.scale = obj.scale.copy()
                         objB.location = obj.location.copy()
                         objB.rotation_euler = obj.rotation_euler.copy()
-                        # Link new object to every group the original is linked to
-                        for grp in bpy.data.groups:
-                            for objG in grp.objects:
-                                if objG.name == obj.name:
-                                    grp.objects.link(objB)
-                        
+
                         ### Check mesh results for sanity (evaluation)
                         if qDebugVerbose: print("## MF: Check mesh results for sanity (evaluation)")
                         # 1 Continue only when both new meshes contain data
@@ -466,6 +456,13 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                             objA.select = 1; objB.select = 1
                             bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS', center='BOUNDS')
                             objA.select = 0; objB.select = 0
+
+                        ### Link new objects to every group the original is linked to
+                        for grp in bpy.data.groups:
+                            for objG in grp.objects:
+                                if objG.name == obj.name:
+                                    grp.objects.link(objA)
+                                    grp.objects.link(objB)
                         
                         if qDynSecondScnOpt:
                             ### Dynamic Fracture: If using two scenes remove objects in original scene first otherwise Blender will crash due to "access violation"
@@ -670,11 +667,6 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objA.scale = obj.scale.copy()
                         objA.location = obj.location.copy()
                         objA.rotation_euler = obj.rotation_euler.copy()
-                        # Link new object to every group the original is linked to
-                        for grp in bpy.data.groups:
-                            for objG in grp.objects:
-                                if objG.name == obj.name:
-                                    grp.objects.link(objA)
                         
                         ### Prepare second object
                         if qDebugVerbose: print("## MF: Prepare second object")
@@ -704,11 +696,6 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objB.scale = obj.scale.copy()
                         objB.location = obj.location.copy()
                         objB.rotation_euler = obj.rotation_euler.copy()
-                        # Link new object to every group the original is linked to
-                        for grp in bpy.data.groups:
-                            for objG in grp.objects:
-                                if objG.name == obj.name:
-                                    grp.objects.link(objB)
                         
                         ### Check mesh results for sanity (preparation)
                         if qDebugVerbose: print("## MF: Check mesh results for sanity (preparation)")
@@ -787,6 +774,13 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                             objA.select = 1; objB.select = 1
                             bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS', center='BOUNDS')
                             objA.select = 0; objB.select = 0
+
+                        ### Link new objects to every group the original is linked to
+                        for grp in bpy.data.groups:
+                            for objG in grp.objects:
+                                if objG.name == obj.name:
+                                    grp.objects.link(objA)
+                                    grp.objects.link(objB)
                         
                         if qDynSecondScnOpt:
                             ### Dynamic Fracture: If using two scenes remove objects in original scene first otherwise Blender will crash due to "access violation"
