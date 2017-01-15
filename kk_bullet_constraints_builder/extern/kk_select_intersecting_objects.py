@@ -93,13 +93,15 @@ def run(source=None, parameters=None):
         
         if qBool:
 
+            print("Resolving found intersections... (%d)" %len(connectsPair))
+
             for k in range(len(connectsPair)):
                 sys.stdout.write('\r' +"%d " %k)
 
                 objA = objs[connectsPair[k][0]]
                 objB = objs[connectsPair[k][1]]
-                if qSelectA and not objA.select: objA.select = 1; count += 1
-                if qSelectB and not objB.select: objB.select = 1; count += 1
+                if qSelectA and not objA.select: objA.select = 1
+                if qSelectB and not objB.select: objB.select = 1
 
                 locA = objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
                 locB = objB.matrix_world.to_translation()
@@ -151,9 +153,23 @@ def run(source=None, parameters=None):
                
                 count += 1
             print()
-    
             print('Objects modified (one per pair):', count)
-            print('Done.')
+
+            # Deselect all objects.
+            bpy.ops.object.select_all(action='DESELECT')
+            # Select objects without vertices for deletion
+            cnt = 0
+            for obj in objs:
+                if len(obj.data.vertices) <= 1:
+                    obj.select = 1
+                    cnt += 1
+            ### Delete all selected objects
+            bpy.ops.object.delete(use_global=True)
+            
+            print('Objects deleted because of zero volume:', cnt)
+
+            # Select remainder of the input objects again
+            for obj in objs: obj.select = 1
 
         elif not qBool:
 
@@ -205,13 +221,14 @@ def run(source=None, parameters=None):
             if qDelete:
                 ### Delete all selected objects
                 bpy.ops.object.delete(use_global=True)
-
+                
                 print('Objects deleted:', count)
-                print('Done.')
             else:
                 print('Objects selected:', count)
-                print('Done.')
+
+        
     print('Time: %0.2f s' %(time.time()-time_start))
+    print('Done.')
 
     return count
     

@@ -608,13 +608,13 @@ def tool_removeIntersections(scene, mode=0):
         ### Switch found intersecting objects to 'Mesh' collision shape
         ### (some might have only overlapping boundary boxes while the geometry could still not intersecting)
         objs = [obj for obj in bpy.context.scene.objects if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
-        # Switch the collision shape for the entire selection 
-        obj = objs[0]
-        if obj.rigid_body != None:
-            bpy.ops.rigidbody.shape_change(type='MESH')
-            for obj in objs:
-                obj.rigid_body.collision_margin = 0
-            
+        if len(objs) > 0:
+            obj = objs[0]
+            if obj.rigid_body != None:
+                bpy.ops.rigidbody.shape_change(type='MESH')
+                for obj in objs:
+                    obj.rigid_body.collision_margin = 0
+                
     if mode == 0 or (mode == 3 and count == 0):
         # Revert to start selection
         for obj in selection: obj.select = 1
