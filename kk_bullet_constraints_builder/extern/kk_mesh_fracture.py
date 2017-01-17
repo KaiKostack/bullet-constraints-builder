@@ -41,7 +41,8 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     materialPreset = 'Concrete'     # See Blender rigid body tools for a list of available presets
     materialDensity = 0             # Custom density value (kg/m^3) to use instead of material preset (0 = disabled)
 
-    qSeparateLoose = 1              # 1    | Perform separate loose operation on all shards on start but also after each fracture step
+    qSeparateLoose = 1              # 1    | Perform Separate Loose on all shards at start
+    qSeparateLooseStep = 1          # 1    | Perform Separate Loose on shards after each fracture step
 
     ### Vars for halving
     qUseHalving = 1                 # 0    | Enables special mode for subdividing meshes into halves until either minimumSizeLimit or objectCountLimit is reached (sets boolErrorRetryLimit = 0)
@@ -75,6 +76,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         objectCountLimit = 100000000
         boolErrorRetryLimit = 0
         qSeparateLoose = 0
+        qSeparateLooseStep = 1
         qSilentVerbose = 1
         objsSource = None
         crackOrigin = None
@@ -540,7 +542,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objectCount -= 1   # Remove original object
                         objA.select = 1
                         objB.select = 1
-                        if qSeparateLoose:
+                        if qSeparateLooseStep:
                             ### Perform separate loose on new objects
                             for objTemp in bpy.context.scene.objects:
                                 if objTemp.select and objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(bpy.context.scene):
@@ -847,7 +849,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objectCount -= 1   # Remove original object
                         objA.select = 1
                         objB.select = 1
-                        if qSeparateLoose:
+                        if qSeparateLooseStep:
                             ### Perform separate loose on new objects
                             for objTemp in bpy.context.scene.objects:
                                 if objTemp.select and objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(bpy.context.scene):
