@@ -46,10 +46,10 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     ### Vars for halving
     qUseHalving = 1                 # 0    | Enables special mode for subdividing meshes into halves until either minimumSizeLimit or objectCountLimit is reached (sets boolErrorRetryLimit = 0)
                                     #      | It's recommended to set the latter to a very high count to get a universal shard size. This is incompatible with Dynamic Fracture because object centers are changed.
-    qSplitAtJunctions = 0           # 1    | Try to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes
+    qSplitAtJunctions = 1           # 1    | Try to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes
     junctionTol = .001              # .001 | Tolerance for junction detection to avoid cutting off of very thin geometry slices (requires normals consistently pointing outside)
     junctionTolMargin = .01         # .01  | Margin inside the object boundary box borders to skip junction detection (helps to avoid cutting of similar faces which can lead to hundreds of thin mesh slices, should be larger than junctionTol) 
-    junctionTolRect = .01           # .01  | Tolerance to enforce rectangular shapes in radian, larger values will allow more diagonal cuts (0 = no restriction)
+    junctionTolRect = .001          # .001 | Tolerance to enforce rectangular shapes in radian, larger values will allow more diagonal cuts (0 = no restriction)
     junctionMaxFaceCnt = 0          # 0    | Sets a limit to skip search for junctions after this many faces have been checked (helps to skip very dense meshes more quickly, 0 = disabled)
     halvingCutter = 'Plane'         #      | The "knife" object for halving, a larger flat plane is recommended but can be an arbitrary geometry as well
 
@@ -210,7 +210,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         objsNewList = []
         qNoObjectsLeft = 1
         for obj in objs:
-                            
+
             dim = obj.dimensions
             splitAtJunction_face = 0
             if dim.x > minimumSizeLimit or dim.y > minimumSizeLimit or dim.z > minimumSizeLimit \
@@ -218,7 +218,10 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                
                 if not qSilentVerbose: print(objectCount, '/', objectCountLimit, ':', obj.name)
                 else: sys.stdout.write('\r' +"%d" %objectCount)
-
+                # Debug: Save file now and then
+                #if random.randint(0, 10) == 0:
+                #    bpy.ops.wm.save_mainfile()
+                
                 if not qUseHalving:
                     ### Only use plane cutter if its diameter is larger than object otherwise use hole cutter 
                     if objCP.dimensions > obj.dimensions or not qUseHoleCutter:
@@ -292,7 +295,8 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                                 # Remove scale from face normal to avoid malformed vector
                                 normal = face.normal *obj.matrix_world.inverted()
                                 normal = normal.normalized()
-                                if normal.length > 0 and (not junctionTolRect or (normal.angle(Vector((1,0,0))) < junctionTolRect or normal.angle(Vector((0,1,0))) < junctionTolRect or normal.angle(Vector((0,0,1))) < junctionTolRect)):
+                                if normal.length > 0 and (not junctionTolRect or (abs(normal.angle(Vector((1,0,0)))-pi2) > pi2-junctionTolRect \
+                                or abs(normal.angle(Vector((0,1,0)))-pi2) > pi2-junctionTolRect or abs(normal.angle(Vector((0,0,1)))-pi2) > pi2-junctionTolRect)):
                                     ### Calculate boundary box including tolerance
                                     bbMin, bbMax, bbCenter = boundaryBox(obj, 0)
                                     face_center = face.center
@@ -591,7 +595,8 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                                 # Remove scale from face normal to avoid malformed vector
                                 normal = face.normal *obj.matrix_world.inverted()
                                 normal = normal.normalized()
-                                if normal.length > 0 and (not junctionTolRect or (normal.angle(Vector((1,0,0))) < junctionTolRect or normal.angle(Vector((0,1,0))) < junctionTolRect or normal.angle(Vector((0,0,1))) < junctionTolRect)):
+                                if normal.length > 0 and (not junctionTolRect or (abs(normal.angle(Vector((1,0,0)))-pi2) > pi2-junctionTolRect \
+                                or abs(normal.angle(Vector((0,1,0)))-pi2) > pi2-junctionTolRect or abs(normal.angle(Vector((0,0,1)))-pi2) > pi2-junctionTolRect)):
                                     ### Calculate boundary box including tolerance
                                     bbMin, bbMax, bbCenter = boundaryBox(obj, 0)
                                     face_center = face.center
