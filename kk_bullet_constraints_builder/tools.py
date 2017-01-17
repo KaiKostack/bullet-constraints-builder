@@ -383,7 +383,7 @@ def tool_discretize(scene):
         # Parameters: [qSplitAtJunctions, minimumSizeLimit, qTriangulate, halvingCutter]
         if props.preprocTools_dis_jus:
             print("\nDiscretization - Junction pass:")
-            kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
+            kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 1, 'BCB_CuttingPlane'], None)
             # Set object centers to geometry origin
             bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
         
@@ -404,41 +404,14 @@ def tool_discretize(scene):
     elif not props.preprocTools_dis_cel:
 
         print("\nDiscretization - Halving pass:")
-        kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 0, 'BCB_CuttingPlane'], None)
+        kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
         # Set object centers to geometry origin
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
         ### Add new objects to the object list and remove deleted ones
         updateObjList(scene, selection)
         updateObjList(scene, objs)
-
-        ### 1. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations),
-        ### deselect all others and try discretization again with triangulation
-        cnt = 0
-        failed = []
-        for obj in objs:
-            ### Calculate diameter for each object
-            dim = list(obj.dimensions)
-            dim.sort()
-            diameter = dim[2]   # Use the largest dimension axis as diameter
-            if diameter <= props.preprocTools_dis_siz:
-                obj.select = 0
-                cnt += 1
-            else: failed.append(obj)
-        count = len(objs) -cnt
-        if count > 0:
-            print("\nDiscretization - Triangulation pass (%d left):" %count)
-            if props.preprocTools_dis_jus:
-                kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
-                # Set object centers to geometry origin
-                bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-            kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
-            # Set object centers to geometry origin
-            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-            ### Add new objects to the object list and remove deleted ones
-            updateObjList(scene, selection)
-            updateObjList(scene, objs)
         
-        ### 2. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations),
+        ### 1. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations),
         ### deselect all others and try discretization again with triangulation
         cnt = 0
         failed = []
@@ -528,10 +501,6 @@ def tool_discretize(scene):
                         except: pass 
             # Set object centers to geometry origin
             bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-            if props.preprocTools_dis_jus:
-                kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 0, 'BCB_CuttingPlane'], None)
-                # Set object centers to geometry origin
-                bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
             kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
             # Set object centers to geometry origin
             bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
@@ -539,7 +508,7 @@ def tool_discretize(scene):
             updateObjList(scene, selection)
             updateObjList(scene, objs)
 
-        ### 3. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations)
+        ### 2. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations)
         ### print warning message together with a list of the problematic objects
         cnt = 0
         failed = []
