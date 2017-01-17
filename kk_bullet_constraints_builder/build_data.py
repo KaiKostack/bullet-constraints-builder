@@ -75,6 +75,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_preprocTools_fix_azp"] = props.preprocTools_fix_azp
     scene["bcb_prop_preprocTools_fix_azn"] = props.preprocTools_fix_azn
     scene["bcb_prop_preprocTools_gnd_obj"] = props.preprocTools_gnd_obj
+    scene["bcb_prop_preprocTools_gnd_obm"] = props.preprocTools_gnd_obm
     scene["bcb_prop_preprocTools_gnd_nac"] = props.preprocTools_gnd_nac
     scene["bcb_prop_preprocTools_gnd_nap"] = props.preprocTools_gnd_nap
     scene["bcb_prop_preprocTools_gnd_nfq"] = props.preprocTools_gnd_nfq
@@ -187,6 +188,8 @@ def getConfigDataFromScene(scene):
         props.preprocTools_fix_azn = scene["bcb_prop_preprocTools_fix_azn"]
     if "bcb_prop_preprocTools_gnd_obj" in scene.keys():
         props.preprocTools_gnd_obj = scene["bcb_prop_preprocTools_gnd_obj"]
+    if "bcb_prop_preprocTools_gnd_obm" in scene.keys():
+        props.preprocTools_gnd_obm = scene["bcb_prop_preprocTools_gnd_obm"]
     if "bcb_prop_preprocTools_gnd_nac" in scene.keys():
         props.preprocTools_gnd_nac = scene["bcb_prop_preprocTools_gnd_nac"]
     if "bcb_prop_preprocTools_gnd_nap" in scene.keys():

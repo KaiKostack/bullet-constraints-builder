@@ -896,8 +896,11 @@ def tool_groundMotion(scene):
         return
     if props.preprocTools_gnd_obj in scene.objects:
         objGnd = scene.objects[props.preprocTools_gnd_obj]
-        qCreateGround = 0
-    else: qCreateGround = 1
+        qCreateGroundObj = 0
+    else: qCreateGroundObj = 1
+    if props.preprocTools_gnd_obm in scene.objects:
+        objMot = scene.objects[props.preprocTools_gnd_obm]
+    else: objMot = None
         
     # Leave edit mode to make sure next operator works in object mode
     try: bpy.ops.object.mode_set(mode='OBJECT') 
@@ -907,7 +910,7 @@ def tool_groundMotion(scene):
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
 
-    if qCreateGround:
+    if qCreateGroundObj:
         print("Ground object not found, creating new one...")
         # Find active mesh objects in selection
         objsA = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE' and len(obj.data.vertices) > 0]
@@ -948,38 +951,51 @@ def tool_groundMotion(scene):
     # Find passive mesh objects in selection
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'PASSIVE' and len(obj.data.vertices) > 0]
     if len(objs) == 0:
-        print("No passive rigid body mesh objects selected.")
+        print("No passive rigid body elements selected, nothing attached to the ground.")
     else:
         # Select passive mesh objects
         for obj in objs: obj.select = 1
 
-        ### Make obj parent for selected objects
+        ### Make object parent for selected objects
         bpy.context.scene.objects.active = objGnd  # Parent
         bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
-
-        # Apply rigid body settings to ground object
-        if objGnd.rigid_body == None:
-            # Deselect all objects.
-            bpy.ops.object.select_all(action='DESELECT')
-            # Apply rigid body settings
-            objGnd.select = 1
-            bpy.context.scene.objects.active = objGnd
-            bpy.ops.rigidbody.objects_add()
-            objGnd.select = 0
-            # Set friction for all to 1.0
-            objGnd.rigid_body.friction = 1
-
-        objGnd.rigid_body.type = 'PASSIVE'
         
-        # Enable animated flag for all passive rigid bodies so that Bullet takes their motion into account
+        if objGnd.is_visible(bpy.context.scene):
+
+            # Apply rigid body settings to ground object
+            if objGnd.rigid_body == None:
+                # Deselect all objects.
+                bpy.ops.object.select_all(action='DESELECT')
+                # Apply rigid body settings
+                objGnd.select = 1
+                bpy.context.scene.objects.active = objGnd
+                bpy.ops.rigidbody.objects_add()
+                objGnd.select = 0
+                # Set friction for all to 1.0
+                objGnd.rigid_body.friction = 1
+
+            objGnd.rigid_body.type = 'PASSIVE'
+        
+            # Enable animated flag for all passive rigid bodies so that Bullet takes their motion into account
+            objGnd.rigid_body.kinematic = True
         for obj in objs: obj.rigid_body.kinematic = True
-        objGnd.rigid_body.kinematic = True
+        
+    ###### Parenting ground object to motion object
 
-    # Revert to start selection
-    for obj in selection: obj.select = 1
-    bpy.context.scene.objects.active = selectionActive
+    if objMot != None:
+        # Deselect all objects.
+        bpy.ops.object.select_all(action='DESELECT')
+        
+        ### Make object parent for selected objects
+        objGnd.select = 1  # Child
+        bpy.context.scene.objects.active = objMot  # Parent
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        objGnd.select = 0
+        
+        # Use given motion object for creating artificial earthquake motion from now on
+        objGnd = objMot
 
-    ###### Creating artificial earthquak motion curves for ground object
+    ###### Creating artificial earthquake motion curves for ground object
 
     if props.preprocTools_gnd_nac:
         
@@ -1039,3 +1055,8 @@ def tool_groundMotion(scene):
 #        fmod.frame_end = duration *fps_rate
 #        fmod.blend_in = (duration *fps_rate) /2
 #        fmod.blend_out = (duration *fps_rate) /2
+
+    # Revert to start selection
+    for obj in selection: obj.select = 1
+    bpy.context.scene.objects.active = selectionActive
+

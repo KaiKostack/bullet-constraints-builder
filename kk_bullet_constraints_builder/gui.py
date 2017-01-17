@@ -228,6 +228,7 @@ class bcb_panel(bpy.types.Panel):
             box2.operator("bcb.tool_ground_motion", icon="DOT")
             col2 = box2.column(align=1)
             row2 = col2.row(align=1); row2.prop(props, "preprocTools_gnd_obj")
+            row2 = col2.row(align=1); row2.prop(props, "preprocTools_gnd_obm")
             row2 = col2.row(align=1); row2.prop(props, "preprocTools_gnd_nac")
             row = col2.row(align=1)
             row.prop(props, "preprocTools_gnd_nap")
