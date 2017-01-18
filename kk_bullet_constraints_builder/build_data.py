@@ -254,7 +254,7 @@ def getConfigDataFromScene(scene):
         grpPropCnt = len(elemGrpsProp[0])
         for i in range(grpPropCnt):
             column = []
-            for j in range(len(elemGrpsProp)):
+            for j in range(min(len(elemGrpsProp), len(presets[0]))):  # Use the smaller sized array in case some different BCB version is used to prevent error
                 if j != EGSidxAsst:
                     # Check if stored types are identical then copy stored data, otherwise fall back to preset default data.
                     # But do this only if one is a string type as numeric values can have different types, because they would convert like int to float.

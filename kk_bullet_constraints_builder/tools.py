@@ -572,7 +572,7 @@ def tool_removeIntersections(scene, mode=0):
               count = kk_select_intersecting_objects.run('BCB', [0,    0, 0, 1, 1, 0, 0])
     elif mode == 2:  # Selection for intersections which require booleans
               count = kk_select_intersecting_objects.run('BCB', [0.02, 1, 1, 0, 0, 0, 0])
-
+    
     if count > 0:
         ### Switch found intersecting objects to 'Mesh' collision shape
         ### (some might have only overlapping boundary boxes while the geometry could still not intersecting)

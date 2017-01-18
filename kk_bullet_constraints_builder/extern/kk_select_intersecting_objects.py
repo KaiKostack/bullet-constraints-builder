@@ -155,6 +155,8 @@ def run(source=None, parameters=None):
             print()
             print('Objects modified (one per pair):', count)
 
+            # Backup selection
+            selection = [obj for obj in bpy.context.scene.objects if obj.select]
             # Deselect all objects.
             bpy.ops.object.select_all(action='DESELECT')
             # Select objects without vertices for deletion
@@ -165,11 +167,10 @@ def run(source=None, parameters=None):
                     cnt += 1
             ### Delete all selected objects
             bpy.ops.object.delete(use_global=True)
+            # Revert to backup selection again
+            for obj in selection: obj.select = 1
             
             print('Objects deleted because of zero volume:', cnt)
-
-            # Select remainder of the input objects again
-            for obj in objs: obj.select = 1
 
         elif not qBool:
 
