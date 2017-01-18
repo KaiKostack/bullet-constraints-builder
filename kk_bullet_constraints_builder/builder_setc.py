@@ -188,7 +188,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         elemGrpB = objsEGrp[objsDict[objB]]
         elemGrps_elemGrpA = elemGrps[elemGrpA]
         elemGrps_elemGrpB = elemGrps[elemGrpB]
-
+            
         ###### Decision of which material settings from both groups will be used for connection
 
         CT_A = elemGrps_elemGrpA[EGSidxCTyp]
@@ -197,6 +197,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         # A is active group
         if CT_A != 0:
             ### Prepare expression strings
+            multiplier = elemGrps_elemGrpA[EGSidxBTX]
             brkThresExprC_A = elemGrps_elemGrpA[EGSidxBTC]
             brkThresExprT_A = elemGrps_elemGrpA[EGSidxBTT]
             brkThresExprS_A = elemGrps_elemGrpA[EGSidxBTS]
@@ -205,14 +206,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprB9_A = elemGrps_elemGrpA[EGSidxBTB9]
             brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
             brkThresValuePL_A = elemGrps_elemGrpA[EGSidxBTPL]
-            ### Add surface variable
-            if len(brkThresExprC_A): brkThresExprC_A += "*a"
-            if len(brkThresExprT_A): brkThresExprT_A += "*a"
-            if len(brkThresExprS_A): brkThresExprS_A += "*a"
-            if len(brkThresExprS9_A): brkThresExprS9_A += "*a"
-            if len(brkThresExprB_A): brkThresExprB_A += "*a"
-            if len(brkThresExprB9_A): brkThresExprB9_A += "*a"
-            if len(brkThresExprP_A): brkThresExprP_A += "*a"
+            ### Add surface variable and multiplier
+            if len(brkThresExprC_A): brkThresExprC_A += "*a" +"*%f"%multiplier
+            if len(brkThresExprT_A): brkThresExprT_A += "*a" +"*%f"%multiplier
+            if len(brkThresExprS_A): brkThresExprS_A += "*a" +"*%f"%multiplier
+            if len(brkThresExprS9_A): brkThresExprS9_A += "*a" +"*%f"%multiplier
+            if len(brkThresExprB_A): brkThresExprB_A += "*a" +"*%f"%multiplier
+            if len(brkThresExprB9_A): brkThresExprB9_A += "*a" +"*%f"%multiplier
+            if len(brkThresExprP_A): brkThresExprP_A += "*a" +"*%f"%multiplier
             
             ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
             try: brkThresValueC_A = eval(brkThresExprC_A)
@@ -243,6 +244,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         # B is active group
         if CT_B != 0:
             ### Prepare expression strings
+            multiplier = elemGrps_elemGrpB[EGSidxBTX]
             brkThresExprC_B = elemGrps_elemGrpB[EGSidxBTC]
             brkThresExprT_B = elemGrps_elemGrpB[EGSidxBTT]
             brkThresExprS_B = elemGrps_elemGrpB[EGSidxBTS]
@@ -251,14 +253,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprB9_B = elemGrps_elemGrpB[EGSidxBTB9]
             brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
             brkThresValuePL_B = elemGrps_elemGrpB[EGSidxBTPL]
-            ### Add surface variable
-            if len(brkThresExprC_B): brkThresExprC_B += "*a"
-            if len(brkThresExprT_B): brkThresExprT_B += "*a"
-            if len(brkThresExprS_B): brkThresExprS_B += "*a"
-            if len(brkThresExprS9_B): brkThresExprS9_B += "*a"
-            if len(brkThresExprB_B): brkThresExprB_B += "*a"
-            if len(brkThresExprB9_B): brkThresExprB9_B += "*a"
-            if len(brkThresExprP_B): brkThresExprP_B += "*a"
+            ### Add surface variable and multiplier
+            if len(brkThresExprC_B): brkThresExprC_B += "*a" +"*%f"%multiplier
+            if len(brkThresExprT_B): brkThresExprT_B += "*a" +"*%f"%multiplier
+            if len(brkThresExprS_B): brkThresExprS_B += "*a" +"*%f"%multiplier
+            if len(brkThresExprS9_B): brkThresExprS9_B += "*a" +"*%f"%multiplier
+            if len(brkThresExprB_B): brkThresExprB_B += "*a" +"*%f"%multiplier
+            if len(brkThresExprB9_B): brkThresExprB9_B += "*a" +"*%f"%multiplier
+            if len(brkThresExprP_B): brkThresExprP_B += "*a" +"*%f"%multiplier
 
             ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
             try: brkThresValueC_B = eval(brkThresExprC_B)

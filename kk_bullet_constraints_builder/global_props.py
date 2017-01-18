@@ -142,6 +142,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxBTB9" %i +" = string_(name='Bend 90°', default=presets[j][EGSidxBTB9], description='Math expression for the material´s real world bending breaking threshold with h and w swapped (rotated by 90°) in Nm/mm^2 together with related geometry properties. If this field is empty the above bending breaking threshold is used.')")
         exec("elemGrp_%d_EGSidxBTP" %i +" = string_(name='Plastic', default=presets[j][EGSidxBTP], description='Math expression for the material´s real world ultimate tensile breaking threshold in N/mm^2. Also the stiffness for Generic Spring constraints is derived from that value.')")
         exec("elemGrp_%d_EGSidxBTPL" %i +" = float_(name='Plastic Length', default=presets[j][EGSidxBTPL], min=0.0, max=100000, description='Length of the springs used for plastic deformation in m. If 0 is entered the distance between the element´s centroids is used (default).')")
+        exec("elemGrp_%d_EGSidxBTX" %i +" = float_(name='Breaking Threshold Multiplier', default=presets[j][EGSidxBTX], min=0.0, max=100000, description='Multiplier to be applied on all breaking thresholds for constraint building. This can be useful for quickly weaken or strengthen a given element group without changing the original settings.')")
 
         exec("elemGrp_%d_EGSidxRqVP" %i +" = int_(name='Req. Vertex Pairs', default=presets[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
         exec("elemGrp_%d_EGSidxMatP" %i +" = string_(name='Mat. Preset', default=presets[j][EGSidxMatP], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
@@ -178,6 +179,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxBTB9" %i +" = elemGrps[i][EGSidxBTB9].replace('*a','')")
                 exec("self.elemGrp_%d_EGSidxBTP" %i +" = elemGrps[i][EGSidxBTP]")
                 exec("self.elemGrp_%d_EGSidxBTPL" %i +" = elemGrps[i][EGSidxBTPL]")
+                exec("self.elemGrp_%d_EGSidxBTX" %i +" = elemGrps[i][EGSidxBTX]")
                 exec("self.elemGrp_%d_EGSidxTl1D" %i +" = elemGrps[i][EGSidxTl1D]")
                 exec("self.elemGrp_%d_EGSidxTl1R" %i +" = elemGrps[i][EGSidxTl1R]")
                 exec("self.elemGrp_%d_EGSidxTl2D" %i +" = elemGrps[i][EGSidxTl2D]")
@@ -221,6 +223,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxBTB9] = eval("self.elemGrp_%d_EGSidxBTB9" %i)
                 elemGrps[i][EGSidxBTP] = eval("self.elemGrp_%d_EGSidxBTP" %i)
                 elemGrps[i][EGSidxBTPL] = eval("self.elemGrp_%d_EGSidxBTPL" %i)
+                elemGrps[i][EGSidxBTX] = eval("self.elemGrp_%d_EGSidxBTX" %i)
                 elemGrps[i][EGSidxTl1D] = eval("self.elemGrp_%d_EGSidxTl1D" %i)
                 elemGrps[i][EGSidxTl1R] = eval("self.elemGrp_%d_EGSidxTl1R" %i)
                 elemGrps[i][EGSidxTl2D] = eval("self.elemGrp_%d_EGSidxTl2D" %i)

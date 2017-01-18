@@ -615,6 +615,13 @@ class bcb_panel(bpy.types.Panel):
                 if not connectType[2][4]: row.active = 0
 
             col.separator()
+            value = eval("props.elemGrp_%d_EGSidxBTX" %i)
+            if value != 1 or props.submenu_assistant_advanced:
+                row = col.row(align=1)
+                row.prop(props, "elemGrp_%d_EGSidxBTX" %i)
+                if not connectType[2][4]: row.active = 0
+
+            col.separator()
             #row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxRqVP" %i)
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxMatP" %i)
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxDens" %i)
