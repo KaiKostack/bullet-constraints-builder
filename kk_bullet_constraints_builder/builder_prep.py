@@ -813,7 +813,7 @@ def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connec
 
 ################################################################################   
 
-def createConnectionData(objsEGrp, connectsPair):
+def createConnectionData(objs, objsEGrp, connectsPair):
     
     ### Create connection data
     if debug: print("Creating connection data...")
@@ -828,6 +828,8 @@ def createConnectionData(objsEGrp, connectsPair):
         ### Count constraints by connection type preset
         elemGrpA = objsEGrp[pair[0]]
         elemGrpB = objsEGrp[pair[1]]
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
         CT_A = elemGrps[elemGrpA][EGSidxCTyp]
         CT_B = elemGrps[elemGrpB][EGSidxCTyp]
 
@@ -849,9 +851,12 @@ def createConnectionData(objsEGrp, connectsPair):
             constCnt = constCntA
         elif CT_A == 0 and CT_B != 0:  # Only B is active and A is passive group
             constCnt = constCntB
-        else:  # Both A and B are passive objects
+        # Both A and B are in passive group but either one is actually an active RB (a xor b)
+        elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+            constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
+        else:  # Both A and B are in passive group and both are passive RBs
             constCnt = 0
-
+        
         # In case the connection type is passive or unknown reserve no space for constraints
         if constCnt == 0: connectsConsts.append([])
         # Otherwise reserve space for the predefined constraints count
@@ -1224,10 +1229,11 @@ def applyScale(scene, objs, objsEGrp, childObjs):
     obj = None
     ### Select objects in question
     for k in range(len(objs)):
-        scale = elemGrps[objsEGrp[k]][EGSidxScal]
-        if scale != 0 and scale != 1:
-            obj = objs[k]
-            obj.select = 1
+        obj = objs[k]
+        if obj.rigid_body.type == 'ACTIVE':
+            scale = elemGrps[objsEGrp[k]][EGSidxScal]
+            if scale != 0 and scale != 1:
+                obj.select = 1
     
     if obj != None:
         ###### Create parents if required
@@ -1321,22 +1327,27 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         bpy.ops.object.select_all(action='DESELECT')
         
         for k in range(len(objs)):
-            try: scale = elemGrps[objsEGrp[k]][EGSidxScal]  # Try in case elemGrps is from an old BCB version
-            except: qScale = 0
-            else: qScale = 1
-            if j == objsEGrp[k]:
-                obj = objs[k]
-                if obj != None:
-                    if obj.rigid_body != None:
-                        if "bcb_child" in obj.keys():
-                            obj = scene.objects[obj["bcb_child"]]
-                        obj.select = 1
-                        # Temporarily revert element scaling for mass calculation
-                        if qScale:
-                            if scale != 0 and scale != 1:
-                                obj.scale /= scale
-                                objsRevertScale.append([obj, scale])
-        
+            obj = objs[k]
+            if obj.rigid_body != None:
+                CT = elemGrps[objsEGrp[k]][EGSidxCTyp]
+                if CT == 0:
+                    # The foundation buffer objects need a large mass so they won't pushed away
+                    obj.rigid_body.mass = 1000
+                else:
+                    try: scale = elemGrps[objsEGrp[k]][EGSidxScal]  # Try in case elemGrps is from an old BCB version
+                    except: qScale = 0
+                    else: qScale = 1
+                    if j == objsEGrp[k]:
+                        if obj != None:
+                            if "bcb_child" in obj.keys():
+                                obj = scene.objects[obj["bcb_child"]]
+                            obj.select = 1
+                            # Temporarily revert element scaling for mass calculation
+                            if qScale:
+                                if scale != 0 and scale != 1:
+                                    obj.scale /= scale
+                                    objsRevertScale.append([obj, scale])
+
         materialPreset = elemGrp[EGSidxMatP]
         materialDensity = elemGrp[EGSidxDens]
         if not materialDensity:

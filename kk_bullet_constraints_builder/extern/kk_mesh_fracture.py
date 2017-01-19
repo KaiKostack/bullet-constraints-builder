@@ -47,7 +47,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     ### Vars for halving
     qUseHalving = 1                 # 0    | Enables special mode for subdividing meshes into halves until either minimumSizeLimit or objectCountLimit is reached (sets boolErrorRetryLimit = 0)
                                     #      | It's recommended to set the latter to a very high count to get a universal shard size. This is incompatible with Dynamic Fracture because object centers are changed.
-    qSplitAtJunctions = 1           # 1    | Try to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes
+    qSplitAtJunctions = 0           # 1    | Try to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes
     junctionTol = .001              # .001 | Tolerance for junction detection to avoid cutting off of very thin geometry slices (requires normals consistently pointing outside)
     junctionTolMargin = .01         # .01  | Margin inside the object boundary box borders to skip junction detection (helps to avoid cutting of similar faces which can lead to hundreds of thin mesh slices, should be larger than junctionTol) 
     junctionTolRect = .001          # .001 | Tolerance to enforce rectangular shapes in radian, larger values will allow more diagonal cuts (0 = no restriction)
@@ -147,7 +147,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         ### perform separate loose on start objects
         i = 1
         for obj in objs:
-            sys.stdout.write('\r' +"%d" %i)
+            if not qSilentVerbose: sys.stdout.write('\r' +"%d " %i)
             i += 1
             bpy.context.scene.objects.active = obj
             # Enter edit mode              
@@ -219,7 +219,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
             or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and (not junctionMaxFaceCnt or splitAtJunction_face <= junctionMaxFaceCnt)):
                
                 if not qSilentVerbose: print(objectCount, '/', objectCountLimit, ':', obj.name)
-                else: sys.stdout.write('\r' +"%d" %objectCount)
+                else: sys.stdout.write('\r' +"%d " %objectCount)
                 # Debug: Save file now and then
                 #if random.randint(0, 10) == 0:
                 #    bpy.ops.wm.save_mainfile()
@@ -460,7 +460,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         if objsSource == None:
                             ### Apply new centers
                             objA.select = 1; objB.select = 1
-                            bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS', center='BOUNDS')
+                            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
                             objA.select = 0; objB.select = 0
 
                         ### Link new objects to every group the original is linked to
@@ -779,7 +779,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         if objsSource == None:
                             ### Apply new centers
                             objA.select = 1; objB.select = 1
-                            bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS', center='BOUNDS')
+                            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
                             objA.select = 0; objB.select = 0
 
                         ### Link new objects to every group the original is linked to
@@ -876,7 +876,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         if not qSilentVerbose: print('Bool error limit reached, skipping this object...')
                     
                     if objectCount > objectCountLimit: break
-        
+                
             else:
                 if not qSilentVerbose: print('Shard size below minimum limit, skipping...')
                   

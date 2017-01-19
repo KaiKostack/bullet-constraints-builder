@@ -197,7 +197,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         # A is active group
         if CT_A != 0:
             ### Prepare expression strings
-            multiplier = elemGrps_elemGrpA[EGSidxBTX]
             brkThresExprC_A = elemGrps_elemGrpA[EGSidxBTC]
             brkThresExprT_A = elemGrps_elemGrpA[EGSidxBTT]
             brkThresExprS_A = elemGrps_elemGrpA[EGSidxBTS]
@@ -206,14 +205,18 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprB9_A = elemGrps_elemGrpA[EGSidxBTB9]
             brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
             brkThresValuePL_A = elemGrps_elemGrpA[EGSidxBTPL]
-            ### Add surface variable and multiplier
-            if len(brkThresExprC_A): brkThresExprC_A += "*a" +"*%f"%multiplier
-            if len(brkThresExprT_A): brkThresExprT_A += "*a" +"*%f"%multiplier
-            if len(brkThresExprS_A): brkThresExprS_A += "*a" +"*%f"%multiplier
-            if len(brkThresExprS9_A): brkThresExprS9_A += "*a" +"*%f"%multiplier
-            if len(brkThresExprB_A): brkThresExprB_A += "*a" +"*%f"%multiplier
-            if len(brkThresExprB9_A): brkThresExprB9_A += "*a" +"*%f"%multiplier
-            if len(brkThresExprP_A): brkThresExprP_A += "*a" +"*%f"%multiplier
+            multiplier = elemGrps_elemGrpA[EGSidxBTX]
+            # Area correction calculation for cylinders (*pi/4)
+            if elemGrps_elemGrpA[EGSidxCyln]: mulCyl = 0.7854
+            else:                             mulCyl = 1
+            ### Add surface variable and multipliers
+            if len(brkThresExprC_A): brkThresExprC_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprT_A): brkThresExprT_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprS_A): brkThresExprS_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprS9_A): brkThresExprS9_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprB_A): brkThresExprB_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprB9_A): brkThresExprB9_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprP_A): brkThresExprP_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
             
             ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
             try: brkThresValueC_A = eval(brkThresExprC_A)
@@ -244,7 +247,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         # B is active group
         if CT_B != 0:
             ### Prepare expression strings
-            multiplier = elemGrps_elemGrpB[EGSidxBTX]
             brkThresExprC_B = elemGrps_elemGrpB[EGSidxBTC]
             brkThresExprT_B = elemGrps_elemGrpB[EGSidxBTT]
             brkThresExprS_B = elemGrps_elemGrpB[EGSidxBTS]
@@ -253,14 +255,18 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprB9_B = elemGrps_elemGrpB[EGSidxBTB9]
             brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
             brkThresValuePL_B = elemGrps_elemGrpB[EGSidxBTPL]
-            ### Add surface variable and multiplier
-            if len(brkThresExprC_B): brkThresExprC_B += "*a" +"*%f"%multiplier
-            if len(brkThresExprT_B): brkThresExprT_B += "*a" +"*%f"%multiplier
-            if len(brkThresExprS_B): brkThresExprS_B += "*a" +"*%f"%multiplier
-            if len(brkThresExprS9_B): brkThresExprS9_B += "*a" +"*%f"%multiplier
-            if len(brkThresExprB_B): brkThresExprB_B += "*a" +"*%f"%multiplier
-            if len(brkThresExprB9_B): brkThresExprB9_B += "*a" +"*%f"%multiplier
-            if len(brkThresExprP_B): brkThresExprP_B += "*a" +"*%f"%multiplier
+            multiplier = elemGrps_elemGrpB[EGSidxBTX]
+            # Area correction calculation for cylinders (*pi/4)
+            if elemGrps_elemGrpB[EGSidxCyln]: mulCyl = 0.7854
+            else:                             mulCyl = 1
+            ### Add surface variable and multipliers
+            if len(brkThresExprC_B): brkThresExprC_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprT_B): brkThresExprT_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprS_B): brkThresExprS_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprS9_B): brkThresExprS9_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprB_B): brkThresExprB_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprB9_B): brkThresExprB9_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprP_B): brkThresExprP_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
 
             ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
             try: brkThresValueC_B = eval(brkThresExprC_B)
@@ -290,9 +296,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
         # Both A and B are active groups
         if CT_A != 0 and CT_B != 0:
-            # Area correction calculation for cylinders (*pi/4)
-            if elemGrps_elemGrpA[EGSidxCyln] or elemGrps_elemGrpB[EGSidxCyln]: a *= 0.7854
-
             ### Use the connection type with the smaller count of constraints for connection between different element groups
             ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
             if connectTypes[elemGrps_elemGrpA[EGSidxCTyp]][1] <= connectTypes[elemGrps_elemGrpB[EGSidxCTyp]][1]:
@@ -368,8 +371,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             
         # Only A is active and B is passive group
         elif CT_A != 0 and CT_B == 0:
-            # Area correction calculation for cylinders (*pi/4)
-            if elemGrps_elemGrpA[EGSidxCyln]: a *= 0.7854
             CT = CT_A
             elemGrp = elemGrpA
             brkThresValueC = brkThresValueC_A
@@ -385,8 +386,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
  
         # Only B is active and A is passive group
         elif CT_A == 0 and CT_B != 0:
-            # Area correction calculation for cylinders (*pi/4)
-            if elemGrps_elemGrpB[EGSidxCyln]: a *= 0.7854
             CT = CT_B
             elemGrp = elemGrpB
             brkThresValueC = brkThresValueC_B
@@ -400,8 +399,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresValueP = brkThresValueP_B
             brkThresValuePL = brkThresValuePL_B
 
-        # Both A and B are passive groups
-        elif CT_A == 0 and CT_B == 0:
+        # Both A and B are in passive group but either one is actually an active RB (A xor B)
+        elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+            CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
+
+        # Both A and B are in passive group and both are passive RBs
+        else:
             CT = 0            
 
         ######
@@ -449,8 +452,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
+        
         # Overview:
-
+        
+        # Special CTs:
+        #   if CT == -1 
+        #       1x FIXED; Indestructible buffer between passive and active foundation elements
+        
         # Basic CTs:
         #   if CT == 1 or CT == 9 or CT == 10 or CT == 19:
         #       1x FIXED; Linear omni-directional + bending breaking threshold
@@ -494,6 +502,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         #       3 x 4x SPRING; Compressive (1D), tensile (1D), shearing (2D) breaking thresholds; circular placed for plastic deformability
             
         cInc = 0
+
+        ### 1x FIXED; Indestructible buffer between passive and active foundation elements
+        if CT == -1:
+            cData = {}; cIdx = consts[cInc]; cInc += 1
+            setConstParams(cData,cDef, loc=loc, ub=0, dc=1, ct='FIXED')
+            constsData.append(cData)
 
         ### 1x FIXED; Linear omni-directional + bending breaking threshold
         if CT == 1 or CT == 9 or CT == 10 or CT == 19:

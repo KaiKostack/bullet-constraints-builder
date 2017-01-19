@@ -513,7 +513,7 @@ def clearAllDataFromScene(scene):
         except: pass
         else:
             obj = objs[k]
-            if obj != None and scale != 0 and scale != 1:
+            if obj != None and obj.rigid_body.type == 'ACTIVE' and scale != 0 and scale != 1:
                 obj.scale /= scale
 
     print("Removing ID properties...")

@@ -205,8 +205,12 @@ def build_fm():
         except: tol1 = None
         try:    tol2 = cProps["bcb_tol2"]
         except: tol2 = None
-        rotm = cProps["bcb_rotm"]
-        rot  = cProps["bcb_rot"]
+        try:    rotm = cProps["bcb_rotm"]
+        except: rotm = None
+        try:    rot  = cProps["bcb_rot"]
+        except: rot  = None
+        try:    type = cProps["type"]
+        except: type = cDef["type"]
         
         ### Decode custom BCB attributes
         # 1st tolerances (elastic -> plastic)
@@ -236,7 +240,7 @@ def build_fm():
         
         ### Add settings to constraint
         # OK, first check whether the mi exists via is object in group (else it's double)
-        try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], cProps["type"])
+        try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], type)
         except: pass
         else:
             con.name = name

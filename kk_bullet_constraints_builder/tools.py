@@ -384,9 +384,7 @@ def tool_discretize(scene):
         if props.preprocTools_dis_jus:
             print("\nDiscretization - Junction pass:")
             kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 1, 'BCB_CuttingPlane'], None)
-            # Set object centers to geometry origin
-            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-        
+            
     ###### Voxel cell based discretization
 
     if props.preprocTools_dis_cel:
@@ -404,123 +402,111 @@ def tool_discretize(scene):
     elif not props.preprocTools_dis_cel:
 
         print("\nDiscretization - Halving pass:")
+        ###### External function
         kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
-        # Set object centers to geometry origin
-        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
         ### Add new objects to the object list and remove deleted ones
         updateObjList(scene, selection)
         updateObjList(scene, objs)
         
-        ### 1. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations),
-        ### deselect all others and try discretization again with triangulation
-        cnt = 0
-        failed = []
-        for obj in objs:
-            ### Calculate diameter for each object
-            dim = list(obj.dimensions)
-            dim.sort()
-            diameter = dim[2]   # Use the largest dimension axis as diameter
-            if diameter <= props.preprocTools_dis_siz:
-                obj.select = 0
-                cnt += 1
-            else: failed.append(obj)
-        count = len(objs) -cnt
-        if count > 0:
-            print("\nDiscretization - Non-manifolds pass (%d left):" %count)
-            failedExt = []
-            # Deselect all objects.
-            bpy.ops.object.select_all(action='DESELECT')
-            for obj in failed:
-                bpy.context.scene.objects.active = obj
-                # Enter edit mode              
-                try: bpy.ops.object.mode_set(mode='EDIT')
-                except: pass 
-                me = obj.data
-                bm = bmesh.from_edit_mesh(me)
+        ### From now on do multiple passes until either now non-discretized objects are found or the passes limit is reached
+        passes = 5  # Maximum number of passes
+        passNum = 0
+        while 1:
+            ### Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations),
+            ### deselect all others and try discretization again
+            cnt = 0
+            failed = []
+            for obj in objs:
+                ### Calculate diameter for each object
+                dim = list(obj.dimensions)
+                dim.sort()
+                diameter = dim[2]   # Use the largest dimension axis as diameter
+                if diameter <= props.preprocTools_dis_siz:
+                    cnt += 1
+                else: failed.append(obj)
+            count = len(objs) -cnt
+            
+            # Stop condition
+            passNum += 1
+            if count == 0 or passNum > passes: break
+            
+            if count > 0:
+                print("\nDiscretization - Pass %d (%d elements left):" %(passNum, count))
+                # Deselect all objects.
+                bpy.ops.object.select_all(action='DESELECT')
+                failedExt = []
+                for obj in failed:
+                    obj.select = 1
+                    bpy.context.scene.objects.active = obj
+                    bpy.context.tool_settings.mesh_select_mode = False, True, False
+                    # Enter edit mode              
+                    try: bpy.ops.object.mode_set(mode='EDIT')
+                    except: pass 
+                    me = obj.data
+                    bm = bmesh.from_edit_mesh(me)
 
-                ### Check if mesh has non-manifolds
-                bpy.context.tool_settings.mesh_select_mode = False, True, False
-                # Deselect all elements
-                try: bpy.ops.mesh.select_all(action='DESELECT')
-                except: pass 
-                # Select non-manifold elements
-                bpy.ops.mesh.select_non_manifold()
-                # Check mesh if there are selected elements found
-                qNonManifolds = 0
-                for edge in bm.edges:
-                    if edge.select: qNonManifolds = 1; break
-                bm.verts.ensure_lookup_table()
-                
-                ### Rip all vertices belonging to non-manifold edges
-                if qNonManifolds:
-                    bpy.context.tool_settings.mesh_select_mode = True, False, False
-                    vertCos = []
-                    start = -1
-                    for i in range(len(bm.verts)):
-                        vert = bm.verts[i]
-                        if vert.select:
-                            vertCos.append(vert.co)
-                            if start < 0: start = i
-                    found = 1
-                    while found > 0:
-                        found = 0
-                        i = start
-                        while i < len(bm.verts):
+                    # Select all elements
+                    try: bpy.ops.mesh.select_all(action='SELECT')
+                    except: pass
+                    # Remove doubles
+                    bpy.ops.mesh.remove_doubles(threshold=0.0001)
+                    # Smooth vertices slightly so overlapping geometry will shift a bit increasing possibility for successful next splitting attempt
+                    bpy.ops.mesh.vertices_smooth(factor=0.0001)
+
+                    ### Check if mesh has non-manifolds
+                    # Deselect all elements
+                    try: bpy.ops.mesh.select_all(action='DESELECT')
+                    except: pass 
+                    # Select non-manifold elements
+                    bpy.ops.mesh.select_non_manifold()
+                    # Check mesh if there are selected elements found
+                    qNonManifolds = 0
+                    for edge in bm.edges:
+                        if edge.select: qNonManifolds = 1; break
+                    bm.verts.ensure_lookup_table()
+                    
+                    ### Rip all vertices belonging to non-manifold edges
+                    if qNonManifolds:
+                        bpy.context.tool_settings.mesh_select_mode = True, False, False
+                        vertCos = []
+                        start = -1
+                        for i in range(len(bm.verts)):
                             vert = bm.verts[i]
-                            if vert.co in vertCos:
-                                # Deselect all elements
-                                bpy.ops.mesh.select_all(action='DESELECT')
-                                vert.select = 1
-                                # Rip selection
-                                try: bpy.ops.mesh.rip('INVOKE_DEFAULT')                        
-                                except: pass
-                                else: i -= 1; found += 1
-                                bm.verts.ensure_lookup_table()
-                            i += 1
-                # Separate loose
-                try: bpy.ops.mesh.separate(type='LOOSE')
-                except: pass
-                # Leave edit mode
-                try: bpy.ops.object.mode_set(mode='OBJECT')
-                except: pass
-                ### Remove doubles for new objects
-                obj.select = 1
-                for objTemp in scene.objects:
-                    if objTemp.select and objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(scene):
-                        bpy.context.scene.objects.active = objTemp
-                        # Enter edit mode              
-                        try: bpy.ops.object.mode_set(mode='EDIT')
-                        except: pass
-                        # Select all elements
-                        try: bpy.ops.mesh.select_all(action='SELECT')
-                        except: continue
-                        # Remove doubles
-                        bpy.ops.mesh.remove_doubles(threshold=0.0000000001)
-                        # Leave edit mode
-                        try: bpy.ops.object.mode_set(mode='OBJECT')
-                        except: pass 
-            # Set object centers to geometry origin
-            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-            kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
-            # Set object centers to geometry origin
-            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-            ### Add new objects to the object list and remove deleted ones
-            updateObjList(scene, selection)
-            updateObjList(scene, objs)
+                            if vert.select:
+                                vertCos.append(vert.co)
+                                if start < 0: start = i
+                        found = 1
+                        while found > 0:
+                            found = 0
+                            i = start
+                            while i < len(bm.verts):
+                                vert = bm.verts[i]
+                                if vert.co in vertCos:
+                                    # Deselect all elements
+                                    bpy.ops.mesh.select_all(action='DESELECT')
+                                    vert.select = 1
+                                    # Rip selection
+                                    try: bpy.ops.mesh.rip('INVOKE_DEFAULT')                        
+                                    except: pass
+                                    else: i -= 1; found += 1
+                                    bm.verts.ensure_lookup_table()
+                                i += 1
+                    # Separate loose
+                    try: bpy.ops.mesh.separate(type='LOOSE')
+                    except: pass
+                    # Leave edit mode
+                    try: bpy.ops.object.mode_set(mode='OBJECT')
+                    except: pass
+                # Set object centers to geometry origin
+                bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+                ###### External function
+                kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+                ### Add new objects to the object list and remove deleted ones
+                updateObjList(scene, selection)
+                updateObjList(scene, objs)
 
-        ### 2. Check if there are still objects larger than minimumSizeLimit left (due to failed boolean operations)
+        ### If there are still objects larger than minimumSizeLimit left (due to failed boolean operations)
         ### print warning message together with a list of the problematic objects
-        cnt = 0
-        failed = []
-        for obj in objs:
-            ### Calculate diameter for each object
-            dim = list(obj.dimensions)
-            dim.sort()
-            diameter = dim[2]   # Use the largest dimension axis as diameter
-            if diameter <= props.preprocTools_dis_siz:
-                cnt += 1
-            else: failed.append(obj)
-        count = len(objs) -cnt
         if count > 0:
             print("\nWarning: Following %d objects couldn't be discretized sufficiently:" %count)
             for obj in failed:
@@ -704,7 +690,8 @@ def tool_fixFoundation(scene):
         else: foundationName = "Foundation"
 
         ### Calculate boundary boxes for all objects
-        verts = []; edges = []; faces = []
+        verts = []; edges = []; faces = []  # Active buffer mesh object
+        verts2 = []; edges2 = []; faces2 = []  # Passive mesh object
         objsBB = []
         qFirst = 1
         for obj in objs:
@@ -730,47 +717,108 @@ def tool_fixFoundation(scene):
             # X+
             if props.preprocTools_fix_axp:
                 if bbMax[0] >= bbMax_all[0] -props.preprocTools_fix_rng:
-                    newCorner = Vector(( 2*bbMax[0]-bbMin[0], bbMin[1], bbMin[2] ))
+                    newCorner = Vector(( bbMax[0]+props.preprocTools_fix_rng, bbMin[1], bbMin[2] ))
                     createBoxData(verts, edges, faces, bbMax, newCorner)
+                    newCorner2 = Vector(( 2*bbMax[0]-bbMin[0]+props.preprocTools_fix_rng, bbMax[1], bbMax[2] ))
+                    createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
             # X-
             if props.preprocTools_fix_axn:
                 if bbMin[0] <= bbMin_all[0] +props.preprocTools_fix_rng:
-                    newCorner = Vector(( 2*bbMin[0]-bbMax[0], bbMax[1], bbMax[2] ))
+                    newCorner = Vector(( bbMin[0]-props.preprocTools_fix_rng, bbMax[1], bbMax[2] ))
                     createBoxData(verts, edges, faces, newCorner, bbMin)
+                    newCorner2 = Vector(( 2*bbMin[0]-bbMax[0]-props.preprocTools_fix_rng, bbMin[1], bbMin[2] ))
+                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
             # Y+
             if props.preprocTools_fix_ayp:
                 if bbMax[1] >= bbMax_all[1] -props.preprocTools_fix_rng:
-                    newCorner = Vector(( bbMin[0], 2*bbMax[1]-bbMin[1], bbMin[2] ))
+                    newCorner = Vector(( bbMin[0], bbMax[1]+props.preprocTools_fix_rng, bbMin[2] ))
                     createBoxData(verts, edges, faces, bbMax, newCorner)
+                    newCorner2 = Vector(( bbMax[0], 2*bbMax[1]-bbMin[1]+props.preprocTools_fix_rng, bbMax[2] ))
+                    createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
             # Y-
             if props.preprocTools_fix_ayn:
                 if bbMin[1] <= bbMin_all[1] +props.preprocTools_fix_rng:
-                    newCorner = Vector(( bbMax[0], 2*bbMin[1]-bbMax[1], bbMax[2] ))
+                    newCorner = Vector(( bbMax[0], bbMin[1]-props.preprocTools_fix_rng, bbMax[2] ))
                     createBoxData(verts, edges, faces, newCorner, bbMin)
+                    newCorner2 = Vector(( bbMin[0], 2*bbMin[1]-bbMax[1]-props.preprocTools_fix_rng, bbMin[2] ))
+                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
             # Z+
             if props.preprocTools_fix_azp:
                 if bbMax[2] >= bbMax_all[2] -props.preprocTools_fix_rng:
-                    newCorner = Vector(( bbMin[0], bbMin[1], 2*bbMax[2]-bbMin[2] ))
+                    newCorner = Vector(( bbMin[0], bbMin[1], bbMax[2]+props.preprocTools_fix_rng ))
                     createBoxData(verts, edges, faces, bbMax, newCorner)
+                    newCorner2 = Vector(( bbMax[0], bbMax[1], 2*bbMax[2]-bbMin[2]+props.preprocTools_fix_rng ))
+                    createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
             # Z-
             if props.preprocTools_fix_azn:
                 if bbMin[2] <= bbMin_all[2] +props.preprocTools_fix_rng:
-                    newCorner = Vector(( bbMax[0], bbMax[1], 2*bbMin[2]-bbMax[2] ))
+                    newCorner = Vector(( bbMax[0], bbMax[1], bbMin[2]-props.preprocTools_fix_rng ))
                     createBoxData(verts, edges, faces, newCorner, bbMin)
+                    newCorner2 = Vector(( bbMin[0], bbMin[1], 2*bbMin[2]-bbMax[2]-props.preprocTools_fix_rng ))
+                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
 
-        ### Create actual geometry and object
+#            ### Old method with equal sizes for foundation objects 
+#            # X+
+#            if props.preprocTools_fix_axp:
+#                if bbMax[0] >= bbMax_all[0] -props.preprocTools_fix_rng:
+#                    newCorner = Vector(( 2*bbMax[0]-bbMin[0], bbMin[1], bbMin[2] ))
+#                    createBoxData(verts, edges, faces, bbMax, newCorner)
+#                    newCorner2 = Vector(( 3*bbMax[0]-2*bbMin[0], bbMax[1], bbMax[2] ))
+#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+#            # X-
+#            if props.preprocTools_fix_axn:
+#                if bbMin[0] <= bbMin_all[0] +props.preprocTools_fix_rng:
+#                    newCorner = Vector(( 2*bbMin[0]-bbMax[0], bbMax[1], bbMax[2] ))
+#                    createBoxData(verts, edges, faces, newCorner, bbMin)
+#                    newCorner2 = Vector(( 3*bbMin[0]-2*bbMax[0], bbMin[1], bbMin[2] ))
+#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+#            # Y+
+#            if props.preprocTools_fix_ayp:
+#                if bbMax[1] >= bbMax_all[1] -props.preprocTools_fix_rng:
+#                    newCorner = Vector(( bbMin[0], 2*bbMax[1]-bbMin[1], bbMin[2] ))
+#                    createBoxData(verts, edges, faces, bbMax, newCorner)
+#                    newCorner2 = Vector(( bbMax[0], 3*bbMax[1]-2*bbMin[1], bbMax[2] ))
+#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+#            # Y-
+#            if props.preprocTools_fix_ayn:
+#                if bbMin[1] <= bbMin_all[1] +props.preprocTools_fix_rng:
+#                    newCorner = Vector(( bbMax[0], 2*bbMin[1]-bbMax[1], bbMax[2] ))
+#                    createBoxData(verts, edges, faces, newCorner, bbMin)
+#                    newCorner2 = Vector(( bbMin[0], 3*bbMin[1]-2*bbMax[1], bbMin[2] ))
+#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+#            # Z+
+#            if props.preprocTools_fix_azp:
+#                if bbMax[2] >= bbMax_all[2] -props.preprocTools_fix_rng:
+#                    newCorner = Vector(( bbMin[0], bbMin[1], 2*bbMax[2]-bbMin[2] ))
+#                    createBoxData(verts, edges, faces, bbMax, newCorner)
+#                    newCorner2 = Vector(( bbMax[0], bbMax[1], 3*bbMax[2]-2*bbMin[2] ))
+#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+#            # Z-
+#            if props.preprocTools_fix_azn:
+#                if bbMin[2] <= bbMin_all[2] +props.preprocTools_fix_rng:
+#                    newCorner = Vector(( bbMax[0], bbMax[1], 2*bbMin[2]-bbMax[2] ))
+#                    createBoxData(verts, edges, faces, newCorner, bbMin)
+#                    newCorner2 = Vector(( bbMin[0], bbMin[1], 3*bbMin[2]-2*bbMax[2] ))
+#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+
+        ### Create actual geometry for passive and active buffer object
         # Create empty mesh object
         me = bpy.data.meshes.new(foundationName)
+        me2 = bpy.data.meshes.new(foundationName)
         # Add mesh data to new object
         me.from_pydata(verts, [], faces)
+        me2.from_pydata(verts2, [], faces2)
         obj = bpy.data.objects.new(foundationName, me)
+        obj2 = bpy.data.objects.new(foundationName, me2)
         scene.objects.link(obj)
+        scene.objects.link(obj2)
         
         ### Add to main group
         grpName = "BCB_Building"
         if grpName in bpy.data.groups:
             grp = bpy.data.groups[grpName]
             grp.objects.link(obj)
+            grp.objects.link(obj2)
 
         ### Create a new group for the foundation object if not already existing
         grpName = foundationName
@@ -779,6 +827,7 @@ def tool_fixFoundation(scene):
         else: grp = bpy.data.groups[grpName]
         # Add new object to group
         grp.objects.link(obj)
+        grp.objects.link(obj2)
 
         ### Create also element group from data and use passive preset for it
         createElementGroup(grpName, presetNo=1)
@@ -788,25 +837,32 @@ def tool_fixFoundation(scene):
         # Deselect all objects.
         bpy.ops.object.select_all(action='DESELECT')
         
-        # Apply rigid body settings
+        # Apply rigid body settings to foundation
         obj.select = 1
+        obj2.select = 1
         bpy.context.scene.objects.active = obj
         bpy.ops.rigidbody.objects_add()
-        obj.rigid_body.type = 'PASSIVE'
+        # Set fixed object to passive (but not buffer)
+        obj2.rigid_body.type = 'PASSIVE'
         # Set friction to 1.0
         obj.rigid_body.friction = 1
+        obj2.rigid_body.friction = 1
         
-        ### Split object into individual parts
+        ### Split both objects into individual parts
         bpy.context.tool_settings.mesh_select_mode = False, True, False
-        # Enter edit mode              
-        try: bpy.ops.object.mode_set(mode='EDIT')
-        except: pass 
-        # Separate loose
-        try: bpy.ops.mesh.separate(type='LOOSE')
-        except: pass
-        # Leave edit mode
-        try: bpy.ops.object.mode_set(mode='OBJECT')
-        except: pass
+        for ob in [obj, obj2]:
+            bpy.context.scene.objects.active = ob
+            # Enter edit mode              
+            try: bpy.ops.object.mode_set(mode='EDIT')
+            except: pass
+            # Recalculate normals
+            bpy.ops.mesh.normals_make_consistent(inside=False)
+            # Separate loose
+            try: bpy.ops.mesh.separate(type='LOOSE')
+            except: pass
+            # Leave edit mode
+            try: bpy.ops.object.mode_set(mode='OBJECT')
+            except: pass
 
         # Set object centers to geometry origin
         obj.select = 1
@@ -884,7 +940,7 @@ def tool_groundMotion(scene):
         # Find active mesh objects in selection
         objsA = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE' and len(obj.data.vertices) > 0]
         if len(objsA) > 0:
-            ### Calculate boundary boxes for all active objects
+            ### Calculate boundary boxes for all active objects with connection type > 0
             qFirst = 1
             for obj in objsA:
                 # Calculate boundary box corners
