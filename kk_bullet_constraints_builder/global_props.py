@@ -105,7 +105,7 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_gnd_ndu = float_(name="Duration",                 default=10, min=0.0, max=1000, description="Duration of the artificial earthquake to be generated in seconds.")
     preprocTools_gnd_nsd = float_(name="Random Seed",              default=0, min=0.0, max=10000000, description="Seed number for the random noise function used to generate the artificial earthquake, modification will change the characteristics of the motion.")
     
-    ### Element group properties
+    ### Advanced global settings
     stepsPerSecond        = int_(name="Steps Per Second",         default=300, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
     constraintUseBreaking = bool_(name="Enable Breaking",         default=1,                       description="Enables breaking for all constraints.")
     connectionCountLimit  = int_(name="Con. Count Limit",         default=100, min=0, max=10000,   description="Maximum count of connections per object pair (0 = disabled).")
@@ -126,7 +126,9 @@ class bcb_props(bpy.types.PropertyGroup):
     snapToAreaOrient      = bool_(name="90° Axis Snapping for Const. Orient.", default=1,                       description="Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method).")
     disableCollision      = bool_(name="Disable Collisions",      default=1,                       description="Disables collisions between connected elements until breach.")
     lowerBrkThresPriority = bool_(name="Lower Strength Priority", default=1,                       description="Gives priority to the weaker breaking threshold of two elements to be connected, if disabled the stronger value is used for the connection.")
+    detonatorObj          = string_(name="Detonator Object",      default="Detonator",             description="Enter name of an object to be used to simulate the effects of an explosion. This feature replicates the damage caused by such an event by weakening the constraints within range of the object. It is recommended to use an Empty object with a sphere shape for this. The damage is calculated as gradient of the distance mapped to the size, from 200% at center to 0% at boundary.")
     
+    ### Element group properties
     # Create element groups properties for all possible future entries (maxMenuElementGroupItems)
     for i in range(maxMenuElementGroupItems):
         elemGrps = mem["elemGrps"]

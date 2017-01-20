@@ -102,6 +102,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_snapToAreaOrient"] = props.snapToAreaOrient
     scene["bcb_prop_disableCollision"] = props.disableCollision
     scene["bcb_prop_lowerBrkThresPriority"] = props.lowerBrkThresPriority
+    scene["bcb_prop_detonatorObj"] = props.detonatorObj
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     elemGrps = mem["elemGrps"]
@@ -241,6 +242,8 @@ def getConfigDataFromScene(scene):
         props.disableCollision = scene["bcb_prop_disableCollision"]
     if "bcb_prop_lowerBrkThresPriority" in scene.keys():
         props.lowerBrkThresPriority = scene["bcb_prop_lowerBrkThresPriority"]
+    if "bcb_prop_detonatorObj" in scene.keys():
+        props.detonatorObj = scene["bcb_prop_detonatorObj"]
         
     if len(warning): return warning
             

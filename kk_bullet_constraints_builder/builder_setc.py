@@ -145,6 +145,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     # Remove constraint settings and delete temporary empty object again
     bpy.ops.rigidbody.constraint_remove()
     scene.objects.unlink(objConst)
+    
+    ### Get detonator object
+    if len(props.detonatorObj):
+        try: detonatorObj = scene.objects[props.detonatorObj]
+        except: detonatorObj = None
 
     ### Generate settings and prepare the attributes but only store those which are different from the defaults
     constsData = []
@@ -178,6 +183,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if geoSurfThick > 0:
                 geoContactArea *= geoSurfThick
 
+        # Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
+        if detonatorObj != None and detonatorObj.scale[0] > 0:
+            btMultiplier = min(1, max(0, 2 *((loc -detonatorObj.location).length /detonatorObj.scale[0]) -1))
+        else: btMultiplier = 1
+
         ### Prepare expression variables and convert m to mm
         a = geoContactArea *1000000
         h = geoHeight *1000
@@ -190,7 +200,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         elemGrpB = objsEGrp[objsDict[objB]]
         elemGrps_elemGrpA = elemGrps[elemGrpA]
         elemGrps_elemGrpB = elemGrps[elemGrpB]
-            
+        
         ###### Decision of which material settings from both groups will be used for connection
 
         CT_A = elemGrps_elemGrpA[EGSidxCTyp]
@@ -207,20 +217,20 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprB9_A = elemGrps_elemGrpA[EGSidxBTB9]
             brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
             brkThresValuePL_A = elemGrps_elemGrpA[EGSidxBTPL]
-            multiplier = elemGrps_elemGrpA[EGSidxBTX]
+            mul = elemGrps_elemGrpA[EGSidxBTX]
             # Area correction calculation for cylinders (*pi/4)
             if elemGrps_elemGrpA[EGSidxCyln]: mulCyl = 0.7854
             else:                             mulCyl = 1
             # Increase threshold for boundary condition case
-            if CT_B == 0: multiplier *= 2
+            if CT_B == 0: mul *= 2
             ### Add surface variable and multipliers
-            if len(brkThresExprC_A): brkThresExprC_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprT_A): brkThresExprT_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprS_A): brkThresExprS_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprS9_A): brkThresExprS9_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprB_A): brkThresExprB_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprB9_A): brkThresExprB9_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprP_A): brkThresExprP_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprC_A): brkThresExprC_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprT_A): brkThresExprT_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprS_A): brkThresExprS_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprS9_A): brkThresExprS9_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprB_A): brkThresExprB_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprB9_A): brkThresExprB9_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprP_A): brkThresExprP_A += "*a" +"*%f"%mul +"*%f"%mulCyl
             
             ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
             try: brkThresValueC_A = eval(brkThresExprC_A)
@@ -259,20 +269,20 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprB9_B = elemGrps_elemGrpB[EGSidxBTB9]
             brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
             brkThresValuePL_B = elemGrps_elemGrpB[EGSidxBTPL]
-            multiplier = elemGrps_elemGrpB[EGSidxBTX]
+            mul = elemGrps_elemGrpB[EGSidxBTX]
             # Area correction calculation for cylinders (*pi/4)
             if elemGrps_elemGrpB[EGSidxCyln]: mulCyl = 0.7854
             else:                             mulCyl = 1
             # Increase threshold for boundary condition case
-            if CT_A == 0: multiplier *= 2
+            if CT_A == 0: mul *= 2
             ### Add surface variable and multipliers
-            if len(brkThresExprC_B): brkThresExprC_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprT_B): brkThresExprT_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprS_B): brkThresExprS_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprS9_B): brkThresExprS9_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprB_B): brkThresExprB_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprB9_B): brkThresExprB9_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
-            if len(brkThresExprP_B): brkThresExprP_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
+            if len(brkThresExprC_B): brkThresExprC_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprT_B): brkThresExprT_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprS_B): brkThresExprS_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprS9_B): brkThresExprS9_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprB_B): brkThresExprB_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprB9_B): brkThresExprB9_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+            if len(brkThresExprP_B): brkThresExprP_B += "*a" +"*%f"%mul +"*%f"%mulCyl
 
             ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
             try: brkThresValueC_B = eval(brkThresExprC_B)
@@ -524,7 +534,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 1; correction = 1  # No correction required for this constraint type
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED')
             if props.asciiExport:
                 setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
@@ -535,7 +545,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 1; correction = 1  # No correction required for this constraint type
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT')
             if props.asciiExport:
                 setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
@@ -548,7 +558,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             ### First constraint
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT')
             if props.asciiExport:
                 setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
@@ -557,7 +567,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             ### Second constraint
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueB
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED')
             if props.asciiExport:
                 setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
@@ -569,7 +579,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -590,7 +600,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -609,7 +619,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -626,7 +636,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 1; correction = 1.5  # Averaged correction factor for deviation of angular force evaluation for 6Dof constraints within the Bullet library
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueS
-            brkThres = value /rbw_steps_per_second *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -645,7 +655,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -664,7 +674,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueS
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -681,7 +691,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 1; correction = 1
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueB
-            brkThres = value /rbw_steps_per_second *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -708,7 +718,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -744,7 +754,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             if brkThresValueS9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
-                brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+                brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -772,7 +782,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-            brkThres = value /rbw_steps_per_second *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -808,7 +818,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             if brkThresValueB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
-                brkThres = value /rbw_steps_per_second *correction /constCount 
+                brkThres = value *btMultiplier /rbw_steps_per_second *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -836,7 +846,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -872,7 +882,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             if brkThresValueB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
-                brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+                brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -903,7 +913,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 #                value = values[0]  # Find and use smaller value (to be used along h axis)
 #            value /= 2  # Use half of the smaller shearing breaking thresholds for torsion
 
-            brkThres = value /rbw_steps_per_second *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *correction /constCount 
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -924,7 +934,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 3; correction = 2  # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
             radius = geoHeight /2
             value = brkThresValueP
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             springStiff = value *springLength /(correction *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(3):
@@ -958,7 +968,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 4; correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
             radius = geoHeight /2
             value = brkThresValueP
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             springStiff = value *springLength /(correction *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(4):
@@ -992,7 +1002,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 1; correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueP
-            brkThres = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             springStiff = value *springLength /(correction *tol2dist) /constCount
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
             if qUpdateComplete:
@@ -1014,11 +1024,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 3; correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             radius = geoHeight /2
             value = brkThresValueC
-            brkThres1 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres1 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueT
-            brkThres2 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres2 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueS
-            brkThres3 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres3 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueP
             springStiff = value *springLength /(correction *tol2dist) /constCount
             # Loop through all constraints of this connection
@@ -1098,11 +1108,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constCount = 4; correction = 2.2  # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
             radius = geoHeight /2
             value = brkThresValueC
-            brkThres1 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres1 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueT
-            brkThres2 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres2 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueS
-            brkThres3 = value /rbw_steps_per_second *rbw_time_scale *correction /constCount 
+            brkThres3 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueP
             springStiff = value *springLength /(correction *tol2dist) /constCount
             # Loop through all constraints of this connection

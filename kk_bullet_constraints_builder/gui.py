@@ -344,6 +344,9 @@ class bcb_panel(bpy.types.Panel):
             row = col.row(align=1); row.prop(props, "progrWeakLimit")
             if props.progrWeak == 0: row.enabled = 0
             row = col.row(align=1); row.prop(props, "progrWeakStartFact")
+            col.separator()
+            
+            row = col.row(align=1); row.prop(props, "detonatorObj")
 
             layout.separator()
 
