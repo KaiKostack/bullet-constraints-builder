@@ -434,8 +434,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 objConst0 = emptyObjs[consts[0]]
                 tol2dist = elemGrps_elemGrp[EGSidxTl2D]
                 
-                # Store value as ID property for debug purposes
-                #for idx in consts: emptyObjs[idx]['ContactArea'] = geoContactArea
+                ### Store value as ID property for debug purposes
+                #emptyObjs[idx]['ContactArea'] = geoContactArea
+                damage = (1 -btMultiplier) *100
+                if btMultiplier < 1:
+                    for idx in consts: emptyObjs[idx]['Damage %'] = damage
+
                 ### Check if full update is necessary (optimization)
                 if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == CT: qUpdateComplete = 0
                 else: objConst0['ConnectType'] = CT; qUpdateComplete = 1
