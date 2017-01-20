@@ -41,13 +41,13 @@ from tools import *            # Contains smaller independently working tools
 ################################################################################
 
 def setConstParams(cData,cDef, name=None,loc=None,obj1=None,obj2=None,tol1=None,tol2=None,rotm=None,rot=None,
-    e=None,bt=None,ub=None,dc=None,ct=None,
+    e=None,bt=None,ub=None,dc=None,ct=None,so=None,si=None,
     ullx=None,ully=None,ullz=None,llxl=None,llxu=None,llyl=None,llyu=None,llzl=None,llzu=None,
     ulax=None,ulay=None,ulaz=None,laxl=None,laxu=None,layl=None,layu=None,lazl=None,lazu=None,
     uslx=None,usly=None,uslz=None,sdlx=None,sdly=None,sdlz=None,sslx=None,ssly=None,sslz=None,
     usax=None,usay=None,usaz=None,sdax=None,sday=None,sdaz=None,ssax=None,ssay=None,ssaz=None):
 
-    # setConstParams(cData,cDef, name,loc,obj1,obj2,tol1,tol2,rotm,rot, e,bt,ub,dc,ct, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
+    # setConstParams(cData,cDef, name,loc,obj1,obj2,tol1,tol2,rotm,rot, e,bt,ub,dc,ct,so,si, ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu, ulax,ulay,ulaz, laxl,laxu,layl,layu,lazl,lazu, uslx,usly,uslz, sdlx,sdly,sdlz, sslx,ssly,sslz, usax,usay,usaz, sdax,sday,sdaz, ssax,ssay,ssaz)
 
     ### Base parameters (BCB specific)
     if name != None: cData["bcb_name"] = name
@@ -66,6 +66,8 @@ def setConstParams(cData,cDef, name=None,loc=None,obj1=None,obj2=None,tol1=None,
     if ub != None and ub != cDef["use_breaking"]:       cData["use_breaking"] = ub
     if dc != None and dc != cDef["disable_collisions"]: cData["disable_collisions"] = dc
     if ct != None and ct != cDef["type"]:               cData["type"] = ct
+    if so != None and so != cDef["use_override_solver_iterations"]: cData["use_override_solver_iterations"] = so
+    if si != None and si != cDef["solver_iterations"]:              cData["solver_iterations"] = si
     
     # Limits Linear
     # ullx,ully,ullz, llxl,llxu,llyl,llyu,llzl,llzu
@@ -209,6 +211,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             # Area correction calculation for cylinders (*pi/4)
             if elemGrps_elemGrpA[EGSidxCyln]: mulCyl = 0.7854
             else:                             mulCyl = 1
+            # Increase threshold for boundary condition case
+            if CT_B == 0: multiplier *= 2
             ### Add surface variable and multipliers
             if len(brkThresExprC_A): brkThresExprC_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
             if len(brkThresExprT_A): brkThresExprT_A += "*a" +"*%f"%multiplier +"*%f"%mulCyl
@@ -259,6 +263,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             # Area correction calculation for cylinders (*pi/4)
             if elemGrps_elemGrpB[EGSidxCyln]: mulCyl = 0.7854
             else:                             mulCyl = 1
+            # Increase threshold for boundary condition case
+            if CT_A == 0: multiplier *= 2
             ### Add surface variable and multipliers
             if len(brkThresExprC_B): brkThresExprC_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
             if len(brkThresExprT_B): brkThresExprT_B += "*a" +"*%f"%multiplier +"*%f"%mulCyl
@@ -506,7 +512,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         ### 1x FIXED; Indestructible buffer between passive and active foundation elements
         if CT == -1:
             cData = {}; cIdx = consts[cInc]; cInc += 1
-            setConstParams(cData,cDef, loc=loc, ub=0, dc=1, ct='FIXED')
+            #rotm = 'QUATERNION'
+            #rotN = dirVec.to_track_quat('X','Z')
+            #setConstParams(cData,cDef, loc=loc,rotm=rotm,rot=rotN, ub=0, dc=1, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=0,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+            #setConstParams(cData,cDef, loc=loc, ub=0, dc=1, ct='GENERIC_SPRING', sslx=999,ssly=999,sslz=999, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, ullx=1,ully=1,ullz=1, llxl=0,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+            setConstParams(cData,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=1,si=1)
             constsData.append(cData)
 
         ### 1x FIXED; Linear omni-directional + bending breaking threshold
