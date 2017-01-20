@@ -125,8 +125,8 @@ class bcb_props(bpy.types.PropertyGroup):
     progrWeakStartFact    = float_(name="Start Weakness",         default=1, min=0.0, max=1.0,     description="Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update.")
     snapToAreaOrient      = bool_(name="90° Axis Snapping for Const. Orient.", default=1,                       description="Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method).")
     disableCollision      = bool_(name="Disable Collisions",      default=1,                       description="Disables collisions between connected elements until breach.")
-    lowerBrkThresPriority = bool_(name="Lower Strength Priority", default=1,                       description="Gives priority to the weaker breaking threshold of two elements to be connected, if disabled the stronger value is used for the connection.")
-    detonatorObj          = string_(name="Detonator Object",      default="Detonator",             description="Enter name of an object to be used to simulate the effects of an explosion. This feature replicates the damage caused by such an event by weakening the constraints within range of the object. It is recommended to use an Empty object with a sphere shape for this. The damage is calculated as gradient of the distance mapped to the size, from 200% at center to 0% at boundary.")
+    lowerBrkThresPriority = bool_(name="Lower Strength Priority", default=1,                       description="Gives priority to the weaker breaking threshold of two elements with same Priority value to be connected, if disabled the stronger value is used for the connection.")
+    detonatorObj          = string_(name="Detonator Object",      default="Detonator",             description="Enter name of an object to be used to simulate the effects of an explosion. This feature replicates the damage caused by such an event by weakening the constraints within range of the object. It is recommended to use an Empty object with a sphere shape for this. The damage is calculated as gradient of the distance mapped to the size, from 200% weakening at center to 0% at boundary.")
     
     ### Element group properties
     # Create element groups properties for all possible future entries (maxMenuElementGroupItems)
@@ -149,6 +149,8 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxRqVP" %i +" = int_(name='Req. Vertex Pairs', default=presets[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection.')")
         exec("elemGrp_%d_EGSidxMatP" %i +" = string_(name='Mat. Preset', default=presets[j][EGSidxMatP], description='Preset name of the physical material to be used from BlenderJs internal database. See Blenders Rigid Body Tools for a list of available presets.')")
         exec("elemGrp_%d_EGSidxDens" %i +" = float_(name='Density', default=presets[j][EGSidxDens], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
+        exec("elemGrp_%d_EGSidxPrio" %i +" = int_(name='Connection Priority', default=presets[j][EGSidxPrio], min=1, max=9, description='Changes the connection priority for this element group which will override that the weaker breaking threshold of two elements is preferred for an connection. Lower Strength Priority has similar functionality but works on all groups, however, it is ignored if the priority here is different for a particular connection.')")
+
         exec("elemGrp_%d_EGSidxTl1D" %i +" = float_(name='1st Dist. Tol.', default=presets[j][EGSidxTl1D], min=0.0, max=10.0, description='For baking: First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %).')")
         exec("elemGrp_%d_EGSidxTl1R" %i +" = float_(name='1st Rot. Tol.', default=presets[j][EGSidxTl1R], min=0.0, max=pi, description='For baking: First deformation tolerance limit for angular change in radian for connection removal or plastic deformation.')")
         exec("elemGrp_%d_EGSidxTl2D" %i +" = float_(name='2nd Dist. Tol.', default=presets[j][EGSidxTl2D], min=0.0, max=10.0, description='For baking: Second deformation tolerance limit for distance change in percent for connection removal (1.00 = 100 %).')")
@@ -169,9 +171,6 @@ class bcb_props(bpy.types.PropertyGroup):
         if len(elemGrps) > 0:
             for i in range(len(elemGrps)):
                 exec("self.elemGrp_%d_EGSidxName" %i +" = elemGrps[i][EGSidxName]")
-                exec("self.elemGrp_%d_EGSidxRqVP" %i +" = elemGrps[i][EGSidxRqVP]")
-                exec("self.elemGrp_%d_EGSidxMatP" %i +" = elemGrps[i][EGSidxMatP]")
-                exec("self.elemGrp_%d_EGSidxDens" %i +" = elemGrps[i][EGSidxDens]")
                 exec("self.elemGrp_%d_EGSidxCTyp" %i +" = elemGrps[i][EGSidxCTyp]")
                 exec("self.elemGrp_%d_EGSidxBTC" %i +" = elemGrps[i][EGSidxBTC].replace('*a','')")
                 exec("self.elemGrp_%d_EGSidxBTT" %i +" = elemGrps[i][EGSidxBTT].replace('*a','')")
@@ -182,6 +181,11 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxBTP" %i +" = elemGrps[i][EGSidxBTP]")
                 exec("self.elemGrp_%d_EGSidxBTPL" %i +" = elemGrps[i][EGSidxBTPL]")
                 exec("self.elemGrp_%d_EGSidxBTX" %i +" = elemGrps[i][EGSidxBTX]")
+                exec("self.elemGrp_%d_EGSidxRqVP" %i +" = elemGrps[i][EGSidxRqVP]")
+                exec("self.elemGrp_%d_EGSidxMatP" %i +" = elemGrps[i][EGSidxMatP]")
+                exec("self.elemGrp_%d_EGSidxDens" %i +" = elemGrps[i][EGSidxDens]")
+                exec("self.elemGrp_%d_EGSidxPrio" %i +" = elemGrps[i][EGSidxPrio]")
+
                 exec("self.elemGrp_%d_EGSidxTl1D" %i +" = elemGrps[i][EGSidxTl1D]")
                 exec("self.elemGrp_%d_EGSidxTl1R" %i +" = elemGrps[i][EGSidxTl1R]")
                 exec("self.elemGrp_%d_EGSidxTl2D" %i +" = elemGrps[i][EGSidxTl2D]")
@@ -213,9 +217,6 @@ class bcb_props(bpy.types.PropertyGroup):
         if len(elemGrps) > 0:
             for i in range(len(elemGrps)):
                 elemGrps[i][EGSidxName] = eval("self.elemGrp_%d_EGSidxName" %i)
-                elemGrps[i][EGSidxRqVP] = eval("self.elemGrp_%d_EGSidxRqVP" %i)
-                elemGrps[i][EGSidxMatP] = eval("self.elemGrp_%d_EGSidxMatP" %i)
-                elemGrps[i][EGSidxDens] = eval("self.elemGrp_%d_EGSidxDens" %i)
                 elemGrps[i][EGSidxCTyp] = eval("self.elemGrp_%d_EGSidxCTyp" %i)
                 elemGrps[i][EGSidxBTC] = eval("self.elemGrp_%d_EGSidxBTC" %i)
                 elemGrps[i][EGSidxBTT] = eval("self.elemGrp_%d_EGSidxBTT" %i)
@@ -226,6 +227,11 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxBTP] = eval("self.elemGrp_%d_EGSidxBTP" %i)
                 elemGrps[i][EGSidxBTPL] = eval("self.elemGrp_%d_EGSidxBTPL" %i)
                 elemGrps[i][EGSidxBTX] = eval("self.elemGrp_%d_EGSidxBTX" %i)
+                elemGrps[i][EGSidxRqVP] = eval("self.elemGrp_%d_EGSidxRqVP" %i)
+                elemGrps[i][EGSidxMatP] = eval("self.elemGrp_%d_EGSidxMatP" %i)
+                elemGrps[i][EGSidxDens] = eval("self.elemGrp_%d_EGSidxDens" %i)
+                elemGrps[i][EGSidxPrio] = eval("self.elemGrp_%d_EGSidxPrio" %i)
+
                 elemGrps[i][EGSidxTl1D] = eval("self.elemGrp_%d_EGSidxTl1D" %i)
                 elemGrps[i][EGSidxTl1R] = eval("self.elemGrp_%d_EGSidxTl1R" %i)
                 elemGrps[i][EGSidxTl2D] = eval("self.elemGrp_%d_EGSidxTl2D" %i)

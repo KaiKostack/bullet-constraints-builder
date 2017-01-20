@@ -628,6 +628,7 @@ class bcb_panel(bpy.types.Panel):
             #row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxRqVP" %i)
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxMatP" %i)
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxDens" %i)
+            row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxPrio" %i)
                             
             ###### Advanced element group settings box
             

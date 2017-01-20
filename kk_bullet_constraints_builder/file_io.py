@@ -122,6 +122,7 @@ def exportConfigData(scene):
     configData.append(props.snapToAreaOrient)
     configData.append(props.disableCollision)
     configData.append(props.lowerBrkThresPriority)
+    configData.append(props.detonatorObj)
     configData.append(mem["elemGrps"])
     dataToFile(configData, logPath +r"\bcb.cfg")
     
@@ -161,6 +162,7 @@ def importConfigData(scene):
         props.snapToAreaOrient = configData[i]; i += 1
         props.disableCollision = configData[i]; i += 1
         props.lowerBrkThresPriority = configData[i]; i += 1
+        props.detonatorObj = configData[i]; i += 1
         mem["elemGrps"] = configData[i]; i += 1
         return 0
 

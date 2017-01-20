@@ -205,7 +205,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
         CT_A = elemGrps_elemGrpA[EGSidxCTyp]
         CT_B = elemGrps_elemGrpB[EGSidxCTyp]
-
+        Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+        Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+        
         # A is active group
         if CT_A != 0:
             ### Prepare expression strings
@@ -310,8 +312,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 except: print("\rError: Expression could not be evaluated:", brkThresExprP_B); brkThresValueP_B = 0
             else: brkThresValueP_B = -1
 
-        # Both A and B are active groups
-        if CT_A != 0 and CT_B != 0:
+        # Both A and B are active groups and priority is the same
+        if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
             ### Use the connection type with the smaller count of constraints for connection between different element groups
             ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
             if connectTypes[elemGrps_elemGrpA[EGSidxCTyp]][1] <= connectTypes[elemGrps_elemGrpB[EGSidxCTyp]][1]:
@@ -385,8 +387,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 if brkThresValuePL_A > brkThresValuePL_B: brkThresValuePL = brkThresValuePL_A
                 else:                                     brkThresValuePL = brkThresValuePL_B
             
-        # Only A is active and B is passive group
-        elif CT_A != 0 and CT_B == 0:
+        # Only A is active and B is passive group or priority is higher for A
+        elif CT_A != 0 and CT_B == 0 or (CT_A != 0 and CT_B != 0 and Prio_A > Prio_B):
             CT = CT_A
             elemGrp = elemGrpA
             brkThresValueC = brkThresValueC_A
@@ -400,8 +402,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresValueP = brkThresValueP_A
             brkThresValuePL = brkThresValuePL_A
  
-        # Only B is active and A is passive group
-        elif CT_A == 0 and CT_B != 0:
+        # Only B is active and A is passive group or priority is higher for B
+        elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
             CT = CT_B
             elemGrp = elemGrpB
             brkThresValueC = brkThresValueC_B
