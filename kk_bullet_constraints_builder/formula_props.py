@@ -60,7 +60,7 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
     dl = float_(name='dl', default=asst['dl'], min=0, max=100000, description='Diameter of steel longitudinal bar (mm).')
     n    = int_(name='n', default=asst['n'], min=0, max=100000, description='Number of longitudinal steel bars.')
     k  = float_(name='k', default=asst['k'], min=0, max=100000, description='Scale factor.')
-
+    
     exp_d   = string_(name='d', default=asst['Exp:d'], description='Distance between the tensile irons and the opposite concrete surface (mm).')
     exp_e   = string_(name='e', default=asst['Exp:e'], description='Distance between longitudinal irons (mm).')
     exp_rho = string_(name='ϱ (rho)', default=asst['Exp:rho'], description='Reinforcement ratio = As/A.')
@@ -75,8 +75,8 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
     def props_update_menu(self):
         props = bpy.context.window_manager.bcb
         i = props.menu_selectedElemGrp
-        # Check if stored ID matches the correct assistant type otherwise return
         elemGrps = mem["elemGrps"]
+        # Check if stored ID matches the correct assistant type otherwise return
         if elemGrps[i][EGSidxAsst]['ID'] != self.classID: return
 
         asst = elemGrps[i][EGSidxAsst]

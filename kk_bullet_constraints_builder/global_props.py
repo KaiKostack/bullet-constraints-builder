@@ -257,8 +257,16 @@ class bcb_props(bpy.types.PropertyGroup):
                     if self.assistant_menu == formAssist['ID']:
                         elemGrps[i][EGSidxAsst] = formAssist.copy()
 
-            ### Update global vars also from the other classes properties
-            props_asst_con_rei_beam = bpy.context.window_manager.bcb_asst_con_rei_beam
-            props_asst_con_rei_wall = bpy.context.window_manager.bcb_asst_con_rei_wall
-            props_asst_con_rei_beam.props_update_globals()
-            props_asst_con_rei_wall.props_update_globals()        
+                ### Update also the other classes properties
+                props_asst_con_rei_beam = bpy.context.window_manager.bcb_asst_con_rei_beam
+                props_asst_con_rei_wall = bpy.context.window_manager.bcb_asst_con_rei_wall
+                props_asst_con_rei_beam.props_update_menu()
+                props_asst_con_rei_wall.props_update_menu()
+            
+            else:
+                ### Update global vars also from the other classes properties
+                props_asst_con_rei_beam = bpy.context.window_manager.bcb_asst_con_rei_beam
+                props_asst_con_rei_wall = bpy.context.window_manager.bcb_asst_con_rei_wall
+                props_asst_con_rei_beam.props_update_globals()
+                props_asst_con_rei_wall.props_update_globals()
+                        

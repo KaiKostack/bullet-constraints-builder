@@ -670,4 +670,4 @@ class bcb_panel(bpy.types.Panel):
 
         ### Update global vars from menu related properties
         props.props_update_globals()
-        
+    
