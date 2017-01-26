@@ -29,7 +29,7 @@
 
 ################################################################################
 
-import bpy, mathutils, sys, copy
+import bpy, mathutils, math, sys, copy
 from mathutils import Vector
 mem = bpy.app.driver_namespace
 
@@ -130,6 +130,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
 
+    exData = None
+    connectsTol = []  # Create new array to store individual tolerances per connection
     ### Prepare dictionary of element indices for faster item search (optimization)
     objsDict = {}
     for i in range(len(objs)):
@@ -200,7 +202,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         elemGrpB = objsEGrp[objsDict[objB]]
         elemGrps_elemGrpA = elemGrps[elemGrpA]
         elemGrps_elemGrpB = elemGrps[elemGrpB]
-        
+
         ###### Decision of which material settings from both groups will be used for connection
 
         CT_A = elemGrps_elemGrpA[EGSidxCTyp]
@@ -430,32 +432,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         if CT > 0:
             elemGrps_elemGrp = elemGrps[elemGrp]
 
-            if not props.asciiExport:
-                objConst0 = emptyObjs[consts[0]]
-                tol2dist = elemGrps_elemGrp[EGSidxTl2D]
-                
-                ### Store value as ID property for debug purposes
-                #emptyObjs[idx]['ContactArea'] = geoContactArea
-                damage = (1 -btMultiplier) *100
-                if btMultiplier < 1:
-                    for idx in consts: emptyObjs[idx]['Damage %'] = damage
-
-                ### Check if full update is necessary (optimization)
-                if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == CT: qUpdateComplete = 0
-                else: objConst0['ConnectType'] = CT; qUpdateComplete = 1
-            else:
-                tol1dist = elemGrps_elemGrp[EGSidxTl1D]
-                tol1rot = elemGrps_elemGrp[EGSidxTl1R]
-                tol2dist = elemGrps_elemGrp[EGSidxTl2D]
-                tol2rot = elemGrps_elemGrp[EGSidxTl2R]
-                qUpdateComplete = 1
-
             ### Calculate orientation between the two elements
             # Center to center orientation
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+            geoLengthApprox = dirVec.length
             # Get spring length used later for stiffness calculation
             if brkThresValuePL > 0: springLength = brkThresValuePL
-            else:                   springLength = dirVec.length
+            else:                   springLength = geoLengthApprox
             # Recalculate directional vector for better constraint alignment
             if props.snapToAreaOrient:
                 # Use contact area for orientation (axis closest to thickness)
@@ -471,6 +454,44 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 if props.alignVertical:
                     # Reduce X and Y components by factor of props.alignVertical (should be < 1 to make horizontal connections still possible)
                     dirVec = Vector((dirVec[0] *(1 -props.alignVertical), dirVec[1] *(1 -props.alignVertical), dirVec[2]))
+
+            ### Calculate tolerances and store them for the monitor
+            tol1dist = elemGrps_elemGrp[EGSidxTl1D]
+            tol1rot = elemGrps_elemGrp[EGSidxTl1R]
+            tol2dist = elemGrps_elemGrp[EGSidxTl2D]
+            tol2rot = elemGrps_elemGrp[EGSidxTl2R]
+            asst = elemGrps_elemGrp[EGSidxAsst]
+            ### Calculate tolerance from Formula Assistant settings
+            if tol2dist == 0:
+                # Only try to use FA settings if there is a valid one active
+                if asst['ID'] == "con_rei_beam" or asst['ID'] == "con_rei_wall":
+                      tol2dist = (asst['elu']/100) *geoLengthApprox
+                else: tol2dist = presets[0][EGSidxTl2D]  # Use tolerance from preset #0 as last resort
+            if tol2rot == 0:
+                # Only try to use FA settings if there is a valid one active
+                if (asst['ID'] == "con_rei_beam" or asst['ID'] == "con_rei_wall") and h > 0:
+                      tol2rot = math.atan(((asst['elu']/100) *geoLengthApprox) /(geoHeight/2))
+                      #tol2rot = math.atan(((asst['elu']/100) *((asst['w']/1000)/asst['n'])) /(geoHeight/2))
+                else: tol2rot = presets[0][EGSidxTl2R]  # Use tolerance from preset #0 as last resort
+            # Add new tolerances to build data array
+            connectsTol.append([tol1dist, tol1rot, tol2dist, tol2rot])
+            
+            ### Check if full update is necessary (optimization)
+            if not props.asciiExport:
+                objConst0 = emptyObjs[consts[0]]
+                if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == CT: qUpdateComplete = 0
+                else: objConst0['ConnectType'] = CT; qUpdateComplete = 1
+                ### Store value as ID property for debug purposes
+                #objConst0['ContactArea'] = geoContactArea
+                objConst0['tol1dist'] = tol1dist
+                objConst0['tol1rot'] = tol1rot
+                objConst0['tol2dist'] = tol2dist
+                objConst0['tol2rot'] = tol2rot
+                damage = (1 -btMultiplier) *100
+                if btMultiplier < 1:
+                    for idx in consts: emptyObjs[idx]['Damage %'] = damage
+            else:
+                qUpdateComplete = 1
                     
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
@@ -941,7 +962,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            springStiff = value *springLength /(correction *tol2dist) /constCount
+            springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(3):
                 cData = {}; cIdx = consts[cInc]; cInc += 1
@@ -975,7 +996,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            springStiff = value *springLength /(correction *tol2dist) /constCount
+            springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
             ### Loop through all constraints of this connection
             for i in range(4):
                 cData = {}; cIdx = consts[cInc]; cInc += 1
@@ -1009,7 +1030,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            springStiff = value *springLength /(correction *tol2dist) /constCount
+            springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
             setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
             if qUpdateComplete:
                 ### Enable linear and angular spring
@@ -1036,7 +1057,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             value = brkThresValueS
             brkThres3 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueP
-            springStiff = value *springLength /(correction *tol2dist) /constCount
+            springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
             # Loop through all constraints of this connection
             for j in range(3):
 
@@ -1120,7 +1141,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             value = brkThresValueS
             brkThres3 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueP
-            springStiff = value *springLength /(correction *tol2dist) /constCount
+            springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
             # Loop through all constraints of this connection
             for j in range(4):
 
@@ -1327,4 +1348,4 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             exData.append(cData)
         print()
         
-        return exData
+    return connectsTol, exData

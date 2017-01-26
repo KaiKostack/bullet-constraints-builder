@@ -52,8 +52,10 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
 
     h =  float_(name='h', default=asst['h'], min=0, max=100000, description='Height of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
     w =  float_(name='w', default=asst['w'], min=0, max=100000, description='Width of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
-    fs = float_(name='fs', default=asst['fs'], min=0, max=100000, description='Breaking strength of reinforcement irons (N/mm^2).')
-    fc = float_(name='fc', default=asst['fc'], min=0, max=100000, description='Breaking strength of concrete (N/mm^2).')
+    fs = float_(name='fs', default=asst['fs'], min=0, max=100000, description='Yield strength of reinforcement irons (N/mm^2).')
+    fc = float_(name='fc', default=asst['fc'], min=0, max=100000, description='Yield strength of concrete (N/mm^2).')
+    fsu = float_(name='fsu', default=asst['fsu'], min=0, max=100000, description='Ultimate breaking strength of reinforcement irons (N/mm^2).')
+    elu = float_(name='elu', default=asst['elu'], min=0, max=100000, description='Ultimate elongation of reinforcement irons (%).')
     c  = float_(name='c', default=asst['c'], min=0, max=100000, description='Concrete cover thickness above reinforcement (mm).')
     s  = float_(name='s', default=asst['s'], min=0, max=100000, description='Distance between stirrups (mm).')
     ds = float_(name='ds', default=asst['ds'], min=0, max=100000, description='Diameter of steel stirrup bar (mm).')
@@ -84,6 +86,8 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
         self.w = asst['w']
         self.fs = asst['fs']
         self.fc = asst['fc']
+        self.fsu = asst['fsu']
+        self.elu = asst['elu']
         self.c = asst['c']
         self.s = asst['s']
         self.ds = asst['ds']
@@ -113,6 +117,8 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
         elemGrps[i][EGSidxAsst]['w'] = self.w
         elemGrps[i][EGSidxAsst]['fs'] = self.fs
         elemGrps[i][EGSidxAsst]['fc'] = self.fc
+        elemGrps[i][EGSidxAsst]['fsu'] = self.fsu
+        elemGrps[i][EGSidxAsst]['elu'] = self.elu
         elemGrps[i][EGSidxAsst]['c'] = self.c
         elemGrps[i][EGSidxAsst]['s'] = self.s
         elemGrps[i][EGSidxAsst]['ds'] = self.ds
@@ -147,8 +153,10 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
 
     h =  float_(name='h', default=asst['h'], min=0, max=100000, description='Height of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
     w =  float_(name='w', default=asst['w'], min=0, max=100000, description='Width of element (mm). Leave it 0 to pass it through as variable instead of a fixed number.')
-    fs = float_(name='fs', default=asst['fs'], min=0, max=100000, description='Breaking strength of reinforcement irons (N/mm^2).')
-    fc = float_(name='fc', default=asst['fc'], min=0, max=100000, description='Breaking strength of concrete (N/mm^2).')
+    fs = float_(name='fs', default=asst['fs'], min=0, max=100000, description='Yield strength of reinforcement irons (N/mm^2).')
+    fc = float_(name='fc', default=asst['fc'], min=0, max=100000, description='Yield strength of concrete (N/mm^2).')
+    fsu = float_(name='fsu', default=asst['fsu'], min=0, max=100000, description='Ultimate breaking strength of reinforcement irons (N/mm^2).')
+    elu = float_(name='elu', default=asst['elu'], min=0, max=100000, description='Ultimate elongation of reinforcement irons (%).')
     c  = float_(name='c', default=asst['c'], min=0, max=100000, description='Concrete cover thickness above reinforcement (mm).')
     s  = float_(name='s', default=asst['s'], min=0, max=100000, description='Distance between stirrups (mm).')
     ds = float_(name='ds', default=asst['ds'], min=0, max=100000, description='Diameter of steel stirrup bar (mm).')
@@ -179,6 +187,8 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
         self.w = asst['w']
         self.fs = asst['fs']
         self.fc = asst['fc']
+        self.fsu = asst['fsu']
+        self.elu = asst['elu']
         self.c = asst['c']
         self.s = asst['s']
         self.ds = asst['ds']
@@ -208,6 +218,8 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
         elemGrps[i][EGSidxAsst]['w'] = self.w
         elemGrps[i][EGSidxAsst]['fs'] = self.fs
         elemGrps[i][EGSidxAsst]['fc'] = self.fc
+        elemGrps[i][EGSidxAsst]['fsu'] = self.fsu
+        elemGrps[i][EGSidxAsst]['elu'] = self.elu
         elemGrps[i][EGSidxAsst]['c'] = self.c
         elemGrps[i][EGSidxAsst]['s'] = self.s
         elemGrps[i][EGSidxAsst]['ds'] = self.ds

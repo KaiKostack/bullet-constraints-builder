@@ -117,7 +117,7 @@ def build():
                         scene.update()  # Required to update empty locations before layer switching
                         scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
                         ###### Store build data in scene
-                        if not props.asciiExport: storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect)
+                        if not props.asciiExport: storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, None, constsConnect)
                         
                         print('-- Time: %0.2f s\n' %(time.time()-time_start_building))
                     
@@ -146,11 +146,11 @@ def build():
             ###### Store menu config data in scene
             storeConfigDataInScene(scene)
             ###### Get temp data from scene
-            if not props.asciiExport: objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect = getBuildDataFromScene(scene)
+            if not props.asciiExport: objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect = getBuildDataFromScene(scene)
             ###### Create fresh element group index to make sure the data is still valid (reordering in menu invalidates it for instance)
             objsEGrp, objCntInEGrps = createElementGroupIndex(objs)
-            ###### Store build data in scene
-            storeBuildDataInScene(scene, None, objsEGrp, None, None, None, None, None, None, None, None)
+            ###### Store updated build data in scene
+            storeBuildDataInScene(scene, None, objsEGrp, None, None, None, None, None, None, None, None, None)
                             
             if len(emptyObjs) > 0 and objCntInEGrps > 1:
                 ###### Set general rigid body world settings
@@ -158,7 +158,9 @@ def build():
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
                 if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
-                exData = setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect)
+                connectsTol, exData = setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect)
+                ###### Store new build data in scene
+                storeBuildDataInScene(scene, None, None, None, None, None, None, None, None, None, connectsTol, None)
                 ### Restore old layers state
                 if not props.asciiExport:
                     scene.update()  # Required to update empty locations before layer switching

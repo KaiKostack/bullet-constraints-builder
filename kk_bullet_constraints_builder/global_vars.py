@@ -35,21 +35,25 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 5, 9)
+bcb_version = (2, 6, 0)
 
 ### Customizable element group presets
 presets = [
 # 0                     1    2           3        4   5       6       7       8      9       10     11       12   13   14   15    16   17    18     19             20  21   22  23
 # Name                  RVP  Mat.preset  Density  CT  BTC     BTT     BTS     BTS90  BTB     BTB90  BTP      T1D  T1R  T2D  T2R   Bev. Scale Facing F.Assist.+Data Cyl PLen BTX Prio
-[ "",                   1,   "Uncategorized", 2400, 3, "35",  "5.2",  "155",  "",    "1.0",  "",    "10.4",  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "Base",               1,   "Uncategorized", 1,    0, "0",   "0",    "0",    "",    "0",    "",    "0",      0,   0,   0,   0,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "RC Columns",         1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    "10.4",  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "RC Walls",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "10.4",  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "RC Slabs",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "10.4",  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "Masonry Walls",      1,   "Masonry",  1800,    6,  "10",   "2",    "0.3",  "",    "0.3",  "",    "4",     .1,  .2,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "I-Beams Screwed",    1,   "Steel",    7800,    6,  "47.5", "23.5", "14.1", "",    "2.4",  "",    "47",    .1,  .2,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "I-Beams Screwed 2",  1,   "Steel",    7800,    6,  "87.5", "33.8", "20.3", "",    "12.3", "",    "67.6",  .1,  .2,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "HSS-Beams Welded",   1,   "Steel",    7800,    6,  "37.5", "75",   "45",   "",    "6.6",  "",    "150",   .1,  .2,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ]
+[ "",                   1,   "Uncategorized", 2400, 3, "35",  "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "Base",               1,   "Uncategorized", 1,    0, "0",   "0",    "0",    "",    "0",    "",    "0",     0,   0,   0,   0,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "Concrete",           1,   "Concrete", 2400,    6,  "35",   "3.5",  "0.9",  "",    "1.0",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "RC Columns",         1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "RC Walls",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "RC Slabs",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "Masonry Walls",      1,   "Masonry",  1800,    6,  "10",   "2",    "0.3",  "",    "0.3",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "Timber Spruce",      1,   "Timber",   470,     6,  "40",   "80",   "7.5",  "",    "68",   "",    "80",   .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "Timber Larch",       1,   "Timber",   590,     6,  "48",   "105",  "9",    "",    "93",   "",    "105",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "Timber Ash",         1,   "Timber",   690,     6,  "50",   "130",  "13"    "",    "105",  "",    "130",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "I-Beams Screwed",    1,   "Steel",    7800,    6,  "47.5", "23.5", "14.1", "",    "2.4",  "",    "30.6", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "I-Beams Screwed 2",  1,   "Steel",    7800,    6,  "87.5", "33.8", "20.3", "",    "12.3", "",    "43.9", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
+[ "HSS-Beams Welded",   1,   "Steel",    7800,    6,  "37.5", "75",   "45",   "",    "6.6",  "",    "97.5", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 # Actual element group list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
@@ -119,7 +123,7 @@ connectTypes = [           # Cnt C T S B S T T T T      CT
 formulaAssistants = [
 {"Name":"None", "ID":"None"},
 {"Name":"Reinforced Concrete (Beams & Columns)", "ID":"con_rei_beam",
- "h":250, "w":150, "fc":30, "fs":500, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
+ "h":250, "w":150, "fc":30, "fs":500, "fsu":650, "elu":12, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
  "Exp:d":   "h-c-dl/2",
  "Exp:e":   "h-2*c-dl",
  "Exp:rho": "(dl/2)**2*pi*n/(h*w)",
@@ -131,8 +135,8 @@ formulaAssistants = [
  "Exp:M+/-":"(fc*(1-rho)+fs*rho*e1*4.5)*h*h*w/12/1000"
 },
 {"Name":"Reinforced Concrete (Walls & Slabs)", "ID":"con_rei_wall",
- "h":250, "w":150, "fc":30, "fs":500, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
- "Exp:d":   "h-c-dl/2",
+ "h":250, "w":150, "fc":30, "fs":500, "fsu":650, "elu":12, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
+ "Exp:d":   "h/2",
  "Exp:e":   "h-2*c-dl",
  "Exp:rho": "(dl/2)**2*pi*n/(h*w)",
  "Exp:y":   "((ds/2)**2*pi*2/100*1000/s)*10/d",
@@ -145,6 +149,8 @@ formulaAssistants = [
 # Material strength values (N/mm
 # fs = strength of steel
 # fc = strength of concrete
+# fsu = ultimate strength of steel
+# elu = ultimate elongation of steel
 #
 # Geometrical values (mm):
 # h = height of element    

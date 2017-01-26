@@ -447,6 +447,9 @@ class bcb_panel(bpy.types.Panel):
                     col.label(text="Strengths of Base Material and Reinforcement:")
                     row = col.split(align=1); row.prop(props_asst_con_rei_beam, "fc")
                     row.prop(props_asst_con_rei_beam, "fs")
+                    if props.submenu_assistant_advanced:
+                        row = col.split(align=1); row.prop(props_asst_con_rei_beam, "elu")
+                        row.prop(props_asst_con_rei_beam, "fsu")
                     col.separator()
                     col.label(text="Geometry Parameters and Coefficients:")
                     row = col.split(align=1); row.prop(props_asst_con_rei_beam, "h")
@@ -480,6 +483,9 @@ class bcb_panel(bpy.types.Panel):
                     col.label(text="Strengths of Base Material and Reinforcement:")
                     row = col.split(align=1); row.prop(props_asst_con_rei_wall, "fc")
                     row.prop(props_asst_con_rei_wall, "fs")
+                    if props.submenu_assistant_advanced:
+                        row = col.split(align=1); row.prop(props_asst_con_rei_wall, "elu")
+                        row.prop(props_asst_con_rei_wall, "fsu")
                     col.separator()
                     col.label(text="Geometry Parameters and Coefficients:")
                     row = col.split(align=1); row.prop(props_asst_con_rei_wall, "h")
@@ -649,7 +655,10 @@ class bcb_panel(bpy.types.Panel):
                 split.prop(props, "elemGrp_%d_EGSidxTl2D" %i)
                 split.prop(props, "elemGrp_%d_EGSidxTl2R" %i)
                 if not connectType[2][7]: split.active = 0
-
+                value1 = eval("props.elemGrp_%d_EGSidxTl2D" %i)
+                value2 = eval("props.elemGrp_%d_EGSidxTl2R" %i)
+                if value1 == 0 or value2 == 0: split.active = 0
+                
                 col.separator()
                 row = col.row(align=1)
                 if props.menu_gotData: row.enabled = 0

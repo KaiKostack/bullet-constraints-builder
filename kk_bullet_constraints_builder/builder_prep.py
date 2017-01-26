@@ -48,7 +48,7 @@ def initGeneralRigidBodyWorldSettings(scene):
     # Set Steps Per Second for rigid body simulation
     scene.rigidbody_world.steps_per_second = props.stepsPerSecond
     # Set Split Impulse for rigid body simulation
-    #scene.rigidbody_world.use_split_impulse = True
+    scene.rigidbody_world.use_split_impulse = True
 
 ################################################################################   
 
@@ -120,6 +120,8 @@ def prepareObjects(objs):
     for obj in objs: obj.select = 1
     # Remove instancing from objects
     bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
+    # Set object centers to geometry origin
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
     ### Apply scale factor depending on object's collision shape to make sure volume and mass calculation are correct (not all need this)
     for obj in objs:
         if obj.rigid_body != None:

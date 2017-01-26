@@ -174,7 +174,7 @@ def combineExpressions():
     if props.assistant_menu == "con_rei_beam":
         # Switch connection type to the recommended type
         #elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
-        # Prepare also a height and width swapped (90
+        # Prepare also a height and width swapped (90)
         for qHWswapped in range(2):
             if not qHWswapped:
                 h = asst['h']
@@ -186,6 +186,8 @@ def combineExpressions():
             if w == 0: w = 'w'
             fc = asst['fc']
             fs = asst['fs']
+            fsu = asst['fsu']
+            elu = asst['elu']
             c = asst['c']
             s = asst['s']
             ds = asst['ds']
@@ -202,16 +204,21 @@ def combineExpressions():
             Np = " (" +asst['Exp:N+'] +") "
             Vpn = " (" +asst['Exp:V+/-'] +") "
             Mpn = " (" +asst['Exp:M+/-'] +") "
-            
+
+            # Derive spring breaking threshold from tensile threshold as ratio of fsu and fs,
+            # divided by 4 to replicate the aspect that in most concrete failing cases only one half or less of the reinforcement will bear the load
+            Sp = "fsu*rho*(h*w)/4"
+
             ### Normalize result upon 1 mm^2, 'a' should be the only var left over
             a = 'a'
             Nn = "(" +Nn +")/(h*w)"
             Np = "(" +Np +")/(h*w)"
             Vpn = "(" +Vpn +")/(h*w)"
             Mpn = "(" +Mpn +")/(h*w)"
-
+            Sp = "(" +Sp +")/(h*w)"
+            
             ### Combine all available expressions with each other      
-            symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
+            symbols = ['rho','Vpn','Mpn','fsu','elu','pi','fs','fc','Sp','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
             cnt = 0; cntLast = -1
             while cnt != cntLast:
                 cntLast = cnt
@@ -252,120 +259,10 @@ def combineExpressions():
                     try:    Mpn = Mpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
                     except: Mpn = Mpn.replace(symbol, eval(symbol))
                     cnt += len(Mpn)
-            
-            # Derive spring breaking threshold from tensile threshold x 2 for now, should have a custom ultimate steel strength input in the future
-            Sp = "(" +Np +")*2"
-            
-            if qSymPy:
-                # Simplify formulas when SymPy module is available
-                Nn = str(sympy.simplify(Nn))
-                Np = str(sympy.simplify(Np))
-                Vpn = str(sympy.simplify(Vpn))
-                Mpn = str(sympy.simplify(Mpn))
-                Sp = str(sympy.simplify(Sp))
-
-            if not qHWswapped:
-                elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
-                elemGrps[i][EGSidxBTT] = splitAndApplyPrecisionToFormula(Np)
-                elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
-                elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
-            else:
-                Vpn9 = splitAndApplyPrecisionToFormula(Vpn)
-                Mpn9 = splitAndApplyPrecisionToFormula(Mpn)
-                Vpn = elemGrps[i][EGSidxBTS]
-                Mpn = elemGrps[i][EGSidxBTB]
-                if Vpn9 != Vpn: elemGrps[i][EGSidxBTS9] = splitAndApplyPrecisionToFormula(Vpn9)
-                else:           elemGrps[i][EGSidxBTS9] = ""
-                if Mpn9 != Mpn: elemGrps[i][EGSidxBTB9] = splitAndApplyPrecisionToFormula(Mpn9)
-                else:           elemGrps[i][EGSidxBTS9] = ""
-            elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
-            #elemGrps[i][EGSidxBTPL] = s /1000  # Output in m
-       
-    ### Reinforced Concrete (Walls & Slabs)
-    elif props.assistant_menu == "con_rei_wall":
-        # Switch connection type to the recommended type
-        #elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
-        # Prepare also a height and width swapped (90
-        for qHWswapped in range(2):
-            if not qHWswapped:
-                h = asst['h']
-                w = asst['w']
-            else:
-                w = asst['h']
-                h = asst['w']
-            if h == 0: h = 'h'
-            if w == 0: w = 'w'
-            fc = asst['fc']
-            fs = asst['fs']
-            c = asst['c']
-            s = asst['s']
-            ds = asst['ds']
-            dl = asst['dl']
-            n = asst['n']
-            k = asst['k']
-
-            d = " (" +asst['Exp:d'] +") "
-            e = " (" +asst['Exp:e'] +") "
-            rho = " (" +asst['Exp:rho'] +") "
-            y = " (" +asst['Exp:y'] +") "
-            e1 = " (" +asst['Exp:e1'] +") "
-            Nn = " (" +asst['Exp:N-'] +") "
-            Np = " (" +asst['Exp:N+'] +") "
-            Vpn = " (" +asst['Exp:V+/-'] +") "
-            Mpn = " (" +asst['Exp:M+/-'] +") "
-            
-            ### Normalize result upon 1 mm^2, 'a' should be the only var left over
-            a = 'a'
-            Nn = "(" +Nn +")/(h*w)"
-            Np = "(" +Np +")/(h*w)"
-            Vpn = "(" +Vpn +")/(h*w)"
-            Mpn = "(" +Mpn +")/(h*w)"
-
-            ### Combine all available expressions with each other      
-            symbols = ['rho','Vpn','Mpn','pi','fs','fc','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
-            cnt = 0; cntLast = -1
-            while cnt != cntLast:
-                cntLast = cnt
-                for symbol in symbols:
-                    cnt -= len(d)
-                    try:    d   = d.replace(symbol, convertFloatToStr(eval(symbol), 4))
-                    except: d   = d.replace(symbol, eval(symbol))
-                    cnt += len(d)
-                    cnt -= len(e)
-                    try:    e   = e.replace(symbol, convertFloatToStr(eval(symbol), 4))
-                    except: e   = e.replace(symbol, eval(symbol))
-                    cnt += len(e)
-                    cnt -= len(rho)
-                    try:    rho = rho.replace(symbol, convertFloatToStr(eval(symbol), 4))
-                    except: rho = rho.replace(symbol, eval(symbol))
-                    cnt += len(rho)
-                    cnt -= len(y)
-                    try:    y   = y.replace(symbol, convertFloatToStr(eval(symbol), 4))
-                    except: y   = y.replace(symbol, eval(symbol))
-                    cnt += len(y)
-                    cnt -= len(e1)
-                    try:    e1  = e1.replace(symbol, convertFloatToStr(eval(symbol), 4))
-                    except: e1  = e1.replace(symbol, eval(symbol))
-                    cnt += len(e1)
-                    cnt -= len(Nn)
-                    try:    Nn  = Nn.replace(symbol, convertFloatToStr(eval(symbol), 4))
-                    except: Nn  = Nn.replace(symbol, eval(symbol))
-                    cnt += len(Nn)
-                    cnt -= len(Np)
-                    try:    Np  = Np.replace(symbol, convertFloatToStr(eval(symbol), 4))
-                    except: Np  = Np.replace(symbol, eval(symbol))
-                    cnt += len(Np)
-                    cnt -= len(Vpn)
-                    try:    Vpn = Vpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
-                    except: Vpn = Vpn.replace(symbol, eval(symbol))
-                    cnt += len(Vpn)
-                    cnt -= len(Mpn)
-                    try:    Mpn = Mpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
-                    except: Mpn = Mpn.replace(symbol, eval(symbol))
-                    cnt += len(Mpn)
-
-            # Derive spring breaking threshold from tensile threshold x 2 for now, should have a custom ultimate steel strength input in the future
-            Sp = "(" +Np +")*2"
+                    cnt -= len(Sp)
+                    try:    Sp = Sp.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: Sp = Sp.replace(symbol, eval(symbol))
+                    cnt += len(Sp)
             
             if qSymPy:
                 # Simplify formulas when SymPy module is available
@@ -374,13 +271,21 @@ def combineExpressions():
                 Vpn = str(sympy.simplify(Vpn))
                 Mpn = str(sympy.simplify(Mpn))
                 Sp = str(sympy.simplify(Sp))
-
+            
+            ### Output main results into BCB settings
             if not qHWswapped:
                 elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
                 elemGrps[i][EGSidxBTT] = splitAndApplyPrecisionToFormula(Np)
                 elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
                 elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
                 elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
+                elemGrps[i][EGSidxBTPL] = 0  # 0 means calculation will be postponed to setConstraint() function
+                elemGrps[i][EGSidxTl2D] = 0  # Unlike Tl2R we could do this calculation here but for consistency reasons we postpone this as well
+                elemGrps[i][EGSidxTl2R] = 0  # 0 means calculation will be postponed to setConstraint() function
+                # Debug: Overwrite also 1st tolerances
+                #elemGrps[i][EGSidxTl1D] = .1
+                #elemGrps[i][EGSidxTl1R] = .4
+                #elemGrps[i][EGSidxScal] = 1
             else:
                 Vpn9 = splitAndApplyPrecisionToFormula(Vpn)
                 Mpn9 = splitAndApplyPrecisionToFormula(Mpn)
@@ -390,7 +295,131 @@ def combineExpressions():
                 else:           elemGrps[i][EGSidxBTS9] = ""
                 if Mpn9 != Mpn: elemGrps[i][EGSidxBTB9] = splitAndApplyPrecisionToFormula(Mpn9)
                 else:           elemGrps[i][EGSidxBTS9] = ""
-            elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
-            #elemGrps[i][EGSidxBTPL] = s /1000  # Output in m
+       
+    ### Reinforced Concrete (Walls & Slabs)
+    elif props.assistant_menu == "con_rei_wall":
+        # Switch connection type to the recommended type
+        #elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
+        # Prepare also a height and width swapped (90)
+        for qHWswapped in range(2):
+            if not qHWswapped:
+                h = asst['h']
+                w = asst['w']
+            else:
+                w = asst['h']
+                h = asst['w']
+            if h == 0: h = 'h'
+            if w == 0: w = 'w'
+            fc = asst['fc']
+            fs = asst['fs']
+            fsu = asst['fsu']
+            elu = asst['elu']
+            c = asst['c']
+            s = asst['s']
+            ds = asst['ds']
+            dl = asst['dl']
+            n = asst['n']
+            k = asst['k']
+
+            d = " (" +asst['Exp:d'] +") "
+            e = " (" +asst['Exp:e'] +") "
+            rho = " (" +asst['Exp:rho'] +") "
+            y = " (" +asst['Exp:y'] +") "
+            e1 = " (" +asst['Exp:e1'] +") "
+            Nn = " (" +asst['Exp:N-'] +") "
+            Np = " (" +asst['Exp:N+'] +") "
+            Vpn = " (" +asst['Exp:V+/-'] +") "
+            Mpn = " (" +asst['Exp:M+/-'] +") "
+            
+            # Derive spring breaking threshold from tensile threshold as ratio of fsu and fs,
+            # divided by 4 to replicate the aspect that in most concrete failing cases only one half or less of the reinforcement will bear the load
+            Sp = "fsu*rho*(h*w)/4"
+
+            ### Normalize result upon 1 mm^2, 'a' should be the only var left over
+            a = 'a'
+            Nn = "(" +Nn +")/(h*w)"
+            Np = "(" +Np +")/(h*w)"
+            Vpn = "(" +Vpn +")/(h*w)"
+            Mpn = "(" +Mpn +")/(h*w)"
+            Sp = "(" +Sp +")/(h*w)"
+
+            ### Combine all available expressions with each other      
+            symbols = ['rho','Vpn','Mpn','fsu','elu','pi','fs','fc','Sp','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
+            cnt = 0; cntLast = -1
+            while cnt != cntLast:
+                cntLast = cnt
+                for symbol in symbols:
+                    cnt -= len(d)
+                    try:    d   = d.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: d   = d.replace(symbol, eval(symbol))
+                    cnt += len(d)
+                    cnt -= len(e)
+                    try:    e   = e.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: e   = e.replace(symbol, eval(symbol))
+                    cnt += len(e)
+                    cnt -= len(rho)
+                    try:    rho = rho.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: rho = rho.replace(symbol, eval(symbol))
+                    cnt += len(rho)
+                    cnt -= len(y)
+                    try:    y   = y.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: y   = y.replace(symbol, eval(symbol))
+                    cnt += len(y)
+                    cnt -= len(e1)
+                    try:    e1  = e1.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: e1  = e1.replace(symbol, eval(symbol))
+                    cnt += len(e1)
+                    cnt -= len(Nn)
+                    try:    Nn  = Nn.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: Nn  = Nn.replace(symbol, eval(symbol))
+                    cnt += len(Nn)
+                    cnt -= len(Np)
+                    try:    Np  = Np.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: Np  = Np.replace(symbol, eval(symbol))
+                    cnt += len(Np)
+                    cnt -= len(Vpn)
+                    try:    Vpn = Vpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: Vpn = Vpn.replace(symbol, eval(symbol))
+                    cnt += len(Vpn)
+                    cnt -= len(Mpn)
+                    try:    Mpn = Mpn.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: Mpn = Mpn.replace(symbol, eval(symbol))
+                    cnt += len(Mpn)
+                    cnt -= len(Sp)
+                    try:    Sp = Sp.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: Sp = Sp.replace(symbol, eval(symbol))
+                    cnt += len(Sp)
+
+            if qSymPy:
+                # Simplify formulas when SymPy module is available
+                Nn = str(sympy.simplify(Nn))
+                Np = str(sympy.simplify(Np))
+                Vpn = str(sympy.simplify(Vpn))
+                Mpn = str(sympy.simplify(Mpn))
+                Sp = str(sympy.simplify(Sp))
+            
+            ### Output main results into BCB settings
+            if not qHWswapped:
+                elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
+                elemGrps[i][EGSidxBTT] = splitAndApplyPrecisionToFormula(Np)
+                elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
+                elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
+                elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
+                elemGrps[i][EGSidxBTPL] = 0  # 0 means calculation will be postponed to setConstraint() function
+                elemGrps[i][EGSidxTl2D] = 0  # Unlike Tl2R we could do this calculation here but for consistency reasons we postpone this as well
+                elemGrps[i][EGSidxTl2R] = 0  # 0 means calculation will be postponed to setConstraint() function
+                # Debug: Overwrite also 1st tolerances
+                #elemGrps[i][EGSidxTl1D] = .1
+                #elemGrps[i][EGSidxTl1R] = .4
+                #elemGrps[i][EGSidxScal] = 1
+            else:
+                Vpn9 = splitAndApplyPrecisionToFormula(Vpn)
+                Mpn9 = splitAndApplyPrecisionToFormula(Mpn)
+                Vpn = elemGrps[i][EGSidxBTS]
+                Mpn = elemGrps[i][EGSidxBTB]
+                if Vpn9 != Vpn: elemGrps[i][EGSidxBTS9] = splitAndApplyPrecisionToFormula(Vpn9)
+                else:           elemGrps[i][EGSidxBTS9] = ""
+                if Mpn9 != Mpn: elemGrps[i][EGSidxBTB9] = splitAndApplyPrecisionToFormula(Mpn9)
+                else:           elemGrps[i][EGSidxBTS9] = ""
                 
 ################################################################################

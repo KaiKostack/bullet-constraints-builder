@@ -396,7 +396,7 @@ def tool_discretize(scene):
 
         # We have to repeat separate loose here
         tool_separateLoose(scene)
-    
+
     ###### Boolean based discretization
 
     elif not props.preprocTools_dis_cel:
@@ -529,6 +529,9 @@ def tool_discretize(scene):
         # Revert to start selection
         for obj in selection: obj.select = 1
         bpy.context.scene.objects.active = selectionActive
+
+    # Set object centers to geometry origin
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
 ################################################################################
 

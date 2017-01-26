@@ -265,11 +265,21 @@ def getConfigDataFromScene(scene):
                     if not bool(type(elemGrpsProp[j][i]) == type("")) != bool(type(presets[0][j]) == type("")):
                           column.append(elemGrpsProp[j][i])
                     else: column.append(presets[0][j])
-                else: column.append(dict(elemGrpsProp[j][i]).copy())
+                else:
+                    column.append(dict(elemGrpsProp[j][i]).copy())
+                    ### Check if formula assistant settings are complete and if not fill in missing vars from assistant defaults
+                    asst = column[-1]
+                    items = [item[0] for item in asst.items()]  # Make separate list of attribute names
+                    for asstDef in formulaAssistants:
+                        if asst['ID'] == asstDef['ID']:
+                            for item in asstDef.items():
+                                if item[0] not in items:
+                                    print("Warning: FA property '%s' missing, BCB scene settings are probably outdated." %item[0])
+                                    asst[item[0]] = item[1]
+                            break
             missingColumns = len(presets[0]) -len(column)
             if missingColumns:
-                print("Error: elemGrp property missing, BCB scene settings are probably outdated.")
-                print("Clear all BCB data, double-check your settings and rebuild constraints.")
+                print("Warning: elemGrp property missing, BCB scene settings are probably outdated.")
                 # Find default group or use first one
                 k = 0
                 for l in range(grpCnt):
@@ -288,7 +298,7 @@ def getConfigDataFromScene(scene):
                 
 ################################################################################   
 
-def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect):
+def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect):
     
     ### Store build data in scene
     print("Storing build data in scene...")
@@ -311,6 +321,8 @@ def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsP
         scene["bcb_connectsGeo"] = connectsGeo
     if connectsConsts != None:
         scene["bcb_connectsConsts"] = connectsConsts
+    if connectsTol != None:
+        scene["bcb_connectsTol"] = connectsTol
     if constsConnect != None:
         scene["bcb_constsConnect"] = constsConnect    
                     
@@ -369,6 +381,9 @@ def getBuildDataFromScene(scene):
     try: connectsConsts = scene["bcb_connectsConsts"]
     except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
 
+    try: connectsTol = scene["bcb_connectsTol"]
+    except: connectsTol = []; print("Error: bcb_connectsTol property not found, rebuilding constraints is required.")
+
     try: constsConnect = scene["bcb_constsConnect"]
     except: constsConnect = []; print("Error: bcb_constsConnect property not found, rebuilding constraints is required.")
     
@@ -383,13 +398,14 @@ def getBuildDataFromScene(scene):
         log.append(makeListsPickleFriendly(connectsLoc))
         log.append(makeListsPickleFriendly(connectsGeo))
         log.append(makeListsPickleFriendly(connectsConsts))
+        log.append(makeListsPickleFriendly(connectsTol))
         log.append(makeListsPickleFriendly(constsConnect))
         dataToFile(log, logPath +r"\log_bcb_keys.txt")
         log = []
         log.append([obj.name for obj in bpy.context.scene.objects])
         dataToFile(log, logPath +r"\log_bcb_scene.txt")
         
-    return objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, constsConnect
+    return objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect
 
 ################################################################################   
 
