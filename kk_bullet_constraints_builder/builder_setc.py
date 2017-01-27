@@ -492,7 +492,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     for idx in consts: emptyObjs[idx]['Damage %'] = damage
             else:
                 qUpdateComplete = 1
-                    
+        else:
+            # Add dummy tolerances between indestructible foundation elements
+            connectsTol.append([0, 0, 0, 0])
+        
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
         

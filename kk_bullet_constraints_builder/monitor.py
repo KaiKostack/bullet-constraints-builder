@@ -301,7 +301,7 @@ def monitor_initBuffers(scene):
         
         objA = objs[pair[0]]
         objB = objs[pair[1]]
-        tol = next(connectsTol)
+        tol = next(connectsTol_iter)
 
         if objA != None and objB != None:
             # Calculate distance between both elements of the connection
@@ -397,7 +397,7 @@ def monitor_checkForChange(scene):
         if connect[12] == 1:
             e += 1
             consts = connect[4]
-            if consts[0].rigid_body_constraint.use_breaking:
+            if len(consts) and consts[0].rigid_body_constraint.use_breaking:
                 objA = connect[0][0]
                 objB = connect[1][0]
                 toleranceDist = connect[10]

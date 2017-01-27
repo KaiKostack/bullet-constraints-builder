@@ -284,7 +284,7 @@ def combineExpressions():
                 elemGrps[i][EGSidxTl2R] = 0  # 0 means calculation will be postponed to setConstraint() function
                 # Debug: Overwrite also 1st tolerances
                 #elemGrps[i][EGSidxTl1D] = .1
-                #elemGrps[i][EGSidxTl1R] = .4
+                #elemGrps[i][EGSidxTl1R] = .2
                 #elemGrps[i][EGSidxScal] = 1
             else:
                 Vpn9 = splitAndApplyPrecisionToFormula(Vpn)
@@ -410,7 +410,7 @@ def combineExpressions():
                 elemGrps[i][EGSidxTl2R] = 0  # 0 means calculation will be postponed to setConstraint() function
                 # Debug: Overwrite also 1st tolerances
                 #elemGrps[i][EGSidxTl1D] = .1
-                #elemGrps[i][EGSidxTl1R] = .4
+                #elemGrps[i][EGSidxTl1R] = .2
                 #elemGrps[i][EGSidxScal] = 1
             else:
                 Vpn9 = splitAndApplyPrecisionToFormula(Vpn)
