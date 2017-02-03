@@ -245,7 +245,7 @@ def getConfigDataFromScene(scene):
     if "bcb_prop_detonatorObj" in scene.keys():
         props.detonatorObj = scene["bcb_prop_detonatorObj"]
         
-    if len(warning): return warning
+    #if len(warning): return warning
             
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     if "bcb_prop_elemGrps" in scene.keys():

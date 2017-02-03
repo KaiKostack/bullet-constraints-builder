@@ -563,15 +563,16 @@ def tool_removeIntersections(scene, mode=0):
               count = kk_select_intersecting_objects.run('BCB', [0.02, 1, 1, 0, 0, 0, 0])
     
     if mode == 0 and count > 0:
+        # For now disabled because overall simulations behave more stable without it:
         ### Switch found intersecting objects to 'Mesh' collision shape
         ### (some might have only overlapping boundary boxes while the geometry could still not intersecting)
-        objs = [obj for obj in bpy.context.scene.objects if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
-        if len(objs) > 0:
-            obj = objs[0]
-            if obj.rigid_body != None:
-                bpy.ops.rigidbody.shape_change(type='MESH')
-                for obj in objs:
-                    obj.rigid_body.collision_margin = 0
+#        objs = [obj for obj in bpy.context.scene.objects if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
+#        if len(objs) > 0:
+#            obj = objs[0]
+#            if obj.rigid_body != None:
+#                bpy.ops.rigidbody.shape_change(type='MESH')
+#                for obj in objs:
+#                    obj.rigid_body.collision_margin = 0
         # Set object centers to geometry origin
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
                 

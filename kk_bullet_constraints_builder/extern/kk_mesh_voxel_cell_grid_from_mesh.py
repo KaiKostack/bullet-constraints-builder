@@ -1,5 +1,5 @@
 #################################################
-# Voxel Cell Grid From Mesh v1.1 by Kai Kostack #
+# Voxel Cell Grid From Mesh v1.2 by Kai Kostack #
 #################################################
 # Some code is based on Cells.py for Blender 2.4x by Michael Schardt released under the GPL.
 # - Triangulation is a requirement, this can be done by this script but also manually before
@@ -31,30 +31,43 @@ def run(source=None, parameters=None):
     """"""
     ### Vars
     gridRes = 0                      # Grid resolution related to object dimensions (0 = disabled, [1,3,5..] = correct results, [2,4,6..] = wrong results)
-    cellSize = Vector((1, 1, 1))     # For gridRes = 0: Custom cell size in world units
-    qUseUnifiedSpace = 0             # For gridRes = 0: Use one unified space for all cells from all objects to avoid cell overlapping, different scalings and different rotations between objects
+    cellSize = Vector((.5, .5, .5))     # For gridRes = 0: Custom cell size in world units
+    qUseUnifiedSpace = 1             # For gridRes = 0: Use one unified space for all cells from all objects to avoid cell overlapping, different scalings and different rotations between objects
                                      # (For cellsToObjectsMode = 1 this is always true for now, could be improved though)
     qFillVolume = 1                  # Enables filled cells within volume
     qCreateGridMesh = 1              # Enables actual creation of a grid mesh
     qFilterDoubleCells = 1           # For qUseUnifiedSpace = 1: Filter out possible double cells from neighboring objects
-    qFilterInternalFaces = 0         # Enables different geometry generation method to avoid creation of internal faces, if disabled plain closed cubes will be created
+    qFilterInternalFaces = 1         # Enables different geometry generation method to avoid creation of internal faces, if disabled plain closed cubes will be created
                                      # (Requires qFilterDoubleCells and qUseUnifiedSpace to be enabled)
     qEnforceManifoldness = 0         # Enforces to keep the final mesh manifold by removing cells which would produce non-manifold geometry (corner to corner cells for instance)
                                      # (Requires qFilterInternalFaces to be enabled, also can change the mesh in an undesired way through removal or adding of cells, so better double-check the result afterwards)
-    cellsToObjectsMode = 2           # Mode how cells are created as individual objects
+    cellsToObjectsMode = 1           # Mode how cells are created as individual objects
                                      # 1 = all detected cells from all selected objects are joined into one mesh object (fastest)
                                      # 2 = cell clusters per object will be created so the overall object count stays the same (large object counts will make this slower)
                                      # 3 = each cell becomes an individual mesh object (can become very slow)
+    qRemoveDoubles = 1               # Removes overlapping vertices for all created meshes
+    qInvertOutput = 1                # Invert cell output for the entire grid
+    qRemoveOpen = 1                  # Removes surroundings of (filled) open space to reveal only inside cavities (use it together with qInvertOutput=1 to visualize cavities)
+    qRemoveOriginal = 0              # Delete original objects
+    
     ### Vars internal
     qTriangulate = 1                 # Enables automatic mesh triangulation
-    #qSetWireView = 0                # Enables wire display mode for created objects
+    #qSetWireView = 0                # Enables wire display mode for created meshes
     qSilentVerbose = 0               # Reduces text output to a minimum
 
     ### Custom BCB parameter handling
     if source == 'BCB':
         cellSize = parameters[0]
         qSilentVerbose = 1
-
+        qUseUnifiedSpace = 0
+        qFilterInternalFaces = 0
+        qEnforceManifoldness = 0
+        cellsToObjectsMode = 2
+        qRemoveDoubles = 0
+        qInvertOutput = 0
+        qRemoveOpen = 0
+        qRemoveOriginal = 1
+        
     ###
 
     print("\nStarting mesh to cell grid conversion...")
@@ -122,7 +135,7 @@ def run(source=None, parameters=None):
                 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
         # Unlink object (for speed optimization)
-        scene.objects.unlink(obj)
+        if qRemoveOriginal: scene.objects.unlink(obj)
         
         if gridRes > 0:
             ### Find boundary borders
@@ -258,6 +271,7 @@ def run(source=None, parameters=None):
 
         ### Create mesh cells
         if qCreateGridMesh:
+
             ### Determine actual grid resolution for object and index ranges
             gridMinX = 999999; gridMinY = 999999; gridMinZ = 999999
             gridMaxX = -999999; gridMaxY = -999999; gridMaxZ = -999999
@@ -271,6 +285,120 @@ def run(source=None, parameters=None):
             gridResX = gridMaxX -gridMinX +1; gridResY = gridMaxY -gridMinY +1; gridResZ = gridMaxZ -gridMinZ +1
             if not qSilentVerbose: print("Resolution: %d, %d, %d" %(gridResX, gridResY, gridResZ))
 
+            ### Inversion of cells
+            if qInvertOutput:
+                f_cells_new = {}
+                for z in range(gridMinZ, gridMaxZ+1):
+                    for y in range(gridMinY, gridMaxY+1):
+                        for x in range(gridMinX, gridMaxX+1):
+                            if (x, y, z) not in f_cells:
+                                f_cells_new[(x, y, z)] = {}
+                f_cells = f_cells_new
+            
+            ### Removes surroundings of (filled) open space to reveal only inside cavities
+            if qRemoveOpen:
+                f_cells_bak = f_cells.copy()
+                ### Remove top
+                f_cells_new = {}
+                for y in range(gridMinY, gridMaxY+1):
+                    for x in range(gridMinX, gridMaxX+1):
+                        qFill = 0
+                        cell = cell_last = 1
+                        for z in reversed(range(gridMinZ, gridMaxZ+1)):
+                            if (x, y, z) in f_cells:
+                                if qFill: f_cells_new[(x, y, z)] = {}
+                                else: cell_last = cell; cell = 1
+                            else:
+                                if cell_last != cell: qFill = 1
+                                else: cell_last = cell; cell = 0
+                f_cells = f_cells_new
+                ### Remove bottom
+                f_cells_new = {}
+                for y in range(gridMinY, gridMaxY+1):
+                    for x in range(gridMinX, gridMaxX+1):
+                        qFill = 0
+                        cell = cell_last = 1
+                        for z in range(gridMinZ, gridMaxZ+1):
+                            if (x, y, z) in f_cells:
+                                if qFill: f_cells_new[(x, y, z)] = {}
+                                else: cell_last = cell; cell = 1
+                            else:
+                                if cell_last != cell: qFill = 1
+                                else: cell_last = cell; cell = 0
+                f_cells_mul1 = f_cells_new
+                
+                f_cells = f_cells_bak.copy()
+                ### Remove right
+                f_cells_new = {}
+                for z in range(gridMinZ, gridMaxZ+1):
+                    for y in range(gridMinY, gridMaxY+1):
+                        qFill = 0
+                        cell = cell_last = 1
+                        for x in reversed(range(gridMinX, gridMaxX+1)):
+                            if (x, y, z) in f_cells:
+                                if qFill: f_cells_new[(x, y, z)] = {}
+                                else: cell_last = cell; cell = 1
+                            else:
+                                if cell_last != cell: qFill = 1
+                                else: cell_last = cell; cell = 0
+                f_cells = f_cells_new
+                ### Remove left
+                f_cells_new = {}
+                for z in range(gridMinZ, gridMaxZ+1):
+                    for y in range(gridMinY, gridMaxY+1):
+                        qFill = 0
+                        cell = cell_last = 1
+                        for x in range(gridMinX, gridMaxX+1):
+                            if (x, y, z) in f_cells:
+                                if qFill: f_cells_new[(x, y, z)] = {}
+                                else: cell_last = cell; cell = 1
+                            else:
+                                if cell_last != cell: qFill = 1
+                                else: cell_last = cell; cell = 0
+                f_cells_mul2 = f_cells_new
+                
+                f_cells = f_cells_bak.copy()
+                ### Remove back
+                f_cells_new = {}
+                for z in range(gridMinZ, gridMaxZ+1):
+                    for x in range(gridMinX, gridMaxX+1):
+                        qFill = 0
+                        cell = cell_last = 1
+                        for y in reversed(range(gridMinY, gridMaxY+1)):
+                            if (x, y, z) in f_cells:
+                                if qFill: f_cells_new[(x, y, z)] = {}
+                                else: cell_last = cell; cell = 1
+                            else:
+                                if cell_last != cell: qFill = 1
+                                else: cell_last = cell; cell = 0
+                f_cells = f_cells_new
+                ### Remove front
+                f_cells_new = {}
+                for z in range(gridMinZ, gridMaxZ+1):
+                    for x in range(gridMinX, gridMaxX+1):
+                        qFill = 0
+                        cell = cell_last = 1
+                        for y in range(gridMinY, gridMaxY+1):
+                            if (x, y, z) in f_cells:
+                                if qFill: f_cells_new[(x, y, z)] = {}
+                                else: cell_last = cell; cell = 1
+                            else:
+                                if cell_last != cell: qFill = 1
+                                else: cell_last = cell; cell = 0
+                f_cells_mul3 = f_cells_new
+
+                ### Combine top+bottom, right+left and back+front layers
+                f_cells_new = {}
+                for z in range(gridMinZ, gridMaxZ+1):
+                    for y in range(gridMinY, gridMaxY+1):
+                        for x in range(gridMinX, gridMaxX+1):
+                            if (x, y, z) in f_cells_mul1 \
+                            and (x, y, z) in f_cells_mul2 \
+                            and (x, y, z) in f_cells_mul3:
+                                f_cells_new[(x, y, z)] = {}
+                f_cells = f_cells_new
+
+            ### Start of actual geometry creation
             if cellsToObjectsMode > 1:
                 vertsN = []; facesN = []
             cellCnt = 0
@@ -497,6 +625,22 @@ def run(source=None, parameters=None):
     if cellsToObjectsMode == 3 or (cellsToObjectsMode == 2 and qUseUnifiedSpace):
         # Apply new object centers
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+        
+    # Remove doubles of new objects
+    if qRemoveDoubles:
+        for objN in objsN:
+            bpy.context.tool_settings.mesh_select_mode = True, False, False
+            # Enter edit mode              
+            try: bpy.ops.object.mode_set(mode='EDIT')
+            except: pass 
+            # Select all elements
+            try: bpy.ops.mesh.select_all(action='SELECT')
+            except: pass 
+            # Remove doubles
+            bpy.ops.mesh.remove_doubles()
+            # Leave edit mode
+            try: bpy.ops.object.mode_set(mode='OBJECT')
+            except: pass 
     
     print('Time: %0.2f s' %(time.time()-time_start))
     print('Done.')

@@ -34,6 +34,7 @@ mem = bpy.app.driver_namespace
 
 ### Import submodules
 from global_vars import *      # Contains global variables
+from builder import *          # Contains constraints builder function
 from build_data import *       # Contains build data access functions
 
 ################################################################################
