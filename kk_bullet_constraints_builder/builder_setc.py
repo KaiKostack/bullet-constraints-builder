@@ -454,7 +454,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 if props.alignVertical:
                     # Reduce X and Y components by factor of props.alignVertical (should be < 1 to make horizontal connections still possible)
                     dirVec = Vector((dirVec[0] *(1 -props.alignVertical), dirVec[1] *(1 -props.alignVertical), dirVec[2]))
-
+            # Align constraint rotation to that vector
+            rotN = dirVec.to_track_quat('X','Z')
+            
             ### Calculate tolerances and store them for the monitor
             tol1dist = elemGrps_elemGrp[EGSidxTl1D]
             tol1rot = elemGrps_elemGrp[EGSidxTl1R]
@@ -553,7 +555,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         if CT == -1:
             cData = {}; cIdx = consts[cInc]; cInc += 1
             #rotm = 'QUATERNION'
-            #rotN = dirVec.to_track_quat('X','Z')
             #setConstParams(cData,cDef, loc=loc,rotm=rotm,rot=rotN, ub=0, dc=1, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=0,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             #setConstParams(cData,cDef, loc=loc, ub=0, dc=1, ct='GENERIC_SPRING', sslx=999,ssly=999,sslz=999, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, ullx=1,ully=1,ullz=1, llxl=0,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             setConstParams(cData,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=1,si=1)
@@ -610,16 +611,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock all directions for the compressive force
                 ### I left Y and Z unlocked because for this CT we have no separate breaking threshold for lateral force, the tensile constraint and its breaking threshold should apply for now
                 ### Also rotational forces should only be carried by the tensile constraint
                 setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0)
-            # Align constraint rotation to that vector
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
                 setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
             constsData.append(cData)
@@ -631,14 +629,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock all directions for the tensile force
                 setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
                 setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
             constsData.append(cData)
@@ -650,14 +645,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for shearing force
                 setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
                 setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
             constsData.append(cData)
@@ -667,16 +659,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueS
             brkThres = value *btMultiplier /rbw_steps_per_second *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for bending force
                 setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
             
         ### 3x GENERIC; Tensile constraint (1D) breaking threshold
@@ -686,16 +675,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock direction for tensile force
                 setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
 
         ### 3x GENERIC; Shearing constraint (2D), bending constraint (3D) breaking thresholds
@@ -705,16 +691,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueS
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for shearing force
                 setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
 
             ### Bending constraint (3D)
@@ -722,16 +705,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueB
             brkThres = value *btMultiplier /rbw_steps_per_second *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for bending force
                 setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
 
         ### 2x GENERIC; Shearing (1D) breaking thresholds
@@ -749,7 +729,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
@@ -767,17 +747,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     angSorted.sort(reverse=False)
                     constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
                 else:  # Gimbal lock special case when normal X axis aligns to global Z axis, not nice but will do for now
-                    dirEul = dirVec.to_track_quat('X','Z').to_euler()
+                    dirEul = rotN.to_euler()
                     if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
                     else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
                 if constAxisToLock == 2:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
                 elif constAxisToLock == 3: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=0,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
 
             ### Shearing constraint #2
@@ -785,17 +762,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if brkThresValueS9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
                 if constAxisToLock == 3:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
                 elif constAxisToLock == 2: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=0,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
             
         ### 2x GENERIC; Bending + torsion (1D) breaking thresholds
@@ -813,7 +787,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             brkThres = value *btMultiplier /rbw_steps_per_second *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
@@ -831,17 +805,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     angSorted.sort(reverse=False)
                     constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
                 else:  # Gimbal lock special case when normal X axis aligns to global Z axis, not nice but will do for now
-                    dirEul = dirVec.to_track_quat('X','Z').to_euler()
+                    dirEul = rotN.to_euler()
                     if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
                     else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
                 if constAxisToLock == 2:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 3: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
 
             ### Bending with torsion constraint #2
@@ -849,17 +820,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if brkThresValueB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = value *btMultiplier /rbw_steps_per_second *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
                 if constAxisToLock == 3:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 2: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
 
         ### 3x GENERIC; Bending (1D), torsion (1D) breaking thresholds
@@ -877,7 +845,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
@@ -895,17 +863,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     angSorted.sort(reverse=False)
                     constAxisToLock = angSorted[0][1]  # Result: 1 = X, 2 = Y, 3 = Z
                 else:  # Gimbal lock special case when normal X axis aligns to global Z axis, not nice but will do for now
-                    dirEul = dirVec.to_track_quat('X','Z').to_euler()
+                    dirEul = rotN.to_euler()
                     if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
                     else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
                 if constAxisToLock == 2:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 3: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
 
             ### Bending without torsion constraint #2
@@ -913,17 +878,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if brkThresValueB9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
                 brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
                 if constAxisToLock == 3:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 2: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
 
             ### Torsion constraint
@@ -944,17 +906,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 #            value /= 2  # Use half of the smaller shearing breaking thresholds for torsion
 
             brkThres = value *btMultiplier /rbw_steps_per_second *correction /constCount 
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
                 if constAxisToLock == 3:   setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
                 elif constAxisToLock == 2: setConstParams(cData,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-            # Align constraint rotation like above
-            rotN = dirVec.to_track_quat('X','Z')
-            setConstParams(cData,cDef, rot=rotN)
             if props.asciiExport:
-                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm,rot=rotN)
+                setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append(cData)
 
         ###### Springs (additional)
@@ -969,10 +928,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             ### Loop through all constraints of this connection
             for i in range(3):
                 cData = {}; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
-                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   i == 0: vec = Vector((0, radius, radius))
                     elif i == 1: vec = Vector((0, radius, -radius))
@@ -980,9 +938,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Enable linear spring
-                    setConstParams(cData,cDef, loc=locN,rotm=rotm,rot=rotN, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
-                # Set stiffness
-                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                    setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 if CT != 7:
                     # Disable springs on start (requires plastic activation during simulation)
                     setConstParams(cData,cDef, e=0)
@@ -1003,10 +959,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             ### Loop through all constraints of this connection
             for i in range(4):
                 cData = {}; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
-                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   i == 0: vec = Vector((0, radius, radius))
                     elif i == 1: vec = Vector((0, radius, -radius))
@@ -1015,9 +970,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Enable linear spring
-                    setConstParams(cData,cDef, loc=locN,rotm=rotm,rot=rotN, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
-                # Set stiffness
-                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                    setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 if CT != 8:
                     # Disable springs on start (requires plastic activation during simulation)
                     setConstParams(cData,cDef, e=0)
@@ -1034,7 +987,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
-            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
+            setConstParams(cData,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
             if qUpdateComplete:
                 ### Enable linear and angular spring
                 setConstParams(cData,cDef, loc=loc, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, usax=1,usay=1,usaz=1, sdax=1,sday=1,sdaz=1)
@@ -1066,10 +1019,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
                 ### First constraint
                 cData = {}; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDef, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                setConstParams(cData,cDef, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
-                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
@@ -1078,21 +1030,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     locN = loc +vec
                     ### Lock direction for compressive force and enable linear spring
                     setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
-                # Set stiffness
-                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
-                # Align constraint rotation to that vector
-                rotN = dirVec.to_track_quat('X','Z')
-                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
                     setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append(cData)
                     
                 ### Second constraint
                 cData = {}; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDef, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                setConstParams(cData,cDef, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
-                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
@@ -1101,21 +1047,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     locN = loc +vec
                     ### Lock direction for tensile force and enable linear spring
                     setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
-                # Set stiffness
-                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
-                # Align constraint rotation like above
-                rotN = dirVec.to_track_quat('X','Z')
-                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
                     setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append(cData)
 
                 ### Third constraint
                 cData = {}; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDef, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                setConstParams(cData,cDef, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
-                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
@@ -1124,11 +1064,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     locN = loc +vec
                     ### Lock directions for shearing force and enable linear spring
                     setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
-                # Set stiffness
-                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
-                # Align constraint rotation like above
-                rotN = dirVec.to_track_quat('X','Z')
-                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
                     setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append(cData)
@@ -1150,10 +1085,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
                 ### First constraint
                 cData = {}; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDef, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                setConstParams(cData,cDef, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
-                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
@@ -1163,21 +1097,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     locN = loc +vec
                     ### Lock direction for compressive force and enable linear spring
                     setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
-                # Set stiffness
-                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
-                # Align constraint rotation to that vector
-                rotN = dirVec.to_track_quat('X','Z')
-                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
                     setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append(cData)
 
                 ### Second constraint
                 cData = {}; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDef, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                setConstParams(cData,cDef, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
-                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
@@ -1187,21 +1115,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     locN = loc +vec
                     ### Lock direction for tensile force and enable linear spring
                     setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
-                # Set stiffness
-                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
-                # Align constraint rotation like above
-                rotN = dirVec.to_track_quat('X','Z')
-                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
                     setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append(cData)
 
                 ### Third constraint
                 cData = {}; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDef, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision)
+                setConstParams(cData,cDef, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
-                    rotN = dirVec.to_track_quat('X','Z')
                     ### Rotate constraint matrix
                     if   j == 0: vec = Vector((0, radius, radius))
                     elif j == 1: vec = Vector((0, radius, -radius))
@@ -1211,11 +1133,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     locN = loc +vec
                     ### Lock directions for shearing force and enable linear spring
                     setConstParams(cData,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
-                # Set stiffness
-                setConstParams(cData,cDef, sslx=springStiff,ssly=springStiff,sslz=springStiff)
-                # Align constraint rotation like above
-                rotN = dirVec.to_track_quat('X','Z')
-                setConstParams(cData,cDef, rot=rotN)
                 if props.asciiExport:
                     setConstParams(cData,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append(cData)
@@ -1349,6 +1266,201 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 elif id == "bcb_rot":  cData[id] = Vector(value).to_tuple()
                 else: cData[id] = value
             exData.append(cData)
+        print()
+    
+    ### Creating reinforcement mesh
+    if props.rebarMesh:
+        print("Creating reinforcement mesh... (%d)" %len(connectsPair))
+        n_minimum = 4  # Minimum reinforcement bars per element (can be changed, sometimes one bar just doesn't look right)
+        corner1 = Vector((0, 0, 0))
+        corner2 = Vector((0, 0, 0))
+        for k in range(len(objs)):
+            sys.stdout.write('\r' +"%d" %k)
+            # Update progress bar
+            bpy.context.window_manager.progress_update(k /len(connectsPair))
+
+            obj = objs[k]
+            elemGrp = objsEGrp[objsDict[obj]] 
+            elemGrps_elemGrp = elemGrps[elemGrp]
+            dims = obj.dimensions /2
+            # Compensate BCB rescaling
+            scale = elemGrps_elemGrp[EGSidxScal]
+            dims = dims /scale
+
+            ### Create mesh data
+            verts = []; edges = []; faces = []
+            asst = elemGrps_elemGrp[EGSidxAsst]
+            # Only try to use FA settings if there is a valid one active
+            if asst['ID'] == "con_rei_beam" or asst['ID'] == "con_rei_wall":
+                # Get settings from Formula Assistant
+                h_def = asst['h']/1000  # Height of element (mm)
+                w_def = asst['w']/1000  # Width of element (mm)
+                c = asst['c']/1000    # Concrete cover thickness above reinforcement (mm)
+                s = asst['s']/1000    # Distance between stirrups (mm)
+                ds = asst['ds']/1000  # Diameter of steel stirrup bar (mm)
+                dl = asst['dl']/1000  # Diameter of steel longitudinal bar (mm)
+                n = asst['n']         # Number of longitudinal steel bars
+                
+                # Reduce dimension precision by rounding at a specific decimal to avoid arbitrary orientation flipping caused by extremely small float variations
+                prec = 10000
+                dims = (round(dims[0]*prec)/prec, round(dims[1]*prec)/prec, round(dims[2]*prec)/prec)
+                dim = sorted(zip(dims, [0, 1, 2]))
+                w = dim[0]   # Use the shortest dimension axis as width
+                h = dim[1]   # Use the mid-size dimension axis as height
+                l = dim[2]   # Use the largest dimension axis as length
+                a_def = h_def *w_def  # Calculate definition contact area
+                a = h[0] *w[0]        # Calculate actual contact area
+                a_ratio = a /a_def    # Calculate ratio from both
+                n = max(round(n *a_ratio), n_minimum)  # Normalize steel bar count to actual contact area of the element with a minimum
+                
+                ######
+                if asst['ID'] == "con_rei_beam":
+                    n1 = math.ceil(n /2)  # Divide n by 2 because we assume two rows of irons for beams
+                    n2 = int(n /2)  # Use floor() here to take also odd n numbers into account
+                    ### Longitudinal bars
+                    if n > 1:  # Only do two layers (top and bottom for h bars) for more than 1 bar
+                        for j in range(2):
+                            if j == 0: nu = n2  # Special handling for odd n numbers,
+                            else:      nu = n1  # then both numbers can be different
+                            if nu > 1:  # Multiple w bars
+                                for i in range(nu):
+                                    jm = j*2-1  # Calculate multiplier for height (0 => -1, 1 => 1)
+                                    corner1[h[1]] = jm *(h[0]-c) -dl/2
+                                    corner1[w[1]] = i *((w[0]-c)*2/(nu-1)) -(w[0]-c) -dl/2
+                                    corner1[l[1]] = -l[0]
+                                    corner2[h[1]] = jm *(h[0]-c) +dl/2
+                                    corner2[w[1]] = i *((w[0]-c)*2/(nu-1)) -(w[0]-c) +dl/2
+                                    corner2[l[1]] = l[0]
+                                    createBoxData(verts, edges, faces, corner1, corner2)
+                            else:  # Only one w bar
+                                    jm = j*2-1  # Calculate multiplier for height (0 => -1, 1 => 1)
+                                    corner1[h[1]] = jm *(h[0]-c) -dl/2
+                                    corner1[w[1]] = -dl/2
+                                    corner1[l[1]] = -l[0]
+                                    corner2[h[1]] = jm *(h[0]-c) +dl/2
+                                    corner2[w[1]] = dl/2
+                                    corner2[l[1]] = l[0]
+                                    createBoxData(verts, edges, faces, corner1, corner2)                            
+                    else:  # Only one h bar
+                            corner1[h[1]] = -dl/2
+                            corner1[w[1]] = -dl/2
+                            corner1[l[1]] = -l[0]
+                            corner2[h[1]] = dl/2
+                            corner2[w[1]] = dl/2
+                            corner2[l[1]] = l[0]
+                            createBoxData(verts, edges, faces, corner1, corner2)                            
+                    ### Stirrups
+                    if n > 1:
+                        qReverse = 0
+                        pos = 0  # Start at center of element for first stirrup
+                        while pos >= -(l[0]-c):
+                            # h positive
+                            corner1[h[1]] = (h[0]-c) +dl/2
+                            corner1[w[1]] = -(w[0]-c) -ds -dl/2
+                            corner1[l[1]] = pos -ds/2
+                            corner2[h[1]] = (h[0]-c) +ds +dl/2
+                            corner2[w[1]] = (w[0]-c) +ds +dl/2
+                            corner2[l[1]] = pos +ds/2
+                            createBoxData(verts, edges, faces, corner1, corner2)
+                            # h negative
+                            corner1[h[1]] = -(h[0]-c) -ds -dl/2
+                            corner1[w[1]] = -(w[0]-c) -ds -dl/2
+                            corner1[l[1]] = pos -ds/2
+                            corner2[h[1]] = -(h[0]-c) -dl/2
+                            corner2[w[1]] = (w[0]-c) +ds +dl/2
+                            corner2[l[1]] = pos +ds/2
+                            createBoxData(verts, edges, faces, corner1, corner2)
+                            # w positive
+                            corner1[h[1]] = -(h[0]-c) -dl/2
+                            corner1[w[1]] = (w[0]-c) +dl/2
+                            corner1[l[1]] = pos -ds/2
+                            corner2[h[1]] = (h[0]-c) +dl/2
+                            corner2[w[1]] = (w[0]-c) +ds +dl/2
+                            corner2[l[1]] = pos +ds/2
+                            createBoxData(verts, edges, faces, corner1, corner2)
+                            # w negative
+                            corner1[h[1]] = -(h[0]-c) -dl/2
+                            corner1[w[1]] = -(w[0]-c) -ds -dl/2
+                            corner1[l[1]] = pos -ds/2
+                            corner2[h[1]] = (h[0]-c) +dl/2
+                            corner2[w[1]] = -(w[0]-c) -dl/2
+                            corner2[l[1]] = pos +ds/2
+                            createBoxData(verts, edges, faces, corner1, corner2)
+                            if not qReverse:
+                                pos += s
+                                if pos > l[0]-c:  # Reverse direction and start again from center after reaching edge of element
+                                    pos = -s; qReverse = 1
+                            else: pos -= s
+                ######    
+                elif asst['ID'] == "con_rei_wall":
+                    if n > 1:
+                        step = ((h[0]-c)*2/(n-1))
+                        qReverse = 0
+                        pos = 0  # Start at center of element for first bar
+                        while pos >= -(h[0]-c):
+                            corner1[h[1]] = pos -dl/2
+                            corner1[w[1]] = -dl
+                            corner1[l[1]] = -l[0]
+                            corner2[h[1]] = pos +dl/2
+                            corner2[w[1]] = 0
+                            corner2[l[1]] = l[0]
+                            createBoxData(verts, edges, faces, corner1, corner2)
+                            if not qReverse:
+                                pos += step
+                                if pos > h[0]-c:  # Reverse direction and start again from center after reaching edge of element
+                                    pos = -step; qReverse = 1
+                            else: pos -= step
+                        # h and l swapped:
+                        qReverse = 0
+                        pos = 0  # Start at center of element for first bar
+                        while pos >= -(l[0]-c):
+                            corner1[h[1]] = -h[0]
+                            corner1[w[1]] = 0
+                            corner1[l[1]] = pos -dl/2
+                            corner2[h[1]] = h[0]
+                            corner2[w[1]] = dl
+                            corner2[l[1]] = pos +dl/2
+                            createBoxData(verts, edges, faces, corner1, corner2)
+                            if not qReverse:
+                                pos += step
+                                if pos > l[0]-c:  # Reverse direction and start again from center after reaching edge of element
+                                    pos = -step; qReverse = 1
+                            else: pos -= step
+                    else:  # Only one h bar
+                            corner1[h[1]] = -dl/2
+                            corner1[w[1]] = -dl/2
+                            corner1[l[1]] = -l[0]
+                            corner2[h[1]] = dl/2
+                            corner2[w[1]] = dl/2
+                            corner2[l[1]] = l[0]
+                            createBoxData(verts, edges, faces, corner1, corner2)                            
+
+                ### Create actual mesh object from data
+                if len(verts) > 0:
+                    objN = createOrReuseObjectAndMesh(scene, objName=obj.name +'_R')
+                    meN = objN.data
+                    # Create final mesh from lists
+                    meN.from_pydata(verts, edges, faces)
+                    # Copy original transforms to new object
+                    objN.matrix_world = obj.matrix_world
+                    # Deselect to prevent inclusion in building process
+                    objN.select = 0
+                    
+                    # Add to group
+                    grpReinfName = "BCB_Reinforcement"
+                    try: grp = bpy.data.groups[grpReinfName]
+                    except: grp = bpy.data.groups.new(grpReinfName)
+                    try: grp.objects.link(objN)
+                    except: pass
+                    ### Link new object to every group the original is linked to except for "BCB_Building" and RBW,
+                    ### the latter because FM-Blender seems to enable RBs automatically for objects which are parts of this group
+                    for grp in bpy.data.groups:
+                        if grp.name != "BCB_Building" and grp.name != "RigidBodyWorld":
+                            for objG in grp.objects:
+                                if objG.name == obj.name:
+                                    try: grp.objects.link(objN)
+                                    except: pass
+
         print()
         
     return connectsTol, exData

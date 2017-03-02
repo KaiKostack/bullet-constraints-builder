@@ -112,8 +112,9 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
         except: pass
         ### Invalidate point cache to enforce a full bake without using previous cache data
         if "RigidBodyWorld" in bpy.data.groups:
-            obj = bpy.data.groups["RigidBodyWorld"].objects[0]
-            obj.location = obj.location
+            try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
+            except: pass
+            else: obj.location = obj.location
         ###### Execute main building process from scratch
         # Display progress bar
         bpy.context.window_manager.progress_begin(0, 100)
@@ -174,6 +175,8 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         props.asciiExport = 1
+        if props.automaticMode and props.preprocTools_aut:
+            OBJECT_OT_bcb_tool_do_all_steps_at_once.execute(self, context)
         OBJECT_OT_bcb_build.execute(self, context)
         props.asciiExport = 0
         return{'FINISHED'}
@@ -191,8 +194,6 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             ###### Execute main building process from scratch
             scene = bpy.context.scene
             props = context.window_manager.bcb
-            if props.automaticMode and props.preprocTools_aut:
-                OBJECT_OT_bcb_tool_do_all_steps_at_once.execute(self, context)
             OBJECT_OT_bcb_export_ascii.execute(self, context)
             if props.menu_gotData:
                 build_fm()
@@ -242,8 +243,9 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
             bpy.ops.ptcache.free_bake(contextFix)
             ### Invalidate point cache to enforce a full bake without using previous cache data
             if "RigidBodyWorld" in bpy.data.groups:
-                obj = bpy.data.groups["RigidBodyWorld"].objects[0]
-                obj.location = obj.location
+                try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
+                except: pass
+                else: obj.location = obj.location
             # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
             #bpy.ops.ptcache.bake(contextFix, bake=True)
             # Start animation playback and by that the baking process

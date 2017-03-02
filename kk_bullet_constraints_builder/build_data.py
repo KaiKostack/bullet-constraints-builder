@@ -89,6 +89,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_clusterRadius"] = props.clusterRadius
     scene["bcb_prop_alignVertical"] = props.alignVertical
     scene["bcb_prop_useAccurateArea"] = props.useAccurateArea 
+    scene["bcb_prop_rebarMesh"] = props.rebarMesh
     scene["bcb_prop_nonManifoldThickness"] = props.nonManifoldThickness 
     scene["bcb_prop_minimumElementSize"] = props.minimumElementSize 
     scene["bcb_prop_automaticMode"] = props.automaticMode 
@@ -216,6 +217,8 @@ def getConfigDataFromScene(scene):
         props.alignVertical = scene["bcb_prop_alignVertical"]
     if "bcb_prop_useAccurateArea" in scene.keys():
         props.useAccurateArea = scene["bcb_prop_useAccurateArea"]
+    if "bcb_prop_rebarMesh" in scene.keys():
+        props.rebarMesh = scene["bcb_prop_rebarMesh"]
     if "bcb_prop_nonManifoldThickness" in scene.keys():
         props.nonManifoldThickness = scene["bcb_prop_nonManifoldThickness"]
     if "bcb_prop_minimumElementSize" in scene.keys():

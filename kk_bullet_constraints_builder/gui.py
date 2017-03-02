@@ -322,7 +322,9 @@ class bcb_panel(bpy.types.Panel):
 
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
-            row.prop(props, "useAccurateArea")
+            split = row.split(percentage=.50, align=1)
+            split.prop(props, "useAccurateArea")
+            split.prop(props, "rebarMesh")
 #            row = col.row(align=1)
 #            if not props.useAccurateArea: row.enabled = 0
 #            row.prop(props, "nonManifoldThickness")

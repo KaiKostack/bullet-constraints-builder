@@ -34,21 +34,22 @@ def run(source=None, parameters=None):
     cellSize = Vector((.5, .5, .5))     # For gridRes = 0: Custom cell size in world units
     qUseUnifiedSpace = 1             # For gridRes = 0: Use one unified space for all cells from all objects to avoid cell overlapping, different scalings and different rotations between objects
                                      # (For cellsToObjectsMode = 1 this is always true for now, could be improved though)
-    qFillVolume = 1                  # Enables filled cells within volume
+    qFillVolume = 0                  # Enables filled cells within volume
+    qFillFromFloor = 1               # Special fill method to fill from bottom to first cell occurrence above
     qCreateGridMesh = 1              # Enables actual creation of a grid mesh
     qFilterDoubleCells = 1           # For qUseUnifiedSpace = 1: Filter out possible double cells from neighboring objects
     qFilterInternalFaces = 1         # Enables different geometry generation method to avoid creation of internal faces, if disabled plain closed cubes will be created
                                      # (Requires qFilterDoubleCells and qUseUnifiedSpace to be enabled)
-    qEnforceManifoldness = 0         # Enforces to keep the final mesh manifold by removing cells which would produce non-manifold geometry (corner to corner cells for instance)
+    qEnforceManifoldness = 1         # Enforces to keep the final mesh manifold by removing cells which would produce non-manifold geometry (corner to corner cells for instance)
                                      # (Requires qFilterInternalFaces to be enabled, also can change the mesh in an undesired way through removal or adding of cells, so better double-check the result afterwards)
     cellsToObjectsMode = 1           # Mode how cells are created as individual objects
                                      # 1 = all detected cells from all selected objects are joined into one mesh object (fastest)
                                      # 2 = cell clusters per object will be created so the overall object count stays the same (large object counts will make this slower)
                                      # 3 = each cell becomes an individual mesh object (can become very slow)
     qRemoveDoubles = 1               # Removes overlapping vertices for all created meshes
-    qInvertOutput = 1                # Invert cell output for the entire grid
-    qRemoveOpen = 1                  # Removes surroundings of (filled) open space to reveal only inside cavities (use it together with qInvertOutput=1 to visualize cavities)
-    qRemoveOriginal = 0              # Delete original objects
+    qInvertOutput = 0                # Invert cell output for the entire grid
+    qRemoveOpen = 0                  # Removes surroundings of (filled) open space to reveal only inside cavities (use it together with qInvertOutput=1 to visualize cavities)
+    qRemoveOriginal = 1              # Delete original objects
     
     ### Vars internal
     qTriangulate = 1                 # Enables automatic mesh triangulation
@@ -292,6 +293,22 @@ def run(source=None, parameters=None):
                     for y in range(gridMinY, gridMaxY+1):
                         for x in range(gridMinX, gridMaxX+1):
                             if (x, y, z) not in f_cells:
+                                f_cells_new[(x, y, z)] = {}
+                f_cells = f_cells_new
+
+            ### Special fill method to fill from bottom to first cell occurrence above
+            if qFillFromFloor:
+                ### Fill from bottom
+                f_cells_new = {}
+                for y in range(gridMinY, gridMaxY+1):
+                    for x in range(gridMinX, gridMaxX+1):
+                        first = None
+                        for z in range(gridMinZ, gridMaxZ+1):
+                            if (x, y, z) in f_cells:
+                                f_cells_new[(x, y, z)] = {}
+                                if first == None and z > gridMinZ: first = z  # Skip the lowest cell to avoid stopping at the ground plane
+                        if first != None:
+                            for z in range(gridMinZ, first):
                                 f_cells_new[(x, y, z)] = {}
                 f_cells = f_cells_new
             

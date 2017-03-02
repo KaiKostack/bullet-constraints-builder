@@ -650,7 +650,7 @@ def createBoxData(verts, edges, faces, corner1, corner2):
 #    edges.append([i+2, i+6])
 #    edges.append([i+3, i+7])
     # Generate the corresponding face
-    faces.append([i, i+1, i+2, i+3])
+    faces.append([i+3, i+2, i+1, i])
     faces.append([i+4, i+5, i+6, i+7])
     faces.append([i, i+1, i+5, i+4])
     faces.append([i+1, i+2, i+6, i+5])
@@ -960,8 +960,8 @@ def tool_groundMotion(scene):
         else: height = 0
         ### Create ground object data
         verts = []; edges = []; faces = []
-        corner1 = Vector((500, 500, 0))
-        corner2 = Vector((-500,-500,-10))
+        corner1 = Vector((-500,-500,-10))
+        corner2 = Vector((500, 500, 0))
         createBoxData(verts, edges, faces, corner1, corner2)
         # Create empty mesh object
         #me = bpy.data.meshes.new(props.preprocTools_gnd_obj)
