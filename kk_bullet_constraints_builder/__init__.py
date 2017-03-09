@@ -96,11 +96,13 @@ else:
         list = [bpy.app.binary_path_python, '-m', cmd]
         list.extend(arg)
         command = (list)       
-        p = subprocess.Popen(command, stdout=subprocess.PIPE, bufsize=1)
-        for line in iter(p.stdout.readline, b''):
-            print(line.decode())
-        p.stdout.close()
-        p.wait()
+        try: p = subprocess.Popen(command, stdout=subprocess.PIPE, bufsize=1)
+        except: print("Failed executing command:", command)
+        else:
+            for line in iter(p.stdout.readline, b''):
+                print(line.decode())
+            p.stdout.close()
+            p.wait()
     #do('pip', '--version')
     do('ensurepip')
     do('pip', 'install', '--upgrade', 'pip')

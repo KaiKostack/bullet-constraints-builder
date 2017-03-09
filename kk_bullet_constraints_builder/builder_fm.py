@@ -31,6 +31,7 @@
 
 import bpy, mathutils, time, pickle, zlib, base64
 from mathutils import Vector
+from bpy.app.handlers import persistent
 mem = bpy.app.driver_namespace
 
 ### Import submodules
@@ -39,22 +40,13 @@ from file_io import *          # Contains file input & output functions
 
 ################################################################################
 
-def build_fm():
-
-    props = bpy.context.window_manager.bcb
+def build_fm(use_handler=0):
 
     ### Exports all constraint data to the Fracture Modifier (special Blender version required).
-    print()
-    print("Creating fracture modifier mesh from BCB data...")
     time_start = time.time()
 
+    props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
-
-    try: s = bpy.data.texts["BCB_export.txt"].as_string()
-    except:
-        print("Error: No export data found, couldn't build fracture modifier object.")
-        return
-    consts = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
 
     ### Set up warm up timer via gravity
     if "Gravity" in bpy.data.actions.keys() and scene.animation_data.action != None:
@@ -88,7 +80,7 @@ def build_fm():
         # Alternative: bpy.ops.graph.clean(channels=True)
         #bpy.context.area.type = areaType_bak
     
-    ### Create object to use the fracture modifier on
+    ### Create object to use the Fracture Modifier on
     bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), rotation=(0, 0, 0))
     ob = bpy.context.scene.objects.active
     ob.data.use_auto_smooth = True
@@ -101,13 +93,128 @@ def build_fm():
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
 
-    # Add fracture modifier
-    bpy.ops.object.modifier_add(type='FRACTURE')
-    ob.modifiers["Fracture"].fracture_mode = 'EXTERNAL'
-    md = ob.modifiers["Fracture"]
+    ### Disable objects (and search for parent)
+    if use_handler:
+        objParent = None
+        ### Unpack BCB data from text file
+        try: s = bpy.data.texts["BCB_export.txt"].as_string()
+        except:
+            print("Error: No export data found, couldn't build Fracture Modifier object.")
+            return
+        cDef, consts = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
+        ### Create element list from BCB data (duplicated code from FM_shards() but required for use_handler)
+        objs = []; objsName = []
+        for i in range(len(consts)):
+            objN1 = consts[i]["bcb_obj1"]
+            objN2 = consts[i]["bcb_obj2"]
+            if not objN1 in objsName:
+                try: obj1 = scene.objects[objN1]
+                except: pass
+                else:
+                    objs.append(obj1)
+                    objsName.append(objN1)
+            if not objN2 in objsName:
+                try: obj2 = scene.objects[objN2]
+                except: pass
+                else:
+                    objs.append(obj2)
+                    objsName.append(objN2)
 
+        for obj in objs:
+            if obj.parent: objParent = obj.parent; break
+
+        ### Remove from RigidBodyWorld (if enabled)
+        grpRBWorld = bpy.data.groups["RigidBodyWorld"]
+        for obj in objs:
+            try: grpRBWorld.objects.unlink(obj)
+            except: pass
+        scene.update()  # Required to make RBs actually not participating in simulation anymore
+
+        # Move to last layer
+        for obj in objs: obj.select = 1
+        bpy.ops.object.move_to_layer(layers=(False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True))
+
+    # Add Fracture Modifier
+    bpy.ops.object.modifier_add(type='FRACTURE')
+    md = ob.modifiers["Fracture"]
+    
+    if not use_handler:
+        md.fracture_mode = 'EXTERNAL'
+        ###### Shards
+        objParent = FM_shards(ob)
+        ###### Constraints
+        FM_constraints(ob)
+
+    elif use_handler:
+        md.fracture_mode = 'DYNAMIC'
+        md.use_constraints = True
+        md.dynamic_force = 20
+        md.dynamic_new_constraints = 'NO_CONSTRAINTS'  # 'ALL_CONSTRAINTS', 'MIXED_CONSTRAINTS', 'NO_CONSTRAINTS'
+        md.dynamic_percentage = 50
+        md.shard_count = 2
+        #md.point_source = set()
+        md.frac_algorithm = 'BOOLEAN_FRACTAL'
+        md.fractal_iterations = 3
+        md.limit_impact = True
+        md.is_dynamic_external = True  # Special flag to notify the FM that the source of the data is external and that it should never be changed even for dynamic mode
+        # Remove old refresh handler from memory if loaded
+        if len(bpy.app.handlers.fracture_refresh) > 0:
+            bpy.app.handlers.fracture_refresh.clear()
+        ###### Shards handler
+        bpy.app.handlers.fracture_refresh.append(FM_shards)
+
+    #bpy.ops.object.fracture_refresh()
+
+    bpy.context.scene.objects.active = None
+    ob.select = False
+    
+    # Delete objects
+    if not use_handler:
+        bpy.ops.object.delete(use_global=True)
+
+    ### Apply parent if found
+    if objParent != None:
+        ob.select = 1
+        objParent.select = 1
+        bpy.context.scene.objects.active = objParent
+        print("Parenting", ob.name, "to", objParent.name, "...")
+        try: bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        except:
+            print("Error: Parenting failed. This can happen when not only the structure")
+            print("was selected but also the ground.")
+        objParent.select = 0
+        bpy.context.scene.objects.active = ob
+
+    scene.layers = [bool(q) for q in layersBak]  # Revert scene layer settings from backup
+
+    print('-- Time total: %0.2f s' %(time.time()-time_start))
+    print('Done.')
+    print()
+
+########################################
+
+@persistent
+def FM_shards(ob):
+
+    print()
+    print("Creating Fracture Modifier mesh from BCB data...")
+    time_start = time.time()
+
+    scene = bpy.context.scene
+
+    md = ob.modifiers["Fracture"]
+    fmode_bak = md.fracture_mode
+    md.fracture_mode = 'EXTERNAL'
+
+    ### Unpack BCB data from text file
+    try: s = bpy.data.texts["BCB_export.txt"].as_string()
+    except:
+        print("Error: No export data found, couldn't build Fracture Modifier object.")
+        return
+    cDef, consts = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
+
+    ### Create element lists from BCB data
     objs = []; objsName = []
-    j = 0
     for i in range(len(consts)):
         objN1 = consts[i]["bcb_obj1"]
         objN2 = consts[i]["bcb_obj2"]
@@ -154,8 +261,8 @@ def build_fm():
 #        print(obj.name, objSorted.name)
     objs = objsSortedFiltered
 
-    ### Create mesh islands    
-    objParent = None
+    ### Create mesh islands
+    objParent = None 
     indexmap = dict()
     for obj in objs:
         if obj.name not in indexmap.keys():
@@ -167,10 +274,22 @@ def build_fm():
             if objParent == None and obj.parent: objParent = obj.parent
             obj.select = True
     
-    print('Time mesh islands: %0.2f s' %(time.time()-time_start))
-    time_const = time.time()
+    md.fracture_mode = fmode_bak
     
-    ###### Constraints
+    print('Time mesh islands: %0.2f s' %(time.time()-time_start))
+    print('Imported: %d shards' %len(md.mesh_islands))
+    print()
+
+    ###### Constraints handler (run only when this function is loaded as handler, too)
+    if len(bpy.app.handlers.fracture_refresh) > 0:
+        bpy.app.handlers.fracture_constraint_refresh.append(FM_constraints)
+    
+    return objParent
+
+########################################
+
+@persistent
+def FM_constraints(ob):
 
     # Pseudo code for special constraint treatment:
     #
@@ -180,17 +299,45 @@ def build_fm():
     # If tol2dist or tol2rot is exceeded:
     #     If spring constraint: It will be detached
 
-    ### Create temporary empty object to get the default attributes
-    objConst = bpy.data.objects.new('Constraint', None)
-    bpy.context.scene.objects.link(objConst)
-    bpy.context.scene.objects.active = objConst
-    bpy.ops.rigidbody.constraint_add()
-    cDef = getAttribsOfConstraint(objConst.rigid_body_constraint)
-    rot = objConst.rotation_quaternion
-    # Remove constraint settings and delete temporary empty object again
-    bpy.ops.rigidbody.constraint_remove()
-    scene.objects.unlink(objConst)
+    print()
+    print("Creating Fracture Modifier constraints from BCB data...")
+    time_const = time.time()
 
+    scene = bpy.context.scene
+
+    md = ob.modifiers["Fracture"]
+    fmode_bak = md.fracture_mode
+    md.fracture_mode = 'EXTERNAL'
+
+    ### Unpack BCB data from text file
+    try: s = bpy.data.texts["BCB_export.txt"].as_string()
+    except:
+        print("Error: No export data found, couldn't build Fracture Modifier object.")
+        return
+    cDef, consts = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
+    
+    ### Overwrite mesh island settings with those from the original RBs (FM overwrites this state)
+#    # Remove refresh handler from memory (required to overwrite settings)
+#    if len(bpy.app.handlers.fracture_refresh) > 0:
+#        bpy.app.handlers.fracture_refresh.clear()
+#        qHandler = 1
+#    else: qHandler = 0
+    # Overwrite mesh island settings
+    for mi in md.mesh_islands:
+        obj_rb = scene.objects[mi.name].rigid_body
+        #print("mass", mi.rigidbody.mass, mi.name)
+        mi.rigidbody.type = obj_rb.type
+        mi.rigidbody.kinematic = obj_rb.kinematic
+        mi.rigidbody.collision_shape = obj_rb.collision_shape
+        mi.rigidbody.mass = obj_rb.mass
+        mi.rigidbody.friction = obj_rb.friction
+        mi.rigidbody.restitution = obj_rb.restitution
+        mi.rigidbody.use_margin = obj_rb.use_margin
+        mi.rigidbody.collision_margin = obj_rb.collision_margin
+#    # Reload refresh handler
+#    if qHandler:
+#        bpy.app.handlers.fracture_refresh.append(FM_shards)
+    
     ### Create constraints
     cnt = 0
     for i in range(len(consts)):
@@ -240,8 +387,9 @@ def build_fm():
         
         ### Add settings to constraint
         # OK, first check whether the mi exists via is object in group (else it's double)
-        try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], type)
-        except: pass
+        #try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], type)
+        try: con = md.mesh_constraints.new(md.mesh_islands[ob1], md.mesh_islands[ob2], type)
+        except: pass #print("Failing:", ob1, ob2)
         else:
             con.name = name
             con.location = loc
@@ -269,31 +417,12 @@ def build_fm():
                         setattr(con, p[0], p[1])
             cnt += 1
 
+    md.fracture_mode = fmode_bak
+    md.refresh = False
+
     print('Time constraints: %0.2f s' %(time.time()-time_const))
-    
-    #bpy.ops.object.fracture_refresh()
-    bpy.context.scene.objects.active = None
-    ob.select = False
-    
-    bpy.ops.object.delete(use_global=True)
-
-    # Apply parent if one has been found earlier
-    if objParent != None:
-        ob.select = 1
-        objParent.select = 1
-        bpy.context.scene.objects.active = objParent
-        print("Parenting", ob.name, "to", objParent.name, "...")
-        try: bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
-        except:
-            print("Error: Parenting failed. This can happen when not only the structure")
-            print("was selected but also the ground.")
-        objParent.select = 0
-        bpy.context.scene.objects.active = ob
-
-    scene.layers = [bool(q) for q in layersBak]  # Revert scene layer settings from backup
-
-    print('-- Time total: %0.2f s' %(time.time()-time_start))
+    print('Imported: %d constraints (%d shards)' %(cnt, len(md.mesh_islands)))
     print()
-    print('Imported: %d constraints' %cnt)
-    print('Done.')
-    print()
+
+    # Remove this handler from memory (will be reloaded on FM_shards())
+    bpy.app.handlers.fracture_constraint_refresh.clear()

@@ -1463,4 +1463,4 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
         print()
         
-    return connectsTol, exData
+    return connectsTol, [cDef, exData]

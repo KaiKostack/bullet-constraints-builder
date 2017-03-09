@@ -186,32 +186,36 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
 class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
     bl_idname = "bcb.export_ascii_fm"
     bl_label = "Export to FM"
-    bl_description = "Exports all constraint data to the fracture modifier (special Blender version required). WARNING: This feature is experimental and results of the FM can vary, use with care!"
+    bl_description = "Exports all constraint data to the Fracture Modifier (special Blender version required). 'Export to FM' will simulate scientifically like 'Bake'; 'Dynamic' enables geometry also to shatter for more realistic but non-scientific appearance."
+    int_ = bpy.props.IntProperty 
+    use_handler = int_(default = 0)
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
-            self.report({'ERROR'}, "Fracture modifier not available in this Blender version.")  # Create popup message
+            self.report({'ERROR'}, "Fracture Modifier not available in this Blender version.")  # Create popup message
         else:
             ###### Execute main building process from scratch
             scene = bpy.context.scene
             props = context.window_manager.bcb
             OBJECT_OT_bcb_export_ascii.execute(self, context)
             if props.menu_gotData:
-                build_fm()
-                if "BCB_export.txt" in bpy.data.texts:
+                ###### Fracture Modifier export
+                build_fm(use_handler=self.use_handler)
+                if not self.use_handler and "BCB_export.txt" in bpy.data.texts:
                     try:    bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"], do_unlink=1)
                     except: bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"])
-                    ### Free previous bake data
-                    contextFix = bpy.context.copy()
-                    contextFix['point_cache'] = scene.rigidbody_world.point_cache
-                    bpy.ops.ptcache.free_bake(contextFix)
-                    if props.automaticMode:
-                        # Prepare event handler
-                        bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
-                        # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
-                        #bpy.ops.ptcache.bake(contextFix, bake=True)
-                        # Start animation playback and by that the baking process
-                        if not bpy.context.screen.is_animation_playing:
-                            bpy.ops.screen.animation_play()
+                ### Free previous bake data
+                contextFix = bpy.context.copy()
+                contextFix['point_cache'] = scene.rigidbody_world.point_cache
+                bpy.ops.ptcache.free_bake(contextFix)
+                if props.automaticMode:
+                    # Prepare event handler
+                    bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
+                    # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
+                    #bpy.ops.ptcache.bake(contextFix, bake=True)
+                    # Start animation playback and by that the baking process
+                    if not bpy.context.screen.is_animation_playing:
+                        bpy.ops.screen.animation_play()
+        self.use_handler = 0
         return{'FINISHED'} 
 
 ########################################

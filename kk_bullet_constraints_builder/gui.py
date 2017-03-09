@@ -291,7 +291,8 @@ class bcb_panel(bpy.types.Panel):
             row = col.row(align=1)
             split = row.split(percentage=.85, align=1)
             split2 = split.split(percentage=.5, align=1)
-            split2.operator("bcb.export_ascii", icon="EXPORT")
+            #split2.operator("bcb.export_ascii", icon="EXPORT")
+            split2.operator("bcb.export_ascii_fm", icon="EXPORT", text="Exp. FM Dynamic").use_handler=1  # FM dynamic mode
             split2.operator("bcb.export_ascii_fm", icon="EXPORT")
             split.operator("bcb.import_config", icon="FILE_REFRESH")
 
