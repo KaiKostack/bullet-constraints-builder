@@ -48,20 +48,26 @@ def build_fm(use_handler=0):
     props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
 
-    ### Set up warm up timer via gravity
-    if "Gravity" in bpy.data.actions.keys() and scene.animation_data.action != None:
-        # Delete previous gravity animation while preserving the end value
-        curve = scene.animation_data.action.fcurves.find(data_path="gravity", index=2)  
-        curveP = curve.keyframe_points[-1]
-        frame, value = curveP.co
-        #curve.keyframe_points.remove(curveP, fast=False)
-        bpy.data.actions.remove(bpy.data.actions["Gravity"], do_unlink=True)
-        bpy.context.scene.gravity[2] = value
-    if props.warmUpPeriod:
-        ### Create new gravity animation curve 0 to full strength
+    ### Create new animation data and action if necessary
+    if scene.animation_data == None:
         scene.animation_data_create()
-        scene.animation_data.action = bpy.data.actions.new(name="Gravity")
-        curve = scene.animation_data.action.fcurves.new(data_path="gravity", index=2)  
+    if scene.animation_data.action == None:
+        scene.animation_data.action = bpy.data.actions.new(name="BCB")
+    
+    ### Set up warm up timer via gravity
+    dna_animation_path = "gravity"; animation_index = 2
+    curve = scene.animation_data.action.fcurves.find(data_path=dna_animation_path, index=animation_index)
+    ### Delete previous animation while preserving the end value
+    if curve != None:
+        if len(curve.keyframe_points) > 0:
+            curveP = curve.keyframe_points[-1]
+            frame, value = curveP.co
+            scene.animation_data.action.fcurves.remove(curve)  # Delete curve
+            bpy.context.scene.gravity[2] = value  # Restore original value
+    if props.warmUpPeriod:
+        # Create new curve
+        curve = scene.animation_data.action.fcurves.new(data_path=dna_animation_path, index=animation_index)  # Recreate curve  
+        ### Create curve points
         curve.keyframe_points.add(2)
         frame = scene.frame_start
         curveP = curve.keyframe_points[0]; curveP.co = frame, 0
@@ -72,6 +78,34 @@ def build_fm(use_handler=0):
         curveP = curve.keyframe_points[1]; curveP.co = frame, bpy.context.scene.gravity[2]
         curveP.handle_left = frame -props.warmUpPeriod/2, bpy.context.scene.gravity[2]
         curveP.handle_right = frame +props.warmUpPeriod/2, bpy.context.scene.gravity[2]
+        #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
+        ### Fix smooth curves as handles are not automatically being set correctly
+        # Stupid Blender design hack, enforcing context to be accepted by operators
+        #areaType_bak = bpy.context.area.type; bpy.context.area.type = 'GRAPH_EDITOR'
+        #bpy.ops.graph.handle_type(type='AUTO_CLAMPED')
+        # Alternative: bpy.ops.graph.clean(channels=True)
+        #bpy.context.area.type = areaType_bak
+
+    ### Set up time scale period
+    dna_animation_path = "rigidbody_world.time_scale"; animation_index = 0
+    curve = scene.animation_data.action.fcurves.find(data_path=dna_animation_path, index=animation_index)
+    ### Delete previous animation while preserving the end value
+    if curve != None:
+        if len(curve.keyframe_points) > 0:
+            curveP = curve.keyframe_points[-1]
+            frame, value = curveP.co
+            scene.animation_data.action.fcurves.remove(curve)  # Delete curve
+            scene.rigidbody_world.time_scale = value  # Restore original value
+    if props.timeScalePeriod:
+        # Create new curve
+        curve = scene.animation_data.action.fcurves.new(data_path=dna_animation_path, index=animation_index)  # Recreate curve  
+        ### Create curve points
+        curve.keyframe_points.add(2)
+        frame = scene.frame_start +props.timeScalePeriod
+        curveP = curve.keyframe_points[0]; curveP.co = frame, props.timeScalePeriodValue
+        #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
+        frame += 1
+        curveP = curve.keyframe_points[1]; curveP.co = frame, scene.rigidbody_world.time_scale
         #curveP.handle_left = curveP.co; curveP.handle_right = curveP.co
         ### Fix smooth curves as handles are not automatically being set correctly
         # Stupid Blender design hack, enforcing context to be accepted by operators
