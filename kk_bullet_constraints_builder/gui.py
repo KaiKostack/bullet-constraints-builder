@@ -143,8 +143,10 @@ class bcb_panel(bpy.types.Panel):
             split.prop(props, "preprocTools_rps", text="")
             box2 = split.box()
             box2.operator("bcb.tool_run_python_script", icon="DOT")
-            row2 = box2.row(align=1)
-            row2.prop(props, "preprocTools_rps_nam")
+            row = box2.row(align=1)
+            split = row.split(percentage=.85, align=1)
+            split.prop(props, "preprocTools_rps_nam")
+            split.operator("bcb.tool_run_python_script_file", icon="FILESEL", text="")
 
             row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_grp", text="")
@@ -238,7 +240,13 @@ class bcb_panel(bpy.types.Panel):
             row2.prop(props, "preprocTools_gnd_nsd")
             if not props.preprocTools_gnd_nac:
                 row.enabled = 0; row2.enabled = 0
-        
+            col2.separator()
+            row = col2.row(align=1)
+            split = row.split(percentage=.85, align=1)
+            split.prop(props, "preprocTools_gnd_nam")
+            split.operator("bcb.tool_ground_motion_file", icon="FILESEL", text="")
+            if props.preprocTools_gnd_nac: split.enabled = 0
+           
             layout.separator()
             
         col = layout.column(align=1)

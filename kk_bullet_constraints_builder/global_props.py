@@ -81,7 +81,7 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_fix = bool_(default=1)
     preprocTools_gnd = bool_(default=1)
     
-    preprocTools_rps_nam = string_(name="Script Name",             default='', description="Enter the name of an existing Python script.")
+    preprocTools_rps_nam = string_(name="Script File",             default='', description="Enter the filename of an existing Python script.")
     preprocTools_grp_sep = string_(name="Separator",               default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names.")
     preprocTools_grp_occ = bool_(name="First Occurrence",          default=1, description="Enables first occurrence search of the separator within an element name for cases when there are more than one separator included, if disabled the last occurrence is used.")
     preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.9, min=0.0, max=1000, description="Discretization size this tool tries to reach by discretization. To enforce regularity at all times, elements afterwards can deviate in size to some extent from the target size. For booleans (default method): The minimum dimension value serves as limit for an element still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller up to 50%.")
@@ -104,6 +104,7 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_gnd_nfq = float_(name="Frequency",                default=0.7, min=0.0, max=1000, description="Frequency of the artificial earthquake to be generated in Hz (because of the random nature of the noise function this should be taken as approximation).")
     preprocTools_gnd_ndu = float_(name="Duration",                 default=10, min=0.0, max=1000, description="Duration of the artificial earthquake to be generated in seconds.")
     preprocTools_gnd_nsd = float_(name="Random Seed",              default=0, min=0.0, max=10000000, description="Seed number for the random noise function used to generate the artificial earthquake, modification will change the characteristics of the motion.")
+    preprocTools_gnd_nam = string_(name="CSV File",                default='', description="To import earthquake data from a file enter the filename of an existing time history stored as plain ASCII text with comma-separated values (.csv). File structure: 4 columns: t [s], X [m/s²], Y [m/s²], Z [m/s²]. Lines starting with '#' are skipped.")
     
     ### Advanced global settings
     stepsPerSecond        = int_(name="Steps Per Second",         default=300, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")

@@ -214,6 +214,7 @@ classes = [ \
 
     OBJECT_OT_bcb_tool_do_all_steps_at_once,
     OBJECT_OT_bcb_tool_run_python_script,
+    OBJECT_OT_bcb_tool_run_python_script_file,
     OBJECT_OT_bcb_tool_create_groups_from_names,
     OBJECT_OT_bcb_tool_apply_all_modifiers,
     OBJECT_OT_bcb_tool_center_model,
@@ -222,7 +223,8 @@ classes = [ \
     OBJECT_OT_bcb_tool_enable_rigid_bodies,
     OBJECT_OT_bcb_tool_remove_intersections,
     OBJECT_OT_bcb_tool_fix_foundation,
-    OBJECT_OT_bcb_tool_ground_motion
+    OBJECT_OT_bcb_tool_ground_motion,
+    OBJECT_OT_bcb_tool_ground_motion_file
     ]
 
 ################################################################################

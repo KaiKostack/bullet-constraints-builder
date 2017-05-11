@@ -30,3 +30,16 @@ gui_buttons.py      # Contains graphical user interface button classes
 monitor.py          # Contains baking monitor event handler
 
 tools.py            # Contains smaller independently working tools
+
+
+/extern/                              # External modules (independently developed)
+
+kk_import_motion_from_text_file.py    # Contains earthquake motion import function
+
+kk_mesh_fracture.py                   # Contains boolean based discretization function
+
+kk_mesh_separate_loose.py             # Contains speed-optimized mesh island separation function
+
+kk_mesh_voxel_cell_grid_from_mesh.py  # Contains voxel based discretization function
+
+kk_select_intersecting_objects.py     # Contains intersection detection and resolving function

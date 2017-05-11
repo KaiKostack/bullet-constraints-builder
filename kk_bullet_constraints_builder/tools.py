@@ -36,10 +36,11 @@ mem = bpy.app.driver_namespace
 from global_vars import *      # Contains global variables
 from builder_prep import *     # Contains preparation steps functions called by the builder
 
-import kk_mesh_separate_loose
-import kk_mesh_fracture
-import kk_mesh_voxel_cell_grid_from_mesh
-import kk_select_intersecting_objects
+import kk_import_motion_from_text_file    # Contains earthquake motion import function
+import kk_mesh_fracture                   # Contains boolean based discretization function
+import kk_mesh_separate_loose             # Contains speed-optimized mesh island separation function
+import kk_mesh_voxel_cell_grid_from_mesh  # Contains voxel based discretization function
+import kk_select_intersecting_objects     # Contains intersection detection and resolving function
 
 ################################################################################
 
@@ -1087,7 +1088,23 @@ def tool_groundMotion(scene):
 #        fmod.blend_in = (duration *fps_rate) /2
 #        fmod.blend_out = (duration *fps_rate) /2
 
+    ######  Import ground motion from text file
+
+    elif len(props.preprocTools_gnd_nam) > 0:
+    
+        # Select ground object as expected by the script
+        bpy.context.scene.objects.active = objGnd
+        objGnd.select = 1
+        # Set frame rate as expected by the script
+        scene.render.fps = 25
+    
+        ###### External function
+        kk_import_motion_from_text_file.importData(props.preprocTools_gnd_nam)
+
+        objGnd.select = 0
+        
+    else: print("No text file defined.");
+
     # Revert to start selection
     for obj in selection: obj.select = 1
     bpy.context.scene.objects.active = selectionActive
-

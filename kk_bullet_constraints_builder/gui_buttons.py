@@ -559,6 +559,24 @@ class OBJECT_OT_bcb_tool_run_python_script(bpy.types.Operator):
         props.preprocTools_aut = 0
         props.preprocTools_rps = 0
         return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_run_python_script_file(bpy.types.Operator):
+    bl_idname = "bcb.tool_run_python_script_file"
+    bl_label = "Select"
+    bl_description = "Search for Python file (.py)."
+    string_ = bpy.props.StringProperty
+    filepath = string_(subtype='FILE_PATH')
+    filter_glob = string_(default="*.py", options={'HIDDEN'})
+    def execute(self, context):
+        props = context.window_manager.bcb
+        props.preprocTools_rps_nam = self.filepath
+        return {'FINISHED'}
+    def invoke(self, context, event):
+        wm = context.window_manager
+        wm.fileselect_add(self)
+        return {'RUNNING_MODAL'}
     
 ########################################
 
@@ -688,3 +706,21 @@ class OBJECT_OT_bcb_tool_ground_motion(bpy.types.Operator):
         props.preprocTools_aut = 0
         props.preprocTools_gnd = 0
         return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_ground_motion_file(bpy.types.Operator):
+    bl_idname = "bcb.tool_ground_motion_file"
+    bl_label = "Select"
+    bl_description = "Search for earthquake time history file as plain ASCII text with comma-separated values (.csv). File structure: 4 columns: t [s], X [m/s²], Y [m/s²], Z [m/s²]. Lines starting with '#' are skipped."
+    string_ = bpy.props.StringProperty
+    filepath = string_(subtype='FILE_PATH')
+    filter_glob = string_(default="*.csv", options={'HIDDEN'})
+    def execute(self, context):
+        props = context.window_manager.bcb
+        props.preprocTools_gnd_nam = self.filepath
+        return {'FINISHED'}
+    def invoke(self, context, event):
+        wm = context.window_manager
+        wm.fileselect_add(self)
+        return {'RUNNING_MODAL'}
