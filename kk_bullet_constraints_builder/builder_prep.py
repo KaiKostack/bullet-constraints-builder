@@ -29,8 +29,9 @@
 
 ################################################################################
 
-import bpy, mathutils, sys
+import bpy, mathutils, sys, math
 from mathutils import Vector
+from math import *
 mem = bpy.app.driver_namespace
 
 ### Import submodules
@@ -48,7 +49,7 @@ def initGeneralRigidBodyWorldSettings(scene):
     # Set Steps Per Second for rigid body simulation
     scene.rigidbody_world.steps_per_second = props.stepsPerSecond
     # Set Split Impulse for rigid body simulation
-    scene.rigidbody_world.use_split_impulse = True
+    #scene.rigidbody_world.use_split_impulse = True
 
 ################################################################################   
 
@@ -1364,6 +1365,13 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         obj = objScale[0]
         scale = objScale[1]
         obj.scale *= scale
+    
+    ### Calculate total mass for diagnostic purposes
+    totalMass = 0    
+    for obj in objs:
+        if obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE':
+            totalMass += obj.rigid_body.mass
+    print("Total mass of structure: %0.0f t and %0.0f kg" %(floor(totalMass/1000), totalMass%1000))
 
     ### Copy rigid body settings (and mass) from children back to their parents and remove children from rigid body world
     i = 0

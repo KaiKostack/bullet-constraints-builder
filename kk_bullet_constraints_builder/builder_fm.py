@@ -130,29 +130,39 @@ def build_fm(use_handler=0):
     ### Disable objects (and search for parent)
     if use_handler:
         objParent = None
+
         ### Unpack BCB data from text file
         try: s = bpy.data.texts["BCB_export.txt"].as_string()
         except:
             print("Error: No export data found, couldn't build Fracture Modifier object.")
             return
-        cDef, consts = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
-        ### Create element list from BCB data (duplicated code from FM_shards() but required for use_handler)
-        objs = []; objsName = []
-        for i in range(len(consts)):
-            objN1 = consts[i]["bcb_obj1"]
-            objN2 = consts[i]["bcb_obj2"]
-            if not objN1 in objsName:
-                try: obj1 = scene.objects[objN1]
-                except: pass
-                else:
-                    objs.append(obj1)
-                    objsName.append(objN1)
-            if not objN2 in objsName:
-                try: obj2 = scene.objects[objN2]
-                except: pass
-                else:
-                    objs.append(obj2)
-                    objsName.append(objN2)
+        cDef, exData, exPairs, objNames = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
+
+        ### Prepare objects list from names (using dictionary for faster item search)
+        scnObjs = {}
+        for obj in scene.objects: scnObjs[obj.name] = obj
+        objs = []
+        for name in objNames:
+            try: objs.append(scnObjs[name])
+            except: objs.append(None)
+
+#        ### Create element list from BCB data (duplicated code from FM_shards() but required for use_handler)
+#        objs = []; objsName = []
+#        for const in consts:
+#            objN1 = const["obj1"]
+#            objN2 = const["obj2"]
+#            if not objN1 in objsName:
+#                try: obj1 = scene.objects[objN1]
+#                except: pass
+#                else:
+#                    objs.append(obj1)
+#                    objsName.append(objN1)
+#            if not objN2 in objsName:
+#                try: obj2 = scene.objects[objN2]
+#                except: pass
+#                else:
+#                    objs.append(obj2)
+#                    objsName.append(objN2)
 
         for obj in objs:
             if obj.parent: objParent = obj.parent; break
@@ -171,6 +181,17 @@ def build_fm(use_handler=0):
     # Add Fracture Modifier
     bpy.ops.object.modifier_add(type='FRACTURE')
     md = ob.modifiers["Fracture"]
+
+    # Deselect all objects
+    bpy.ops.object.select_all(action='DESELECT')
+
+    # Enable trigger possibility
+    ob.select = 1
+    bpy.ops.rigidbody.object_add()
+    ob.rigid_body.use_kinematic_deactivation = 1
+    ob.rigid_body.constraint_dissolve = 1
+    ob.rigid_body.plastic_dissolve = True
+    ob.select = 0
     
     if not use_handler:
         md.fracture_mode = 'EXTERNAL'
@@ -200,7 +221,7 @@ def build_fm(use_handler=0):
     #bpy.ops.object.fracture_refresh()
 
     bpy.context.scene.objects.active = None
-    ob.select = False
+    ob.select = 0
     
     # Delete objects
     if not use_handler:
@@ -221,6 +242,7 @@ def build_fm(use_handler=0):
 
     scene.layers = [bool(q) for q in layersBak]  # Revert scene layer settings from backup
 
+    print()
     print('-- Time total: %0.2f s' %(time.time()-time_start))
     print('Done.')
     print()
@@ -245,25 +267,33 @@ def FM_shards(ob):
     except:
         print("Error: No export data found, couldn't build Fracture Modifier object.")
         return
-    cDef, consts = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
+    cDef, exData, exPairs, objNames = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
 
-    ### Create element lists from BCB data
-    objs = []; objsName = []
-    for i in range(len(consts)):
-        objN1 = consts[i]["bcb_obj1"]
-        objN2 = consts[i]["bcb_obj2"]
-        if not objN1 in objsName:
-            try: obj1 = scene.objects[objN1]
-            except: pass
-            else:
-                objs.append(obj1)
-                objsName.append(objN1)
-        if not objN2 in objsName:
-            try: obj2 = scene.objects[objN2]
-            except: pass
-            else:
-                objs.append(obj2)
-                objsName.append(objN2)
+    ### Prepare objects list (using dictionaries for faster item search)
+    scnObjs = {}
+    for obj in scene.objects: scnObjs[obj.name] = obj
+    objs = []
+    for name in objNames:
+        try: objs.append(scnObjs[name])
+        except: objs.append(None)
+
+#    ### Create element lists from BCB data
+#    objs = []; objsName = []
+#    for const in consts:
+#        objN1 = const["obj1"]
+#        objN2 = const["obj2"]
+#        if not objN1 in objsName:
+#            try: obj1 = scene.objects[objN1]
+#            except: pass
+#            else:
+#                objs.append(obj1)
+#                objsName.append(objN1)
+#        if not objN2 in objsName:
+#            try: obj2 = scene.objects[objN2]
+#            except: pass
+#            else:
+#                objs.append(obj2)
+#                objsName.append(objN2)
 
 #    ### Sort mesh objects by database order (old slower code)
 #    objsSorted = []
@@ -312,7 +342,6 @@ def FM_shards(ob):
     
     print('Time mesh islands: %0.2f s' %(time.time()-time_start))
     print('Imported: %d shards' %len(md.mesh_islands))
-    print()
 
     ###### Constraints handler (run only when this function is loaded as handler, too)
     if len(bpy.app.handlers.fracture_refresh) > 0:
@@ -348,8 +377,8 @@ def FM_constraints(ob):
     except:
         print("Error: No export data found, couldn't build Fracture Modifier object.")
         return
-    cDef, consts = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
-    
+    cDef, exData, exPairs, objNames = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
+
     ### Overwrite mesh island settings with those from the original RBs (FM overwrites this state)
 #    # Remove refresh handler from memory (required to overwrite settings)
 #    if len(bpy.app.handlers.fracture_refresh) > 0:
@@ -371,92 +400,96 @@ def FM_constraints(ob):
 #    # Reload refresh handler
 #    if qHandler:
 #        bpy.app.handlers.fracture_refresh.append(FM_shards)
-    
+
+    ### Create dict of FM mesh islands (speed optimization)
+    mesh_islands = {}
+    for mi in md.mesh_islands:
+        mesh_islands[mi.name] = mi
+
     ### Create constraints
     cnt = 0
-    for i in range(len(consts)):
-        cProps = consts[i]
+    for pair in exPairs:
+        ### Get data that is only stored once per connection
+        ob1    = pair[0]
+        ob2    = pair[1]
+        consts = pair[2]
         
-        ### Get custom BCB attributes
-        name = cProps["bcb_name"]
-        loc  = cProps["bcb_loc"]
-        ob1  = cProps["bcb_obj1"]
-        ob2  = cProps["bcb_obj2"]
-        try:    tol1 = cProps["bcb_tol1"]
-        except: tol1 = None
-        try:    tol2 = cProps["bcb_tol2"]
-        except: tol2 = None
-        try:    rotm = cProps["bcb_rotm"]
-        except: rotm = None
-        try:    rot  = cProps["bcb_rot"]
-        except: rot  = None
-        try:    type = cProps["type"]
-        except: type = cDef["type"]
-        
-        ### Decode custom BCB attributes
-        # 1st tolerances (elastic -> plastic)
-        # ["TOLERANCE", tol1dist, tol1rot]
-        if tol1 is not None and tol1[0] in {"TOLERANCE"}:
-            tol1dist = tol1[1]
-            tol1rot = tol1[2]
-        else:
-            tol1dist = -1
-            tol1rot = -1
-        # 2nd tolerances (plastic -> broken)
-        # ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot]
-        if tol2 is not None and tol2[0] in {"PLASTIC", "PLASTIC_OFF"}:
-            tol2dist = tol2[1]
-            tol2rot = tol2[2]
-            if tol2[0] == "PLASTIC": plastic = True
-            else: plastic = False
-        else:
-            tol2dist = -1
-            tol2rot = -1
-            plastic = False
-        # Rotation
-        if rotm == "QUATERNION":  # If no quaternion exists we assume no rotation is available
-            rot = mathutils.Quaternion(rot)
-        else:  # If None or EULER then no rotation is available
-            rot = mathutils.Quaternion((1.0, 0.0, 0.0, 0.0))
-        
-        ### Add settings to constraint
-        # OK, first check whether the mi exists via is object in group (else it's double)
-        #try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], type)
-        try: con = md.mesh_constraints.new(md.mesh_islands[ob1], md.mesh_islands[ob2], type)
-        except: pass #print("Failing:", ob1, ob2)
-        else:
-            con.name = name
-            con.location = loc
-            con.rotation = rot
-            con.plastic = plastic
-            con.breaking_distance = tol1dist
-            con.breaking_angle = tol1rot
-            con.plastic_distance = tol2dist
-            con.plastic_angle = tol2rot
+        for const in consts:
+            cProps, cDatb = exData[const]
+                 
+            ### Get data that can be individual for each constraint
+            name = cDatb[0]  # A name is not mandatory, mainly for debugging purposes
+            loc  = cDatb[1]
+            tol1 = cDatb[4]
+            tol2 = cDatb[5]
+            rotm = cDatb[6]
+            rot  = cDatb[7]
+            try:    type = cProps["type"]
+            except: type = cDef["type"]
+            
+            ### Decode custom BCB attributes
+            # 1st tolerances (elastic -> plastic)
+            # ["TOLERANCE", tol1dist, tol1rot]
+            if tol1 is not None and tol1[0] in {"TOLERANCE"}:
+                tol1dist = tol1[1]
+                tol1rot = tol1[2]
+            else:
+                tol1dist = -1
+                tol1rot = -1
+            # 2nd tolerances (plastic -> broken)
+            # ["PLASTIC"/"PLASTIC_OFF", tol2dist, tol2rot]
+            if tol2 is not None and tol2[0] in {"PLASTIC", "PLASTIC_OFF"}:
+                tol2dist = tol2[1]
+                tol2rot = tol2[2]
+                if tol2[0] == "PLASTIC": plastic = True
+                else: plastic = False
+            else:
+                tol2dist = -1
+                tol2rot = -1
+                plastic = False
+            # Rotation
+            if rotm == "QUATERNION":  # If no quaternion exists we assume no rotation is available
+                rot = mathutils.Quaternion(rot)
+            else:  # If None or EULER then no rotation is available
+                rot = mathutils.Quaternion((1.0, 0.0, 0.0, 0.0))
+            
+            ### Add settings to constraint
+            # OK, first check whether the mesh island exists via is object in group (else it's double)
+            #try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], type)
+            try: con = md.mesh_constraints.new(mesh_islands[ob1], mesh_islands[ob2], type)
+            except: pass #print("Failing:", ob1, ob2)
+            else:
+                con.name = name
+                con.location = loc
+                con.rotation = rot
+                con.plastic = plastic
+                con.breaking_distance = tol1dist
+                con.breaking_angle = tol1rot
+                con.plastic_distance = tol2dist
+                con.plastic_angle = tol2rot
 
-            ### Write constraint defaults first (FM doesn't set constraint to Blender defaults)
-            for p in cDef.items():
-                if p[0] not in {"object1", "object2"} \
-                and "bcb_" not in p[0]:        # Filter also custom BCB attributes
-                    attr = getattr(con, p[0])  # Current value
-                    if p[1] != attr:           # Overwrite only when different
-                        setattr(con, p[0], p[1])
-            ### Write own changed parameters (because it's a diff based on defaults)
-            for p in cProps.items():
-                if p[0] not in {"object1", "object2"} \
-                and "bcb_" not in p[0]:        # Filter also custom BCB attributes
-                    attr = getattr(con, p[0])  # Current value
-                    if p[1] != attr:           # Overwrite only when different
-                        #print("Set: ", p[0], p[1])
-                        setattr(con, p[0], p[1])
-            cnt += 1
+                ### Obsolete since FM now uses Blender defaults for constraints:
+                ### Write constraint defaults first (FM doesn't set constraint to Blender defaults)
+                for p in cDef.items():
+                    if p[0] not in {"object1", "object2"}:
+                        attr = getattr(con, p[0])  # Current value
+                        if p[1] != attr:           # Overwrite only when different
+                            #print("attr", p[0], p[1], attr)
+                            setattr(con, p[0], p[1])
+                ### Write own changed parameters (because it's a diff based on defaults)
+                for p in cProps.items():
+                    if p[0] not in {"object1", "object2"}:
+                        attr = getattr(con, p[0])  # Current value
+                        if p[1] != attr:           # Overwrite only when different
+                            #print("Set: ", p[0], p[1])
+                            setattr(con, p[0], p[1])
+                cnt += 1
 
     md.fracture_mode = fmode_bak
     md.refresh = False
 
     print('Time constraints: %0.2f s' %(time.time()-time_const))
     print('Imported: %d constraints (%d shards)' %(cnt, len(md.mesh_islands)))
-    print()
 
     # Remove this handler from memory (will be reloaded on FM_shards())
     bpy.app.handlers.fracture_constraint_refresh.clear()

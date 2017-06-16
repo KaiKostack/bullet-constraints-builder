@@ -103,7 +103,8 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         # Go to start frame for cache data removal
-        scene.frame_current = scene.frame_start
+        if scene.frame_current != scene.frame_start:
+            scene.frame_current = scene.frame_start
         ### Free previous bake data
         contextFix = bpy.context.copy()
         try: contextFix['point_cache'] = scene.rigidbody_world.point_cache
