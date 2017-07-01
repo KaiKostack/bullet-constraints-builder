@@ -99,7 +99,7 @@ def gatherObjects(scene):
     
     objs = []
     emptyObjs = []
-    for obj in bpy.data.objects:
+    for obj in scene.objects:
         if obj.select and not obj.hide and obj.is_visible(scene):
             # Clear object properties
             #for key in obj.keys(): del obj[key]
@@ -1020,11 +1020,14 @@ def createEmptyObjs(scene, constCnt):
             # Duplicate them
             bpy.ops.object.duplicate(linked=False)
             # Add duplicates to list again
-            for obj in bpy.data.objects:
+            for obj in scene.objects:
                 if obj.select and obj.is_visible(scene):
                     if obj.type == 'EMPTY':
                         emptyObjs.append(obj)
-        
+         
+        print("len(emptyObjsGlobal)", len(emptyObjsGlobal))
+        print("len(emptyObjs[1:])", len(emptyObjs[1:]))
+
         emptyObjsGlobal.extend(emptyObjs[1:])
         sys.stdout.write("\r%d - " %len(emptyObjsGlobal))
         
