@@ -176,16 +176,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         geoContactArea = geo[0]
         geoHeight = geo[1]
         geoWidth = geo[2]
-        geoSurfThick = geo[3]
-        geoAxisNormal = geo[4]
-        geoAxisHeight = geo[5]
-        geoAxisWidth = geo[6]
+        geoAxisNormal = geo[3]
+        geoAxisHeight = geo[4]
+        geoAxisWidth = geo[5]
         ax = [geoAxisNormal, geoAxisHeight, geoAxisWidth]
-
-        ### Postponed geoContactArea calculation step from calculateContactAreaBasedOnBoundaryBoxesForPair() is being done now (update hack, could be better organized)
-        if props.useAccurateArea:
-            if geoSurfThick > 0:
-                geoContactArea *= geoSurfThick
 
         # Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
         if detonatorObj != None and detonatorObj.scale[0] > 0:
@@ -196,7 +190,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         a = geoContactArea *1000000
         h = geoHeight *1000
         w = geoWidth *1000
-        s = geoSurfThick *1000
         
         objA = objs[pair[0]]
         objB = objs[pair[1]]

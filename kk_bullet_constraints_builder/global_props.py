@@ -47,16 +47,21 @@ class bcb_props(bpy.types.PropertyGroup):
     
     ###### Menu properties (volatile)
 
-    menu_init =            bool_(default=1)
-    menu_gotConfig =       int_(default=0)
-    menu_gotData =         int_(default=0)
-    menu_selectedElemGrp = int_(default=0)
-    submenu_advancedG =    bool_(default=0)
-    submenu_advancedE =    bool_(default=0)
-    submenu_preprocTools = bool_(default=0)
+    menu_init             = bool_(default=1)
+    menu_gotConfig        = int_(default=0)
+    menu_gotData          = int_(default=0)
+    menu_selectedElemGrp  = int_(default=0)
+    submenu_preprocTools  = bool_(default=0)
+    submenu_globSet       = bool_(default=0)
+    submenu_advGlobSet    = bool_(default=0)
+    submenu_triggers      = bool_(default=0)
+    submenu_elemGrpList   = bool_(default=1)
+    submenu_elemGrpSel    = bool_(default=1)
+    submenu_elemSet       = bool_(default=0)
+    submenu_assistant     = bool_(default=0)
+    submenu_advElemSet    = bool_(default=0)
 
     ### Formula assistant
-    submenu_assistant = bool_(default=0)
     submenu_assistant_advanced = bool_(default=0, name="Advanced", description="Shows advanced settings and formulas.")
     assistant_menu_data = []  # (ID, Name in menu, "", Index)
     for i in range(len(formulaAssistants)):
@@ -115,13 +120,13 @@ class bcb_props(bpy.types.PropertyGroup):
     alignVertical         = float_(name="Vertical Alignment",     default=0, min=0.0, max=1.0,     description="Enables a vertical alignment multiplier for connection type 4 or above instead of using unweighted center to center orientation (0 = disabled, 1 = fully vertical).")
     useAccurateArea       = bool_(name="Accur. Contact Area Calculation", default=0,               description="Enables accurate contact area calculation using booleans for the cost of an slower building process. This only works correct with solids i.e. watertight and manifold objects and is therefore recommended for truss structures or steel constructions in general.")
     rebarMesh             = bool_(name="Rebar Mesh",              default=0,                       description="Enables creation of a rebar mesh on build or export execution using the settings from the Formula Assistant. This mesh is meant for diagnostic purposes only, it is not required nor used for the simulation. It is also not very accurate for very small elements as the rebar count is converted from the definition to the actual element size with a minimum limit of 4 bars per element.")
-    nonManifoldThickness  = float_(name="Non-solid Thickness",    default=0.1, min=0.0, max=10,    description="Thickness for non-manifold elements (surfaces) when using accurate contact area calculation.")
+    nonManifoldThickness  = float_(name="Surface Thickness",      default=0, min=0.0, max=10,      description="Artificial thickness for non-manifold elements (surfaces). If the element is solid this value will be added as extra margin to the detected contact area.")
     minimumElementSize    = float_(name="Min. Element Size",      default=0, min=0.0, max=10,      description="Deletes connections whose elements are below this diameter and makes them parents instead. This can be helpful for increasing performance on models with unrelevant geometric detail such as screwheads.")
     automaticMode         = bool_(name="Automatic Mode",          default=0,                       description="Enables a fully automated workflow for extremely large simulations (object count-wise) were Blender is prone to not being responsive anymore. After clicking Bake (not Build) these steps are being done automatically: Building of constraints, baking simulation, clearing constraint and BCB data from scene.")
     saveBackups           = bool_(name="Backup",                  default=0,                       description="Enables saving of a backup .blend file after each step for automatic mode, whereby the name of the new .blend ends with `_BCB´.")
-    timeScalePeriod       = int_(name="Time Scale Period",        default=0, min=0, max=10000,     description="For baking: Use a different time scale for an initial period of the simulation until this many frames has passed (0 = disabled).")
-    timeScalePeriodValue  = float_(name="Initial Time Scale",     default=0.001, min=0.0, max=100, description="For baking: Use this time scale for the initial period of the simulation, after that it is switching back to default time scale and updating breaking thresholds accordingly during runtime.")
-    warmUpPeriod          = int_(name="Warm Up Period",           default=20, min=0, max=10000,    description="For baking: Disables breakability of constraints for an initial period of the simulation (frames). This is to prevent structural damage caused by the gravity impulse on start.")
+    timeScalePeriod       = int_(name="Time Scale Period",        default=0, min=0, max=10000,     description="Use a different time scale for an initial period of the simulation until this many frames has passed (0 = disabled).")
+    timeScalePeriodValue  = float_(name="Initial Time Scale",     default=0.001, min=0.0, max=100, description="Use this time scale for the initial period of the simulation, after that it is switching back to default time scale and updating breaking thresholds accordingly during runtime.")
+    warmUpPeriod          = int_(name="Warm Up Period",           default=20, min=0, max=10000,    description="Disables breakability of constraints for an initial period of the simulation (frames). This is to prevent structural damage caused by the gravity impulse on start.")
     progrWeak             = float_(name="Progr. Weakening",       default=0, min=0.0, max=1.0,     description="Enables progressive weakening of all breaking thresholds by the specified factor per frame (starts not until timeScalePeriod and warmUpPeriod have passed). This can be used to enforce the certain collapse of a building structure after a while.")
     progrWeakLimit        = int_(name="Progr. Weak. Limit",       default=10, min=0, max=10000,    description="For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation.")
     progrWeakStartFact    = float_(name="Start Weakness",         default=1, min=0.0, max=1.0,     description="Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update.")
@@ -135,7 +140,7 @@ class bcb_props(bpy.types.PropertyGroup):
     for i in range(maxMenuElementGroupItems):
         elemGrps = mem["elemGrps"]
         j = 0  # Use preset 0 as dummy data 
-        exec("elemGrp_%d_EGSidxName" %i +" = string_(name='Grp. Name', default=presets[j][EGSidxName], description='The name of the element group.')")
+        exec("elemGrp_%d_EGSidxName" %i +" = string_(name='Grp. Name', default=presets[j][EGSidxName], description='The name of the chosen element group.')")
         exec("elemGrp_%d_EGSidxCTyp" %i +" = int_(name='Connection Type', default=presets[j][EGSidxCTyp], min=0, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code.')")
 
         exec("elemGrp_%d_EGSidxBTC" %i +" = string_(name='Compressive', default=presets[j][EGSidxBTC], description='Math expression for the material´s real world compressive breaking threshold in N/mm^2 together with related geometry properties.')")
@@ -153,12 +158,12 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxDens" %i +" = float_(name='Density', default=presets[j][EGSidxDens], min=0.0, max=100000, description='Custom density value (kg/m^3) to use instead of material preset (0 = disabled).')")
         exec("elemGrp_%d_EGSidxPrio" %i +" = int_(name='Connection Priority', default=presets[j][EGSidxPrio], min=1, max=9, description='Changes the connection priority for this element group which will override that the weaker breaking threshold of two elements is preferred for an connection. Lower Strength Priority has similar functionality but works on all groups, however, it is ignored if the priority here is different for a particular connection.')")
 
-        exec("elemGrp_%d_EGSidxTl1D" %i +" = float_(name='1st Dist. Tol.', default=presets[j][EGSidxTl1D], min=0.0, max=10.0, description='For baking: First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %).')")
-        exec("elemGrp_%d_EGSidxTl1R" %i +" = float_(name='1st Rot. Tol.', default=presets[j][EGSidxTl1R], min=0.0, max=pi, description='For baking: First deformation tolerance limit for angular change in radian for connection removal or plastic deformation.')")
-        exec("elemGrp_%d_EGSidxTl2D" %i +" = float_(name='2nd Dist. Tol.', default=presets[j][EGSidxTl2D], min=0.0, max=10.0, description='For baking: Second deformation tolerance limit for distance change in percent for connection removal (1.00 = 100 %). The Formula Assistant might calculate this setting automatically on evaluation, it will appear greyed out then.')")
-        exec("elemGrp_%d_EGSidxTl2R" %i +" = float_(name='2nd Rot. Tol.', default=presets[j][EGSidxTl2R], min=0.0, max=pi, description='For baking: Second deformation tolerance limit for angular change in radian for connection removal. The Formula Assistant might set this to 0 which means that this tolerance will be calculated later during the constraint building phase individually for each connection using Formula Assistant settings, there is no need to change it back then.')")
-        exec("elemGrp_%d_EGSidxBevl" %i +" = bool_(name='Bevel', default=presets[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
-        exec("elemGrp_%d_EGSidxScal" %i +" = float_(name='Rescale Factor', default=presets[j][EGSidxScal], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (uses hidden collision meshes).')")
+        exec("elemGrp_%d_EGSidxTl1D" %i +" = float_(name='1st Dist. Tol.', default=presets[j][EGSidxTl1D], min=0.0, max=10.0, description='First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %).')")
+        exec("elemGrp_%d_EGSidxTl1R" %i +" = float_(name='1st Rot. Tol.', default=presets[j][EGSidxTl1R], min=0.0, max=pi, description='First deformation tolerance limit for angular change in radian for connection removal or plastic deformation.')")
+        exec("elemGrp_%d_EGSidxTl2D" %i +" = float_(name='2nd Dist. Tol.', default=presets[j][EGSidxTl2D], min=0.0, max=10.0, description='Second deformation tolerance limit for distance change in percent for connection removal (1.00 = 100 %). The Formula Assistant might calculate this setting automatically on evaluation, it will appear greyed out then.')")
+        exec("elemGrp_%d_EGSidxTl2R" %i +" = float_(name='2nd Rot. Tol.', default=presets[j][EGSidxTl2R], min=0.0, max=pi, description='Second deformation tolerance limit for angular change in radian for connection removal. The Formula Assistant might set this to 0 which means that this tolerance will be calculated later during the constraint building phase individually for each connection using Formula Assistant settings, there is no need to change it back then.')")
+        exec("elemGrp_%d_EGSidxBevl" %i +" = bool_(name='Bevel', default=presets[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (undesired stability increase caused by incompressible rigid bodies). This uses hidden collision meshes and has no influence on breaking threshold and mass calculations.')")
+        exec("elemGrp_%d_EGSidxScal" %i +" = float_(name='Rescale Factor', default=presets[j][EGSidxScal], min=0.0, max=1, description='Applies scaling factor on elements to avoid `Jenga´ effect (undesired stability increase caused by incompressible rigid bodies). This has no influence on breaking threshold and mass calculations.')")
         exec("elemGrp_%d_EGSidxFacg" %i +" = bool_(name='Facing', default=presets[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation).')")
         exec("elemGrp_%d_EGSidxCyln" %i +" = bool_(name='Cylindric Shape', default=presets[j][EGSidxCyln], description='Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns.')")
 

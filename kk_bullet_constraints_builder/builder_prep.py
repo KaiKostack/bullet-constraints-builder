@@ -483,7 +483,7 @@ def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair):
         
 ################################################################################   
 
-def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=0):
+def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0):
 
     ###### Calculate contact area for a single pair of objects
     props = bpy.context.window_manager.bcb
@@ -504,20 +504,17 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=
     #if overlapX > 0 and overlapY > 0 and overlapZ > 0:  
     if 1:
         
-        if not customThickness:
+        if not qNonManifold:
             overlapAreaX = overlapY *overlapZ
             overlapAreaY = overlapX *overlapZ
             overlapAreaZ = overlapX *overlapY
             # Add up all contact areas
             geoContactArea = overlapAreaX +overlapAreaY +overlapAreaZ
-
+                
         ### Or calculate contact area based on predefined custom thickness
         else:
-            geoContactArea = overlapX +overlapY +overlapZ
-            # This should actually be:
-            # geoContactArea = (overlapX +overlapY +overlapZ) *props.nonManifoldThickness
-            # For updating possibility this last operation is postponed to setConstraintSettings()
-
+            geoContactArea = (overlapX +overlapY +overlapZ) *props.nonManifoldThickness
+            
     else: geoContactArea = 0
             
     ### Find out element thickness to be used for bending threshold calculation 
@@ -526,7 +523,11 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=
     geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
     geoHeight = geo[1]  # First item = mostly 0, second item = thickness/height, third item = width 
     geoWidth = geo[2]
-    
+
+    # Add custom thickness to contact area (only for manifolds as it is already included in non-manifolds)
+    if not qNonManifold:
+        geoContactArea += geoWidth *props.nonManifoldThickness
+
     ### Use center of contact area boundary box as constraints location
     centerX = max(bbAMin[0],bbBMin[0]) +(overlapX /2)
     centerY = max(bbAMin[1],bbBMin[1]) +(overlapY /2)
@@ -551,9 +552,9 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair):
         
         ###### Calculate contact area for a single pair of objects
         geoContactArea, geoHeight, geoWidth, center, geoAxis = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB)
-        
-        # Geometry array: [area, height, width, surfThick, axisNormal, axisHeight, axisWidth]
-        connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0, geoAxis[0], geoAxis[1], geoAxis[2]])
+                    
+        # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth]
+        connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2]])
         connectsLoc.append(center)
         
     return connectsGeo, connectsLoc
@@ -627,11 +628,10 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
             #print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
 
             ###### Calculate contact area for a single pair of objects
-            geoContactArea, geoHeight, geoWidth, center, geoAxis = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, customThickness=1)
-            geoSurfThick = props.nonManifoldThickness
+            geoContactArea, geoHeight, geoWidth, center, geoAxis = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=1)
             
-            # Geometry array: [area, height, width, surfThick, axisNormal, axisHeight, axisWidth]
-            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoSurfThick, geoAxis[0], geoAxis[1], geoAxis[2]])
+            # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth]
+            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2]])
             connectsLoc.append(center)
 
         ###### If both meshes are manifold continue with regular boolean based approach
@@ -774,8 +774,8 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 # Switch to new scene
                 bpy.context.screen.scene = sceneTemp
             
-            # Geometry array: [area, height, width, surfThick, axisNormal, axisHeight, axisWidth]
-            connectsGeo.append([geoContactArea, geoHeight, geoWidth, 0, geoAxis[0], geoAxis[1], geoAxis[2]])
+            # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth]
+            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2]])
             connectsLoc.append(center)
                 
     # Switch back to original scene
@@ -1025,9 +1025,6 @@ def createEmptyObjs(scene, constCnt):
                     if obj.type == 'EMPTY':
                         emptyObjs.append(obj)
          
-        print("len(emptyObjsGlobal)", len(emptyObjsGlobal))
-        print("len(emptyObjs[1:])", len(emptyObjs[1:]))
-
         emptyObjsGlobal.extend(emptyObjs[1:])
         sys.stdout.write("\r%d - " %len(emptyObjsGlobal))
         

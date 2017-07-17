@@ -123,7 +123,7 @@ class bcb_panel(bpy.types.Panel):
         try: elemGrps = mem["elemGrps"]
         except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
 
-        ###### Preprocessing tools box
+        ###### Preprocessing tools panel
         
         box = layout.box()
         box.prop(props, "submenu_preprocTools", text="Preprocessing Tools", icon=self.icon_pulldown(props.submenu_preprocTools), emboss = False)
@@ -137,8 +137,8 @@ class bcb_panel(bpy.types.Panel):
             row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.label(text="")
             split.prop(props, "preprocTools_aut")
+
             col.separator()
-            
             row = col.row(align=1); split = row.split(percentage=.08, align=0)
             split.prop(props, "preprocTools_rps", text="")
             box2 = split.box()
@@ -240,15 +240,14 @@ class bcb_panel(bpy.types.Panel):
             row2.prop(props, "preprocTools_gnd_nsd")
             if not props.preprocTools_gnd_nac:
                 row.enabled = 0; row2.enabled = 0
+
             col2.separator()
             row = col2.row(align=1)
             split = row.split(percentage=.85, align=1)
             split.prop(props, "preprocTools_gnd_nam")
             split.operator("bcb.tool_ground_motion_file", icon="FILESEL", text="")
             if props.preprocTools_gnd_nac: split.enabled = 0
-           
-            layout.separator()
-            
+                    
         col = layout.column(align=1)
         row = col.row(align=1)
         if not props.menu_gotData: 
@@ -276,31 +275,19 @@ class bcb_panel(bpy.types.Panel):
             split.operator("bcb.bake", icon="REC")
             split2 = split.split(align=1)
             split2.operator("bcb.set_config", icon="NEW")
-
-        col = layout.column(align=1)
-
-        row = col.row(align=1)
-        if props.menu_gotData: row.enabled = 0
-        row.prop(props, "searchDistance")
-
-        row = col.row(align=1)
-        split = row.split(percentage=.85, align=1)
-        if props.menu_gotData: split.enabled = 0
-        split.prop(props, "clusterRadius")
-        split.operator("bcb.tool_estimate_cluster_radius", icon="AUTO")
         
-        ###### Advanced main settings box
+        ###### Global settings panel
         
         box = layout.box()
-        box.prop(props, "submenu_advancedG", text="Advanced Global Settings", icon=self.icon_pulldown(props.submenu_advancedG), emboss = False)
-        if props.submenu_advancedG:
+        box.prop(props, "submenu_globSet", text="Global Settings", icon=self.icon_pulldown(props.submenu_globSet), emboss = False)
+        if props.submenu_globSet:
             col = box.column(align=1)
 
             row = col.row(align=1)
             split = row.split(percentage=.85, align=1)
             split2 = split.split(percentage=.5, align=1)
             #split2.operator("bcb.export_ascii", icon="EXPORT")
-            split2.operator("bcb.export_ascii_fm", icon="EXPORT", text="Exp. FM Dynamic").use_handler=1  # FM dynamic mode
+            split2.operator("bcb.export_ascii_fm", icon="EXPORT", text="Dynamic FM").use_handler=1  # FM dynamic mode
             split2.operator("bcb.export_ascii_fm", icon="EXPORT")
             split.operator("bcb.import_config", icon="FILE_REFRESH")
 
@@ -318,7 +305,27 @@ class bcb_panel(bpy.types.Panel):
             split = row.split(percentage=.50, align=1)
             split.prop(props, "automaticMode")
             split.prop(props, "saveBackups")
+
             col.separator()
+            row = col.row(align=1)
+            if props.menu_gotData: row.enabled = 0
+            row.prop(props, "searchDistance")
+
+            row = col.row(align=1)
+            split = row.split(percentage=.85, align=1)
+            if props.menu_gotData: split.enabled = 0
+            split.prop(props, "clusterRadius")
+            split.operator("bcb.tool_estimate_cluster_radius", icon="AUTO")
+
+            col.separator()
+            row = col.row(align=1); row.prop(props, "warmUpPeriod")
+
+        ###### Advanced global settings panel
+
+        box = layout.box()
+        box.prop(props, "submenu_advGlobSet", text="Advanced Global Settings", icon=self.icon_pulldown(props.submenu_advGlobSet), emboss = False)
+        if props.submenu_advGlobSet:
+            col = box.column(align=1)
 
             row = col.row(align=1)
             split = row.split(percentage=.50, align=1)
@@ -327,122 +334,136 @@ class bcb_panel(bpy.types.Panel):
             row = col.row(align=1)
             if props.snapToAreaOrient: row.enabled = 0
             row.prop(props, "alignVertical")
-            col.separator()
 
+            col.separator()
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             split = row.split(percentage=.50, align=1)
             split.prop(props, "useAccurateArea")
             split.prop(props, "rebarMesh")
-#            row = col.row(align=1)
-#            if not props.useAccurateArea: row.enabled = 0
-#            row.prop(props, "nonManifoldThickness")
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "connectionCountLimit")
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
+            row.prop(props, "nonManifoldThickness")
+            row = col.row(align=1)
+            if props.menu_gotData: row.enabled = 0
             row.prop(props, "minimumElementSize")
 
-            row = col.row(align=1); row.prop(props, "warmUpPeriod")
             col.separator()
             row = col.row(align=1); row.prop(props, "timeScalePeriod")
             row = col.row(align=1); row.prop(props, "timeScalePeriodValue")
             if props.timeScalePeriod == 0: row.enabled = 0
-            col.separator()
 
+        ###### Triggers panel
+
+        box = layout.box()
+        box.prop(props, "submenu_triggers", text="Triggers", icon=self.icon_pulldown(props.submenu_triggers), emboss = False)
+        if props.submenu_triggers:
+            col = box.column(align=1)
+
+            row = col.row(align=1); row.prop(props, "detonatorObj")
+
+            col.separator()
             row = col.row(align=1); row.prop(props, "progrWeak")
             row = col.row(align=1); row.prop(props, "progrWeakLimit")
             if props.progrWeak == 0: row.enabled = 0
             row = col.row(align=1); row.prop(props, "progrWeakStartFact")
+
             col.separator()
-            
-            row = col.row(align=1); row.prop(props, "detonatorObj")
+            col.label(text="For Earthquake see Preprocessing Tools.")
 
-            layout.separator()
+        ###### Element group list panel
+        
+        box = layout.box()
+        box.prop(props, "submenu_elemGrpList", text="Element Group List", icon=self.icon_pulldown(props.submenu_elemGrpList), emboss = False)
+        if props.submenu_elemGrpList:
+            col2 = box.column(align=1)
 
-        ###### Element groups box
-        col = layout.column(align=1)
-        row = col.row(align=1); row.label(text="Element Groups", icon="MOD_BUILD")
-        box = col.box()
-        col2 = box.column(align=0)
-        row = col2.split(align=1)
-        row.operator("bcb.add", icon="ZOOMIN")
-        row.operator("bcb.dup", icon="PASTEDOWN")
-        row.operator("bcb.del", icon="X")
-        row.operator("bcb.reset", icon="CANCEL")
-        row.operator("bcb.move_up", icon="TRIA_UP")
-        row.operator("bcb.move_down", icon="TRIA_DOWN")
-        row = col2.row(align=1)
-        split = col2.split(percentage=.40, align=1)
-        split.label(text="GRP")
-        split2 = split.split(align=1)
-        split2.label(text="CT")
-        split2.label(text="CPR")
-        split2.label(text="TNS")
-        split2.label(text="SHR")
-        split2.label(text="BND")
-        if len(elemGrps) == 0 or props.menu_init:  # Hide list also on first draw just to make sure element groups are up-to-date
-            row = col2.row(align=1); row.alignment = 'CENTER'
-            row.label(text="Press + button to add a group!", icon="INFO")
-            col2.separator()
-            # These buttons are existing twice (see below)
-            row = col2.row(align=1)
-            split = row.split(percentage=.50, align=1)
-            split2 = split.split(percentage=.30, align=1)
-            split2.operator("bcb.up_more", icon="PREV_KEYFRAME")
-            split2.operator("bcb.up", icon="TRIA_UP")
-            split2 = split.split(percentage=.70, align=1)
-            split2.operator("bcb.down", icon="TRIA_DOWN")
-            split2.operator("bcb.down_more", icon="NEXT_KEYFRAME")
+            col3 = col2.column(align=0)
+            row = col3.split(align=1)
+            row.operator("bcb.add", icon="ZOOMIN")
+            row.operator("bcb.dup", icon="PASTEDOWN")
+            row.operator("bcb.del", icon="X")
+            row.operator("bcb.reset", icon="CANCEL")
+            row.operator("bcb.move_up", icon="TRIA_UP")
+            row.operator("bcb.move_down", icon="TRIA_DOWN")
+            if len(elemGrps) == 0 or props.menu_init:  # Hide list also on first draw just to make sure element groups are up-to-date
+                col3.separator()
+                row = col3.row(align=1); row.alignment = 'CENTER'
+                row.label(text="Press + button to add a group!", icon="INFO")
+                col3.separator()
 
-        ### Everything below is only visible if at least one element group is existing
-        else:  
-            for i in range(len(elemGrps)):
-                if i == props.menu_selectedElemGrp:
-                      row = col2.box().row(align=1)
-                else: row = col2.row(align=1)
-                prop_EGSidxName = eval("props.elemGrp_%d_EGSidxName" %i)
-                prop_EGSidxCTyp = ct = eval("props.elemGrp_%d_EGSidxCTyp" %i)
-                try: connectType = connectTypes[ct]
-                except: connectType = connectTypes[0]  # In case the connection type is unknown (no constraints)
-                if not connectType[2][0]: prop_EGSidxBTC = "-"
-                else: prop_EGSidxBTC = eval("props.elemGrp_%d_EGSidxBTC" %i)
-                if not connectType[2][1]: prop_EGSidxBTT = "-"
-                else: prop_EGSidxBTT = eval("props.elemGrp_%d_EGSidxBTT" %i)
-                if not connectType[2][2]: prop_EGSidxBTS = "-"
-                else: prop_EGSidxBTS = eval("props.elemGrp_%d_EGSidxBTS" %i)
-                if not connectType[2][3]: prop_EGSidxBTB = "-"
-                else: prop_EGSidxBTB = eval("props.elemGrp_%d_EGSidxBTB" %i)
-                split = row.split(percentage=.40, align=1)
-                if prop_EGSidxName == "": split.label(text="[Def.]")
-                else:                     split.label(text=str(prop_EGSidxName))
+            ### If at least one element group is existing
+            if not (len(elemGrps) == 0 or props.menu_init):
+                split = col3.split(percentage=.40, align=1)
+                split.label(text="GRP")
                 split2 = split.split(align=1)
-                split2.label(text=str(prop_EGSidxCTyp))
-                split2.label(text=str(prop_EGSidxBTC))
-                split2.label(text=str(prop_EGSidxBTT))
-                split2.label(text=str(prop_EGSidxBTS))
-                split2.label(text=str(prop_EGSidxBTB))
+                split2.label(text="CT")
+                split2.label(text="CPR")
+                split2.label(text="TNS")
+                split2.label(text="SHR")
+                split2.label(text="BND")
 
-            # These buttons are existing twice (see above)
-            row = col2.row(align=1)
-            split = row.split(percentage=.50, align=1)
-            split2 = split.split(percentage=.30, align=1)
-            split2.operator("bcb.up_more", icon="PREV_KEYFRAME")
-            split2.operator("bcb.up", icon="TRIA_UP")
-            split2 = split.split(percentage=.70, align=1)
-            split2.operator("bcb.down", icon="TRIA_DOWN")
-            split2.operator("bcb.down_more", icon="NEXT_KEYFRAME")
-            
-            ###### Element group settings
-            
-            layout.separator()
+                for i in range(len(elemGrps)):
+                    if i == props.menu_selectedElemGrp:
+                          row = col3.box().row(align=1)
+                    else: row = col3.row(align=1)
+                    prop_EGSidxName = eval("props.elemGrp_%d_EGSidxName" %i)
+                    prop_EGSidxCTyp = ct = eval("props.elemGrp_%d_EGSidxCTyp" %i)
+                    try: connectType = connectTypes[ct]
+                    except: connectType = connectTypes[0]  # In case the connection type is unknown (no constraints)
+                    if not connectType[2][0]: prop_EGSidxBTC = "-"
+                    else: prop_EGSidxBTC = eval("props.elemGrp_%d_EGSidxBTC" %i)
+                    if not connectType[2][1]: prop_EGSidxBTT = "-"
+                    else: prop_EGSidxBTT = eval("props.elemGrp_%d_EGSidxBTT" %i)
+                    if not connectType[2][2]: prop_EGSidxBTS = "-"
+                    else: prop_EGSidxBTS = eval("props.elemGrp_%d_EGSidxBTS" %i)
+                    if not connectType[2][3]: prop_EGSidxBTB = "-"
+                    else: prop_EGSidxBTB = eval("props.elemGrp_%d_EGSidxBTB" %i)
+                    split = row.split(percentage=.40, align=1)
+                    if prop_EGSidxName == "": split.label(text="[Def.]")
+                    else:                     split.label(text=str(prop_EGSidxName))
+                    split2 = split.split(align=1)
+                    split2.label(text=str(prop_EGSidxCTyp))
+                    split2.label(text=str(prop_EGSidxBTC))
+                    split2.label(text=str(prop_EGSidxBTT))
+                    split2.label(text=str(prop_EGSidxBTS))
+                    split2.label(text=str(prop_EGSidxBTB))
+
+        ### If at least one element group is existing
+        if not (len(elemGrps) == 0 or props.menu_init):
+
             i = props.menu_selectedElemGrp
-            split = layout.split(percentage=.85, align=1)
-            split.prop(props, "elemGrp_%d_EGSidxName" %i)
-            split.operator("bcb.tool_select_group", icon="UV_ISLANDSEL")
+            ct = eval("props.elemGrp_%d_EGSidxCTyp" %i)
+            try: connectType = connectTypes[ct]
+            except: connectType = connectTypes[0]  # In case the connection type is unknown (no constraints)
+        
+            ###### Element group selector panel
 
-            ###### Formula assistant box
+            box = layout.box()
+            box.prop(props, "submenu_elemGrpSel", text="Element Group Selector", icon=self.icon_pulldown(props.submenu_elemGrpSel), emboss = False)
+            if props.submenu_elemGrpSel:
+                col = box.column(align=1)
+
+                row = col.row(align=1)
+                split = row.split(percentage=.50, align=1)
+                split2 = split.split(percentage=.30, align=1)
+                split2.operator("bcb.up_more", icon="PREV_KEYFRAME")
+                split2.operator("bcb.up", icon="TRIA_UP")
+                split2 = split.split(percentage=.70, align=1)
+                split2.operator("bcb.down", icon="TRIA_DOWN")
+                split2.operator("bcb.down_more", icon="NEXT_KEYFRAME")
+
+                col.separator()
+
+                row = col.row(align=1)
+                split = row.split(percentage=.85, align=1)
+                split.prop(props, "elemGrp_%d_EGSidxName" %i)
+                split.operator("bcb.tool_select_group", icon="UV_ISLANDSEL")
+
+            ###### Formula assistant panel
 
             box = layout.box()
             box.prop(props, "submenu_assistant", text="Formula Assistant", icon=self.icon_pulldown(props.submenu_assistant), emboss = False)
@@ -537,122 +558,118 @@ class bcb_panel(bpy.types.Panel):
                     split.operator("bcb.asst_update_all", icon="SCRIPT")
                     split3 = split.split(align=1)
                 split3.prop(props, "submenu_assistant_advanced")
+                        
+            ###### Element group settings panel
+
+            box = layout.box()
+            box.prop(props, "submenu_elemSet", text="Element Group Settings", icon=self.icon_pulldown(props.submenu_elemSet), emboss = False)
+            if props.submenu_elemSet:
+                col = box.column(align=1)
+
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxCTyp" %i)
+                if props.menu_gotData: row.enabled = 0
                     
-            ###### Element group settings (more)        
+                box = col.box().box()
+                box.label(text=connectType[0])
 
-            col = layout.column(align=1)
-            row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxCTyp" %i)
-            if props.menu_gotData: row.enabled = 0
-                
-            ct = eval("props.elemGrp_%d_EGSidxCTyp" %i)
-            try: connectType = connectTypes[ct]
-            except: connectType = connectTypes[0]  # In case the connection type is unknown (no constraints)
-            box = col.box();
-            box.label(text=connectType[0])
+                row = col.row(align=1); row.label(text="Breaking Thresholds in [N or Nm] / mm²:")
 
-            col.separator()
-            row = col.row(align=1); row.label(text="Breaking Thresholds in [N or Nm] / mm²:")
+                # Prepare possible expression variables
+                a = h = w = b = s = 1   
 
-            # Prepare possible expression variables
-            a = h = w = b = s = 1   
-
-            expression = eval("props.elemGrp_%d_EGSidxBTC" %i)
-            row = col.row(align=1)
-            try: value = eval(expression)
-            except: row.alert = 1; qAlert = 1
-            else: qAlert = 0
-            row.prop(props, "elemGrp_%d_EGSidxBTC" %i)
-            if not connectType[2][0]: row.active = 0
-            if qAlert: row = col.row(align=1); row.label(text="Error in expression")
-
-            expression = eval("props.elemGrp_%d_EGSidxBTT" %i)
-            row = col.row(align=1)
-            try: value = eval(expression)
-            except: row.alert = 1; qAlert = 1
-            else: qAlert = 0
-            row.prop(props, "elemGrp_%d_EGSidxBTT" %i)
-            if not connectType[2][1]: row.active = 0
-            if qAlert: row = col.row(align=1); row.label(text="Error in expression")
-
-            expression = eval("props.elemGrp_%d_EGSidxBTS" %i)
-            row = col.row(align=1)
-            try: value = eval(expression)
-            except: row.alert = 1; qAlert = 1
-            else: qAlert = 0
-            row.prop(props, "elemGrp_%d_EGSidxBTS" %i)
-            if not connectType[2][2]: row.active = 0
-            if qAlert: row = col.row(align=1); row.label(text="Error in expression")
-
-            expression = eval("props.elemGrp_%d_EGSidxBTS9" %i)
-            if expression != "" or props.submenu_assistant_advanced:
+                expression = eval("props.elemGrp_%d_EGSidxBTC" %i)
                 row = col.row(align=1)
                 try: value = eval(expression)
-                except: qAlert = 1
+                except: row.alert = 1; qAlert = 1
                 else: qAlert = 0
-                if qAlert and expression != "": row.alert = 1
-                row.prop(props, "elemGrp_%d_EGSidxBTS9" %i)
+                row.prop(props, "elemGrp_%d_EGSidxBTC" %i)
+                if not connectType[2][0]: row.active = 0
+                if qAlert: row = col.row(align=1); row.label(text="Error in expression")
+
+                expression = eval("props.elemGrp_%d_EGSidxBTT" %i)
+                row = col.row(align=1)
+                try: value = eval(expression)
+                except: row.alert = 1; qAlert = 1
+                else: qAlert = 0
+                row.prop(props, "elemGrp_%d_EGSidxBTT" %i)
+                if not connectType[2][1]: row.active = 0
+                if qAlert: row = col.row(align=1); row.label(text="Error in expression")
+
+                expression = eval("props.elemGrp_%d_EGSidxBTS" %i)
+                row = col.row(align=1)
+                try: value = eval(expression)
+                except: row.alert = 1; qAlert = 1
+                else: qAlert = 0
+                row.prop(props, "elemGrp_%d_EGSidxBTS" %i)
                 if not connectType[2][2]: row.active = 0
-                if qAlert and expression != "":
-                    row = col.row(align=1); row.label(text="Error in expression")
+                if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
-            expression = eval("props.elemGrp_%d_EGSidxBTB" %i)
-            row = col.row(align=1)
-            try: value = eval(expression)
-            except: row.alert = 1; qAlert = 1
-            else: qAlert = 0
-            row.prop(props, "elemGrp_%d_EGSidxBTB" %i)
-            if not connectType[2][3]: row.active = 0
-            if qAlert: row = col.row(align=1); row.label(text="Error in expression")
+                expression = eval("props.elemGrp_%d_EGSidxBTS9" %i)
+                if expression != "" or props.submenu_assistant_advanced:
+                    row = col.row(align=1)
+                    try: value = eval(expression)
+                    except: qAlert = 1
+                    else: qAlert = 0
+                    if qAlert and expression != "": row.alert = 1
+                    row.prop(props, "elemGrp_%d_EGSidxBTS9" %i)
+                    if not connectType[2][2]: row.active = 0
+                    if qAlert and expression != "":
+                        row = col.row(align=1); row.label(text="Error in expression")
 
-            expression = eval("props.elemGrp_%d_EGSidxBTB9" %i)
-            if expression != "" or props.submenu_assistant_advanced:
+                expression = eval("props.elemGrp_%d_EGSidxBTB" %i)
                 row = col.row(align=1)
                 try: value = eval(expression)
-                except: qAlert = 1
+                except: row.alert = 1; qAlert = 1
                 else: qAlert = 0
-                if qAlert and expression != "": row.alert = 1
-                row.prop(props, "elemGrp_%d_EGSidxBTB9" %i)
+                row.prop(props, "elemGrp_%d_EGSidxBTB" %i)
                 if not connectType[2][3]: row.active = 0
-                if qAlert and expression != "":
-                    row = col.row(align=1); row.label(text="Error in expression")
+                if qAlert: row = col.row(align=1); row.label(text="Error in expression")
 
-            expression = eval("props.elemGrp_%d_EGSidxBTP" %i)
-            if expression != "" or props.submenu_assistant_advanced:
-                row = col.row(align=1)
-                try: value = eval(expression)
-                except: qAlert = 1
-                else: qAlert = 0
-                if qAlert and expression != "": row.alert = 1
-                row.prop(props, "elemGrp_%d_EGSidxBTP" %i)
-                if not connectType[2][4]: row.active = 0
-                if qAlert and expression != "":
-                    row = col.row(align=1); row.label(text="Error in expression")
+                expression = eval("props.elemGrp_%d_EGSidxBTB9" %i)
+                if expression != "" or props.submenu_assistant_advanced:
+                    row = col.row(align=1)
+                    try: value = eval(expression)
+                    except: qAlert = 1
+                    else: qAlert = 0
+                    if qAlert and expression != "": row.alert = 1
+                    row.prop(props, "elemGrp_%d_EGSidxBTB9" %i)
+                    if not connectType[2][3]: row.active = 0
+                    if qAlert and expression != "":
+                        row = col.row(align=1); row.label(text="Error in expression")
 
-            value = eval("props.elemGrp_%d_EGSidxBTPL" %i)
-            if value != 0 or props.submenu_assistant_advanced:
-                row = col.row(align=1)
-                row.prop(props, "elemGrp_%d_EGSidxBTPL" %i)
-                if not connectType[2][4]: row.active = 0
+                expression = eval("props.elemGrp_%d_EGSidxBTP" %i)
+                if expression != "" or props.submenu_assistant_advanced:
+                    row = col.row(align=1)
+                    try: value = eval(expression)
+                    except: qAlert = 1
+                    else: qAlert = 0
+                    if qAlert and expression != "": row.alert = 1
+                    row.prop(props, "elemGrp_%d_EGSidxBTP" %i)
+                    if not connectType[2][4]: row.active = 0
+                    if qAlert and expression != "":
+                        row = col.row(align=1); row.label(text="Error in expression")
 
-            col.separator()
-            value = eval("props.elemGrp_%d_EGSidxBTX" %i)
-            if value != 1 or props.submenu_assistant_advanced:
+                value = eval("props.elemGrp_%d_EGSidxBTPL" %i)
+                if value != 0 or props.submenu_assistant_advanced:
+                    row = col.row(align=1)
+                    row.prop(props, "elemGrp_%d_EGSidxBTPL" %i)
+                    if not connectType[2][4]: row.active = 0
+
+                col.separator()
+                value = eval("props.elemGrp_%d_EGSidxBTX" %i)
                 row = col.row(align=1)
                 row.prop(props, "elemGrp_%d_EGSidxBTX" %i)
-                if not connectType[2][4]: row.active = 0
 
-            col.separator()
-            #row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxRqVP" %i)
-            row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxMatP" %i)
-            row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxDens" %i)
-            row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxPrio" %i)
-                            
-            ###### Advanced element group settings box
+                col.separator()
+                #row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxRqVP" %i)
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxMatP" %i)
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxDens" %i)
+                                
+            ###### Advanced element group settings panel
             
             box = layout.box()
-            box.prop(props, "submenu_advancedE", text="Advanced Element Settings", icon=self.icon_pulldown(props.submenu_advancedE), emboss = False)
-
-            if props.submenu_advancedE:
+            box.prop(props, "submenu_advElemSet", text="Advanced Element Group Settings", icon=self.icon_pulldown(props.submenu_advElemSet), emboss = False)
+            if props.submenu_advElemSet:
                 col = box.column(align=1)
 
                 row = col.row(align=1); row.label(text="1st & 2nd Tolerance (Plastic & Breaking):")
@@ -669,6 +686,9 @@ class bcb_panel(bpy.types.Panel):
                 value1 = eval("props.elemGrp_%d_EGSidxTl2D" %i)
                 value2 = eval("props.elemGrp_%d_EGSidxTl2R" %i)
                 if value1 == 0 or value2 == 0: split.active = 0
+
+                col.separator()
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxPrio" %i)
                 
                 col.separator()
                 row = col.row(align=1)

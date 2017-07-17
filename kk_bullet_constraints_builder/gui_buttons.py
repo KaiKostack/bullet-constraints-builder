@@ -186,8 +186,8 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
 
 class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
     bl_idname = "bcb.export_ascii_fm"
-    bl_label = "Export to FM"
-    bl_description = "Exports all constraint data to the Fracture Modifier (special Blender version required). 'Export to FM' will simulate scientifically like 'Bake'; 'Dynamic' enables geometry also to shatter for more realistic but non-scientific appearance."
+    bl_label = "Simulate FM"
+    bl_description = "Builds and simulates with help of the Fracture Modifier (special Blender version required). 'Simulate FM' will simulate scientifically like 'Simulate'; Dynamic: Enables geometry also to shatter for more realistic appearance but is actually non-scientific."
     int_ = bpy.props.IntProperty 
     use_handler = int_(default = 0)
     def execute(self, context):
@@ -223,8 +223,8 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
 
 class OBJECT_OT_bcb_bake(bpy.types.Operator):
     bl_idname = "bcb.bake"
-    bl_label = "Bake"
-    bl_description = "Bakes simulation. Use of this button is crucial if connection type 4 or above is used, because then constraints require monitoring on per frame basis during simulation."
+    bl_label = "Simulate"
+    bl_description = "Starts the rigid body simulation and creates a bake of it for later real-time playback. A build is invoked beforehand if not already done. Use of this button instead of the regular Blender baking is crucial because BCB constraints require to be monitored on per frame basis for the entire simulation."
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
