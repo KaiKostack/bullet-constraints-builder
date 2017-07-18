@@ -163,15 +163,15 @@ formulaAssistants = [
 # dl = Ø steel longitudinal bar
 #
 # Areas (mm
-# A = cross area beam, h*b
-# As = total cross area of the sum of all longitudinal steel bars, (dl/2)
-# asw = total cross area steel stirrup in cm
+# A = cross area beam (h*b)
+# As = total cross area of the sum of all longitudinal steel bars [mm^2]
+# asw = total cross area steel stirrup per meter [cm^2/m]
 #
 # Coefficients:
-# rho = reinforcement ratio = As/A             (dl/2)
-# y = shear coefficient (asw*10/d) (% value)   ((ds/2)
+# rho = reinforcement ratio (As/A)
+# y = shear coefficient (asw*10/d) [%]
 # 1.2 = coefficient for shear carrying capacity
-# e1 = distance between longitudinal irons in relation to the beam height: e/h (% value)   (h-2*c-dl)/h
+# e1 = distance between longitudinal irons in relation to the beam height (e/h) [%]  (h-2*c-dl)/h
 # n = number of longitudinal steel bars
 # k = scale factor
 #
