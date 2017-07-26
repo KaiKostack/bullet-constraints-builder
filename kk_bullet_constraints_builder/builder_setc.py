@@ -462,7 +462,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if tol2dist == 0:
                 # Only try to use FA settings if there is a valid one active
                 if asst['ID'] == "con_rei_beam" or asst['ID'] == "con_rei_wall":
-                      tol2dist = (asst['elu']/100) *geoLengthApprox
+                      tol2dist = asst['elu'] /100
                 else: tol2dist = presets[0][EGSidxTl2D]  # Use tolerance from preset #0 as last resort
             if tol2rot == 0:
                 # Only try to use FA settings if there is a valid one active
@@ -919,7 +919,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
+            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
             ### Loop through all constraints of this connection
             for i in range(3):
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
@@ -950,7 +950,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
+            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
             ### Loop through all constraints of this connection
             for i in range(4):
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
@@ -981,7 +981,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
-            springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
+            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
             setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
             if qUpdateComplete:
                 ### Enable linear and angular spring
@@ -1008,7 +1008,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             value = brkThresValueS
             brkThres3 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueP
-            springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
+            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
             # Loop through all constraints of this connection
             for j in range(3):
 
@@ -1074,7 +1074,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             value = brkThresValueS
             brkThres3 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount 
             value = brkThresValueP
-            springStiff = value *btMultiplier *(rbw_steps_per_second /150) /(springLength *tol2dist) /constCount
+            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
             # Loop through all constraints of this connection
             for j in range(4):
 
@@ -1191,7 +1191,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             # Update progress bar
             bpy.context.window_manager.progress_update(k /len(connectsPair))
             
-            consts = next(connectsConsts_iter)
+            consts = next(connectsConsts_iter)            
             geo = next(connectsGeo_iter)
             geoContactArea = geo[0]
             geoHeight = geo[1]
@@ -1218,8 +1218,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if aspect == 1:
                 if ya > 0 and za > 0: aspect = ya /za
                 else: aspect = 1
-            if aspect < 1: aspect = (h /w)
-            if aspect > 1: aspect = (w /h)
+            if aspect < 1 and w > 0: aspect = (h /w)
+            if aspect > 1 and h > 0: aspect = (w /h)
+            if w == 0 or h == 0: aspect = 1  # Can be true if Surface Thickness > 0 is used
             #if aspect >= 1: aspect = (w /h)  # Alternative for CTs without differentiated shearing/bending axis: can lead to flipped orientations
             side = (a /aspect)**.5  # Calculate original dimensions from actual contact area
             side /= 1000  # mm to m
