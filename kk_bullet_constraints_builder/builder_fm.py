@@ -472,17 +472,21 @@ def FM_constraints(ob):
                 ### Write constraint defaults first (FM doesn't set constraint to Blender defaults)
                 for p in cDef.items():
                     if p[0] not in {"object1", "object2"}:
-                        attr = getattr(con, p[0])  # Current value
-                        if p[1] != attr:           # Overwrite only when different
-                            #print("attr", p[0], p[1], attr)
-                            setattr(con, p[0], p[1])
+                        try: attr = getattr(con, p[0])  # Current value
+                        except: pass
+                        else:
+                            if p[1] != attr:           # Overwrite only when different
+                                #print("attr", p[0], p[1], attr)
+                                setattr(con, p[0], p[1])
                 ### Write own changed parameters (because it's a diff based on defaults)
                 for p in cProps.items():
                     if p[0] not in {"object1", "object2"}:
-                        attr = getattr(con, p[0])  # Current value
-                        if p[1] != attr:           # Overwrite only when different
-                            #print("Set: ", p[0], p[1])
-                            setattr(con, p[0], p[1])
+                        try: attr = getattr(con, p[0])  # Current value
+                        except: pass
+                        else:
+                            if p[1] != attr:           # Overwrite only when different
+                                #print("Set: ", p[0], p[1])
+                                setattr(con, p[0], p[1])
                 cnt += 1
 
     md.fracture_mode = fmode_bak
