@@ -182,6 +182,11 @@ def build_fm(use_handler=0):
     bpy.ops.object.modifier_add(type='FRACTURE')
     md = ob.modifiers["Fracture"]
 
+    # Change some FM settings
+    md.fracture_mode = 'PREFRACTURED'
+    md.use_constraint_collision = not props.disableCollision
+    md.fracture_mode = 'EXTERNAL'
+
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
 
@@ -408,6 +413,7 @@ def FM_constraints(ob):
 
     ### Create constraints
     cnt = 0
+    missingAttribs = []
     for pair in exPairs:
         ### Get data that is only stored once per connection
         ob1    = pair[0]
@@ -473,7 +479,8 @@ def FM_constraints(ob):
                 for p in cDef.items():
                     if p[0] not in {"object1", "object2"}:
                         try: attr = getattr(con, p[0])  # Current value
-                        except: pass
+                        except:
+                            if p[0] not in missingAttribs: missingAttribs.append(p[0])
                         else:
                             if p[1] != attr:           # Overwrite only when different
                                 #print("attr", p[0], p[1], attr)
@@ -482,12 +489,18 @@ def FM_constraints(ob):
                 for p in cProps.items():
                     if p[0] not in {"object1", "object2"}:
                         try: attr = getattr(con, p[0])  # Current value
-                        except: pass
+                        except:
+                            if p[0] not in missingAttribs: missingAttribs.append(p[0])
                         else:
                             if p[1] != attr:           # Overwrite only when different
                                 #print("Set: ", p[0], p[1])
                                 setattr(con, p[0], p[1])
                 cnt += 1
+
+    if len(missingAttribs):
+        print("Warning: Following constraint attribute(s) missing:")
+        print("(This is a bug in FM, branch seems not to be up to date with Blender.)")
+        for attr in missingAttribs: print(attr)
 
     md.fracture_mode = fmode_bak
     md.refresh = False

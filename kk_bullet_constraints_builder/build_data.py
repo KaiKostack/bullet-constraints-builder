@@ -91,7 +91,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_alignVertical"] = props.alignVertical
     scene["bcb_prop_useAccurateArea"] = props.useAccurateArea 
     scene["bcb_prop_rebarMesh"] = props.rebarMesh
-    scene["bcb_prop_nonManifoldThickness"] = props.nonManifoldThickness 
+    scene["bcb_prop_surfaceThickness"] = props.surfaceThickness 
     scene["bcb_prop_minimumElementSize"] = props.minimumElementSize 
     scene["bcb_prop_automaticMode"] = props.automaticMode 
     scene["bcb_prop_saveBackups"] = props.saveBackups 
@@ -125,14 +125,16 @@ def getConfigDataFromScene(scene):
 
     props = bpy.context.window_manager.bcb
 
+    version = bcb_version
     warning = ""
     if "bcb_version" in scene.keys():
         versionCfg = scene["bcb_version"]
-        version = bcb_version
         if versionCfg != version:
             if versionCfg[0] < version[0]:
                 warning = "Configuration settings from an older BCB version detected which is known to be incompatible with this one.\nTry to clear settings and reconfigure your scene from scratch."
-    else:   warning = "Configuration settings from an older BCB version detected which is known to be incompatible with this one.\nTry to clear settings and reconfigure your scene from scratch."
+    else:
+        versionCfg = (0, 0, 0)
+        warning = "Configuration settings from an older BCB version detected which is known to be incompatible with this one.\nTry to clear settings and reconfigure your scene from scratch."
 
     if "bcb_prop_preprocTools_aut" in scene.keys():
         props.preprocTools_aut = scene["bcb_prop_preprocTools_aut"]
@@ -222,8 +224,8 @@ def getConfigDataFromScene(scene):
         props.useAccurateArea = scene["bcb_prop_useAccurateArea"]
     if "bcb_prop_rebarMesh" in scene.keys():
         props.rebarMesh = scene["bcb_prop_rebarMesh"]
-    if "bcb_prop_nonManifoldThickness" in scene.keys():
-        props.nonManifoldThickness = scene["bcb_prop_nonManifoldThickness"]
+    if "bcb_prop_surfaceThickness" in scene.keys():
+        props.surfaceThickness = scene["bcb_prop_surfaceThickness"]
     if "bcb_prop_minimumElementSize" in scene.keys():
         props.minimumElementSize = scene["bcb_prop_minimumElementSize"]
     if "bcb_prop_automaticMode" in scene.keys():

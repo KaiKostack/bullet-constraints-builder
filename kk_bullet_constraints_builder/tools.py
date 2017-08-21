@@ -1010,6 +1010,7 @@ def tool_groundMotion(scene):
         
             # Enable animated flag for all passive rigid bodies so that Bullet takes their motion into account
             objGnd.rigid_body.kinematic = True
+        
         for obj in objs: obj.rigid_body.kinematic = True
         
     ###### Parenting ground object to motion object

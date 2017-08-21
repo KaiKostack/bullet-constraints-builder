@@ -110,7 +110,7 @@ def exportConfigData(scene):
     configData.append(props.alignVertical)
     configData.append(props.useAccurateArea)
     configData.append(props.rebarMesh)
-    configData.append(props.nonManifoldThickness)
+    configData.append(props.surfaceThickness)
     configData.append(props.minimumElementSize)
     configData.append(props.automaticMode)
     configData.append(props.saveBackups)
@@ -151,7 +151,7 @@ def importConfigData(scene):
         props.alignVertical = configData[i]; i += 1
         props.useAccurateArea = configData[i]; i += 1
         props.rebarMesh = configData[i]; i += 1
-        props.nonManifoldThickness = configData[i]; i += 1
+        props.surfaceThickness = configData[i]; i += 1
         props.minimumElementSize = configData[i]; i += 1
         props.automaticMode = configData[i]; i += 1
         props.saveBackups = configData[i]; i += 1

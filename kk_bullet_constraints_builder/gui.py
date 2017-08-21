@@ -346,7 +346,7 @@ class bcb_panel(bpy.types.Panel):
             row.prop(props, "connectionCountLimit")
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
-            row.prop(props, "nonManifoldThickness")
+            row.prop(props, "surfaceThickness")
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "minimumElementSize")

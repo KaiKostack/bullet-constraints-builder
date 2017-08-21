@@ -513,7 +513,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0):
                 
         ### Or calculate contact area based on predefined custom thickness
         else:
-            geoContactArea = (overlapX +overlapY +overlapZ) *props.nonManifoldThickness
+            geoContactArea = (overlapX +overlapY +overlapZ) *props.surfaceThickness
             
     else: geoContactArea = 0
             
@@ -526,7 +526,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0):
 
     # Add custom thickness to contact area (only for manifolds as it is already included in non-manifolds)
     if not qNonManifold:
-        geoContactArea += geoWidth *props.nonManifoldThickness
+        geoContactArea += geoWidth *props.surfaceThickness
 
     ### Use center of contact area boundary box as constraints location
     centerX = max(bbAMin[0],bbBMin[0]) +(overlapX /2)

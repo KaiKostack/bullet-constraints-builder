@@ -434,6 +434,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             # Get spring length used later for stiffness calculation
             if brkThresValuePL > 0: springLength = brkThresValuePL
             else:                   springLength = geoLengthApprox
+            if springLength == 0: springLength = 0.1  # Fallback to avoid division by 0 in case geometry of length 0 is found
             # Recalculate directional vector for better constraint alignment
             if props.snapToAreaOrient:
                 # Use contact area for orientation (axis closest to thickness)
