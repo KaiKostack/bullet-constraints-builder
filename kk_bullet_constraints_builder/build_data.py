@@ -103,6 +103,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_progrWeakStartFact"] = props.progrWeakStartFact
     scene["bcb_prop_snapToAreaOrient"] = props.snapToAreaOrient
     scene["bcb_prop_disableCollision"] = props.disableCollision
+    scene["bcb_prop_disableCollisionPerm"] = props.disableCollisionPerm
     scene["bcb_prop_lowerBrkThresPriority"] = props.lowerBrkThresPriority
     scene["bcb_prop_detonatorObj"] = props.detonatorObj
     
@@ -248,6 +249,8 @@ def getConfigDataFromScene(scene):
         props.snapToAreaOrient = scene["bcb_prop_snapToAreaOrient"]
     if "bcb_prop_disableCollision" in scene.keys():
         props.disableCollision = scene["bcb_prop_disableCollision"]
+    if "bcb_prop_disableCollisionPerm" in scene.keys():
+        props.disableCollisionPerm = scene["bcb_prop_disableCollisionPerm"]
     if "bcb_prop_lowerBrkThresPriority" in scene.keys():
         props.lowerBrkThresPriority = scene["bcb_prop_lowerBrkThresPriority"]
     if "bcb_prop_detonatorObj" in scene.keys():

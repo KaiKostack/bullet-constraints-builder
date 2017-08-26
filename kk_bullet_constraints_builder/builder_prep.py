@@ -821,6 +821,7 @@ def createConnectionData(objs, objsEGrp, connectsPair):
     ### Create connection data
     if debug: print("Creating connection data...")
     
+    props = bpy.context.window_manager.bcb    
     elemGrps = mem["elemGrps"]
     connectsConsts = []
     constsConnect = []
@@ -864,6 +865,9 @@ def createConnectionData(objs, objsEGrp, connectsPair):
         if constCnt == 0: connectsConsts.append([])
         # Otherwise reserve space for the predefined constraints count
         else:
+            # Add one extra slot for a possible constraint for permanent collision suppression
+            if props.disableCollisionPerm: constCnt += 1
+            # Reserve constraint slots
             items = []
             for j in range(constCnt):
                 items.append(constCntOfs +j)

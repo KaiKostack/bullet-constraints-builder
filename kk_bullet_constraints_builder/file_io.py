@@ -122,6 +122,7 @@ def exportConfigData(scene):
     configData.append(props.progrWeakStartFact)
     configData.append(props.snapToAreaOrient)
     configData.append(props.disableCollision)
+    configData.append(props.disableCollisionPerm)
     configData.append(props.lowerBrkThresPriority)
     configData.append(props.detonatorObj)
     configData.append(mem["elemGrps"])
@@ -163,6 +164,7 @@ def importConfigData(scene):
         props.progrWeakStartFact = configData[i]; i += 1
         props.snapToAreaOrient = configData[i]; i += 1
         props.disableCollision = configData[i]; i += 1
+        props.disableCollisionPerm = configData[i]; i += 1
         props.lowerBrkThresPriority = configData[i]; i += 1
         props.detonatorObj = configData[i]; i += 1
         mem["elemGrps"] = configData[i]; i += 1

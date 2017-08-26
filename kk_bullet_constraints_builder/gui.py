@@ -300,6 +300,12 @@ class bcb_panel(bpy.types.Panel):
             split = row.split(percentage=.50, align=1)
             split.prop(props, "constraintUseBreaking")
             split.prop(props, "disableCollision")
+
+            row = col.row(align=1)
+            split = row.split(percentage=.50, align=1)
+            if props.menu_gotData: split.enabled = 0
+            split.label(text="")
+            split.prop(props, "disableCollisionPerm")
        
             row = col.row(align=1)
             split = row.split(percentage=.50, align=1)

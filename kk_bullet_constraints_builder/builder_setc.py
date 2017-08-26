@@ -132,6 +132,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
 
+    qSetGhostConnection = 1
+
     exData = None
     connectsTol = []  # Create new array to store individual tolerances per connection
     ### Prepare dictionary of element indices for faster item search (optimization)
@@ -1133,6 +1135,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
 
+        ### 1x GENERIC; Constraint for permanent collision suppression and no influence otherwise
+        if props.disableCollisionPerm:
+            cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
+            constCount = 1; correction = 1  # No correction required for this constraint type
+            setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=props.disableCollision, ct='GENERIC')
+            constsData.append([cData, cDatb])
+
     print()
     if len(emptyObjs) != len(constsData):
         print("WARNING: Size mismatch: emptyObjs, constsData;", len(emptyObjs), len(constsData))
@@ -1230,14 +1239,19 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             # Use standard scaling for drawing of non-directional constraints
             axs_s = Vector((emptyDrawSize, emptyDrawSize, emptyDrawSize))
             ### Add new scale settings for drawing
-            for cIdx in consts:
+            constCnt = len(consts)
+            idxLast = constCnt -1
+            for idx in range(constCnt):
+                cIdx = consts[idx]
                 objConst = emptyObjs[cIdx]
                 constData = objConst.rigid_body_constraint
                 #objConst.object.empty_draw_type = 'CUBE'  # This is set before duplication for performance reasons
                 objConst.empty_draw_size = .502  # Scale size slightly larger to make lines visible over solid elements
-                # Scale the cube to the dimensions of the connection area
-                if constData.type == 'GENERIC' or (constData.type == 'GENERIC_SPRING' and constData.enabled):
-                      objConst.scale = axs
+                if not props.disableCollisionPerm and idx != idxLast:  # Use simple if constraint is for permanent collision suppression
+                    # Scale the cube to the dimensions of the connection area
+                    if constData.type == 'GENERIC' or (constData.type == 'GENERIC_SPRING' and constData.enabled):
+                          objConst.scale = axs
+                    else: objConst.scale = axs_s
                 else: objConst.scale = axs_s
         print()
         

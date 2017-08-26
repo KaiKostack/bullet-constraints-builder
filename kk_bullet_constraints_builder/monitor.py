@@ -322,7 +322,8 @@ def monitor_initBuffers(scene):
             constsUseBrk = []
             constsBrkThres = []
             mode = 1
-            for const in connectsConsts[d]:
+            if 1: conConsts = connectsConsts[d][:-1]
+            for const in conConsts:
                 emptyObj = emptyObjs[const]
                 consts.append(emptyObj)
                 if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
