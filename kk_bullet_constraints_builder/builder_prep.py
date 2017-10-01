@@ -860,6 +860,11 @@ def createConnectionData(objs, objsEGrp, connectsPair):
             constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
         else:  # Both A and B are in passive group and both are passive RBs
             constCnt = 0
+        # For unbreakable passive connections above settings can be overwritten
+        if not props.passiveUseBreaking:
+            # Both A and B are in passive group but either one is actually an active RB (a xor b)
+            if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
         
         # In case the connection type is passive or unknown reserve no space for constraints
         if constCnt == 0: connectsConsts.append([])

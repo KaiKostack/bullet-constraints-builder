@@ -104,6 +104,7 @@ def exportConfigData(scene):
     configData.append(bcb_version)
     configData.append(props.stepsPerSecond)
     configData.append(props.constraintUseBreaking)
+    configData.append(props.passiveUseBreaking)
     configData.append(props.connectionCountLimit)
     configData.append(props.searchDistance)
     configData.append(props.clusterRadius)
@@ -146,6 +147,7 @@ def importConfigData(scene):
         i += 1
         props.stepsPerSecond = configData[i]; i += 1
         props.constraintUseBreaking = configData[i]; i += 1
+        props.passiveUseBreaking = configData[i]; i += 1
         props.connectionCountLimit = configData[i]; i += 1
         props.searchDistance = configData[i]; i += 1
         props.clusterRadius = configData[i]; i += 1

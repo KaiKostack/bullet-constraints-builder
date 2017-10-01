@@ -424,6 +424,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         else:
             CT = 0            
 
+        # For unbreakable passive connections above settings can be overwritten
+        if not props.passiveUseBreaking:
+            # Both A and B are in passive group but either one is actually an active RB (A xor B)
+            if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
+
         ######
         
         if CT > 0:
@@ -555,7 +561,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             #rotm = 'QUATERNION'
             #setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm,rot=rotN, ub=0, dc=1, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=0,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
             #setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='GENERIC_SPRING', sslx=999,ssly=999,sslz=999, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, ullx=1,ully=1,ullz=1, llxl=0,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-            setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=1,si=1)
+            setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=props.passiveUseBreaking,si=1)
             constsData.append([cData, cDatb])
 
         ### 1x FIXED; Linear omni-directional + bending breaking threshold
@@ -1136,7 +1142,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 constsData.append([cData, cDatb])
 
         ### 1x GENERIC; Constraint for permanent collision suppression and no influence otherwise
-        if props.disableCollisionPerm:
+        if CT != 0 and props.disableCollisionPerm:
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             constCount = 1; correction = 1  # No correction required for this constraint type
             setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=props.disableCollision, ct='GENERIC')

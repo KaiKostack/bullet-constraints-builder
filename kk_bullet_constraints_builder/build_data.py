@@ -85,6 +85,7 @@ def storeConfigDataInScene(scene):
 
     scene["bcb_prop_stepsPerSecond"] = props.stepsPerSecond
     scene["bcb_prop_constraintUseBreaking"] = props.constraintUseBreaking
+    scene["bcb_prop_passiveUseBreaking"] = props.passiveUseBreaking
     scene["bcb_prop_connectionCountLimit"] = props.connectionCountLimit
     scene["bcb_prop_searchDistance"] = props.searchDistance
     scene["bcb_prop_clusterRadius"] = props.clusterRadius
@@ -213,6 +214,8 @@ def getConfigDataFromScene(scene):
         props.stepsPerSecond = scene["bcb_prop_stepsPerSecond"]
     if "bcb_prop_constraintUseBreaking" in scene.keys():
         props.constraintUseBreaking = scene["bcb_prop_constraintUseBreaking"]
+    if "bcb_prop_passiveUseBreaking" in scene.keys():
+        props.passiveUseBreaking = scene["bcb_prop_passiveUseBreaking"]
     if "bcb_prop_connectionCountLimit" in scene.keys():
         props.connectionCountLimit = scene["bcb_prop_connectionCountLimit"]
     if "bcb_prop_searchDistance" in scene.keys():

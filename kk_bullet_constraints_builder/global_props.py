@@ -114,6 +114,7 @@ class bcb_props(bpy.types.PropertyGroup):
     ### Advanced global settings
     stepsPerSecond        = int_(name="Steps Per Second",         default=300, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
     constraintUseBreaking = bool_(name="Enable Breaking",         default=1,                       description="Enables breaking for all constraints.")
+    passiveUseBreaking    = bool_(name="Enbl. Brk. Passive",      default=1,                       description="Enables breaking for active to passive connections. Usually this should stay enabled but in some cases the evaluation of forces in active-passive connections can be more inaccurate than those of active-active connections, then it may help to disable breaking of such connections altogether.")
     connectionCountLimit  = int_(name="Con. Count Limit",         default=100, min=0, max=10000,   description="Maximum count of connections per object pair (0 = disabled).")
     searchDistance        = float_(name="Search Distance",        default=0.02, min=0.0, max=1000, description="Search distance to neighbor geometry.")
     clusterRadius         = float_(name="Cluster Radius",         default=0, min=0.0, max=1000,    description="Radius for bundling close constraints into clusters (0 = clusters disabled).")
