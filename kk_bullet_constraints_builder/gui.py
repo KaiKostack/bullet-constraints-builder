@@ -344,9 +344,9 @@ class bcb_panel(bpy.types.Panel):
             col.separator()
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
-            split = row.split(percentage=.50, align=1)
-            split.prop(props, "useAccurateArea")
-            split.prop(props, "rebarMesh")
+            row.prop(props, "rebarMesh")
+            row = col.row(align=1)
+            row.prop(props, "useAccurateArea")
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "connectionCountLimit")

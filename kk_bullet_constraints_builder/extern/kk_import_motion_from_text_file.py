@@ -25,7 +25,7 @@
 bl_info = {
     "name": "Motion Data Importer",
     "author": "Kai Kostack",
-    "version": (1, 0, 3),
+    "version": (1, 1, 0),
     "blender": (2, 69, 0),
     "location": "File > Import-Export",
     "warning": "",
@@ -209,6 +209,7 @@ def readData(filename):
         print("Error: Could not open file.")
         return
     
+    qError = 0
     linesItems = []
     i = -1
     for line in f.readlines():
@@ -229,14 +230,24 @@ def readData(filename):
         items = []
         for item in lineSplits:
             try: value = float(item)
-            except: print("Error: Value could not be converted:", item)
+            except:
+                print("Error: Value could not be converted:", item)
+                qError = 1
+                break
             else: items.append(value)
         linesItems.append(items)
-    print("Sample row of values:")
-    print(linesItems[-1])
-    print("(If corrupted file structure might be wrong.)")
-    f.close()
+        if qError: break
 
+    f.close()
+ 
+    if len(linesItems) >= 1: print("Last rows of values:")
+    if len(linesItems) >= 2: print(linesItems[-2])
+    if len(linesItems) >= 1: print(linesItems[-1])
+    print("(If corrupted file structure might be wrong.)")
+    if qError:
+        print("Error: Inconsistency in file detected, some data might not be imported!")
+        linesItems = linesItems[:-1]  # Remove last erroneous line
+    
     return linesItems
 
 ################################################################################   

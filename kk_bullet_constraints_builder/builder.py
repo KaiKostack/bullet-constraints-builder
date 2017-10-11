@@ -82,10 +82,11 @@ def build():
                     ###### Delete connections with too few connected vertices
                     #connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
                     ###### Calculate contact area for all connections
-                    if props.useAccurateArea:
-                        connectsGeo, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
-                    else:
-                        connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair)
+                    ### For now this is not used anymore as it is less safe than to derive an accurate contact area indirectly by using: volume /length
+                    #if props.useAccurateArea:
+                    #    connectsGeo, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
+                    #else:
+                    connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair)
                     ###### Delete connections with zero contact area
                     connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connectsLoc)
                     ###### Create connection data
@@ -155,6 +156,8 @@ def build():
             if len(emptyObjs) > 0 and objCntInEGrps > 1:
                 ###### Set general rigid body world settings
                 initGeneralRigidBodyWorldSettings(scene)
+                ###### Calculate mass for all mesh objects
+                calculateMass(scene, objs, objsEGrp, childObjs)
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
                 if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
@@ -165,8 +168,6 @@ def build():
                 if not props.asciiExport:
                     scene.update()  # Required to update empty locations before layer switching
                     scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
-                ###### Calculate mass for all mesh objects
-                calculateMass(scene, objs, objsEGrp, childObjs)
                 ###### Exporting data into internal ASCII text file
                 if props.asciiExport and exData != None: exportDataToText(exData)
             

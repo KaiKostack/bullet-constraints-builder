@@ -453,6 +453,13 @@ def FM_constraints(ob):
                 tol2dist = -1
                 tol2rot = -1
                 plastic = False
+            #if "655" in name:
+            #    print("FMC: %s %0.2f %0.2f %0.2f %0.2f" %(name, tol1dist, tol1rot, tol2dist, tol2rot))
+            #tol1dist = 0
+            #tol1rot = 0
+            #tol2dist = 0
+            #tol2rot = 0
+
             # Rotation
             if rotm == "QUATERNION":  # If no quaternion exists we assume no rotation is available
                 rot = mathutils.Quaternion(rot)

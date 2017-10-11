@@ -396,7 +396,8 @@ def getBuildDataFromScene(scene):
     except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
 
     try: connectsTol = scene["bcb_connectsTol"]
-    except: connectsTol = []; print("Error: bcb_connectsTol property not found, rebuilding constraints is required.")
+    except: connectsTol = []; #print("Error: bcb_connectsTol property not found, rebuilding constraints is required.")
+    # Silenced this error since we needed to postpone storage of connectsTol and this function is called once before the data becomes available 
 
     try: constsConnect = scene["bcb_constsConnect"]
     except: constsConnect = []; print("Error: bcb_constsConnect property not found, rebuilding constraints is required.")

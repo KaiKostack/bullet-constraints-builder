@@ -132,8 +132,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
 
-    qSetGhostConnection = 1
-
     exData = None
     connectsTol = []  # Create new array to store individual tolerances per connection
     ### Prepare dictionary of element indices for faster item search (optimization)
@@ -200,6 +198,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         elemGrps_elemGrpA = elemGrps[elemGrpA]
         elemGrps_elemGrpB = elemGrps[elemGrpB]
 
+        ### Element length approximation (center to center vector)
+        dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+        geoLengthApprox = dirVec.length
+
         ###### Decision of which material settings from both groups will be used for connection
 
         CT_A = elemGrps_elemGrpA[EGSidxCTyp]
@@ -219,6 +221,21 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
             brkThresValuePL_A = elemGrps_elemGrpA[EGSidxBTPL]
             mul = elemGrps_elemGrpA[EGSidxBTX]
+            # Area correction calculation based on volume
+            if props.useAccurateArea:
+                materialDensity = elemGrps_elemGrpA[EGSidxDens]
+                if not materialDensity:
+                    materialPreset = elemGrps_elemGrpA[EGSidxMatP]
+                    if materialPreset != "": materialDensity = materialPresets[materialPreset]
+                volume = objA.rigid_body.mass /materialDensity 
+                # Find out element thickness to be used for bending threshold calculation 
+                dim = objA.dimensions; dimAxis = [1, 2, 3]
+                dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
+                dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
+                # Derive contact area correction factor from geometry section area divided by bbox section area
+                sectionArea = volume /dimLength  # Full geometry section area of element
+                if dimHeight *dimWidth != 0:
+                    mul *= sectionArea / (dimHeight *dimWidth)
             # Area correction calculation for cylinders (*pi/4)
             if elemGrps_elemGrpA[EGSidxCyln]: mulCyl = 0.7854
             else:                             mulCyl = 1
@@ -271,6 +288,21 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
             brkThresValuePL_B = elemGrps_elemGrpB[EGSidxBTPL]
             mul = elemGrps_elemGrpB[EGSidxBTX]
+            # Area correction calculation based on volume
+            if props.useAccurateArea:
+                materialDensity = elemGrps_elemGrpB[EGSidxDens]
+                if not materialDensity:
+                    materialPreset = elemGrps_elemGrpB[EGSidxMatP]
+                    if materialPreset != "": materialDensity = materialPresets[materialPreset]
+                volume = objB.rigid_body.mass /materialDensity 
+                # Find out element thickness to be used for bending threshold calculation 
+                dim = objB.dimensions; dimAxis = [1, 2, 3]
+                dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
+                dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
+                # Derive contact area correction factor from geometry section area divided by bbox section area
+                sectionArea = volume /dimLength  # Full geometry section area of element
+                if dimHeight *dimWidth != 0:
+                    mul *= sectionArea / (dimHeight *dimWidth)            
             # Area correction calculation for cylinders (*pi/4)
             if elemGrps_elemGrpB[EGSidxCyln]: mulCyl = 0.7854
             else:                             mulCyl = 1
@@ -435,14 +467,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         if CT > 0:
             elemGrps_elemGrp = elemGrps[elemGrp]
 
-            ### Calculate orientation between the two elements
-            # Center to center orientation
-            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-            geoLengthApprox = dirVec.length
-            # Get spring length used later for stiffness calculation
+            ### Get spring length to be used later for stiffness calculation
             if brkThresValuePL > 0: springLength = brkThresValuePL
             else:                   springLength = geoLengthApprox
             if springLength == 0: springLength = 0.1  # Fallback to avoid division by 0 in case geometry of length 0 is found
+            ### Calculate orientation between the two elements
             # Recalculate directional vector for better constraint alignment
             if props.snapToAreaOrient:
                 # Use contact area for orientation (axis closest to thickness)
@@ -488,11 +517,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == CT: qUpdateComplete = 0
                 else: objConst0['ConnectType'] = CT; qUpdateComplete = 1
                 ### Store value as ID property for debug purposes
-                #objConst0['ContactArea'] = geoContactArea
-                objConst0['tol1dist'] = tol1dist
-                objConst0['tol1rot'] = tol1rot
-                objConst0['tol2dist'] = tol2dist
-                objConst0['tol2rot'] = tol2rot
+                objConst0['ContactArea'] = geoContactArea
+                if props.useAccurateArea:
+                    objConst0['SectionArea'] = sectionArea
+                    objConst0['mul'] = mul
                 damage = (1 -btMultiplier) *100
                 if btMultiplier < 1:
                     for idx in consts: emptyObjs[idx]['Damage %'] = damage
@@ -1145,7 +1173,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         if CT != 0 and props.disableCollisionPerm:
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             constCount = 1; correction = 1  # No correction required for this constraint type
-            setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=props.disableCollision, ct='GENERIC')
+            setConstParams(cData,cDatb,cDef, loc=loc, bt=-1, ub=0, dc=props.disableCollision, ct='GENERIC')
             constsData.append([cData, cDatb])
 
     print()

@@ -35,7 +35,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 7, 4)
+bcb_version = (2, 7, 5)
 
 ### Customizable element group presets
 presets = [
@@ -187,12 +187,65 @@ formulaAssistants = [
 # V+ = V- ? 0.15/k* ((100*rho*fc)^1/3) *h*b
 # M+ = M- ? (fc*(1-rho) + fs*rho*e1*4.5) *h*h*w/12 /1000 
 
+### Material preset densities used by Blender
+materialPresets = {
+    "Air": 1.0,  # Not quite; adapted from 1.43 for oxygen for use as default
+    "Acrylic": 1400.0,
+    "Asphalt (Crushed)": 721.0,
+    "Bark": 240.0,
+    "Beans (Cocoa)": 593.0,
+    "Beans (Soy)": 721.0,
+    "Brick (Pressed)": 2400.0,
+    "Brick (Common)": 2000.0,
+    "Brick (Soft)": 1600.0,
+    "Brass": 8216.0,
+    "Bronze": 8860.0,
+    "Carbon (Solid)": 2146.0,
+    "Cardboard": 689.0,
+    "Cast Iron": 7150.0,
+	"Cement": 1442.0,
+    "Chalk (Solid)": 2499.0,
+	"Coffee (Fresh/Roast)": 500.0,
+	"Concrete": 2320.0,
+	"Charcoal": 208.0,
+    "Cork": 240.0,
+    "Copper": 8933.0,
+    "Garbage": 481.0,
+    "Glass (Broken)": 1940.0,
+    "Glass (Solid)": 2190.0,
+    "Gold": 19282.0,
+    "Granite (Broken)": 1650.0,
+    "Granite (Solid)": 2691.0,
+    "Gravel": 2780.0,
+    "Ice (Crushed)": 593.0,
+    "Ice (Solid)": 919.0,
+    "Iron": 7874.0,
+    "Lead": 11342.0,
+    "Limestone (Broken)": 1554.0,
+    "Limestone (Solid)": 2611.0,
+    "Marble (Broken)": 1570.0,
+    "Marble (Solid)": 2563.0,
+    "Paper": 1201.0,
+    "Peanuts (Shelled)": 641.0,
+    "Peanuts (Not Shelled)": 272.0,
+    "Plaster": 849.0,
+    "Plastic": 1200.0,
+    "Polystyrene": 1050.0,
+    "Rubber": 1522.0,
+    "Silver": 10501.0,
+    "Steel": 7860.0,
+    "Stone": 2515.0,
+    "Stone (Crushed)": 1602.0,
+    "Timber": 610.0
+    }
+
 ### Vars for developers
 debug = 0                            # 0     | Enables verbose console output for debugging purposes
 logPath = r"/tmp"                    #       | Path to log files if debugging is enabled
 commandStop = r"/tmp/bcb-stop"       #       | For very large simulations Blender can become unresponsive on baking, in this case you can create this file to make the BCB aware you want to stop
 maxMenuElementGroupItems = 300       # 300   | Maximum allowed element group entries in menu 
 emptyDrawSize = 0.25                 # 0.25  | Display size of constraint empty objects as radius in meters
+minimumContactArea = 0.001           # 0.001 | Zero limit for a detected contact area to be considered for connection
 asciiExportName = "BCB_export.txt"   #       | Name of ASCII text file to be exported
   
 # For monitor event handler

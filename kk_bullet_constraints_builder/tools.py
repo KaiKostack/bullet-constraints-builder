@@ -242,22 +242,17 @@ def tool_applyAllModifiers(scene):
     bpy.ops.object.select_all(action='DESELECT')
     
     ### At first make all objects unique mesh objects (clear instancing) which have modifiers applied
+    objsM = []
     for obj in objs:
         if len(obj.modifiers) > 0:
             obj.select = 1
+            objsM.append(obj)
     bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True, material=False, texture=False, animation=False)
-    
+
     # Apply modifiers
-    count = 0
-    for obj in objs:
-        #MeshObject.to_mesh(scene=bpy.context.scene, apply_modifiers=True, settings='PREVIEW')
-        bpy.context.scene.objects.active = obj
-        if len(obj.modifiers) > 0: count += 1
-        for mod in obj.modifiers:
-            # Skip edgesplit modifiers to avoid to create more sperata meshes than necessary
-            #if not "EdgeSplit" in mod.name:
-                try: bpy.ops.object.modifier_apply(apply_as='DATA', modifier=mod.name)
-                except: bpy.ops.object.modifier_remove(modifier=mod.name)
+    if len(objsM):
+        bpy.context.scene.objects.active = objsM[0]
+        bpy.ops.object.convert(target='MESH')
 
     # Revert to start selection
     for obj in selection: obj.select = 1
@@ -614,6 +609,14 @@ def tool_enableRigidBodies(scene):
     # Set friction for all to 1.0
     for obj in objs:
         obj.rigid_body.friction = 1
+    
+    # Set rigid bodies which are members of some specific groups to passive
+    # (Todo: Each Preprocessing Tool removing RB information like Separate Loose should backup those for all objects and refresh it after operation, then this can be removed)   
+    for obj in objs:
+        for grpName in ["Fixed", "Passive", "Base"]:
+            if grpName in bpy.data.groups:
+                if obj.name in bpy.data.groups[grpName].objects:
+                    obj.rigid_body.type = 'PASSIVE'
     
     # Revert to start selection
     for obj in selection: obj.select = 1

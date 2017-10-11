@@ -277,8 +277,9 @@ def findConnectionsByBoundaryBoxIntersection(objs):
         # Calculate boundary box corners
         bbMin, bbMax, bbCenter = boundaryBox(obj, 1)
         # Extend boundary box dimensions by searchDistance
-        bbMin -= Vector((props.searchDistance, props.searchDistance, props.searchDistance))
-        bbMax += Vector((props.searchDistance, props.searchDistance, props.searchDistance))
+        searchDistanceHalf = props.searchDistance /2
+        bbMin -= Vector((searchDistanceHalf, searchDistanceHalf, searchDistanceHalf))
+        bbMax += Vector((searchDistanceHalf, searchDistanceHalf, searchDistanceHalf))
         bboxes.append([bbMin, bbMax])
     
     ### Find connections by intersecting boundary boxes
@@ -641,11 +642,11 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
             objA.modifiers.new(name="Displace_BCB", type='DISPLACE')
             modA_disp = objA.modifiers["Displace_BCB"]
             modA_disp.mid_level = 0
-            modA_disp.strength = props.searchDistance
+            modA_disp.strength = props.searchDistance /2
             objB.modifiers.new(name="Displace_BCB", type='DISPLACE')
             modB_disp = objB.modifiers["Displace_BCB"]
             modB_disp.mid_level = 0
-            modB_disp.strength = props.searchDistance
+            modB_disp.strength = props.searchDistance /2
             meA_disp = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
             meB_disp = objB.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
                 
@@ -665,7 +666,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
 #                except: pass                    # (If connection centers are lying on element centers, that's a sign for a bad boolean operation)
             modA_bool.object = objB
             ### Perform boolean operation and in case result is corrupt try again with small changes in displacement size
-            searchDistanceMinimum = props.searchDistance *0.9   # Lowest limit for retrying until we accept that no solution can be found
+            searchDistanceMinimum = props.searchDistance /2 *0.9   # Lowest limit for retrying until we accept that no solution can be found
             qNoSolution = 0
             while 1:
                 me_intersect = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
@@ -713,7 +714,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 objIntersect.modifiers.new(name="Displace_BCB", type='DISPLACE')
                 modIntersect_disp = objIntersect.modifiers["Displace_BCB"]
                 modIntersect_disp.mid_level = 0
-                modIntersect_disp.strength = -props.searchDistance /2
+                modIntersect_disp.strength = -props.searchDistance /4
                 me_intersect_remDisp = objIntersect.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
                 
                 ### Calculate surface area for both original elements
@@ -800,9 +801,8 @@ def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connec
     connectsLocTmp = []
     connectCntOld = len(connectsPair)
     connectCnt = 0
-    minimumArea = props.searchDistance**2
     for i in range(len(connectsPair)):
-        if connectsGeo[i][0] > minimumArea:
+        if connectsGeo[i][0] > minimumContactArea:
             connectsPairTmp.append(connectsPair[i])
             connectsGeoTmp.append(connectsGeo[i])
             connectsLocTmp.append(connectsLoc[i])
@@ -1159,6 +1159,12 @@ def bundlingEmptyObjsToClusters(connectsLoc, connectsConsts):
                 connectsLoc[k] = clustersLoc[l]
     
     print()
+    
+    ### Count clusters (only for status print)
+    clusters = set()
+    for loc in connectsLoc:
+        clusters.add(tuple(loc))
+    print("Cluster count:", len(clusters))
 
 ################################################################################
 
@@ -1375,13 +1381,27 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         scale = objScale[1]
         obj.scale *= scale
     
-    ### Calculate total mass for diagnostic purposes
-    totalMass = 0    
+    ### Calculate total and element group masses for diagnostic purposes
+    print()
+    groups = {}
     for obj in objs:
         if obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE':
-            totalMass += obj.rigid_body.mass
-    print("Total mass of structure: %0.0f t and %0.0f kg" %(floor(totalMass/1000), totalMass%1000))
-
+            for group in bpy.data.groups:
+                try: groups[group.name] += group.objects[obj.name].rigid_body.mass
+                except:
+                    try: groups[group.name] = group.objects[obj.name].rigid_body.mass
+                    except: pass
+                #if obj.name in group.objects:
+                #    try: groups[group.name] += obj.rigid_body.mass
+                #    except: groups[group.name] = obj.rigid_body.mass
+    for groupName in groups.keys():
+        mass = groups[groupName]
+        if mass != groups["RigidBodyWorld"]:  # Filter all groups that contain the complete structure
+            print("Group '%s' mass: %0.0f t and %0.0f kg" %(groupName, floor(mass/1000), mass%1000))
+    mass = groups["RigidBodyWorld"]
+    print("Total mass: %0.0f t and %0.0f kg" %(floor(mass/1000), mass%1000))
+    print()
+    
     ### Copy rigid body settings (and mass) from children back to their parents and remove children from rigid body world
     i = 0
     for childObj in childObjs:
