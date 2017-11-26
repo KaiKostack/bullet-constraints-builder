@@ -167,7 +167,7 @@ from tools import *            # Contains smaller independently working tools
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "blender": (2, 7, 5),
+    "blender": (2, 7, 6),
     "location": "View3D > Toolbar",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
     "wiki_url": "http://www.inachus.eu",
@@ -182,8 +182,18 @@ classes = [ \
     bcb_asst_con_rei_wall_props,
     
     bcb_report,
-    bcb_panel,
     bcb_add_preset,
+    
+    bcb_panel_execute,
+    bcb_panel_preprocessing_tools,
+    bcb_panel_global_settings,
+    bcb_panel_advanced_global_settings,
+    bcb_panel_triggers,
+    bcb_panel_element_group_list,
+    bcb_panel_element_group_selector,
+    bcb_panel_formula_assistant,
+    bcb_panel_element_group_settings,
+    bcb_panel_advanced_element_group_settings,
     
     OBJECT_OT_bcb_set_config,
     OBJECT_OT_bcb_get_config,

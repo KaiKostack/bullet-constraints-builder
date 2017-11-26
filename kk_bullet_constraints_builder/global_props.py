@@ -51,15 +51,6 @@ class bcb_props(bpy.types.PropertyGroup):
     menu_gotConfig        = int_(default=0)
     menu_gotData          = int_(default=0)
     menu_selectedElemGrp  = int_(default=0)
-    submenu_preprocTools  = bool_(default=0)
-    submenu_globSet       = bool_(default=0)
-    submenu_advGlobSet    = bool_(default=0)
-    submenu_triggers      = bool_(default=0)
-    submenu_elemGrpList   = bool_(default=1)
-    submenu_elemGrpSel    = bool_(default=1)
-    submenu_elemSet       = bool_(default=0)
-    submenu_assistant     = bool_(default=0)
-    submenu_advElemSet    = bool_(default=0)
 
     ### Formula assistant
     submenu_assistant_advanced = bool_(default=0, name="Advanced", description="Shows advanced settings and formulas.")
