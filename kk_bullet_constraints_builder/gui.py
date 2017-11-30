@@ -517,6 +517,8 @@ class bcb_panel_element_group_selector(bpy.types.Panel):
         ### If at least one element group is existing
         if not (len(elemGrps) == 0 or props.menu_init):
 
+            i = props.menu_selectedElemGrp
+
             ###### Element group selector panel
 
             col = layout.column(align=1)
