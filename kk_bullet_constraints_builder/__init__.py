@@ -168,7 +168,7 @@ bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
     "blender": (2, 7, 6),
-    "location": "View3D > Toolbar",
+    "location": "View3D > Toolshelf > Create Tab",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
     "wiki_url": "http://www.inachus.eu",
     "tracker_url": "http://kaikostack.com",
@@ -184,8 +184,8 @@ classes = [ \
     bcb_report,
     bcb_add_preset,
     
-    bcb_panel_execute,
     bcb_panel_preprocessing_tools,
+    bcb_panel_execute,
     bcb_panel_global_settings,
     bcb_panel_advanced_global_settings,
     bcb_panel_triggers,

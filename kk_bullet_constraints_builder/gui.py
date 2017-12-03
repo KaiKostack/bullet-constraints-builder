@@ -108,7 +108,8 @@ class bcb_panel_execute(bpy.types.Panel):
     bl_label = "Bullet Constraints Builder v%d.%d%d" %(ver[0], ver[1], ver[2]) 
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
-
+    bl_category = "BCB" 
+ 
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
@@ -155,6 +156,8 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
     bl_label = "Preprocessing Tools"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
+    bl_category = "BCB" 
+    bl_options = { "DEFAULT_CLOSED" }
 
     def draw(self, context):
         layout = self.layout
@@ -293,6 +296,8 @@ class bcb_panel_global_settings(bpy.types.Panel):
     bl_label = "Global Settings"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
+    bl_category = "BCB" 
+    bl_options = { "DEFAULT_CLOSED" }
 
     def draw(self, context):
         layout = self.layout
@@ -356,6 +361,8 @@ class bcb_panel_advanced_global_settings(bpy.types.Panel):
     bl_label = "Advanced Global Settings"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
+    bl_category = "BCB" 
+    bl_options = { "DEFAULT_CLOSED" }
 
     def draw(self, context):
         layout = self.layout
@@ -405,6 +412,8 @@ class bcb_panel_triggers(bpy.types.Panel):
     bl_label = "Triggers"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
+    bl_category = "BCB" 
+    bl_options = { "DEFAULT_CLOSED" }
 
     def draw(self, context):
         layout = self.layout
@@ -436,6 +445,7 @@ class bcb_panel_element_group_list(bpy.types.Panel):
     bl_label = "Element Group List"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
+    bl_category = "BCB" 
 
     def draw(self, context):
         layout = self.layout
@@ -507,6 +517,7 @@ class bcb_panel_element_group_selector(bpy.types.Panel):
     bl_label = "Element Group Selector"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
+    bl_category = "BCB" 
 
     def draw(self, context):
         layout = self.layout
@@ -514,30 +525,34 @@ class bcb_panel_element_group_selector(bpy.types.Panel):
         try: elemGrps = mem["elemGrps"]
         except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
 
+        ###### Element group selector panel
+
+        col = layout.column(align=1)
+
+        row = col.row(align=1)
+        split = row.split(percentage=.50, align=1)
+        split2 = split.split(percentage=.30, align=1)
+        split2.operator("bcb.up_more", icon="PREV_KEYFRAME")
+        split2.operator("bcb.up", icon="TRIA_UP")
+        split2 = split.split(percentage=.70, align=1)
+        split2.operator("bcb.down", icon="TRIA_DOWN")
+        split2.operator("bcb.down_more", icon="NEXT_KEYFRAME")
+
+        col.separator()
+
         ### If at least one element group is existing
         if not (len(elemGrps) == 0 or props.menu_init):
 
             i = props.menu_selectedElemGrp
 
-            ###### Element group selector panel
-
-            col = layout.column(align=1)
-
-            row = col.row(align=1)
-            split = row.split(percentage=.50, align=1)
-            split2 = split.split(percentage=.30, align=1)
-            split2.operator("bcb.up_more", icon="PREV_KEYFRAME")
-            split2.operator("bcb.up", icon="TRIA_UP")
-            split2 = split.split(percentage=.70, align=1)
-            split2.operator("bcb.down", icon="TRIA_DOWN")
-            split2.operator("bcb.down_more", icon="NEXT_KEYFRAME")
-
-            col.separator()
-
             row = col.row(align=1)
             split = row.split(percentage=.85, align=1)
             split.prop(props, "elemGrp_%d_EGSidxName" %i)
             split.operator("bcb.tool_select_group", icon="UV_ISLANDSEL")
+
+        else:  # Message if no element group is selected
+            row = layout.row(align=1); row.alignment = 'CENTER'
+            row.label(text="No element group", icon="INFO")
 
         ### Update global vars from menu related properties
         props.props_update_globals()
@@ -548,6 +563,8 @@ class bcb_panel_formula_assistant(bpy.types.Panel):
     bl_label = "Formula Assistant"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
+    bl_category = "BCB" 
+    bl_options = { "DEFAULT_CLOSED" }
 
     def draw(self, context):
         layout = self.layout
@@ -652,6 +669,10 @@ class bcb_panel_formula_assistant(bpy.types.Panel):
                 split.operator("bcb.asst_update_all", icon="SCRIPT")
                 split3 = split.split(align=1)
             split3.prop(props, "submenu_assistant_advanced")
+
+        else:  # Message if no element group is selected
+            row = layout.row(align=1); row.alignment = 'CENTER'
+            row.label(text="No element group", icon="INFO")
                     
         ### Update global vars from menu related properties
         props.props_update_globals()
@@ -662,6 +683,8 @@ class bcb_panel_element_group_settings(bpy.types.Panel):
     bl_label = "Element Group Settings"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
+    bl_category = "BCB" 
+    bl_options = { "DEFAULT_CLOSED" }
 
     def draw(self, context):
         layout = self.layout
@@ -780,6 +803,10 @@ class bcb_panel_element_group_settings(bpy.types.Panel):
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxMatP" %i)
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxDens" %i)
                                 
+        else:  # Message if no element group is selected
+            row = layout.row(align=1); row.alignment = 'CENTER'
+            row.label(text="No element group", icon="INFO")
+
         ### Update global vars from menu related properties
         props.props_update_globals()
 
@@ -789,6 +816,8 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
     bl_label = "Advanced Element Group Settings"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS" 
+    bl_category = "BCB" 
+    bl_options = { "DEFAULT_CLOSED" }
 
     def draw(self, context):
         layout = self.layout
@@ -843,3 +872,7 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
             if prop_EGSidxBevl and not prop_EGSidxFacg:
                 row = col.row(align=1); row.label(text="Warning: Disabled facing")
                 row = col.row(align=1); row.label(text="makes bevel permanent!")
+
+        else:  # Message if no element group is selected
+            row = layout.row(align=1); row.alignment = 'CENTER'
+            row.label(text="No element group", icon="INFO")
