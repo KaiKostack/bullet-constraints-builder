@@ -29,7 +29,7 @@
 
 ################################################################################
 
-import bpy, bmesh
+import bpy, bmesh, os
 mem = bpy.app.driver_namespace
 
 ### Import submodules
@@ -107,14 +107,13 @@ def tool_selectGroup(scene):
 
 ################################################################################
 
-def tool_runPythonScript(scene):
+def tool_runPythonScript(scene, filename=""):
 
     print("\nExecuting user-defined Python script...")
 
-    props = bpy.context.window_manager.bcb
-    if len(props.preprocTools_rps_nam) == 0: print("No script defined."); return
+    if len(filename) == 0: print("No script defined."); return
 
-    try: s = bpy.data.texts[props.preprocTools_rps_nam].as_string()
+    try: s = bpy.data.texts[filename].as_string()
     except: print("Script not found."); return
 
     # Leave edit mode to make sure next operator works in object mode
@@ -531,7 +530,7 @@ def tool_discretize(scene):
 
 ################################################################################
 
-def tool_removeIntersections(scene, mode=0):
+def tool_removeIntersections(scene, mode=1):
     
     # Leave edit mode to make sure next operator works in object mode
     try: bpy.ops.object.mode_set(mode='OBJECT') 
@@ -549,16 +548,16 @@ def tool_removeIntersections(scene, mode=0):
     ###### External function
     props = bpy.context.window_manager.bcb
     # [encaseTol, qSelectByVertCnt, qSelectSmallerVol, qSelectA, qSelectB, qDelete, qBool]
-    if mode == 0:  # Resolve intersections
+    if mode == 1:  # Resolve intersections
         if props.preprocTools_int_bol:
               count = kk_select_intersecting_objects.run('BCB', [0,    0, 0, 1, 1, 0, 1])
         else: count = kk_select_intersecting_objects.run('BCB', [0.02, 1, 1, 0, 0, 1, 0])
-    elif mode == 1 or mode == 3:  # Selection of all intersections
+    elif mode == 2 or mode == 4:  # Selection of all intersections
               count = kk_select_intersecting_objects.run('BCB', [0,    0, 0, 1, 1, 0, 0])
-    elif mode == 2:  # Selection for intersections which require booleans
+    elif mode == 3:  # Selection for intersections which require booleans
               count = kk_select_intersecting_objects.run('BCB', [0.02, 1, 1, 0, 0, 0, 0])
     
-    if mode == 0 and count > 0:
+    if mode == 1 and count > 0:
         # For now disabled because overall simulations behave more stable without it:
         ### Switch found intersecting objects to 'Mesh' collision shape
         ### (some might have only overlapping boundary boxes while the geometry could still not intersecting)
@@ -572,7 +571,7 @@ def tool_removeIntersections(scene, mode=0):
         # Set object centers to geometry origin
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
                 
-    if mode == 0 or (mode == 3 and count == 0):
+    if mode == 1 or (mode == 4 and count == 0):
         # Revert to start selection
         for obj in selection: obj.select = 1
         bpy.context.scene.objects.active = selectionActive
@@ -1112,3 +1111,261 @@ def tool_groundMotion(scene):
     # Revert to start selection
     for obj in selection: obj.select = 1
     bpy.context.scene.objects.active = selectionActive
+
+################################################################################
+
+def stopPlaybackAndReturnToStart(scene):
+
+    bpy.app.handlers.frame_change_pre.pop()   # Remove event handler
+    bpy.ops.screen.animation_play()           # Stop animation playback
+    scene.frame_current = scene.frame_start  # Reset to start frame
+
+########################################
+
+def tool_exportLocationHistory_eventHandler(scene):
+    
+    ### Vars
+    qRelativeCoordinates = 0   # Enables logging of relative coordinates instead of absolute
+
+    props = bpy.context.window_manager.bcb
+    logPath = os.path.dirname(props.postprocTools_lox_nam)
+    name = props.postprocTools_lox_elm
+
+    ###### Get data
+
+    ### Official Blender
+    if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
+        try: ob = scene.objects[name]
+        except:
+            print('Error: Defined object not found. Removing event handler.')
+            stopPlaybackAndReturnToStart(scene); return
+        else:
+            data = ob.matrix_world.to_translation()  # Get actual Bullet object's position as .location only returns its simulation starting position
+
+    ### Fracture Modifier
+    else:
+        try: ob = scene.objects[asciiExportName]
+        except:
+            print('Error: Fracture Modifier object not found. Removing event handler.')
+            stopPlaybackAndReturnToStart(scene); return
+        else:
+            md = ob.modifiers["Fracture"]
+            try: ob = md.mesh_islands[name]
+            except:
+                print('Error: Defined object not found. Removing event handler.')
+                stopPlaybackAndReturnToStart(scene); return
+            else:
+                data = ob.centroid.copy()  # Get actual Bullet object's position as .location only returns its simulation starting position
+    
+    # Print data into console if filepath is empty
+    if len(props.postprocTools_lox_nam) == 0:
+        print("Data:", data)
+
+    else:
+
+        ###### Export data
+        
+        ### On first run
+        if "log_files_open" not in bpy.app.driver_namespace.keys():
+            # Create object list of selected objects
+            objNames = [name]
+            if len(objNames) > 0:
+                bpy.app.driver_namespace["log_objNames"] = objNames
+            files = []
+            for objName in objNames:
+                # Stupid Windows interprets "Con." in path as system variable and writes into console
+                filename = objName.replace(".", "_") +".csv"
+                filename = os.path.join(logPath, filename)
+                print("Creating file:", filename)
+                # Remove old log file at start frame
+                try: os.remove(filename)
+                except: pass
+                # Create new log file
+                try: f = open(filename, "w")
+                except:
+                    print('Error: Could not open file.')
+                    stopPlaybackAndReturnToStart(scene); return
+                else:
+                    line = "X, Y, Z, %s\n" %objName
+                    f.write(line)
+                    files.append(f)
+            bpy.app.driver_namespace["log_files_open"] = files
+        
+        ### For every frame
+        if "log_objNames" in bpy.app.driver_namespace.keys():
+            objNames = bpy.app.driver_namespace["log_objNames"]
+            files = bpy.app.driver_namespace["log_files_open"]
+            for k in range(len(objNames)):
+                objName = objNames[k]
+                if qRelativeCoordinates:
+                    if "log_data_start_" +objName not in bpy.app.driver_namespace.keys():
+                        bpy.app.driver_namespace["log_data_start_" +objName] = data
+                        data = (0, 0, 0)
+                    else:
+                        data -= bpy.app.driver_namespace["log_data_start_" +objName]
+                line = "%0.6f, %0.6f, %0.6f\n" %(data[0], data[1], data[2])
+                files[k].write(line)
+
+    ### Check if last frame is reached
+    if scene.frame_current == scene.frame_end:
+        if bpy.context.screen.is_animation_playing:
+            bpy.ops.screen.animation_play()  # Stop animation playback
+
+    ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
+    if not bpy.context.screen.is_animation_playing:
+        print('Removing event handler.')
+        bpy.app.handlers.frame_change_pre.pop()  # Remove event handler
+        scene.frame_current == scene.frame_start  # Reset to start frame
+        ### Close log files
+        try: files = bpy.app.driver_namespace["log_files_open"]
+        except: pass
+        else:
+            for f in files: f.close()
+        ### Delete keys
+        keys = [key for key in bpy.app.driver_namespace.keys()]
+        for key in keys:
+            if "log_" in key:
+                del bpy.app.driver_namespace[key]
+
+########################################
+
+def tool_exportLocationHistory(scene):
+
+    print("\nExporting location time history...")
+
+    # Leave edit mode to make sure next operator works in object mode
+    try: bpy.ops.object.mode_set(mode='OBJECT') 
+    except: pass
+
+    print('Init event handler.')
+    bpy.app.handlers.frame_change_pre.append(tool_exportLocationHistory_eventHandler)
+    # Start animation playback
+    bpy.ops.screen.animation_play()
+
+################################################################################
+
+def tool_constraintForceHistory_eventHandler(scene):
+    
+    props = bpy.context.window_manager.bcb
+    logPath = os.path.dirname(props.postprocTools_fcx_nam)
+    name = props.postprocTools_fcx_con
+
+    ###### Get data
+
+    ### Official Blender
+    if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
+        try: ob = scene.objects[name]
+        except:
+            print('Error: Defined object not found. Removing event handler.')
+            stopPlaybackAndReturnToStart(scene); return
+        else:
+            try: con = ob.rigid_body_constraint
+            except:
+                print('Error: Defined object no constraint. Removing event handler.')
+                stopPlaybackAndReturnToStart(scene); return
+
+    ### Fracture Modifier
+    else:
+        try: ob = scene.objects[asciiExportName]
+        except:
+            print('Error: Fracture Modifier object not found. Removing event handler.')
+            stopPlaybackAndReturnToStart(scene); return
+        else:
+            md = ob.modifiers["Fracture"]
+            try: con = md.mesh_constraints[name]
+            except:
+                print('Error: Defined object not found. Removing event handler.')
+                stopPlaybackAndReturnToStart(scene); return
+
+    try: data = con.appliedImpulse()
+    except:
+        print("Error: Data could not be read, Blender version with Fracture Modifier required!")
+        stopPlaybackAndReturnToStart(scene); return
+    
+    # Print data into console if filepath is empty
+    if len(props.postprocTools_fcx_nam) == 0:
+        print("Data:", data)
+
+    else:
+
+        ###### Export data
+        
+        ### On first run
+        if "log_files_open" not in bpy.app.driver_namespace.keys():
+            # Create object list of selected objects
+            objNames = [name]
+            if len(objNames) > 0:
+                bpy.app.driver_namespace["log_objNames"] = objNames
+            files = []
+            for objName in objNames:
+                # Stupid Windows interprets "Con." in path as system variable and writes into console
+                filename = objName.replace(".", "_") +".csv"
+                filename = os.path.join(logPath, filename)
+                print("Creating file:", filename)
+                # Remove old log file at start frame
+                try: os.remove(filename)
+                except: pass
+                # Create new log file
+                try: f = open(filename, "w")
+                except:
+                    print('Error: Could not open file.')
+                    stopPlaybackAndReturnToStart(scene); return
+                else:
+                    line = "F, %s\n" %objName
+                    f.write(line)
+                    files.append(f)
+            bpy.app.driver_namespace["log_files_open"] = files
+        
+        ### For every frame
+        if "log_objNames" in bpy.app.driver_namespace.keys():
+            objNames = bpy.app.driver_namespace["log_objNames"]
+            files = bpy.app.driver_namespace["log_files_open"]
+            for k in range(len(objNames)):
+                line = "%0.6f\n" %data
+                files[k].write(line)
+
+    ### Check if last frame is reached
+    if scene.frame_current == scene.frame_end:
+        if bpy.context.screen.is_animation_playing:
+            bpy.ops.screen.animation_play()  # Stop animation playback
+
+    ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
+    if not bpy.context.screen.is_animation_playing:
+        print('Removing event handler.')
+        bpy.app.handlers.frame_change_pre.pop()  # Remove event handler
+        scene.frame_current == scene.frame_start  # Reset to start frame
+        ### Close log files
+        try: files = bpy.app.driver_namespace["log_files_open"]
+        except: pass
+        else:
+            for f in files: f.close()
+        ### Delete keys
+        keys = [key for key in bpy.app.driver_namespace.keys()]
+        for key in keys:
+            if "log_" in key:
+                del bpy.app.driver_namespace[key]
+
+########################################
+
+def tool_constraintForceHistory(scene):
+
+    print("\nExporting constraint force time history...")
+
+    # Leave edit mode to make sure next operator works in object mode
+    try: bpy.ops.object.mode_set(mode='OBJECT') 
+    except: pass
+
+    ### Free previous bake data
+    contextFix = bpy.context.copy()
+    contextFix['point_cache'] = scene.rigidbody_world.point_cache
+    bpy.ops.ptcache.free_bake(contextFix)
+    ### Invalidate point cache to enforce a full bake without using previous cache data
+    if "RigidBodyWorld" in bpy.data.groups:
+        try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
+        except: pass
+        else: obj.location = obj.location
+
+    print('Init event handler.')
+    bpy.app.handlers.frame_change_pre.append(tool_constraintForceHistory_eventHandler)
+    # Start animation playback
+    bpy.ops.screen.animation_play()

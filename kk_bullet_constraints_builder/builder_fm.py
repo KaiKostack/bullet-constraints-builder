@@ -118,8 +118,8 @@ def build_fm(use_handler=0):
     bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), rotation=(0, 0, 0))
     ob = bpy.context.scene.objects.active
     ob.data.use_auto_smooth = True
-    ob.name = "BCB_export"
-    ob.data.name = "BCB_export"
+    ob.name = asciiExportName
+    ob.data.name = asciiExportName
 
     layersBak = [int(q) for q in scene.layers]   # Backup scene layer settings
     scene.layers = [True for q in scene.layers]  # Activate all scene layers
@@ -132,7 +132,7 @@ def build_fm(use_handler=0):
         objParent = None
 
         ### Unpack BCB data from text file
-        try: s = bpy.data.texts["BCB_export.txt"].as_string()
+        try: s = bpy.data.texts[asciiExportName].as_string()
         except:
             print("Error: No export data found, couldn't build Fracture Modifier object.")
             return
@@ -268,7 +268,7 @@ def FM_shards(ob):
     md.fracture_mode = 'EXTERNAL'
 
     ### Unpack BCB data from text file
-    try: s = bpy.data.texts["BCB_export.txt"].as_string()
+    try: s = bpy.data.texts[asciiExportName].as_string()
     except:
         print("Error: No export data found, couldn't build Fracture Modifier object.")
         return
@@ -378,7 +378,7 @@ def FM_constraints(ob):
     md.fracture_mode = 'EXTERNAL'
 
     ### Unpack BCB data from text file
-    try: s = bpy.data.texts["BCB_export.txt"].as_string()
+    try: s = bpy.data.texts[asciiExportName].as_string()
     except:
         print("Error: No export data found, couldn't build Fracture Modifier object.")
         return

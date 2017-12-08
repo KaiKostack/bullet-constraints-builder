@@ -64,26 +64,33 @@ class bcb_props(bpy.types.PropertyGroup):
 
     ###### Properties to be stored in blend file
 
-    ### Preprocessing tools properties
-    preprocTools_aut = bool_(default=1, name="Run On Automatic Mode", description="Enables that preprocessing will be performed on Automatic Mode. To avoid accidental double execution, this will be disabled whenever a preprocessing tool is activated manually, but it can activated again at any time.")
+    ### Preprocessing Tools
+    preprocTools_aut = bool_(default=1, name="Run On Automatic Mode", description="Enables that preprocessing will be performed on Automatic Mode. To avoid accidental double execution, this will be disabled whenever a preprocessing tool is activated manually, but it can be activated again at any time.")
+
     preprocTools_rps = bool_(default=1)
-    preprocTools_grp = bool_(default=1)
-    preprocTools_mod = bool_(default=1)
-    preprocTools_ctr = bool_(default=1)
-    preprocTools_sep = bool_(default=1)
-    preprocTools_dis = bool_(default=1)
-    preprocTools_rbs = bool_(default=1)
-    preprocTools_int = bool_(default=1)
-    preprocTools_fix = bool_(default=1)
-    preprocTools_gnd = bool_(default=1)
-    
     preprocTools_rps_nam = string_(name="Script File",             default='', description="Enter the filename of an existing Python script.")
+
+    preprocTools_grp = bool_(default=1)
     preprocTools_grp_sep = string_(name="Separator",               default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names.")
     preprocTools_grp_occ = bool_(name="First Occurrence",          default=1, description="Enables first occurrence search of the separator within an element name for cases when there are more than one separator included, if disabled the last occurrence is used.")
+
+    preprocTools_mod = bool_(default=1)
+
+    preprocTools_ctr = bool_(default=1)
+
+    preprocTools_sep = bool_(default=1)
+
+    preprocTools_dis = bool_(default=1)
     preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.9, min=0.0, max=1000, description="Discretization size this tool tries to reach by discretization. To enforce regularity at all times, elements afterwards can deviate in size to some extent from the target size. For booleans (default method): The minimum dimension value serves as limit for an element still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller up to 50%.")
     preprocTools_dis_cel = bool_(name="Use Voxel Method (Faster)", default=0, description="Enables the voxel based discretizaton method and geometry is converted into cuboid-shaped cells. While this method has the disadvantage that it can't keep mesh details such as curved surfaces, round columns or mural reliefs, it is extremely fast compared to the default boolean based method and can create thousands of new elements within seconds. Also note that this method is limited to odd subdivision level numbers [1,3,5,7..], so you basically can't split an element into two for instance but only into three, five and so on.")
     preprocTools_dis_jus = bool_(name="Enable Junction Search",    default=1, description="Tries to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes.")
+
+    preprocTools_rbs = bool_(default=1)
+
+    preprocTools_int = bool_(default=1)
     preprocTools_int_bol = bool_(name="Use Boolean Subtraction",   default=1, description="Uses boolean operations to resolve overlapping elements. Their geometries will be subtracted from each other and the collision shapes will be switched to 'Mesh'. (For accurate simulations it is strongly recommended to resolve such intersections manually and leave this option disabled.)")
+
+    preprocTools_fix = bool_(default=1)
     preprocTools_fix_nam = string_(name="Obj. Name",               default='Foundation', description="Enter a name (or substring) for objects which should be set to 'Passive' in rigid body settings.")
     preprocTools_fix_cac = bool_(name="Create New Foundation Objects", default=1, description="Enables generation of additional rigid body objects to serve as anchors adjacent to the selected model objects.")
     preprocTools_fix_rng = float_(name="Boundary Range",           default=0.1, min=0, max=1000, description="Internal margin in m for the model boundary box to include also objects within a certain distance from the outer border. This value should always stay smaller than Discretization Size divided by 2 because otherwise foundation elements can overlap user elements.")
@@ -93,6 +100,8 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_fix_ayn = bool_(name="Y -",                       default=0, description="Enables this side of the overall model boundary for which fixed foundation objects will be created.")
     preprocTools_fix_azp = bool_(name="Z+",                        default=0, description="Enables this side of the overall model boundary for which fixed foundation objects will be created.")
     preprocTools_fix_azn = bool_(name="Z -",                       default=1, description="Enables this side of the overall model boundary for which fixed foundation objects will be created.")
+
+    preprocTools_gnd = bool_(default=1)
     preprocTools_gnd_obj = string_(name="Ground Object",           default='Ground_Motion', description="Enter the name of a ground object here and the passive foundation objects will automatically be attached to it. If it is not existing it will be created at the underside of the active rigid body boundary box.")
     preprocTools_gnd_obm = string_(name="Motion Object",           default='Motion_Data', description="Enter the name of an optional motion data object here and the ground object will automatically be attached to it. This can be useful in case animation data should be manageable completely separate from the ground object.")
     preprocTools_gnd_nac = bool_(name="Create Artificial Earthquake Motion", default=0, description="Enables generation of artificial ground motion data based on noise functions, this can be useful if there is no real world ground motion data available.")
@@ -101,8 +110,27 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_gnd_ndu = float_(name="Duration",                 default=10, min=0.0, max=1000, description="Duration of the artificial earthquake to be generated in seconds.")
     preprocTools_gnd_nsd = float_(name="Random Seed",              default=0, min=0.0, max=10000000, description="Seed number for the random noise function used to generate the artificial earthquake, modification will change the characteristics of the motion.")
     preprocTools_gnd_nam = string_(name="CSV File",                default='', description="To import earthquake data from a file enter the filename of an existing time history stored as plain ASCII text with comma-separated values (.csv). File structure: 4 columns: t [s], X [m/s²], Y [m/s²], Z [m/s²]. Lines starting with '#' are skipped.")
-    
-    ### Advanced global settings
+
+    ### Postprocessing Tools
+    postprocTools_aut = bool_(default=1, name="Run On Automatic Mode", description="Enables that postprocessing will be performed on Automatic Mode. To avoid accidental double execution, this will be disabled whenever a postprocessing tool is activated manually, but it can be activated again at any time.")
+
+    postprocTools_lox = bool_(default=1)
+    postprocTools_lox_elm = string_(name="Element",       default='Cube', description="Enter the name of an element for which the location time history should be exported.")
+    postprocTools_lox_nam = string_(name="CSV File",      default='', description="Enter a filename for data export.")
+
+    postprocTools_fcx = bool_(default=1)
+    postprocTools_fcx_con = string_(name="Constraint",    default='Con.000.1', description="Enter the name of an constraint for which the location time history should be exported.")
+    postprocTools_fcx_nam = string_(name="CSV File",      default='', description="Enter a filename for data export.")
+
+    postprocTools_fcv = bool_(default=1)
+    postprocTools_fcv_con = string_(name="Range Object",  default='', description="Enter the name of a helper object whose dimensions will be used to define for which connections forces should be visualized, i.e. all within its boundary range. For instance an empty object can be placed and scaled accordingly to fit a specific area of interest.")
+    postprocTools_fcv_frm = int_(name="Frame",            default=40, min=1, max=32767,   description="Frame number at which the visualization snap-shot of forces will be taken.")
+    postprocTools_fcv_max = float_(name="Maximum",        default=50, min=0.0, max=10000000, description="Maximum force to be expected, actual forces will be normalized accordingly. This will only influence the appearance of the visualizer, but the readout value stored within the visualizer's properties will not be modified.")
+
+    postprocTools_rps = bool_(default=1)
+    postprocTools_rps_nam = string_(name="Script File",   default='', description="Enter the filename of an existing Python script.")
+
+    ### General
     stepsPerSecond        = int_(name="Steps Per Second",         default=300, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable).")
     constraintUseBreaking = bool_(name="Enable Breaking",         default=1,                       description="Enables breaking for all constraints.")
     passiveUseBreaking    = bool_(name="Enbl. Brk. Passive",      default=1,                       description="Enables breaking for active to passive connections. Usually this should stay enabled but in some cases the evaluation of forces in active-passive connections can be more inaccurate than those of active-active connections, then it may help to disable breaking of such connections altogether.")

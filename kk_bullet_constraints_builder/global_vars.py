@@ -35,7 +35,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 7, 6)
+bcb_version = (2, 7, 7)
 
 ### Customizable element group presets
 presets = [
@@ -176,16 +176,18 @@ formulaAssistants = [
 # k = scale factor
 #
 # Formulas for beams & columns:
-# N-      ? fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
-# N+      ? fs * rho * (h*b)   
-# V+ = V- ? fs *y * e1*h
-# M+ = M- ? (fc*(1-rho) + fs*rho*e1*4.5) *h*h*w/12 /1000 
+# N-      | fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
+# N+      | fs * rho * (h*b)   
+# V+ = V- | fs *y * e1*h^2 *1.2
+# M+ = M- | fs * rho * (h*b)/2* (e1*h)      	
+#   ''    | (fc*(1-rho) + fs*rho*e1*4.5) *h*h*w/12 /1000
 #
 # Formulas for walls & slabs:
-# N-      ? fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
-# N+      ? fs * rho * (h*b)   
-# V+ = V- ? 0.15/k* ((100*rho*fc)^1/3) *h*b
-# M+ = M- ? (fc*(1-rho) + fs*rho*e1*4.5) *h*h*w/12 /1000 
+# N-      | fc * (A- rho * (h*b))  +  fs* rho * (h*b)  
+# N+      | fs * rho * (h*b)   
+# V+ = V- | 0.15/k* ((100*rho*fc)^(1/3)) *h*b
+# M+ = M- | fs * rho * (h*b)/2* (e1*h)      	
+#   ''    | (fc*(1-rho) + fs*rho*e1*4.5) *h*h*w/12 /1000
 
 ### Material preset densities used by Blender
 materialPresets = {

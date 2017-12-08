@@ -201,9 +201,9 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             if props.menu_gotData:
                 ###### Fracture Modifier export
                 build_fm(use_handler=self.use_handler)
-                if not self.use_handler and "BCB_export.txt" in bpy.data.texts:
-                    try:    bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"], do_unlink=1)
-                    except: bpy.data.texts.remove(bpy.data.texts["BCB_export.txt"])
+                if not self.use_handler and asciiExportName in bpy.data.texts:
+                    try:    bpy.data.texts.remove(bpy.data.texts[asciiExportName], do_unlink=1)
+                    except: bpy.data.texts.remove(bpy.data.texts[asciiExportName])
                 ### Free previous bake data
                 contextFix = bpy.context.copy()
                 contextFix['point_cache'] = scene.rigidbody_world.point_cache
@@ -534,7 +534,7 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
         props.preprocTools_aut = 0
         if not props.automaticMode and not props.preprocTools_int_bol:
             ### Check for intersections and warn if some are left
-            count = tool_removeIntersections(scene, mode=3)
+            count = tool_removeIntersections(scene, mode=4)
             if count > 0:
                 # Throw warning
                 bpy.context.window_manager.bcb.message = "Warning: Some element intersections could not automatically be resolved, please review selected objects."
@@ -552,11 +552,15 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_run_python_script(bpy.types.Operator):
     bl_idname = "bcb.tool_run_python_script"
     bl_label = "Run Python Script"
-    bl_description = "Executes a user-defined Python script for customizable automatization purposes (e.g. batch import or general scene management)."
+    bl_description = "Executes a user-defined Python script for customizable automatization purposes (e.g. for scene management and modification)."
+    int_ = bpy.props.IntProperty 
+    opNo = int_(default = 1)
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
-        tool_runPythonScript(scene)
+        if   self.opNo == 1: filename = props.preprocTools_rps_nam
+        elif self.opNo == 2: filename = props.postprocTools_rps_nam
+        tool_runPythonScript(scene, filename)
         props.preprocTools_aut = 0
         props.preprocTools_rps = 0
         return{'FINISHED'}
@@ -670,14 +674,13 @@ class OBJECT_OT_bcb_tool_remove_intersections(bpy.types.Operator):
     bl_label = "Intersection Removal"
     bl_description = "Detects and removes intersecting objects (one per found pair). Intesecting objects can be caused by several reasons: accidental object duplication, forgotten boolean cutout objects, careless modeling etc."
     int_ =    bpy.props.IntProperty 
-    menuIdx = int_(default = 0)
+    mode = int_(default = 0)
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
-        tool_removeIntersections(scene, mode=self.menuIdx)
+        tool_removeIntersections(scene, mode=self.mode)
         props.preprocTools_aut = 0
         props.preprocTools_int = 0
-        self.menuIdx = 0
         return{'FINISHED'}
     
 ########################################
@@ -710,18 +713,52 @@ class OBJECT_OT_bcb_tool_ground_motion(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_ground_motion_file(bpy.types.Operator):
-    bl_idname = "bcb.tool_ground_motion_file"
+class OBJECT_OT_bcb_tool_select_csv_file(bpy.types.Operator):
+    bl_idname = "bcb.tool_select_csv_file"
     bl_label = "Select"
-    bl_description = "Search for earthquake time history file as plain ASCII text with comma-separated values (.csv). File structure: 4 columns: t [s], X [m/s²], Y [m/s²], Z [m/s²]. Lines starting with '#' are skipped."
+    bl_description = "Select location for .csv time history file."
     string_ = bpy.props.StringProperty
     filepath = string_(subtype='FILE_PATH')
     filter_glob = string_(default="*.csv", options={'HIDDEN'})
+    int_ = bpy.props.IntProperty 
+    opNo = int_(default = 1)
+
     def execute(self, context):
         props = context.window_manager.bcb
-        props.preprocTools_gnd_nam = self.filepath
+        if   self.opNo == 1: props.preprocTools_gnd_nam = self.filepath
+        elif self.opNo == 2: props.postprocTools_lox_nam = self.filepath
+        elif self.opNo == 3: props.postprocTools_fcx_nam = self.filepath
         return {'FINISHED'}
+
     def invoke(self, context, event):
         wm = context.window_manager
         wm.fileselect_add(self)
         return {'RUNNING_MODAL'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_export_location_history(bpy.types.Operator):
+    bl_idname = "bcb.tool_export_location_history"
+    bl_label = "Export Location History"
+    bl_description = "Exports the location time history of an element centroid into a .csv file."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_exportLocationHistory(scene)
+        props.postprocTools_aut = 0
+        props.postprocTools_lox = 0
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_export_force_history(bpy.types.Operator):
+    bl_idname = "bcb.tool_export_force_history"
+    bl_label = "Export Force History"
+    bl_description = "Exports the force time history for a constraint into a .csv file."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_constraintForceHistory(scene)
+        props.postprocTools_aut = 0
+        props.postprocTools_fcx = 0
+        return{'FINISHED'}

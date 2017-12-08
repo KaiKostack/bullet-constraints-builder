@@ -167,7 +167,7 @@ from tools import *            # Contains smaller independently working tools
 bl_info = {
     "name": "Bullet Constraints Builder",
     "author": "Kai Kostack",
-    "blender": (2, 7, 6),
+    "blender": (2, 7, 8),
     "location": "View3D > Toolshelf > Create Tab",
     "description": "Tool to connect rigid bodies via constraints in a physical plausible way.",
     "wiki_url": "http://www.inachus.eu",
@@ -194,6 +194,7 @@ classes = [ \
     bcb_panel_formula_assistant,
     bcb_panel_element_group_settings,
     bcb_panel_advanced_element_group_settings,
+    bcb_panel_postprocessing_tools,
     
     OBJECT_OT_bcb_set_config,
     OBJECT_OT_bcb_get_config,
@@ -234,7 +235,9 @@ classes = [ \
     OBJECT_OT_bcb_tool_remove_intersections,
     OBJECT_OT_bcb_tool_fix_foundation,
     OBJECT_OT_bcb_tool_ground_motion,
-    OBJECT_OT_bcb_tool_ground_motion_file
+    OBJECT_OT_bcb_tool_select_csv_file,
+    OBJECT_OT_bcb_tool_export_location_history,
+    OBJECT_OT_bcb_tool_export_force_history
     ]
 
 ################################################################################

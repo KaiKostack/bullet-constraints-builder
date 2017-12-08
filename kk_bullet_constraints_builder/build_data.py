@@ -46,25 +46,33 @@ def storeConfigDataInScene(scene):
     props = bpy.context.window_manager.bcb
     scene["bcb_version"] = bcb_version
 
+    ### Preprocessing Tools
     scene["bcb_prop_preprocTools_aut"] = props.preprocTools_aut
-    scene["bcb_prop_preprocTools_rps"] = props.preprocTools_rps
-    scene["bcb_prop_preprocTools_grp"] = props.preprocTools_grp
-    scene["bcb_prop_preprocTools_mod"] = props.preprocTools_mod
-    scene["bcb_prop_preprocTools_ctr"] = props.preprocTools_ctr
-    scene["bcb_prop_preprocTools_sep"] = props.preprocTools_sep
-    scene["bcb_prop_preprocTools_dis"] = props.preprocTools_dis
-    scene["bcb_prop_preprocTools_rbs"] = props.preprocTools_rbs
-    scene["bcb_prop_preprocTools_int"] = props.preprocTools_int
-    scene["bcb_prop_preprocTools_fix"] = props.preprocTools_fix
-    scene["bcb_prop_preprocTools_gnd"] = props.preprocTools_gnd
 
+    scene["bcb_prop_preprocTools_rps"] = props.preprocTools_rps
     scene["bcb_prop_preprocTools_rps_nam"] = props.preprocTools_rps_nam
+
+    scene["bcb_prop_preprocTools_grp"] = props.preprocTools_grp
     scene["bcb_prop_preprocTools_grp_sep"] = props.preprocTools_grp_sep
     scene["bcb_prop_preprocTools_grp_occ"] = props.preprocTools_grp_occ
+
+    scene["bcb_prop_preprocTools_mod"] = props.preprocTools_mod
+
+    scene["bcb_prop_preprocTools_ctr"] = props.preprocTools_ctr
+
+    scene["bcb_prop_preprocTools_sep"] = props.preprocTools_sep
+
+    scene["bcb_prop_preprocTools_dis"] = props.preprocTools_dis
     scene["bcb_prop_preprocTools_dis_siz"] = props.preprocTools_dis_siz
     scene["bcb_prop_preprocTools_dis_cel"] = props.preprocTools_dis_cel
     scene["bcb_prop_preprocTools_dis_jus"] = props.preprocTools_dis_jus
+
+    scene["bcb_prop_preprocTools_rbs"] = props.preprocTools_rbs
+
+    scene["bcb_prop_preprocTools_int"] = props.preprocTools_int
     scene["bcb_prop_preprocTools_int_bol"] = props.preprocTools_int_bol
+
+    scene["bcb_prop_preprocTools_fix"] = props.preprocTools_fix
     scene["bcb_prop_preprocTools_fix_nam"] = props.preprocTools_fix_nam
     scene["bcb_prop_preprocTools_fix_cac"] = props.preprocTools_fix_cac
     scene["bcb_prop_preprocTools_fix_rng"] = props.preprocTools_fix_rng
@@ -74,6 +82,8 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_preprocTools_fix_ayn"] = props.preprocTools_fix_ayn
     scene["bcb_prop_preprocTools_fix_azp"] = props.preprocTools_fix_azp
     scene["bcb_prop_preprocTools_fix_azn"] = props.preprocTools_fix_azn
+
+    scene["bcb_prop_preprocTools_gnd"] = props.preprocTools_gnd
     scene["bcb_prop_preprocTools_gnd_obj"] = props.preprocTools_gnd_obj
     scene["bcb_prop_preprocTools_gnd_obm"] = props.preprocTools_gnd_obm
     scene["bcb_prop_preprocTools_gnd_nac"] = props.preprocTools_gnd_nac
@@ -83,6 +93,26 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_preprocTools_gnd_nsd"] = props.preprocTools_gnd_nsd
     scene["bcb_prop_preprocTools_gnd_nam"] = props.preprocTools_gnd_nam
 
+    ### Postprocessing Tools
+    scene["bcb_prop_postprocTools_aut"] = props.postprocTools_aut
+
+    scene["bcb_prop_postprocTools_lox"] = props.postprocTools_lox
+    scene["bcb_prop_postprocTools_lox_elm"] = props.postprocTools_lox_elm
+    scene["bcb_prop_postprocTools_lox_nam"] = props.postprocTools_lox_nam
+
+    scene["bcb_prop_postprocTools_fcx"] = props.postprocTools_fcx
+    scene["bcb_prop_postprocTools_fcx_con"] = props.postprocTools_fcx_con
+    scene["bcb_prop_postprocTools_fcx_nam"] = props.postprocTools_fcx_nam
+
+    scene["bcb_prop_postprocTools_fcv"] = props.postprocTools_fcv
+    scene["bcb_prop_postprocTools_fcv_con"] = props.postprocTools_fcv_con
+    scene["bcb_prop_postprocTools_fcv_frm"] = props.postprocTools_fcv_frm
+    scene["bcb_prop_postprocTools_fcv_max"] = props.postprocTools_fcv_max
+
+    scene["bcb_prop_postprocTools_rps"] = props.postprocTools_rps
+    scene["bcb_prop_postprocTools_rps_nam"] = props.postprocTools_rps_nam
+    
+    ### General
     scene["bcb_prop_stepsPerSecond"] = props.stepsPerSecond
     scene["bcb_prop_constraintUseBreaking"] = props.constraintUseBreaking
     scene["bcb_prop_passiveUseBreaking"] = props.passiveUseBreaking
@@ -138,43 +168,51 @@ def getConfigDataFromScene(scene):
         versionCfg = (0, 0, 0)
         warning = "Configuration settings from an older BCB version detected which is known to be incompatible with this one.\nTry to clear settings and reconfigure your scene from scratch."
 
+    ### Preprocessing Tools
+
     if "bcb_prop_preprocTools_aut" in scene.keys():
         props.preprocTools_aut = scene["bcb_prop_preprocTools_aut"]
+
     if "bcb_prop_preprocTools_rps" in scene.keys():
         props.preprocTools_rps = scene["bcb_prop_preprocTools_rps"]
-    if "bcb_prop_preprocTools_grp" in scene.keys():
-        props.preprocTools_grp = scene["bcb_prop_preprocTools_grp"]
-    if "bcb_prop_preprocTools_mod" in scene.keys():
-        props.preprocTools_mod = scene["bcb_prop_preprocTools_mod"]
-    if "bcb_prop_preprocTools_ctr" in scene.keys():
-        props.preprocTools_ctr = scene["bcb_prop_preprocTools_ctr"]
-    if "bcb_prop_preprocTools_sep" in scene.keys():
-        props.preprocTools_sep = scene["bcb_prop_preprocTools_sep"]
-    if "bcb_prop_preprocTools_dis" in scene.keys():
-        props.preprocTools_dis = scene["bcb_prop_preprocTools_dis"]
-    if "bcb_prop_preprocTools_rbs" in scene.keys():
-        props.preprocTools_rbs = scene["bcb_prop_preprocTools_rbs"]
-    if "bcb_prop_preprocTools_int" in scene.keys():
-        props.preprocTools_int = scene["bcb_prop_preprocTools_int"]
-    if "bcb_prop_preprocTools_fix" in scene.keys():
-        props.preprocTools_fix = scene["bcb_prop_preprocTools_fix"]
-    if "bcb_prop_preprocTools_gnd" in scene.keys():
-        props.preprocTools_gnd = scene["bcb_prop_preprocTools_gnd"]
-
     if "bcb_prop_preprocTools_rps_nam" in scene.keys():
         props.preprocTools_rps_nam = scene["bcb_prop_preprocTools_rps_nam"]
+
+    if "bcb_prop_preprocTools_grp" in scene.keys():
+        props.preprocTools_grp = scene["bcb_prop_preprocTools_grp"]
     if "bcb_prop_preprocTools_grp_sep" in scene.keys():
         props.preprocTools_grp_sep = scene["bcb_prop_preprocTools_grp_sep"]
     if "bcb_prop_preprocTools_grp_occ" in scene.keys():
         props.preprocTools_grp_occ = scene["bcb_prop_preprocTools_grp_occ"]
+
+    if "bcb_prop_preprocTools_mod" in scene.keys():
+        props.preprocTools_mod = scene["bcb_prop_preprocTools_mod"]
+
+    if "bcb_prop_preprocTools_ctr" in scene.keys():
+        props.preprocTools_ctr = scene["bcb_prop_preprocTools_ctr"]
+
+    if "bcb_prop_preprocTools_sep" in scene.keys():
+        props.preprocTools_sep = scene["bcb_prop_preprocTools_sep"]
+
+    if "bcb_prop_preprocTools_dis" in scene.keys():
+        props.preprocTools_dis = scene["bcb_prop_preprocTools_dis"]
     if "bcb_prop_preprocTools_dis_siz" in scene.keys():
         props.preprocTools_dis_siz = scene["bcb_prop_preprocTools_dis_siz"]
     if "bcb_prop_preprocTools_dis_cel" in scene.keys():
         props.preprocTools_dis_cel = scene["bcb_prop_preprocTools_dis_cel"]
     if "bcb_prop_preprocTools_dis_jus" in scene.keys():
         props.preprocTools_dis_jus = scene["bcb_prop_preprocTools_dis_jus"]
+
+    if "bcb_prop_preprocTools_rbs" in scene.keys():
+        props.preprocTools_rbs = scene["bcb_prop_preprocTools_rbs"]
+
+    if "bcb_prop_preprocTools_int" in scene.keys():
+        props.preprocTools_int = scene["bcb_prop_preprocTools_int"]
     if "bcb_prop_preprocTools_int_bol" in scene.keys():
         props.preprocTools_int_bol = scene["bcb_prop_preprocTools_int_bol"]
+
+    if "bcb_prop_preprocTools_fix" in scene.keys():
+        props.preprocTools_fix = scene["bcb_prop_preprocTools_fix"]
     if "bcb_prop_preprocTools_fix_nam" in scene.keys():
         props.preprocTools_fix_nam = scene["bcb_prop_preprocTools_fix_nam"]
     if "bcb_prop_preprocTools_fix_cac" in scene.keys():
@@ -193,6 +231,9 @@ def getConfigDataFromScene(scene):
         props.preprocTools_fix_azp = scene["bcb_prop_preprocTools_fix_azp"]
     if "bcb_prop_preprocTools_fix_azn" in scene.keys():
         props.preprocTools_fix_azn = scene["bcb_prop_preprocTools_fix_azn"]
+
+    if "bcb_prop_preprocTools_gnd" in scene.keys():
+        props.preprocTools_gnd = scene["bcb_prop_preprocTools_gnd"]
     if "bcb_prop_preprocTools_gnd_obj" in scene.keys():
         props.preprocTools_gnd_obj = scene["bcb_prop_preprocTools_gnd_obj"]
     if "bcb_prop_preprocTools_gnd_obm" in scene.keys():
@@ -209,6 +250,41 @@ def getConfigDataFromScene(scene):
         props.preprocTools_gnd_nsd = scene["bcb_prop_preprocTools_gnd_nsd"]
     if "bcb_prop_preprocTools_gnd_nam" in scene.keys():
         props.preprocTools_gnd_nam = scene["bcb_prop_preprocTools_gnd_nam"]
+
+    ### Postprocessing Tools
+
+    if "bcb_prop_postprocTools_aut" in scene.keys():
+        props.postprocTools_aut = scene["bcb_prop_postprocTools_aut"]
+
+    if "bcb_prop_postprocTools_lox" in scene.keys():
+        props.postprocTools_lox = scene["bcb_prop_postprocTools_lox"]
+    if "bcb_prop_postprocTools_lox_elm" in scene.keys():
+        props.postprocTools_lox_elm = scene["bcb_prop_postprocTools_lox_elm"]
+    if "bcb_prop_postprocTools_lox_nam" in scene.keys():
+        props.postprocTools_lox_nam = scene["bcb_prop_postprocTools_lox_nam"]
+
+    if "bcb_prop_postprocTools_fcx" in scene.keys():
+        props.postprocTools_fcx = scene["bcb_prop_postprocTools_fcx"]
+    if "bcb_prop_postprocTools_fcx_con" in scene.keys():
+        props.postprocTools_fcx_con = scene["bcb_prop_postprocTools_fcx_con"]
+    if "bcb_prop_postprocTools_fcx_nam" in scene.keys():
+        props.postprocTools_fcx_nam = scene["bcb_prop_postprocTools_fcx_nam"]
+
+    if "bcb_prop_postprocTools_fcv" in scene.keys():
+        props.postprocTools_fcv = scene["bcb_prop_postprocTools_fcv"]
+    if "bcb_prop_postprocTools_fcv_con" in scene.keys():
+        props.postprocTools_fcv_con = scene["bcb_prop_postprocTools_fcv_con"]
+    if "bcb_prop_postprocTools_fcv_frm" in scene.keys():
+        props.postprocTools_fcv_frm = scene["bcb_prop_postprocTools_fcv_frm"]
+    if "bcb_prop_postprocTools_fcv_max" in scene.keys():
+        props.postprocTools_fcv_max = scene["bcb_prop_postprocTools_fcv_max"]
+
+    if "bcb_prop_postprocTools_rps" in scene.keys():
+        props.postprocTools_rps = scene["bcb_prop_postprocTools_rps"]
+    if "bcb_prop_postprocTools_rps_nam" in scene.keys():
+        props.postprocTools_rps_nam = scene["bcb_prop_postprocTools_rps_nam"]
+
+    ### General
 
     if "bcb_prop_stepsPerSecond" in scene.keys():
         props.stepsPerSecond = scene["bcb_prop_stepsPerSecond"]
