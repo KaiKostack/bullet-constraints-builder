@@ -1158,10 +1158,9 @@ def tool_exportLocationHistory_eventHandler(scene):
             else:
                 data = ob.centroid.copy()  # Get actual Bullet object's position as .location only returns its simulation starting position
     
-    # If filepath is empty return data and print data into console
+    # If filepath is empty then print data into console
     if len(filenamePath) == 0:
         print("Data:", data)
-        return data
 
     else:
 
@@ -1246,12 +1245,9 @@ def tool_exportLocationHistory(scene):
 
 ################################################################################
 
-def tool_constraintForceHistory_eventHandler(scene):
+def tool_constraintForceHistory_getData(scene, name):
     
     props = bpy.context.window_manager.bcb
-    filenamePath = props.postprocTools_fcx_nam
-    logPath = os.path.dirname(filenamePath)
-    name = props.postprocTools_fcx_con
 
     ###### Get data
 
@@ -1261,12 +1257,12 @@ def tool_constraintForceHistory_eventHandler(scene):
         try: ob = scene.objects[name +'.1']
         except:
             print('Error: Defined object not found. Removing event handler.')
-            stopPlaybackAndReturnToStart(scene); return
+            stopPlaybackAndReturnToStart(scene); return None
         else:
             try: cons = [ob.rigid_body_constraint]
             except:
                 print('Error: Defined object no constraint. Removing event handler.')
-                stopPlaybackAndReturnToStart(scene); return
+                stopPlaybackAndReturnToStart(scene); return None
             else:
                 ### Try to find more constraints for the connection
                 i = 1; qEnd = 0
@@ -1283,13 +1279,13 @@ def tool_constraintForceHistory_eventHandler(scene):
         try: ob = scene.objects[asciiExportName]
         except:
             print('Error: Fracture Modifier object not found. Removing event handler.')
-            stopPlaybackAndReturnToStart(scene); return
+            stopPlaybackAndReturnToStart(scene); return None
         else:
             md = ob.modifiers["Fracture"]
             try: cons = [md.mesh_constraints[name +'.1']]
             except:
                 print('Error: Defined object not found. Removing event handler.')
-                stopPlaybackAndReturnToStart(scene); return
+                stopPlaybackAndReturnToStart(scene); return None
             else:
                 ### Try to find more constraints for the connection
                 i = 1; qEnd = 0
@@ -1302,55 +1298,70 @@ def tool_constraintForceHistory_eventHandler(scene):
     try: data = [con.appliedImpulse() for con in cons]
     except:
         print("Error: Data could not be read, Blender version with Fracture Modifier required!")
-        stopPlaybackAndReturnToStart(scene); return
+        stopPlaybackAndReturnToStart(scene); return None
     
-    # If filepath is empty return data and print data into console
-    if len(filenamePath) == 0:
-        print("Data:", data)
-        return data
+    return data, cons
 
-    else:
+########################################
 
-        ###### Export data
-        
-        ### On first run
-        if "log_files_open" not in bpy.app.driver_namespace.keys():
-            # Create object list of selected objects
-            objNames = [name]
-            if len(objNames) > 0:
-                bpy.app.driver_namespace["log_objNames"] = objNames
-            files = []
-            for objName in objNames:
-                # Stupid Windows interprets "Con." in path as system variable and writes into console
-                filename = objName.replace(".", "_") +".csv"
-                filename = os.path.join(logPath, filename)
-                print("Creating file:", filename)
-                # Remove old log file at start frame
-                try: os.remove(filename)
-                except: pass
-                # Create new log file
-                try: f = open(filename, "w")
-                except:
-                    print('Error: Could not open file.')
-                    stopPlaybackAndReturnToStart(scene); return
-                else:
-                    line = "1: Fmax for connection; Rest: F for individual constraints; Name: %s\n" %objName
-                    f.write(line)
-                    files.append(f)
-            bpy.app.driver_namespace["log_files_open"] = files
-        
-        ### For every frame
-        if "log_objNames" in bpy.app.driver_namespace.keys():
-            objNames = bpy.app.driver_namespace["log_objNames"]
-            files = bpy.app.driver_namespace["log_files_open"]
-            for k in range(len(objNames)):
-                fmax = data[0]
-                for val in data: fmax = max(fmax, abs(val))
-                line = "%0.6f" %fmax
-                for val in data:
-                    line += " %0.6f" %val
-                line += "\n"
-                files[k].write(line)
+def tool_constraintForceHistory_eventHandler(scene):
+
+    props = bpy.context.window_manager.bcb
+    name = props.postprocTools_fcx_con
+    result = tool_constraintForceHistory_getData(scene, name)
+
+    if result != None:
+        data = result[0]  # (data, cons)
+
+        filenamePath = props.postprocTools_fcx_nam
+        logPath = os.path.dirname(filenamePath)
+
+        # If filepath is empty then print data into console
+        if len(filenamePath) == 0:
+            print("Data:", data)
+
+        else:
+
+            ###### Export data
+            
+            ### On first run
+            if "log_files_open" not in bpy.app.driver_namespace.keys():
+                # Create object list of selected objects
+                objNames = [name]
+                if len(objNames) > 0:
+                    bpy.app.driver_namespace["log_objNames"] = objNames
+                files = []
+                for objName in objNames:
+                    # Stupid Windows interprets "Con." in path as system variable and writes into console
+                    filename = objName.replace(".", "_") +".csv"
+                    filename = os.path.join(logPath, filename)
+                    print("Creating file:", filename)
+                    # Remove old log file at start frame
+                    try: os.remove(filename)
+                    except: pass
+                    # Create new log file
+                    try: f = open(filename, "w")
+                    except:
+                        print('Error: Could not open file.')
+                        stopPlaybackAndReturnToStart(scene); return
+                    else:
+                        line = "1: Fmax for connection; Rest: F for individual constraints; Name: %s\n" %objName
+                        f.write(line)
+                        files.append(f)
+                bpy.app.driver_namespace["log_files_open"] = files
+            
+    ### For every frame
+    if "log_objNames" in bpy.app.driver_namespace.keys():
+        objNames = bpy.app.driver_namespace["log_objNames"]
+        files = bpy.app.driver_namespace["log_files_open"]
+        for k in range(len(objNames)):
+            fmax = data[0]
+            for val in data: fmax = max(fmax, abs(val))
+            line = "%0.6f" %fmax
+            for val in data:
+                line += " %0.6f" %val
+            line += "\n"
+            files[k].write(line)
 
     ### Check if last frame is reached
     if scene.frame_current == scene.frame_end:

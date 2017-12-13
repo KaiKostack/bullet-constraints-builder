@@ -192,7 +192,7 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
     use_handler = int_(default = 0)
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
-            self.report({'ERROR'}, "Fracture Modifier not available in this Blender version.")  # Create popup message
+            self.report({'ERROR'}, "Fracture Modifier not available in this Blender version. Visit graphicall.org/1148 for the FM-enabled Blender version.")  # Create popup message
         else:
             ###### Execute main building process from scratch
             scene = bpy.context.scene
@@ -745,8 +745,11 @@ class OBJECT_OT_bcb_tool_export_force_history(bpy.types.Operator):
     bl_label = "Export Force History"
     bl_description = "Exports the force time history for a constraint into a .csv file."
     def execute(self, context):
-        props = context.window_manager.bcb
-        scene = bpy.context.scene
-        tool_constraintForceHistory(scene)
-        props.postprocTools_fcx = 0
+        if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
+            self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit graphicall.org/1148 for the FM-enabled Blender version.")  # Create popup message
+        else:
+            props = context.window_manager.bcb
+            scene = bpy.context.scene
+            tool_constraintForceHistory(scene)
+            props.postprocTools_fcx = 0
         return{'FINISHED'}
