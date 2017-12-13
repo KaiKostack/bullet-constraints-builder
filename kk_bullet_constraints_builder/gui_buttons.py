@@ -561,7 +561,6 @@ class OBJECT_OT_bcb_tool_run_python_script(bpy.types.Operator):
         if   self.opNo == 1: filename = props.preprocTools_rps_nam
         elif self.opNo == 2: filename = props.postprocTools_rps_nam
         tool_runPythonScript(scene, filename)
-        props.preprocTools_aut = 0
         props.preprocTools_rps = 0
         return{'FINISHED'}
 
@@ -593,7 +592,6 @@ class OBJECT_OT_bcb_tool_create_groups_from_names(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_createGroupsFromNames(scene)
-        props.preprocTools_aut = 0
         props.preprocTools_grp = 0
         return{'FINISHED'}
 
@@ -607,7 +605,6 @@ class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_applyAllModifiers(scene)
-        props.preprocTools_aut = 0
         props.preprocTools_mod = 0
         return{'FINISHED'}
 
@@ -621,7 +618,6 @@ class OBJECT_OT_bcb_tool_center_model(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_centerModel(scene)
-        props.preprocTools_aut = 0
         props.preprocTools_ctr = 0
         return{'FINISHED'}
 
@@ -635,7 +631,6 @@ class OBJECT_OT_bcb_tool_separate_loose(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_separateLoose(scene)
-        props.preprocTools_aut = 0
         props.preprocTools_sep = 0
         return{'FINISHED'}
 
@@ -649,7 +644,6 @@ class OBJECT_OT_bcb_tool_discretize(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_discretize(scene)
-        props.preprocTools_aut = 0
         props.preprocTools_dis = 0
         return{'FINISHED'}
 
@@ -663,7 +657,6 @@ class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_enableRigidBodies(scene)
-        props.preprocTools_aut = 0
         props.preprocTools_rbs = 0
         return{'FINISHED'}
 
@@ -679,7 +672,6 @@ class OBJECT_OT_bcb_tool_remove_intersections(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_removeIntersections(scene, mode=self.mode)
-        props.preprocTools_aut = 0
         props.preprocTools_int = 0
         return{'FINISHED'}
     
@@ -693,7 +685,6 @@ class OBJECT_OT_bcb_tool_fix_foundation(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_fixFoundation(scene)
-        props.preprocTools_aut = 0
         props.preprocTools_fix = 0
         return{'FINISHED'}
 
@@ -707,7 +698,6 @@ class OBJECT_OT_bcb_tool_ground_motion(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_groundMotion(scene)
-        props.preprocTools_aut = 0
         props.preprocTools_gnd = 0
         return{'FINISHED'}
 
@@ -745,7 +735,6 @@ class OBJECT_OT_bcb_tool_export_location_history(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_exportLocationHistory(scene)
-        props.postprocTools_aut = 0
         props.postprocTools_lox = 0
         return{'FINISHED'}
 
@@ -759,6 +748,5 @@ class OBJECT_OT_bcb_tool_export_force_history(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_constraintForceHistory(scene)
-        props.postprocTools_aut = 0
         props.postprocTools_fcx = 0
         return{'FINISHED'}

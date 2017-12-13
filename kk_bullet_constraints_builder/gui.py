@@ -286,10 +286,7 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
         split.prop(props, "preprocTools_gnd_nam")
         split.operator("bcb.tool_select_csv_file", icon="FILESEL", text="").opNo = 1
         if props.preprocTools_gnd_nac: split.enabled = 0
-                
-        ### Update global vars from menu related properties
-        props.props_update_globals()
-
+        
 ########################################
 
 class bcb_panel_global_settings(bpy.types.Panel):
@@ -352,9 +349,6 @@ class bcb_panel_global_settings(bpy.types.Panel):
         col.separator()
         row = col.row(align=1); row.prop(props, "warmUpPeriod")
 
-        ### Update global vars from menu related properties
-        props.props_update_globals()
-
 ########################################
 
 class bcb_panel_advanced_global_settings(bpy.types.Panel):
@@ -403,9 +397,6 @@ class bcb_panel_advanced_global_settings(bpy.types.Panel):
         row = col.row(align=1); row.prop(props, "timeScalePeriodValue")
         if props.timeScalePeriod == 0: row.enabled = 0
 
-        ### Update global vars from menu related properties
-        props.props_update_globals()
-
 ########################################
 
 class bcb_panel_triggers(bpy.types.Panel):
@@ -435,9 +426,6 @@ class bcb_panel_triggers(bpy.types.Panel):
 
         col.separator()
         col.label(text="For Earthquake see Preprocessing Tools.")
-
-        ### Update global vars from menu related properties
-        props.props_update_globals()
 
 ########################################
 
@@ -508,9 +496,6 @@ class bcb_panel_element_group_list(bpy.types.Panel):
                 split2.label(text=str(prop_EGSidxBTS))
                 split2.label(text=str(prop_EGSidxBTB))
 
-        ### Update global vars from menu related properties
-        props.props_update_globals()
-
 ########################################
 
 class bcb_panel_element_group_selector(bpy.types.Panel):
@@ -553,9 +538,6 @@ class bcb_panel_element_group_selector(bpy.types.Panel):
         else:  # Message if no element group is selected
             row = layout.row(align=1); row.alignment = 'CENTER'
             row.label(text="No element group", icon="INFO")
-
-        ### Update global vars from menu related properties
-        props.props_update_globals()
 
 ########################################
 
@@ -673,10 +655,7 @@ class bcb_panel_formula_assistant(bpy.types.Panel):
         else:  # Message if no element group is selected
             row = layout.row(align=1); row.alignment = 'CENTER'
             row.label(text="No element group", icon="INFO")
-                    
-        ### Update global vars from menu related properties
-        props.props_update_globals()
-
+            
 ########################################
 
 class bcb_panel_element_group_settings(bpy.types.Panel):
@@ -806,9 +785,6 @@ class bcb_panel_element_group_settings(bpy.types.Panel):
         else:  # Message if no element group is selected
             row = layout.row(align=1); row.alignment = 'CENTER'
             row.label(text="No element group", icon="INFO")
-
-        ### Update global vars from menu related properties
-        props.props_update_globals()
 
 ########################################
 

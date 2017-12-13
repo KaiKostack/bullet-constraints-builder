@@ -1128,7 +1128,8 @@ def tool_exportLocationHistory_eventHandler(scene):
     qRelativeCoordinates = 0   # Enables logging of relative coordinates instead of absolute
 
     props = bpy.context.window_manager.bcb
-    logPath = os.path.dirname(props.postprocTools_lox_nam)
+    filenamePath = props.postprocTools_lox_nam
+    logPath = os.path.dirname(filenamePath)
     name = props.postprocTools_lox_elm
 
     ###### Get data
@@ -1157,9 +1158,10 @@ def tool_exportLocationHistory_eventHandler(scene):
             else:
                 data = ob.centroid.copy()  # Get actual Bullet object's position as .location only returns its simulation starting position
     
-    # Print data into console if filepath is empty
-    if len(props.postprocTools_lox_nam) == 0:
+    # If filepath is empty return data and print data into console
+    if len(filenamePath) == 0:
         print("Data:", data)
+        return data
 
     else:
 
@@ -1186,7 +1188,7 @@ def tool_exportLocationHistory_eventHandler(scene):
                     print('Error: Could not open file.')
                     stopPlaybackAndReturnToStart(scene); return
                 else:
-                    line = "X, Y, Z, %s\n" %objName
+                    line = "X; Y; Z; Name: %s\n" %objName
                     f.write(line)
                     files.append(f)
             bpy.app.driver_namespace["log_files_open"] = files
@@ -1247,44 +1249,65 @@ def tool_exportLocationHistory(scene):
 def tool_constraintForceHistory_eventHandler(scene):
     
     props = bpy.context.window_manager.bcb
-    logPath = os.path.dirname(props.postprocTools_fcx_nam)
+    filenamePath = props.postprocTools_fcx_nam
+    logPath = os.path.dirname(filenamePath)
     name = props.postprocTools_fcx_con
 
     ###### Get data
 
     ### Official Blender
     if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
-        try: ob = scene.objects[name]
+        ### Try to find first constraint for the connection
+        try: ob = scene.objects[name +'.1']
         except:
             print('Error: Defined object not found. Removing event handler.')
             stopPlaybackAndReturnToStart(scene); return
         else:
-            try: con = ob.rigid_body_constraint
+            try: cons = [ob.rigid_body_constraint]
             except:
                 print('Error: Defined object no constraint. Removing event handler.')
                 stopPlaybackAndReturnToStart(scene); return
+            else:
+                ### Try to find more constraints for the connection
+                i = 1; qEnd = 0
+                while not qEnd:
+                    i += 1
+                    nameNew = name +'.%d' %i
+                    try: ob = scene.objects[nameNew]
+                    except: qEnd = 1
+                    else: cons.append(ob.rigid_body_constraint)
 
     ### Fracture Modifier
     else:
+        ### Try to find first constraint for the connection
         try: ob = scene.objects[asciiExportName]
         except:
             print('Error: Fracture Modifier object not found. Removing event handler.')
             stopPlaybackAndReturnToStart(scene); return
         else:
             md = ob.modifiers["Fracture"]
-            try: con = md.mesh_constraints[name]
+            try: cons = [md.mesh_constraints[name +'.1']]
             except:
                 print('Error: Defined object not found. Removing event handler.')
                 stopPlaybackAndReturnToStart(scene); return
+            else:
+                ### Try to find more constraints for the connection
+                i = 1; qEnd = 0
+                while not qEnd:
+                    i += 1
+                    nameNew = name +'.%d' %i
+                    try: cons.append(md.mesh_constraints[nameNew])
+                    except: qEnd = 1
 
-    try: data = con.appliedImpulse()
+    try: data = [con.appliedImpulse() for con in cons]
     except:
         print("Error: Data could not be read, Blender version with Fracture Modifier required!")
         stopPlaybackAndReturnToStart(scene); return
     
-    # Print data into console if filepath is empty
-    if len(props.postprocTools_fcx_nam) == 0:
+    # If filepath is empty return data and print data into console
+    if len(filenamePath) == 0:
         print("Data:", data)
+        return data
 
     else:
 
@@ -1311,7 +1334,7 @@ def tool_constraintForceHistory_eventHandler(scene):
                     print('Error: Could not open file.')
                     stopPlaybackAndReturnToStart(scene); return
                 else:
-                    line = "F, %s\n" %objName
+                    line = "1: Fmax for connection; Rest: F for individual constraints; Name: %s\n" %objName
                     f.write(line)
                     files.append(f)
             bpy.app.driver_namespace["log_files_open"] = files
@@ -1321,7 +1344,12 @@ def tool_constraintForceHistory_eventHandler(scene):
             objNames = bpy.app.driver_namespace["log_objNames"]
             files = bpy.app.driver_namespace["log_files_open"]
             for k in range(len(objNames)):
-                line = "%0.6f\n" %data
+                fmax = data[0]
+                for val in data: fmax = max(fmax, abs(val))
+                line = "%0.6f" %fmax
+                for val in data:
+                    line += " %0.6f" %val
+                line += "\n"
                 files[k].write(line)
 
     ### Check if last frame is reached

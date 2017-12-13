@@ -119,7 +119,7 @@ class bcb_props(bpy.types.PropertyGroup):
     postprocTools_lox_nam = string_(name="CSV File",      default='', description="Enter a filename for data export.")
 
     postprocTools_fcx = bool_(default=1)
-    postprocTools_fcx_con = string_(name="Constraint",    default='Con.000.1', description="Enter the name of an constraint for which the location time history should be exported.")
+    postprocTools_fcx_con = string_(name="Constraint",    default='Con.000', description="Enter the name of an constraint for which the location time history should be exported.")
     postprocTools_fcx_nam = string_(name="CSV File",      default='', description="Enter a filename for data export.")
 
     postprocTools_fcv = bool_(default=1)
