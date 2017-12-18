@@ -873,7 +873,9 @@ def tool_fixFoundation(scene):
             try: bpy.ops.object.mode_set(mode='OBJECT')
             except: pass
 
-        # Set object centers to geometry origin
+        ### Set object centers to geometry origin
+        # Make sure current frame is at start frame otherwise the rigid body cache can cause unwanted location resets of buffer objects on origin change
+        if scene.frame_current != scene.frame_start: scene.frame_current = scene.frame_start
         obj.select = 1
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
          
