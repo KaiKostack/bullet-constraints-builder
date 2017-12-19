@@ -781,6 +781,7 @@ class bcb_panel_element_group_settings(bpy.types.Panel):
             #row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxRqVP" %i)
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxMatP" %i)
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxDens" %i)
+            row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxLoad" %i)
                                 
         else:  # Message if no element group is selected
             row = layout.row(align=1); row.alignment = 'CENTER'

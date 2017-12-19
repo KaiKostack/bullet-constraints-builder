@@ -1248,10 +1248,9 @@ def applyScale(scene, objs, objsEGrp, childObjs):
     ### Select objects in question
     for k in range(len(objs)):
         obj = objs[k]
-        if obj.rigid_body.type == 'ACTIVE':
-            scale = elemGrps[objsEGrp[k]][EGSidxScal]
-            if scale != 0 and scale != 1:
-                obj.select = 1
+        scale = elemGrps[objsEGrp[k]][EGSidxScal]
+        if scale != 0 and scale != 1:
+            obj.select = 1
     
     if obj != None:
         ###### Create parents if required
@@ -1337,13 +1336,14 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
 
     ### Update masses
     
-    objsRevertScale = []
+    objsTotal = []; objsScale = []
     for j in range(len(elemGrps)):
         elemGrp = elemGrps[j]
         
         # Deselect all objects
         bpy.ops.object.select_all(action='DESELECT')
         
+        objsSelected = []
         for k in range(len(objs)):
             obj = objs[k]
             if obj.rigid_body != None:
@@ -1364,42 +1364,72 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                             if qScale:
                                 if scale != 0 and scale != 1:
                                     obj.scale /= scale
-                                    objsRevertScale.append([obj, scale])
+                                    objsSelected.append(obj)
+                                    objsTotal.append(obj)
+                                    objsScale.append(scale)
 
+        ### Calculating and applying material masses
         materialPreset = elemGrp[EGSidxMatP]
         materialDensity = elemGrp[EGSidxDens]
         if not materialDensity:
             if materialPreset != "": bpy.ops.rigidbody.mass_calculate(material=materialPreset)
         else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
 
+        ### Calculate volumes from calculated densities and store them for later use in builder_setc.py
+        materialDensity = elemGrp[EGSidxDens]
+        if not materialDensity:
+            materialPreset = elemGrp[EGSidxMatP]
+            if materialPreset != "": materialDensity = materialPresets[materialPreset]
+        for obj in objsSelected:
+            volume = obj.rigid_body.mass /materialDensity
+            obj["Volume"] = volume  # Needed in builder_setc.py
+                
+        ### Adding live load to masses
+        liveLoad = elemGrp[EGSidxLoad]
+        for obj in objsSelected:
+            dims = obj.dimensions
+            floorArea = dims[0] *dims[1]  # Simple approximation by assuming rectangular floor area (x *y)
+            if liveLoad > 0: obj.rigid_body.mass += floorArea *liveLoad
+            obj["Area"] = floorArea  # Only needed for the diagnostic prints below
+
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
 
     ### Reapply element scaling after mass calculation
-    for objScale in objsRevertScale:
-        obj = objScale[0]
-        scale = objScale[1]
+    for k in range(len(objsTotal)):
+        obj = objsTotal[k]
+        scale = objsScale[k]
         obj.scale *= scale
     
     ### Calculate total and element group masses for diagnostic purposes
     print()
-    groups = {}
+    groupsMass = {}; groupsArea = {}
     for obj in objs:
         if obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE':
             for group in bpy.data.groups:
-                try: groups[group.name] += group.objects[obj.name].rigid_body.mass
-                except:
-                    try: groups[group.name] = group.objects[obj.name].rigid_body.mass
-                    except: pass
-                #if obj.name in group.objects:
-                #    try: groups[group.name] += obj.rigid_body.mass
-                #    except: groups[group.name] = obj.rigid_body.mass
-    for groupName in groups.keys():
-        mass = groups[groupName]
-        if mass != groups["RigidBodyWorld"]:  # Filter all groups that contain the complete structure
-            print("Group '%s' mass: %0.0f t and %0.0f kg" %(groupName, floor(mass/1000), mass%1000))
-    mass = groups["RigidBodyWorld"]
-    print("Total mass: %0.0f t and %0.0f kg" %(floor(mass/1000), mass%1000))
+                try: obj = group.objects[obj.name]
+                except: pass
+                else:
+                    try: groupsMass[group.name] += obj.rigid_body.mass
+                    except:
+                        try: groupsMass[group.name] = obj.rigid_body.mass
+                        except: pass
+                    try: groupsArea[group.name] += obj["Area"]
+                    except:
+                        try: groupsArea[group.name] = obj["Area"]
+                        except: pass
+    for groupName in groupsMass.keys():
+        try: mass = groupsMass[groupName]
+        except: mass = 0
+        try: area = groupsArea[groupName]
+        except: area = 0
+        if mass != groupsMass["RigidBodyWorld"]:  # Filter all groups that contain the complete structure
+            print("Group '%s' mass: %0.0f t and %0.0f kg / Floor area: %0.2f m^2" %(groupName, floor(mass/1000), mass%1000, area))
+    try: mass = groupsMass["RigidBodyWorld"]
+    except: mass = 0
+    try: area = groupsArea["RigidBodyWorld"]
+    except: area = 0
+    print("Total mass: %0.0f t and %0.0f kg / Total floor area: %0.2f m^2" %(floor(mass/1000), mass%1000, area))
     print()
     
     ### Copy rigid body settings (and mass) from children back to their parents and remove children from rigid body world

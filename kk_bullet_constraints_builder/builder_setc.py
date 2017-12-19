@@ -223,16 +223,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             mul = elemGrps_elemGrpA[EGSidxBTX]
             # Area correction calculation based on volume
             if props.useAccurateArea:
-                materialDensity = elemGrps_elemGrpA[EGSidxDens]
-                if not materialDensity:
-                    materialPreset = elemGrps_elemGrpA[EGSidxMatP]
-                    if materialPreset != "": materialDensity = materialPresets[materialPreset]
-                volume = objA.rigid_body.mass /materialDensity 
                 # Find out element thickness to be used for bending threshold calculation 
                 dim = objA.dimensions; dimAxis = [1, 2, 3]
                 dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
                 dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
                 # Derive contact area correction factor from geometry section area divided by bbox section area
+                volume = objA["Volume"]
                 sectionArea = volume /dimLength  # Full geometry section area of element
                 if dimHeight *dimWidth != 0:
                     mul *= sectionArea / (dimHeight *dimWidth)
@@ -290,16 +286,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             mul = elemGrps_elemGrpB[EGSidxBTX]
             # Area correction calculation based on volume
             if props.useAccurateArea:
-                materialDensity = elemGrps_elemGrpB[EGSidxDens]
-                if not materialDensity:
-                    materialPreset = elemGrps_elemGrpB[EGSidxMatP]
-                    if materialPreset != "": materialDensity = materialPresets[materialPreset]
-                volume = objB.rigid_body.mass /materialDensity 
                 # Find out element thickness to be used for bending threshold calculation 
                 dim = objB.dimensions; dimAxis = [1, 2, 3]
                 dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
                 dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
                 # Derive contact area correction factor from geometry section area divided by bbox section area
+                volume = objB["Volume"]
                 sectionArea = volume /dimLength  # Full geometry section area of element
                 if dimHeight *dimWidth != 0:
                     mul *= sectionArea / (dimHeight *dimWidth)            

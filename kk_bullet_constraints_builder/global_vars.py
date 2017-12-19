@@ -35,25 +35,25 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 7, 7)
+bcb_version = (2, 7, 8)
 
 ### Customizable element group presets
 presets = [
-# 0                     1    2           3        4   5       6       7       8      9       10     11       12   13   14   15    16   17    18     19             20  21   22  23
-# Name                  RVP  Mat.preset  Density  CT  BTC     BTT     BTS     BTS90  BTB     BTB90  BTP      T1D  T1R  T2D  T2R   Bev. Scale Facing F.Assist.+Data Cyl PLen BTX Prio
-[ "",                   1,   "Uncategorized", 2400, 3, "35",  "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "Base",               1,   "Uncategorized", 1,    0, "0",   "0",    "0",    "",    "0",    "",    "0",     0,   0,   0,   0,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "Concrete",           1,   "Concrete", 2400,    6,  "35",   "3.5",  "0.9",  "",    "1.0",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "RC Columns",         1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "RC Walls",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "RC Slabs",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "Masonry Walls",      1,   "Masonry",  1800,    6,  "10",   "2",    "0.3",  "",    "0.3",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "Timber Spruce",      1,   "Timber",   470,     6,  "40",   "80",   "7.5",  "",    "68",   "",    "80",   .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "Timber Larch",       1,   "Timber",   590,     6,  "48",   "105",  "9",    "",    "93",   "",    "105",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "Timber Ash",         1,   "Timber",   690,     6,  "50",   "130",  "13",   "",    "105",  "",    "130",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "I-Beams Screwed",    1,   "Steel",    7800,    6,  "47.5", "23.5", "14.1", "",    "2.4",  "",    "30.6", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "I-Beams Screwed 2",  1,   "Steel",    7800,    6,  "87.5", "33.8", "20.3", "",    "12.3", "",    "43.9", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ],
-[ "HSS-Beams Welded",   1,   "Steel",    7800,    6,  "37.5", "75",   "45",   "",    "6.6",  "",    "97.5", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5 ]
+# 0                     1    2           3        4   5       6       7       8      9       10     11       12   13   14   15    16   17    18     19             20  21   22  23   24
+# Name                  RVP  Mat.preset  Density  CT  BTC     BTT     BTS     BTS90  BTB     BTB90  BTP      T1D  T1R  T2D  T2R   Bev. Scale Facing F.Assist.+Data Cyl PLen BTX Prio Load
+[ "",                   1,   "Uncategorized", 2400, 3, "35",  "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "Base",               1,   "Uncategorized", 1,    0, "0",   "0",    "0",    "",    "0",    "",    "0",     0,   0,   0,   0,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "Concrete",           1,   "Concrete", 2400,    6,  "35",   "3.5",  "0.9",  "",    "1.0",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "RC Columns",         1,   "Concrete", 2400,    6,  "35",   "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "RC Walls",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "RC Slabs",           1,   "Concrete", 2400,    6,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "Masonry Walls",      1,   "Masonry",  1800,    6,  "10",   "2",    "0.3",  "",    "0.3",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "Timber Spruce",      1,   "Timber",   470,     6,  "40",   "80",   "7.5",  "",    "68",   "",    "80",   .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "Timber Larch",       1,   "Timber",   590,     6,  "48",   "105",  "9",    "",    "93",   "",    "105",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "Timber Ash",         1,   "Timber",   690,     6,  "50",   "130",  "13",   "",    "105",  "",    "130",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "I-Beams Screwed",    1,   "Steel",    7800,    6,  "47.5", "23.5", "14.1", "",    "2.4",  "",    "30.6", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "I-Beams Screwed 2",  1,   "Steel",    7800,    6,  "87.5", "33.8", "20.3", "",    "12.3", "",    "43.9", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ],
+[ "HSS-Beams Welded",   1,   "Steel",    7800,    6,  "37.5", "75",   "45",   "",    "6.6",  "",    "97.5", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0 ]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 # Actual element group list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
@@ -66,7 +66,8 @@ EGSidxRqVP = 1    # Required Vertex Pairs    | How many vertex pairs between two
                   #                          | For two elements from different groups with different RVPs the lower number is decisive.
 EGSidxMatP = 2    # Material Preset          | Preset name of the physical material to be used from Blender's internal database.
                   #                          | See Blender's Rigid Body Tools for a list of available presets.
-EGSidxDens = 3    # Material Density         | Custom density value (kg/m^3) to use instead of material preset (0 = disabled).
+EGSidxDens = 3    # Material Density         | Custom density value to use instead of material preset in kg/m^3 (0 = disabled).
+EGSidxLoad = 24   # Live Load                | Additional weight representing live load which will be added with respect to floor area in kg/m^2.
 EGSidxCTyp = 4    # Connection Type          | Connection type ID for the constraint presets defined by this script, see list below.
 EGSidxBTC  = 5    # Break.Thresh.Compres.    | Real world material compressive breaking threshold in N/mm^2.
 EGSidxBTT  = 6    # Break.Thresh.Tensile     | Real world material tensile breaking threshold in N/mm^2 (not used by all constraint types).
@@ -87,7 +88,9 @@ EGSidxScal = 17   # Scale                    | Apply scaling factor on elements 
 EGSidxFacg = 18   # Facing                   | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
 EGSidxAsst = 19   # Formula Assistant        | Material specific formula assistant with related settings
 EGSidxCyln = 20   # Cylindrical Shape        | Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns.
-# Last ID: 23 (Can be different from above line!)
+# Last ID: 24 (Can be different from above line because list is not in order!)
+# To add further element group variables add them here but also above in the presets at the correct index.
+# Aside from creating a corresponding UI property in global_props.py and gui.py no extra storage handling is needed like for global settings.
 
 ### Connection Types:
 connectTypes = [           # Cnt C T S B S T T T T      CT
