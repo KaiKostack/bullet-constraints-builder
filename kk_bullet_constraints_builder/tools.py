@@ -30,6 +30,8 @@
 ################################################################################
 
 import bpy, bmesh, os
+from mathutils import Vector
+from mathutils import Color
 mem = bpy.app.driver_namespace
 
 ### Import submodules
@@ -170,13 +172,12 @@ def tool_createGroupsFromNames(scene):
         return
     
     ### Create one main group for all objects
-    grpName = "BCB_Building"
-    if grpName not in bpy.data.groups:
-          grp = bpy.data.groups.new(grpName)
-    else: grp = bpy.data.groups[grpName]
+    grpName = grpNameBuilding
+    try: grp = bpy.data.groups[grpName]
+    except: grp = bpy.data.groups.new(grpName)
     for obj in objs:
-        if obj.name not in grp.objects:
-            grp.objects.link(obj)
+        try: grp.objects.link(obj)
+        except: pass
 
     ### Create group data with objects
     grps = []
@@ -202,12 +203,11 @@ def tool_createGroupsFromNames(scene):
     for k in range(len(grps)):
         grpName = grps[k]
         objs = grpsObjs[k]
-        if grpName not in bpy.data.groups:
-              grp = bpy.data.groups.new(grpName)
-        else: grp = bpy.data.groups[grpName]
+        try: grp = bpy.data.groups[grpName]
+        except: grp = bpy.data.groups.new(grpName)
         for obj in objs:
-            if obj.name not in grp.objects:
-                grp.objects.link(obj)
+            try: grp.objects.link(obj)
+            except: pass
          
     ### Create also element groups from data
     for k in range(len(grps)):
@@ -358,7 +358,7 @@ def tool_discretize(scene):
     
     if not props.preprocTools_dis_cel or props.preprocTools_dis_jus:
         # Create cutting plane to be used by external module
-        bpy.ops.mesh.primitive_plane_add(radius=100, view_align=False, enter_editmode=False, location=Vector((0, 0, 0)))
+        bpy.ops.mesh.primitive_plane_add(radius=100, view_align=False, enter_editmode=False, location=(0, 0, 0))
         objC = bpy.context.scene.objects.active
         objC.name = "BCB_CuttingPlane"
         objC.select = 0
@@ -696,7 +696,7 @@ def tool_fixFoundation(scene):
     else:
         if len(props.preprocTools_fix_nam) > 0:
               foundationName = props.preprocTools_fix_nam
-        else: foundationName = "Foundation"
+        else: foundationName = grpNameFoundation
 
         ### Calculate boundary boxes for all objects
         verts = []; edges = []; faces = []  # Active buffer mesh object
@@ -823,20 +823,22 @@ def tool_fixFoundation(scene):
         scene.objects.link(obj2)
         
         ### Add to main group
-        grpName = "BCB_Building"
-        if grpName in bpy.data.groups:
-            grp = bpy.data.groups[grpName]
-            grp.objects.link(obj)
-            grp.objects.link(obj2)
+        grpName = grpNameBuilding
+        try: grp = bpy.data.groups[grpName]
+        except: grp = bpy.data.groups.new(grpName)
+        try: grp.objects.link(obj)
+        except: pass
+        try: grp.objects.link(obj2)
+        except: pass
 
         ### Create a new group for the foundation object if not already existing
         grpName = foundationName
-        if grpName not in bpy.data.groups:
-              grp = bpy.data.groups.new(grpName)
-        else: grp = bpy.data.groups[grpName]
-        # Add new object to group
-        grp.objects.link(obj)
-        grp.objects.link(obj2)
+        try: grp = bpy.data.groups[grpName]
+        except: grp = bpy.data.groups.new(grpName)
+        try: grp.objects.link(obj)
+        except: pass
+        try: grp.objects.link(obj2)
+        except: pass
 
         ### Create also element group from data and use passive preset for it
         createElementGroup(grpName, presetNo=1)
@@ -1247,7 +1249,7 @@ def tool_exportLocationHistory(scene):
 
 ################################################################################
 
-def tool_constraintForceHistory_getData(scene, name):
+def tool_constraintForce_getData(scene, name):
     
     props = bpy.context.window_manager.bcb
 
@@ -1301,7 +1303,7 @@ def tool_constraintForceHistory_getData(scene, name):
     except:
         print("Error: Data could not be read, Blender version with Fracture Modifier required!")
         stopPlaybackAndReturnToStart(scene); return None
-    
+
     return data, cons
 
 ########################################
@@ -1309,12 +1311,15 @@ def tool_constraintForceHistory_getData(scene, name):
 def tool_constraintForceHistory_eventHandler(scene):
 
     props = bpy.context.window_manager.bcb
+    rbw_steps_per_second = scene.rigidbody_world.steps_per_second
+    rbw_time_scale = scene.rigidbody_world.time_scale
     name = props.postprocTools_fcx_con
-    result = tool_constraintForceHistory_getData(scene, name)
+    result = tool_constraintForce_getData(scene, name)
 
     if result != None:
         data = result[0]  # (data, cons)
-
+        data = [val *rbw_steps_per_second /rbw_time_scale for val in data]  # Conversion from impulse to force
+        
         filenamePath = props.postprocTools_fcx_nam
         logPath = os.path.dirname(filenamePath)
 
@@ -1408,5 +1413,320 @@ def tool_constraintForceHistory(scene):
 
     print('Init event handler.')
     bpy.app.handlers.frame_change_pre.append(tool_constraintForceHistory_eventHandler)
+    # Start animation playback
+    bpy.ops.screen.animation_play()
+
+########################################
+
+def initMaterials():
+    # Lend from kk_material_deformation-visualizer.py
+
+    print("Initializing materials...")
+
+    ### Vars
+    displaySteps = 300       # Gradient steps / material count to be used for visualization
+    colMultiplier = 1.0      # Color intensity multiplier (default: 1.0)
+    emission = 0.33          # Add some emission to the material in case scene is not illuminated (BI only, good value: 0.33)
+    zBufferOffset = 0        # Add z-buffer offset for visualized objects for rendering (can be useful to make objects to appear on top of the rendering similar to x-ray display mode)
+    
+    ### Create gradient materials for later use and reuse
+    for step in range(displaySteps):
+        x = step *(1 /(displaySteps -1))  # Normalized dif value in [0..1]
+        
+        col = Color((0, 0, 0))
+        #col.h = 0; col.s = 1; col.v = 1
+        
+        ### Old colors (blue to red)
+        #col.r = x   # correct math: = (x -0.5) *2
+        #col.g = 1 -(abs(0.5 -x) *2)
+        #col.b = (0.5 -x) *2
+        
+        ### New colors (blue to cyan to green to yellow to red)
+        col.r = 2 -(abs(1 -x) *4)
+        col.g = 2 -(abs(0.5 -x) *4)
+        col.b = 2 -(abs(x) *4)
+        
+        col.r *= colMultiplier
+        col.g *= colMultiplier
+        col.b *= colMultiplier
+        
+        matName = materialName +"%03d" %step
+        try: mat = bpy.data.materials[matName]
+        except: mat = bpy.data.materials.new(matName)
+        mat.diffuse_color = col
+        col.s *= 0.5
+        mat.specular_color = Color((0, 0, 0))
+        mat.specular_intensity = 0  # BI only
+        mat.specular_hardness = 5
+        mat.emit = emission
+        if zBufferOffset != 0:
+            mat.offset_z = zBufferOffset
+            mat.use_transparency = True
+
+########################################
+
+def changeMaterials(obj, dif):
+    # Lend from kk_material_deformation-visualizer.py
+
+    ###### Changes object material by deformation
+
+    ### Vars
+    displaySteps = 300       # Gradient steps / material count to be used for visualization
+    
+    ### Only calculate gradient mat index when the actual normalized deformation lies within [0..1] otherwise use the last gradient material
+    if dif < 1: step = int(dif *displaySteps)
+    else: step = displaySteps -1
+    mat = bpy.data.materials[materialName +"%03d" %step]
+
+    ### Add new materials slot and material
+    if len(obj.material_slots) == 0:
+        bpy.context.scene.objects.active = obj
+        bpy.ops.object.material_slot_add() 
+    obj.material_slots[-1:][0].material = mat
+
+################################################################################
+
+def tool_constraintForceVisualization_eventHandler(scene):
+
+    props = bpy.context.window_manager.bcb
+    rbw_steps_per_second = scene.rigidbody_world.steps_per_second
+    rbw_time_scale = scene.rigidbody_world.time_scale
+    objRangeName = props.postprocTools_fcv_con
+
+    ###### On first run
+    if "log_connectsViz" not in bpy.app.driver_namespace.keys():
+
+        ###### Get data from scene
+
+        ### Official Blender
+        if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
+            qFM = 0
+            
+            ### Prepare scene object dictionaries by type to be used for faster item search (optimization)
+            scnObjs = {}
+            scnEmptyObjs = {}
+            for obj in scene.objects:
+                if obj.type == 'MESH':    scnObjs[obj.name] = obj
+                elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
+
+            try: names = scene["bcb_objs"]
+            except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+            objs = []
+            for name in names:
+                try: objs.append(scnObjs[name])
+                except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+
+            try: names = scene["bcb_emptyObjs"]
+            except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
+            emptyObjs = []
+            for name in names:
+                try: emptyObjs.append(scnEmptyObjs[name])
+                except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+
+        ### Fracture Modifier
+        else:
+            qFM = 1
+            
+            try: ob = scene.objects[asciiExportName]
+            except: print("Error: Fracture Modifier object expected but not found."); return
+            md = ob.modifiers["Fracture"]
+
+            try: names = scene["bcb_objs"]
+            except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+            objs = []
+            for name in names:
+                try: objs.append(md.mesh_islands[name])
+                except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+
+            try: names = scene["bcb_emptyObjs"]
+            except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
+            emptyObjs = []
+            for name in names:
+                try: emptyObjs.append(md.mesh_constraints[name])
+                except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+
+        try: connectsPair = scene["bcb_connectsPair"]
+        except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
+        try: connectsGeo = scene["bcb_connectsGeo"]
+        except: connectsGeo = []; print("Error: bcb_connectsGeo property not found, rebuilding constraints is required.")
+        try: connectsConsts = scene["bcb_connectsConsts"]
+        except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
+
+        # If range object is defined by user then use this to search for nearby connections for visualization
+        objRange = None
+        if len(objRangeName):
+            try: objRange = scene.objects[objRangeName]
+            except: print("Warning: Range limiting object not found, visualizing all connections instead.")
+
+        ### Make list of connections for visualization
+        connectsViz = []
+        connectsPair_iter = iter(connectsPair)
+        connectsConsts_iter = iter(connectsConsts)
+        for k in range(len(connectsPair)):
+            consts = next(connectsConsts_iter)
+            pair = next(connectsPair_iter)   
+
+            # If constraints for this connections are existing
+            if len(consts):
+                objA = objs[pair[0]]
+                objB = objs[pair[1]]
+                objConst = emptyObjs[consts[0]]
+
+                # Skip object out of range of the limiting object if present
+                if objRange != None:
+                    loc = objConst.location
+                    locR = objRange.location
+                    dims = objRange.scale
+                    if  loc[0] > locR[0] -dims[0] and loc[0] < locR[0] +dims[0] \
+                    and loc[1] > locR[1] -dims[1] and loc[1] < locR[1] +dims[1] \
+                    and loc[2] > locR[2] -dims[2] and loc[2] < locR[2] +dims[2]:
+                          qUse = 1
+                    else: qUse = 0
+                else: qUse = 1
+                
+                if not qFM and (objA.rigid_body.type == 'PASSIVE' or objB.rigid_body.type == 'PASSIVE'): qUse = 0
+                if qFM and (objA.rigidbody.type == 'PASSIVE' or objB.rigidbody.type == 'PASSIVE'): qUse = 0
+            
+                if qUse:
+                    name = objConst.name.rsplit('.', 1)[0]
+                    geo = connectsGeo[k]
+                    geoContactArea = geo[0]
+                    a = geoContactArea *1000000
+                    connectsViz.append([name, objConst.location, len(consts), objA, objB, a])
+
+        # Store connection data for next frame use
+        bpy.app.driver_namespace["log_connectsViz"] = connectsViz
+
+        ### Create list of visualization object names
+        vizObjNames = []
+        for i in range(len(connectsViz)):
+            connect = connectsViz[i]
+            name = connect[0]
+            vizObjNames.append(name)
+
+        # Generate gradient materials
+        initMaterials()
+
+        ### Prepare visualization objects
+        print("Prepare visualization objects... (%d)" %len(connectsViz))
+        grpName = grpNameVisualization
+        try: grp = bpy.data.groups[grpName]
+        except: grp = bpy.data.groups.new(grpName)
+        vizObjs = []
+        for i in range(len(connectsViz)):
+            sys.stdout.write('\r' +"%d" %i)
+            connect = connectsViz[i]
+            name = connect[0]
+            nameViz = "Viz_" +name
+            try: obj = scene.objects[nameViz]
+            except:
+                # Create sphere
+                bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0))
+                bpy.ops.object.shade_smooth()  # Shade smooth
+                obj = bpy.context.scene.objects.active
+                obj.name = nameViz
+                obj.select = 0
+            vizObjs.append(obj)
+            # Add to visualization group
+            try: grp.objects.link(obj)
+            except: pass
+        print()
+        
+        # Store visualization object list for next frame use
+        if len(vizObjs):
+            bpy.app.driver_namespace["log_vizObjs"] = vizObjs
+        
+    ### For every frame
+    if "log_vizObjs" in bpy.app.driver_namespace.keys():
+        connectsViz = bpy.app.driver_namespace["log_connectsViz"]
+        vizObjs = bpy.app.driver_namespace["log_vizObjs"]
+        
+        for i in range(len(connectsViz)):
+            connect = connectsViz[i]
+            name = connect[0]
+            loc = connect[1]
+            length = connect[2]
+            objA = connect[3]
+            objB = connect[4]
+            a = connect[5]
+
+            vizObjs[i]["Obj.A"] = objA.name
+            vizObjs[i]["Obj.B"] = objB.name 
+
+#            ### Set location to center of (possibly moving) element pair (comment out for original connection position)
+#            try: locA = objA.matrix_world.to_translation()  # Get actual Bullet object's position as .location only returns its simulation starting position
+#            except: locA = objA.centroid  # If the above fails it's an FM object, so we have to derive the location differently
+#            try: locB = objB.matrix_world.to_translation()
+#            except: locB = objB.centroid
+#            loc = (locA +locB) /2 
+            
+            result = tool_constraintForce_getData(scene, name)
+
+            if result != None:
+                data = result[0]  # (data, cons)
+                cons = result[1]  # (data, cons)
+                data = [val *rbw_steps_per_second /rbw_time_scale for val in data]  # Conversion from impulse to force
+                
+                # Write properties into visualization objects for user review
+                for k in range(len(cons)):
+                    vizObjs[i][name +'.%d N' %k] = data[k]
+                    vizObjs[i][name +'.%d N/mm²' %k] = data[k] /a
+
+                # Normalization
+                dataNorm = []
+                for k in range(len(cons)):
+                    #brkThres = cons[k].breaking_threshold *rbw_steps_per_second /rbw_time_scale  # Conversion from impulse to force
+                    #dataNorm.append(data[k] /brkThres /props.postprocTools_fcv_max)
+                    dataNorm.append(abs(data[k] /a) /props.postprocTools_fcv_max)
+                    
+                # Finding the maximum strain of all constraints
+                fmax = dataNorm[0]
+                for val in dataNorm: fmax = min(max(fmax, abs(val)), 1)
+
+                ### Scaling by strain
+                obj = vizObjs[i]
+                obj.location = loc
+                obj.scale = Vector((fmax, fmax, fmax)) *visualizerDrawSize
+                # Change also color
+                changeMaterials(obj, fmax)
+
+    ### Check if last frame is reached
+    if scene.frame_current == scene.frame_end or scene.frame_current == props.postprocTools_fcv_frm:
+        if bpy.context.screen.is_animation_playing:
+            bpy.ops.screen.animation_play()  # Stop animation playback
+
+    ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
+    if not bpy.context.screen.is_animation_playing:
+        print('Removing event handler.')
+        bpy.app.handlers.frame_change_pre.pop()  # Remove event handler
+        scene.frame_current == scene.frame_start  # Reset to start frame
+        ### Delete keys
+        keys = [key for key in bpy.app.driver_namespace.keys()]
+        for key in keys:
+            if "log_" in key:
+                del bpy.app.driver_namespace[key]
+
+########################################
+
+def tool_constraintForceVisualization(scene):
+
+    print("\nGenerating constraint force visualization...")
+
+    # Leave edit mode to make sure next operator works in object mode
+    try: bpy.ops.object.mode_set(mode='OBJECT') 
+    except: pass
+
+    ### Free previous bake data
+    contextFix = bpy.context.copy()
+    contextFix['point_cache'] = scene.rigidbody_world.point_cache
+    bpy.ops.ptcache.free_bake(contextFix)
+    ### Invalidate point cache to enforce a full bake without using previous cache data
+    if "RigidBodyWorld" in bpy.data.groups:
+        try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
+        except: pass
+        else: obj.location = obj.location
+
+    print('Init event handler.')
+    bpy.app.handlers.frame_change_pre.append(tool_constraintForceVisualization_eventHandler)
     # Start animation playback
     bpy.ops.screen.animation_play()

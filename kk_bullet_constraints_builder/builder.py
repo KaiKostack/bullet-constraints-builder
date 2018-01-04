@@ -110,15 +110,16 @@ def build():
                         ###### Create empty objects (without any data)
                         if not props.asciiExport:
                             emptyObjs = createEmptyObjs(scene, len(constsConnect))
-                        else:
-                            emptyObjs = [None for i in range(len(constsConnect))]  # if this is the case emptyObjs is filled with an empty array on None
+                        else:  # If FM is used the emptyObjs list is filled with just the names later
+                            emptyObjs = [0 for i in range(len(constsConnect))]
                         ###### Bundling close empties into clusters, merge locations and count connections per cluster
                         if props.clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
                         # Restore old layers state
                         scene.update()  # Required to update empty locations before layer switching
                         scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
                         ###### Store build data in scene
-                        if not props.asciiExport: storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, None, constsConnect)
+                        #if not props.asciiExport:  # Commented out b/c: Postprocessing Tools need some data so we keep it also for FM export, object references are converted to names
+                        storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, None, constsConnect)
                         
                         print('-- Time: %0.2f s\n' %(time.time()-time_start_building))
                     
@@ -158,12 +159,14 @@ def build():
                 initGeneralRigidBodyWorldSettings(scene)
                 ###### Calculate mass for all mesh objects
                 calculateMass(scene, objs, objsEGrp, childObjs)
+                ###### Correct bbox based contact area by volume
+                if props.useAccurateArea: correctContactAreaByVolume(objs, connectsPair, connectsGeo)
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
                 if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
                 connectsTol, exData = setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect)
                 ###### Store new build data in scene
-                storeBuildDataInScene(scene, None, None, None, None, None, None, None, None, None, connectsTol, None)
+                storeBuildDataInScene(scene, None, None, emptyObjs, None, None, None, None, None, None, connectsTol, None)
                 ### Restore old layers state
                 if not props.asciiExport:
                     scene.update()  # Required to update empty locations before layer switching

@@ -398,7 +398,8 @@ def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsP
     if objsEGrp != None:
         scene["bcb_objsEGrp"] = objsEGrp
     if emptyObjs != None:
-        scene["bcb_emptyObjs"] = [obj.name for obj in emptyObjs]
+        if hasattr(emptyObjs[0], 'name'): scene["bcb_emptyObjs"] = [obj.name for obj in emptyObjs]
+        else: scene["bcb_emptyObjs"] = emptyObjs  # Since empties are not build for FM export we also expect just a list of names
     if childObjs != None:
         scene["bcb_childObjs"] = [obj.name for obj in childObjs]
     if connectsPair != None:
@@ -503,6 +504,11 @@ def getBuildDataFromScene(scene):
 def clearAllDataFromScene(scene):
     
     ### Clear all data related to Bullet Constraints Builder from scene
+
+    if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
+        print("\nWarning: Clearing scene of BCB data for Fracture Modifier not yet implemented.")
+        return
+
     print("\nStarting to clear all data related to Bullet Constraints Builder from scene...")
     time_start = time.time()
 

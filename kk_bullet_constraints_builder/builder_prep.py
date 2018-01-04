@@ -1093,7 +1093,7 @@ def createEmptyObjs(scene, constCnt):
     objsSortedFiltered = []
     for obj in objsSorted:
         if obj != None: objsSortedFiltered.append(obj)
-#    print("EMTPIES (original, DB):")
+#    print("EMPTIES (original, DB):")
 #    for i in range(len(objsSource)):
 #        obj = objsSource[i]
 #        objSorted = objsSortedFiltered[i]
@@ -1374,15 +1374,6 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         if not materialDensity:
             if materialPreset != "": bpy.ops.rigidbody.mass_calculate(material=materialPreset)
         else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
-
-        ### Calculate volumes from calculated densities and store them for later use in builder_setc.py
-        materialDensity = elemGrp[EGSidxDens]
-        if not materialDensity:
-            materialPreset = elemGrp[EGSidxMatP]
-            if materialPreset != "": materialDensity = materialPresets[materialPreset]
-        for obj in objsSelected:
-            volume = obj.rigid_body.mass /materialDensity
-            obj["Volume"] = volume  # Needed in builder_setc.py
                 
         ### Adding live load to masses
         liveLoad = elemGrp[EGSidxLoad]
@@ -1390,7 +1381,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
             dims = obj.dimensions
             floorArea = dims[0] *dims[1]  # Simple approximation by assuming rectangular floor area (x *y)
             if liveLoad > 0: obj.rigid_body.mass += floorArea *liveLoad
-            obj["Area"] = floorArea  # Only needed for the diagnostic prints below
+            obj["Floor Area"] = floorArea  # Only needed for the diagnostic prints below
 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
@@ -1414,9 +1405,9 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                     except:
                         try: groupsMass[group.name] = obj.rigid_body.mass
                         except: pass
-                    try: groupsArea[group.name] += obj["Area"]
+                    try: groupsArea[group.name] += obj["Floor Area"]
                     except:
-                        try: groupsArea[group.name] = obj["Area"]
+                        try: groupsArea[group.name] = obj["Floor Area"]
                         except: pass
     for groupName in groupsMass.keys():
         try: mass = groupsMass[groupName]
@@ -1453,3 +1444,54 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
     bpy.ops.rigidbody.objects_remove()
             
     if len(childObjs) > 0: print()
+
+################################################################################   
+
+def correctContactAreaByVolume(objs, connectsPair, connectsGeo):
+    
+    ### Correct the preliminary calculated boundary box based contact areas by considering the element volumes
+    print("Correcting contact areas...")
+
+    props = bpy.context.window_manager.bcb
+    scene = bpy.context.scene
+    elemGrps = mem["elemGrps"]
+
+    for j in range(len(elemGrps)):
+        elemGrp = elemGrps[j]
+
+        ### Find out density of the element group
+        materialDensity = elemGrp[EGSidxDens]
+        if not materialDensity:
+            materialPreset = elemGrp[EGSidxMatP]
+            if materialPreset != "": materialDensity = materialPresets[materialPreset]
+
+        ### Calculate volumes from densities and derive correctional factors for contact areas
+        for obj in objs:
+            volume = obj.rigid_body.mass /materialDensity
+
+            # Find out element thickness to be used for bending threshold calculation 
+            dim = obj.dimensions; dimAxis = [1, 2, 3]
+            dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
+            dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
+            # Derive contact area correction factor from geometry section area divided by bbox section area
+            sectionArea = volume /dimLength  # Full geometry section area of element
+            if dimHeight *dimWidth != 0:
+                corFac = sectionArea / (dimHeight *dimWidth)
+            else: corFac = 1
+            obj["CA Corr.Fac."] = corFac
+            obj["Density"] = materialDensity
+            obj["Volume"] = volume
+        
+        ### Apply corrections to geometry lists  
+        connectsPair_iter = iter(connectsPair)
+        connectsGeo_iter = iter(connectsGeo)
+        for k in range(len(connectsGeo)):
+            pair = next(connectsPair_iter)   
+            geo = next(connectsGeo_iter)
+            objA = objs[pair[0]]
+            objB = objs[pair[1]]
+
+            corFacA = objA["CA Corr.Fac."]
+            corFacB = objB["CA Corr.Fac."]
+            geo[0] *= corFacA *corFacB  # = geoContactArea
+        

@@ -160,7 +160,8 @@ class OBJECT_OT_bcb_import_config(bpy.types.Operator):
         scene = bpy.context.scene
         error = importConfigData(scene)
         elemGrps = mem["elemGrps"]
-        if props.menu_selectedElemGrp >= len(elemGrps): props.menu_selectedElemGrp = len(elemGrps)-1
+        if props.menu_selectedElemGrp >= len(elemGrps) and len(elemGrps) > 0:
+            props.menu_selectedElemGrp = len(elemGrps)-1
         if not error:
             props.menu_gotConfig = 1
         # Update menu related properties from global vars
@@ -186,8 +187,8 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
 
 class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
     bl_idname = "bcb.export_ascii_fm"
-    bl_label = "Simulate FM"
-    bl_description = "Builds and simulates with help of the Fracture Modifier (special Blender version required). 'Simulate FM' will simulate scientifically like 'Simulate'; Dynamic: Enables geometry also to shatter for more realistic appearance but is actually non-scientific."
+    bl_label = "Build FM"
+    bl_description = "Builds and simulates with help of the Fracture Modifier (special Blender version required). 'Build FM' will simulate scientifically like 'Build'; Dynamic: Enables geometry also to shatter for more realistic appearance but is actually non-scientific."
     int_ = bpy.props.IntProperty 
     use_handler = int_(default = 0)
     def execute(self, context):
@@ -321,7 +322,7 @@ class OBJECT_OT_bcb_del(bpy.types.Operator):
             # Remove element group (syncing element group indices happens on execution)
             del elemGrps[props.menu_selectedElemGrp]
             # Update menu selection
-            if props.menu_selectedElemGrp >= len(elemGrps):
+            if props.menu_selectedElemGrp >= len(elemGrps) and len(elemGrps) > 0:
                 props.menu_selectedElemGrp = len(elemGrps) -1
             # Update menu related properties from global vars
             props.props_update_menu()
@@ -752,4 +753,20 @@ class OBJECT_OT_bcb_tool_export_force_history(bpy.types.Operator):
             scene = bpy.context.scene
             tool_constraintForceHistory(scene)
             props.postprocTools_fcx = 0
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_visualize_forces(bpy.types.Operator):
+    bl_idname = "bcb.tool_visualize_forces"
+    bl_label = "Visualize Forces"
+    bl_description = "Visualizes forces for constraints in form of spheres generated within the scene whereby each sphere's radius is normalized to the corresponding maximum strength of the connection (each constraint is normalized individually). Accurate values can be found in each sphere's properties."
+    def execute(self, context):
+        if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
+            self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit graphicall.org/1148 for the FM-enabled Blender version.")  # Create popup message
+        else:
+            props = context.window_manager.bcb
+            scene = bpy.context.scene
+            tool_constraintForceVisualization(scene)
+            props.postprocTools_fcv = 0
         return{'FINISHED'}

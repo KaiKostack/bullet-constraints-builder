@@ -300,15 +300,6 @@ def FM_shards(ob):
 #                objs.append(obj2)
 #                objsName.append(objN2)
 
-#    ### Sort mesh objects by database order (old slower code)
-#    objsSorted = []
-#    #for objDB in bpy.data.objects:  # Sort by bpy.data order
-#    for objDB in bpy.data.groups["RigidBodyWorld"].objects:  # Sort by RigidBodyWorld group order
-#        for obj in objs:
-#            if obj.name == objDB.name:
-#                objsSorted.append(obj)
-#                del objs[objs.index(obj)]
-#                break
     ### Sort mesh objects by database order
     objsSource = objs
     objsDB = bpy.context.scene.objects

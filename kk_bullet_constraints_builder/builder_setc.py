@@ -221,17 +221,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
             brkThresValuePL_A = elemGrps_elemGrpA[EGSidxBTPL]
             mul = elemGrps_elemGrpA[EGSidxBTX]
-            # Area correction calculation based on volume
-            if props.useAccurateArea:
-                # Find out element thickness to be used for bending threshold calculation 
-                dim = objA.dimensions; dimAxis = [1, 2, 3]
-                dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
-                dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
-                # Derive contact area correction factor from geometry section area divided by bbox section area
-                volume = objA["Volume"]
-                sectionArea = volume /dimLength  # Full geometry section area of element
-                if dimHeight *dimWidth != 0:
-                    mul *= sectionArea / (dimHeight *dimWidth)
             # Area correction calculation for cylinders (*pi/4)
             if elemGrps_elemGrpA[EGSidxCyln]: mulCyl = 0.7854
             else:                             mulCyl = 1
@@ -284,17 +273,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
             brkThresValuePL_B = elemGrps_elemGrpB[EGSidxBTPL]
             mul = elemGrps_elemGrpB[EGSidxBTX]
-            # Area correction calculation based on volume
-            if props.useAccurateArea:
-                # Find out element thickness to be used for bending threshold calculation 
-                dim = objB.dimensions; dimAxis = [1, 2, 3]
-                dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
-                dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
-                # Derive contact area correction factor from geometry section area divided by bbox section area
-                volume = objB["Volume"]
-                sectionArea = volume /dimLength  # Full geometry section area of element
-                if dimHeight *dimWidth != 0:
-                    mul *= sectionArea / (dimHeight *dimWidth)            
             # Area correction calculation for cylinders (*pi/4)
             if elemGrps_elemGrpB[EGSidxCyln]: mulCyl = 0.7854
             else:                             mulCyl = 1
@@ -509,10 +487,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == CT: qUpdateComplete = 0
                 else: objConst0['ConnectType'] = CT; qUpdateComplete = 1
                 ### Store value as ID property for debug purposes
-                objConst0['ContactArea'] = geoContactArea
-                if props.useAccurateArea:
-                    objConst0['SectionArea'] = sectionArea
-                    objConst0['mul'] = mul
+                objConst0['Contact Area'] = geoContactArea
                 damage = (1 -btMultiplier) *100
                 if btMultiplier < 1:
                     for idx in consts: emptyObjs[idx]['Damage %'] = damage
@@ -1182,7 +1157,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         objB = objs[pair[1]]
         i = 1
         for cIdx in consts:
-            objConst = emptyObjs[cIdx]
             cData, cDatb = constsData[cIdx]
             name = "Con.%03d.%d" %(k, i)
             # Store names and objects
@@ -1282,6 +1256,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         print()
         
     elif props.asciiExport:
+
+        ### Fill empty constraint list with names of the objects for later use in Postprocessing Tools
+        constsData_iter = iter(constsData)
+        for k in range(len(emptyObjs)):
+            cData, cDatb = next(constsData_iter)
+            if cDatb[0] != None: emptyObjs[k] = cDatb[0]
+
         ### Export constraint settings
         print("Exporting constraint settings... (%d)" %len(emptyObjs))
         # Data structure of exData is basically an array of empty.rigid_body_constraint (a diff of attributes)
@@ -1504,10 +1485,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     except: grp = bpy.data.groups.new(grpReinfName)
                     try: grp.objects.link(objN)
                     except: pass
-                    ### Link new object to every group the original is linked to except for "BCB_Building" and RBW,
+                    ### Link new object to every group the original is linked to except for grpNameBuilding and RBW,
                     ### the latter because FM-Blender seems to enable RBs automatically for objects which are parts of this group
                     for grp in bpy.data.groups:
-                        if grp.name != "BCB_Building" and grp.name != "RigidBodyWorld":
+                        if grp.name != grpNameBuilding and grp.name != "RigidBodyWorld":
                             for objG in grp.objects:
                                 if objG.name == obj.name:
                                     try: grp.objects.link(objN)
