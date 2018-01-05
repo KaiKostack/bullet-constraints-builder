@@ -1,5 +1,5 @@
 #################################################
-# Voxel Cell Grid From Mesh v1.2 by Kai Kostack #
+# Voxel Cell Grid From Mesh v1.3 by Kai Kostack #
 #################################################
 # Some code is based on Cells.py for Blender 2.4x by Michael Schardt released under the GPL.
 # - Triangulation is a requirement, this can be done by this script but also manually before
@@ -49,6 +49,7 @@ def run(source=None, parameters=None):
     qRemoveDoubles = 1               # Removes overlapping vertices for all created meshes
     qInvertOutput = 0                # Invert cell output for the entire grid
     qRemoveOpen = 0                  # Removes surroundings of (filled) open space to reveal only inside cavities (use it together with qInvertOutput=1 to visualize cavities)
+    qRemoveOpenBottom = 1            # Removes also open spaces pointing downwards (assuming there would be no ground)
     qRemoveOriginal = 1              # Delete original objects
     
     ### Vars internal
@@ -57,7 +58,7 @@ def run(source=None, parameters=None):
     qSilentVerbose = 0               # Reduces text output to a minimum
 
     ### Custom BCB parameter handling
-    if source == 'BCB':
+    if source == 'BCB_Discretize':
         cellSize = parameters[0]
         qSilentVerbose = 1
         qUseUnifiedSpace = 0
@@ -68,7 +69,16 @@ def run(source=None, parameters=None):
         qInvertOutput = 0
         qRemoveOpen = 0
         qRemoveOriginal = 1
-        
+
+    elif source == 'BCB_Cavity':
+        cellSize = parameters[0]
+        qFillVolume = 1
+        qFillFromFloor = 0
+        qInvertOutput = 1
+        qRemoveOpen = 1
+        qRemoveOpenBottom = 0
+        qRemoveOriginal = 0
+         
     ###
 
     print("\nStarting mesh to cell grid conversion...")
@@ -330,19 +340,20 @@ def run(source=None, parameters=None):
                                 else: cell_last = cell; cell = 0
                 f_cells = f_cells_new
                 ### Remove bottom
-                f_cells_new = {}
-                for y in range(gridMinY, gridMaxY+1):
-                    for x in range(gridMinX, gridMaxX+1):
-                        qFill = 0
-                        cell = cell_last = 1
-                        for z in range(gridMinZ, gridMaxZ+1):
-                            if (x, y, z) in f_cells:
-                                if qFill: f_cells_new[(x, y, z)] = {}
-                                else: cell_last = cell; cell = 1
-                            else:
-                                if cell_last != cell: qFill = 1
-                                else: cell_last = cell; cell = 0
-                f_cells_mul1 = f_cells_new
+                if qRemoveOpenBottom:
+                    f_cells_new = {}
+                    for y in range(gridMinY, gridMaxY+1):
+                        for x in range(gridMinX, gridMaxX+1):
+                            qFill = 0
+                            cell = cell_last = 1
+                            for z in range(gridMinZ, gridMaxZ+1):
+                                if (x, y, z) in f_cells:
+                                    if qFill: f_cells_new[(x, y, z)] = {}
+                                    else: cell_last = cell; cell = 1
+                                else:
+                                    if cell_last != cell: qFill = 1
+                                    else: cell_last = cell; cell = 0
+                    f_cells_mul1 = f_cells_new
                 
                 f_cells = f_cells_bak.copy()
                 ### Remove right
@@ -409,10 +420,15 @@ def run(source=None, parameters=None):
                 for z in range(gridMinZ, gridMaxZ+1):
                     for y in range(gridMinY, gridMaxY+1):
                         for x in range(gridMinX, gridMaxX+1):
-                            if (x, y, z) in f_cells_mul1 \
-                            and (x, y, z) in f_cells_mul2 \
-                            and (x, y, z) in f_cells_mul3:
-                                f_cells_new[(x, y, z)] = {}
+                            if qRemoveOpenBottom:
+                                if  (x, y, z) in f_cells_mul1 \
+                                and (x, y, z) in f_cells_mul2 \
+                                and (x, y, z) in f_cells_mul3:
+                                    f_cells_new[(x, y, z)] = {}
+                            else:
+                                if  (x, y, z) in f_cells_mul2 \
+                                and (x, y, z) in f_cells_mul3:
+                                    f_cells_new[(x, y, z)] = {}
                 f_cells = f_cells_new
 
             ### Start of actual geometry creation

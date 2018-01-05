@@ -238,7 +238,8 @@ classes = [ \
     OBJECT_OT_bcb_tool_select_csv_file,
     OBJECT_OT_bcb_tool_export_location_history,
     OBJECT_OT_bcb_tool_export_force_history,
-    OBJECT_OT_bcb_tool_visualize_forces
+    OBJECT_OT_bcb_tool_visualize_forces,
+    OBJECT_OT_bcb_tool_detect_cavities
     ]
 
 ################################################################################

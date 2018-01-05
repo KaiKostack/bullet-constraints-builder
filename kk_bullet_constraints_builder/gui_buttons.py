@@ -770,3 +770,16 @@ class OBJECT_OT_bcb_tool_visualize_forces(bpy.types.Operator):
             tool_constraintForceVisualization(scene)
             props.postprocTools_fcv = 0
         return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_tool_detect_cavities(bpy.types.Operator):
+    bl_idname = "bcb.tool_detect_cavities"
+    bl_label = "Detect Cavities"
+    bl_description = "Visualizes cavities on the selected mesh in form of a cell grid where each cell represents an air pocket large enough to contain the cell."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_cavityDetection(scene)
+        props.postprocTools_cav = 0
+        return{'FINISHED'}

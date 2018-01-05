@@ -387,7 +387,7 @@ def tool_discretize(scene):
 
         ###### External function
         size = props.preprocTools_dis_siz
-        kk_mesh_voxel_cell_grid_from_mesh.run('BCB', [Vector((size, size, size))])
+        kk_mesh_voxel_cell_grid_from_mesh.run('BCB_Discretize', [Vector((size, size, size))])
 
         # We have to repeat separate loose here
         tool_separateLoose(scene)
@@ -1730,3 +1730,54 @@ def tool_constraintForceVisualization(scene):
     bpy.app.handlers.frame_change_pre.append(tool_constraintForceVisualization_eventHandler)
     # Start animation playback
     bpy.ops.screen.animation_play()
+
+################################################################################
+
+def tool_cavityDetection(scene):
+
+    # Leave edit mode to make sure next operator works in object mode
+    try: bpy.ops.object.mode_set(mode='OBJECT') 
+    except: pass
+    
+    # Backup selection
+    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selectionActive = bpy.context.scene.objects.active
+    # Find mesh objects in selection
+    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
+    if len(objs) == 0:
+        print("No mesh objects selected.")
+        return
+
+    props = bpy.context.window_manager.bcb
+            
+    print("Detecting cavities...")
+
+    ###### External function
+    size = props.postprocTools_cav_siz
+    kk_mesh_voxel_cell_grid_from_mesh.run('BCB_Cavity', [Vector((size, size, size))])
+
+    ### Some finishing touches to the new cell object
+    bpy.ops.object.shade_smooth()  # Shade smooth
+    obj = bpy.context.scene.objects.active
+    obj.name = grpNameVisualization
+    obj.select = 0
+
+    ### Recalculate normals outside
+    # Enter edit mode              
+    try: bpy.ops.object.mode_set(mode='EDIT')
+    except: pass
+    # Select all elements
+    try: bpy.ops.mesh.select_all(action='SELECT')
+    except: pass
+    bpy.ops.mesh.normals_make_consistent(inside=False)
+    # Leave edit mode
+    try: bpy.ops.object.mode_set(mode='OBJECT')
+    except: pass 
+
+    ### Add modifier
+    mod = obj.modifiers.new(name="Smooth", type="SMOOTH")
+    mod.factor = 2
+
+    # Revert to start selection
+    for obj in selection: obj.select = 1
+    bpy.context.scene.objects.active = selectionActive

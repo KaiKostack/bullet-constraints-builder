@@ -127,6 +127,9 @@ class bcb_props(bpy.types.PropertyGroup):
     postprocTools_fcv_frm = int_(name="Frame",            default=40, min=1, max=32767,   description="Frame number at which the visualization snap-shot of forces will be taken.")
     postprocTools_fcv_max = float_(name="Maximum",        default=30, min=0.0, max=10000000, description="Maximum force to be expected, actual forces will be normalized accordingly. This will only influence the appearance of the visualizer, but the readout value stored within the visualizer's properties will not be modified.")
 
+    postprocTools_cav = bool_(default=1)
+    postprocTools_cav_siz = float_(name="Cell Size",      default=.3, min=0.0, max=100, description="Cell size for cavity detection algorithm to consider empty spaces (smaller values are more accurate but take longer to compute).")
+
     postprocTools_rps = bool_(default=1)
     postprocTools_rps_nam = string_(name="Script File",   default='', description="Enter the filename of an existing Python script.")
 

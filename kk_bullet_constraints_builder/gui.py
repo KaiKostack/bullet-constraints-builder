@@ -906,6 +906,13 @@ class bcb_panel_postprocessing_tools(bpy.types.Panel):
         row2.prop(props, "postprocTools_fcv_max")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
+        split.prop(props, "postprocTools_cav", text="")
+        box = split.box()
+        box.operator("bcb.tool_detect_cavities", icon="DOT")
+        col2 = box.column(align=1)
+        row2 = col2.row(align=1); row2.prop(props, "postprocTools_cav_siz")
+        
+        row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "postprocTools_rps", text="")
         box = split.box()
         box.operator("bcb.tool_run_python_script", icon="DOT").opNo = 2
