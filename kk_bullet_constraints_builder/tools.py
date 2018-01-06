@@ -115,14 +115,21 @@ def tool_runPythonScript(scene, filename=""):
 
     if len(filename) == 0: print("No script defined."); return
 
+    # First try to get an internal text file, if not successful try again with external file
+    f = None
     try: s = bpy.data.texts[filename].as_string()
-    except: print("Script not found."); return
+    except:
+        try: f = open(filename)
+        except: print("Script not found."); return
+        else: s = f.read()
 
     # Leave edit mode to make sure next operator works in object mode
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
 
     result = exec(s)
+    if f != None: f.close()
+    
     print("Finished and returned:", result)
     
 ################################################################################

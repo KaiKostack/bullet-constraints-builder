@@ -178,7 +178,7 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
         props = context.window_manager.bcb
         props.asciiExport = 1
         if props.automaticMode and props.preprocTools_aut:
-            OBJECT_OT_bcb_tool_do_all_steps_at_once.execute(self, context)
+            OBJECT_OT_bcb_preprocess_do_all_steps_at_once.execute(self, context)
         OBJECT_OT_bcb_build.execute(self, context)
         props.asciiExport = 0
         return{'FINISHED'}
@@ -233,7 +233,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         ### If "BCB_export" exists then the use of Fracture Modifier is assumed and building is skipped
         if not props.menu_gotData and not "BCB_export" in scene.objects:
             if props.automaticMode and props.preprocTools_aut:
-                OBJECT_OT_bcb_tool_do_all_steps_at_once.execute(self, context)
+                OBJECT_OT_bcb_preprocess_do_all_steps_at_once.execute(self, context)
             OBJECT_OT_bcb_build.execute(self, context)
             if props.menu_gotData: OBJECT_OT_bcb_bake.execute(self, context)
         ### Start baking when we have constraints set
@@ -514,8 +514,8 @@ class OBJECT_OT_bcb_tool_select_group(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
-    bl_idname = "bcb.tool_do_all_steps_at_once"
+class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
+    bl_idname = "bcb.preprocess_do_all_steps_at_once"
     bl_label = "Do All Selected Steps At Once!"
     bl_description = "Executes all selected tools in the order from top to bottom."
     def execute(self, context):
@@ -550,34 +550,35 @@ class OBJECT_OT_bcb_tool_do_all_steps_at_once(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_run_python_script(bpy.types.Operator):
-    bl_idname = "bcb.tool_run_python_script"
+class OBJECT_OT_bcb_preproc_tool_run_python_script(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_run_python_script"
     bl_label = "Run Python Script"
     bl_description = "Executes a user-defined Python script for customizable automatization purposes (e.g. for scene management and modification)."
-    int_ = bpy.props.IntProperty 
-    opNo = int_(default = 1)
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
-        if   self.opNo == 1: filename = props.preprocTools_rps_nam
-        elif self.opNo == 2: filename = props.postprocTools_rps_nam
-        tool_runPythonScript(scene, filename)
+        tool_runPythonScript(scene, props.preprocTools_rps_nam)
         props.preprocTools_rps = 0
         return{'FINISHED'}
 
 ########################################
 
-class OBJECT_OT_bcb_tool_run_python_script_file(bpy.types.Operator):
-    bl_idname = "bcb.tool_run_python_script_file"
+class OBJECT_OT_bcb_tool_select_py_file(bpy.types.Operator):
+    bl_idname = "bcb.tool_select_py_file"
     bl_label = "Select"
     bl_description = "Search for Python file (.py)."
     string_ = bpy.props.StringProperty
     filepath = string_(subtype='FILE_PATH')
     filter_glob = string_(default="*.py", options={'HIDDEN'})
+    int_ = bpy.props.IntProperty 
+    opNo = int_(default = 1)
+
     def execute(self, context):
         props = context.window_manager.bcb
-        props.preprocTools_rps_nam = self.filepath
+        if   self.opNo == 1: props.preprocTools_rps_nam = self.filepath
+        elif self.opNo == 2: props.postprocTools_rps_nam = self.filepath
         return {'FINISHED'}
+
     def invoke(self, context, event):
         wm = context.window_manager
         wm.fileselect_add(self)
@@ -585,8 +586,8 @@ class OBJECT_OT_bcb_tool_run_python_script_file(bpy.types.Operator):
     
 ########################################
 
-class OBJECT_OT_bcb_tool_create_groups_from_names(bpy.types.Operator):
-    bl_idname = "bcb.tool_create_groups_from_names"
+class OBJECT_OT_bcb_preproc_tool_create_groups_from_names(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_create_groups_from_names"
     bl_label = "Create Groups From Names"
     bl_description = "Creates groups for all selected objects based on a specified naming convention and adds them also to the element groups list."
     def execute(self, context):
@@ -598,8 +599,8 @@ class OBJECT_OT_bcb_tool_create_groups_from_names(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
-    bl_idname = "bcb.tool_apply_all_modifiers"
+class OBJECT_OT_bcb_preproc_tool_apply_all_modifiers(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_apply_all_modifiers"
     bl_label = "Apply All Modifiers"
     bl_description = "Applies all modifiers on all selected objects."
     def execute(self, context):
@@ -611,8 +612,8 @@ class OBJECT_OT_bcb_tool_apply_all_modifiers(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_center_model(bpy.types.Operator):
-    bl_idname = "bcb.tool_center_model"
+class OBJECT_OT_bcb_preproc_tool_center_model(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_center_model"
     bl_label = "Center Model"
     bl_description = "Shifts all selected objects as a whole to the world center of the scene."
     def execute(self, context):
@@ -624,8 +625,8 @@ class OBJECT_OT_bcb_tool_center_model(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_separate_loose(bpy.types.Operator):
-    bl_idname = "bcb.tool_separate_loose"
+class OBJECT_OT_bcb_preproc_tool_separate_loose(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_separate_loose"
     bl_label = "Separate Loose"
     bl_description = "Separates all loose (not connected) mesh elements within an object into separate objects, this is done for all selected objects."
     def execute(self, context):
@@ -637,8 +638,8 @@ class OBJECT_OT_bcb_tool_separate_loose(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_discretize(bpy.types.Operator):
-    bl_idname = "bcb.tool_discretize"
+class OBJECT_OT_bcb_preproc_tool_discretize(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_discretize"
     bl_label = "Discretize"
     bl_description = "Discretizes (subdivides) all selected objects into smaller segments by splitting them into halves as long as a specified minimum size is reached."
     def execute(self, context):
@@ -650,8 +651,8 @@ class OBJECT_OT_bcb_tool_discretize(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
-    bl_idname = "bcb.tool_enable_rigid_bodies"
+class OBJECT_OT_bcb_preproc_tool_enable_rigid_bodies(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_enable_rigid_bodies"
     bl_label = "Enable Rigid Bodies"
     bl_description = "Enables rigid body settings for all selected objects."
     def execute(self, context):
@@ -663,8 +664,8 @@ class OBJECT_OT_bcb_tool_enable_rigid_bodies(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_remove_intersections(bpy.types.Operator):
-    bl_idname = "bcb.tool_remove_intersections"
+class OBJECT_OT_bcb_preproc_tool_remove_intersections(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_remove_intersections"
     bl_label = "Intersection Removal"
     bl_description = "Detects and removes intersecting objects (one per found pair). Intesecting objects can be caused by several reasons: accidental object duplication, forgotten boolean cutout objects, careless modeling etc."
     int_ =    bpy.props.IntProperty 
@@ -678,8 +679,8 @@ class OBJECT_OT_bcb_tool_remove_intersections(bpy.types.Operator):
     
 ########################################
 
-class OBJECT_OT_bcb_tool_fix_foundation(bpy.types.Operator):
-    bl_idname = "bcb.tool_fix_foundation"
+class OBJECT_OT_bcb_preproc_tool_fix_foundation(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_fix_foundation"
     bl_label = "Fix Foundation"
     bl_description = "Either uses name based search to find foundation objects or creates foundation objects for all objects touching the overall model boundary box. These foundation objects will be set to be 'Passive' rigid bodies."
     def execute(self, context):
@@ -691,8 +692,8 @@ class OBJECT_OT_bcb_tool_fix_foundation(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_ground_motion(bpy.types.Operator):
-    bl_idname = "bcb.tool_ground_motion"
+class OBJECT_OT_bcb_preproc_tool_ground_motion(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_ground_motion"
     bl_label = "Ground Motion"
     bl_description = "Attaches all selected passive rigid body objects to a specified and animated ground object. This can be useful for simulating earthquakes through a pre-animated ground motion object like a virtual shake table."
     def execute(self, context):
@@ -726,10 +727,34 @@ class OBJECT_OT_bcb_tool_select_csv_file(bpy.types.Operator):
         wm.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
+################################################################################
+
+class OBJECT_OT_bcb_postprocess_do_all_steps_at_once(bpy.types.Operator):
+    bl_idname = "bcb.postprocess_do_all_steps_at_once"
+    bl_label = "Do All Selected Steps At Once!"
+    bl_description = "Executes all selected tools in the order from top to bottom."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        time_start = time.time()
+        if props.postprocTools_lox: tool_exportLocationHistory(scene); props.postprocTools_lox = 0
+        if props.postprocTools_fcx: tool_constraintForceHistory(scene); props.postprocTools_fcx = 0
+        if props.postprocTools_fcv: tool_constraintForceVisualization(scene); props.postprocTools_fcv = 0
+        if props.postprocTools_cav: tool_cavityDetection(scene); props.postprocTools_cav = 0
+        if props.postprocTools_rps: tool_runPythonScript(scene); props.postprocTools_rps = 0
+        props.postprocTools_aut = 0
+        print('-- Time total: %0.2f s' %(time.time()-time_start))
+        print()
+
+        ###### Store menu config data in scene
+        storeConfigDataInScene(scene)
+        props.menu_gotConfig = 1
+        return{'FINISHED'}
+
 ########################################
 
-class OBJECT_OT_bcb_tool_export_location_history(bpy.types.Operator):
-    bl_idname = "bcb.tool_export_location_history"
+class OBJECT_OT_bcb_postproc_tool_export_location_history(bpy.types.Operator):
+    bl_idname = "bcb.postproc_tool_export_location_history"
     bl_label = "Export Location History"
     bl_description = "Exports the location time history of an element centroid into a .csv file."
     def execute(self, context):
@@ -741,8 +766,8 @@ class OBJECT_OT_bcb_tool_export_location_history(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_export_force_history(bpy.types.Operator):
-    bl_idname = "bcb.tool_export_force_history"
+class OBJECT_OT_bcb_postproc_tool_export_force_history(bpy.types.Operator):
+    bl_idname = "bcb.postproc_tool_export_force_history"
     bl_label = "Export Force History"
     bl_description = "Exports the force time history for a constraint into a .csv file."
     def execute(self, context):
@@ -757,8 +782,8 @@ class OBJECT_OT_bcb_tool_export_force_history(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_visualize_forces(bpy.types.Operator):
-    bl_idname = "bcb.tool_visualize_forces"
+class OBJECT_OT_bcb_postproc_tool_visualize_forces(bpy.types.Operator):
+    bl_idname = "bcb.postproc_tool_visualize_forces"
     bl_label = "Visualize Forces"
     bl_description = "Visualizes forces for constraints in form of spheres generated within the scene whereby each sphere's radius is normalized to the corresponding maximum strength of the connection (each constraint is normalized individually). Accurate values can be found in each sphere's properties."
     def execute(self, context):
@@ -773,8 +798,8 @@ class OBJECT_OT_bcb_tool_visualize_forces(bpy.types.Operator):
 
 ########################################
 
-class OBJECT_OT_bcb_tool_detect_cavities(bpy.types.Operator):
-    bl_idname = "bcb.tool_detect_cavities"
+class OBJECT_OT_bcb_postproc_tool_detect_cavities(bpy.types.Operator):
+    bl_idname = "bcb.postproc_tool_detect_cavities"
     bl_label = "Detect Cavities"
     bl_description = "Visualizes cavities on the selected mesh in form of a cell grid where each cell represents an air pocket large enough to contain the cell."
     def execute(self, context):
@@ -782,4 +807,17 @@ class OBJECT_OT_bcb_tool_detect_cavities(bpy.types.Operator):
         scene = bpy.context.scene
         tool_cavityDetection(scene)
         props.postprocTools_cav = 0
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_postproc_tool_run_python_script(bpy.types.Operator):
+    bl_idname = "bcb.postproc_tool_run_python_script"
+    bl_label = "Run Python Script"
+    bl_description = "Executes a user-defined Python script for customizable automatization purposes (e.g. for scene management and modification)."
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_runPythonScript(scene, props.postprocTools_rps_nam)
+        props.postprocTools_rps = 0
         return{'FINISHED'}

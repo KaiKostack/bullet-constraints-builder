@@ -171,7 +171,7 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.label(text="", icon="LINKED")
-        split.operator("bcb.tool_do_all_steps_at_once", icon="DOTSUP")
+        split.operator("bcb.preprocess_do_all_steps_at_once", icon="DOTSUP")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.label(text="")
@@ -181,16 +181,16 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_rps", text="")
         box = split.box()
-        box.operator("bcb.tool_run_python_script", icon="DOT").opNo = 1
+        box.operator("bcb.preproc_tool_run_python_script", icon="DOT")
         row = box.row(align=1)
         split = row.split(percentage=.85, align=1)
         split.prop(props, "preprocTools_rps_nam")
-        split.operator("bcb.tool_run_python_script_file", icon="FILESEL", text="")
+        split.operator("bcb.tool_select_py_file", icon="FILESEL", text="").opNo = 1
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_grp", text="")
         box = split.box()
-        box.operator("bcb.tool_create_groups_from_names", icon="DOT")
+        box.operator("bcb.preproc_tool_create_groups_from_names", icon="DOT")
         row2 = box.row(align=1)
         row2.prop(props, "preprocTools_grp_sep")
         row2.prop(props, "preprocTools_grp_occ")
@@ -198,22 +198,22 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_mod", text="")
         box = split.box()
-        box.operator("bcb.tool_apply_all_modifiers", icon="DOT")
+        box.operator("bcb.preproc_tool_apply_all_modifiers", icon="DOT")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_ctr", text="")
         box = split.box()
-        box.operator("bcb.tool_center_model", icon="DOT")
+        box.operator("bcb.preproc_tool_center_model", icon="DOT")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_sep", text="")
         box = split.box()
-        box.operator("bcb.tool_separate_loose", icon="DOT")
+        box.operator("bcb.preproc_tool_separate_loose", icon="DOT")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_dis", text="")
         box = split.box()
-        box.operator("bcb.tool_discretize", icon="DOT")
+        box.operator("bcb.preproc_tool_discretize", icon="DOT")
         col2 = box.column(align=1)
         row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_siz")
         row2 = col2.row(align=1); row2.prop(props, "preprocTools_dis_cel")
@@ -223,24 +223,24 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_rbs", text="")
         box = split.box()
-        box.operator("bcb.tool_enable_rigid_bodies", icon="DOT")
+        box.operator("bcb.preproc_tool_enable_rigid_bodies", icon="DOT")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_int", text="")
         box = split.box()
-        box.operator("bcb.tool_remove_intersections", icon="DOT").mode = 1
+        box.operator("bcb.preproc_tool_remove_intersections", icon="DOT").mode = 1
         col2 = box.column(align=1)
         row2 = col2.row(align=1)
         row2.label(text="Select Instead Of Deletion (Diagnostic):")
         row2 = col2.row(align=1)
-        row2.operator("bcb.tool_remove_intersections", text="Select All Pairs").mode = 2
-        row2.operator("bcb.tool_remove_intersections", text="Select Removal").mode = 3
+        row2.operator("bcb.preproc_tool_remove_intersections", text="Select All Pairs").mode = 2
+        row2.operator("bcb.preproc_tool_remove_intersections", text="Select Removal").mode = 3
         row2 = col2.row(align=1); row2.prop(props, "preprocTools_int_bol")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_fix", text="")
         box = split.box()
-        box.operator("bcb.tool_fix_foundation", icon="DOT")
+        box.operator("bcb.preproc_tool_fix_foundation", icon="DOT")
         col2 = box.column(align=1)
         row = col2.row(align=1); row.prop(props, "preprocTools_fix_nam")
         row = col2.row(align=1); row.prop(props, "preprocTools_fix_cac")
@@ -266,7 +266,7 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_gnd", text="")
         box = split.box()
-        box.operator("bcb.tool_ground_motion", icon="DOT")
+        box.operator("bcb.preproc_tool_ground_motion", icon="DOT")
         col2 = box.column(align=1)
         row2 = col2.row(align=1); row2.prop(props, "preprocTools_gnd_obj")
         row2 = col2.row(align=1); row2.prop(props, "preprocTools_gnd_obm")
@@ -874,9 +874,17 @@ class bcb_panel_postprocessing_tools(bpy.types.Panel):
         col = layout.column(align=1)
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
+        split.label(text="", icon="LINKED")
+        split.operator("bcb.postprocess_do_all_steps_at_once", icon="DOTSUP")
+
+        row = col.row(align=1); split = row.split(percentage=.06, align=0)
+        split.label(text="")
+        split.prop(props, "postprocTools_aut")
+
+        row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "postprocTools_lox", text="")
         box = split.box()
-        box.operator("bcb.tool_export_location_history", icon="DOT")
+        box.operator("bcb.postproc_tool_export_location_history", icon="DOT")
         col2 = box.column(align=1)
         row2 = col2.row(align=1); row2.prop(props, "postprocTools_lox_elm")
         row2 = col2.row(align=1)
@@ -887,7 +895,7 @@ class bcb_panel_postprocessing_tools(bpy.types.Panel):
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "postprocTools_fcx", text="")
         box = split.box()
-        box.operator("bcb.tool_export_force_history", icon="DOT")
+        box.operator("bcb.postproc_tool_export_force_history", icon="DOT")
         col2 = box.column(align=1)
         row2 = col2.row(align=1); row2.prop(props, "postprocTools_fcx_con")
         row2 = col2.row(align=1)
@@ -898,7 +906,7 @@ class bcb_panel_postprocessing_tools(bpy.types.Panel):
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "postprocTools_fcv", text="")
         box = split.box()
-        box.operator("bcb.tool_visualize_forces", icon="DOT")
+        box.operator("bcb.postproc_tool_visualize_forces", icon="DOT")
         col2 = box.column(align=1)
         row2 = col2.row(align=1); row2.prop(props, "postprocTools_fcv_con")
         row2 = col2.row(align=1)
@@ -908,15 +916,15 @@ class bcb_panel_postprocessing_tools(bpy.types.Panel):
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "postprocTools_cav", text="")
         box = split.box()
-        box.operator("bcb.tool_detect_cavities", icon="DOT")
+        box.operator("bcb.postproc_tool_detect_cavities", icon="DOT")
         col2 = box.column(align=1)
         row2 = col2.row(align=1); row2.prop(props, "postprocTools_cav_siz")
         
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "postprocTools_rps", text="")
         box = split.box()
-        box.operator("bcb.tool_run_python_script", icon="DOT").opNo = 2
+        box.operator("bcb.postproc_tool_run_python_script", icon="DOT")
         row = box.row(align=1)
         split = row.split(percentage=.85, align=1)
         split.prop(props, "postprocTools_rps_nam")
-        split.operator("bcb.tool_run_python_script_file", icon="FILESEL", text="")
+        split.operator("bcb.tool_select_py_file", icon="FILESEL", text="").opNo = 2

@@ -223,23 +223,26 @@ classes = [ \
     OBJECT_OT_bcb_tool_estimate_cluster_radius,
     OBJECT_OT_bcb_tool_select_group,
 
-    OBJECT_OT_bcb_tool_do_all_steps_at_once,
-    OBJECT_OT_bcb_tool_run_python_script,
-    OBJECT_OT_bcb_tool_run_python_script_file,
-    OBJECT_OT_bcb_tool_create_groups_from_names,
-    OBJECT_OT_bcb_tool_apply_all_modifiers,
-    OBJECT_OT_bcb_tool_center_model,
-    OBJECT_OT_bcb_tool_separate_loose,
-    OBJECT_OT_bcb_tool_discretize,
-    OBJECT_OT_bcb_tool_enable_rigid_bodies,
-    OBJECT_OT_bcb_tool_remove_intersections,
-    OBJECT_OT_bcb_tool_fix_foundation,
-    OBJECT_OT_bcb_tool_ground_motion,
+    OBJECT_OT_bcb_preprocess_do_all_steps_at_once,
+    OBJECT_OT_bcb_preproc_tool_run_python_script,
+    OBJECT_OT_bcb_tool_select_py_file,
+    OBJECT_OT_bcb_preproc_tool_create_groups_from_names,
+    OBJECT_OT_bcb_preproc_tool_apply_all_modifiers,
+    OBJECT_OT_bcb_preproc_tool_center_model,
+    OBJECT_OT_bcb_preproc_tool_separate_loose,
+    OBJECT_OT_bcb_preproc_tool_discretize,
+    OBJECT_OT_bcb_preproc_tool_enable_rigid_bodies,
+    OBJECT_OT_bcb_preproc_tool_remove_intersections,
+    OBJECT_OT_bcb_preproc_tool_fix_foundation,
+    OBJECT_OT_bcb_preproc_tool_ground_motion,
     OBJECT_OT_bcb_tool_select_csv_file,
-    OBJECT_OT_bcb_tool_export_location_history,
-    OBJECT_OT_bcb_tool_export_force_history,
-    OBJECT_OT_bcb_tool_visualize_forces,
-    OBJECT_OT_bcb_tool_detect_cavities
+
+    OBJECT_OT_bcb_postprocess_do_all_steps_at_once,
+    OBJECT_OT_bcb_postproc_tool_export_location_history,
+    OBJECT_OT_bcb_postproc_tool_export_force_history,
+    OBJECT_OT_bcb_postproc_tool_visualize_forces,
+    OBJECT_OT_bcb_postproc_tool_detect_cavities,
+    OBJECT_OT_bcb_postproc_tool_run_python_script
     ]
 
 ################################################################################
