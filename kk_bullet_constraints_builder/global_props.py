@@ -109,18 +109,18 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_gnd_nfq = float_(name="Frequency",                default=0.7, min=0.0, max=1000, description="Frequency of the artificial earthquake to be generated in Hz (because of the random nature of the noise function this should be taken as approximation).")
     preprocTools_gnd_ndu = float_(name="Duration",                 default=10, min=0.0, max=1000, description="Duration of the artificial earthquake to be generated in seconds.")
     preprocTools_gnd_nsd = float_(name="Random Seed",              default=0, min=0.0, max=10000000, description="Seed number for the random noise function used to generate the artificial earthquake, modification will change the characteristics of the motion.")
-    preprocTools_gnd_nam = string_(name="CSV File",                default='', description="To import earthquake data from a file enter the filename of an existing time history stored as plain ASCII text with comma-separated values (.csv). File structure: 4 columns: t [s], X [m/s²], Y [m/s²], Z [m/s²]. Lines starting with '#' are skipped.")
+    preprocTools_gnd_nam = string_(name="CSV File",                default='', description="Enter filename or search for earthquake time history file as plain ASCII text with comma-separated values (.csv). File structure: 4 columns: t [s], X [m/s²], Y [m/s²], Z [m/s²]. Lines starting with '#' are skipped.")
 
     ### Postprocessing Tools
     postprocTools_aut = bool_(default=1, name="Run On Automatic Mode", description="Enables that postprocessing will be performed on Automatic Mode. To avoid accidental double execution, this will be disabled whenever a postprocessing tool is activated manually, but it can be activated again at any time.")
 
     postprocTools_lox = bool_(default=1)
     postprocTools_lox_elm = string_(name="Element",       default='Cube', description="Enter the name of an element for which the location time history should be exported.")
-    postprocTools_lox_nam = string_(name="CSV File",      default='', description="Enter a filename for data export.")
+    postprocTools_lox_nam = string_(name="CSV File",      default='', description="Enter filename or search for file for data export as plain ASCII text with comma-separated values (.csv).")
 
     postprocTools_fcx = bool_(default=1)
-    postprocTools_fcx_con = string_(name="Constraint",    default='Con.000', description="Enter the name of an constraint for which the location time history should be exported.")
-    postprocTools_fcx_nam = string_(name="CSV File",      default='', description="Enter a filename for data export.")
+    postprocTools_fcx_con = string_(name="Constraint",    default='Con.000', description="Enter the name of a constraint for which the location time history should be exported.")
+    postprocTools_fcx_nam = string_(name="CSV File",      default='', description="Enter filename or search for file for data export as plain ASCII text with comma-separated values (.csv).")
 
     postprocTools_fcv = bool_(default=1)
     postprocTools_fcv_con = string_(name="Range Object",  default='Visualization Limiter', description="Enter the name of a helper object whose dimensions will be used to define for which connections forces should be visualized, i.e. all within its boundary range. For instance an empty object can be placed and scaled accordingly to fit a specific area of interest.")
