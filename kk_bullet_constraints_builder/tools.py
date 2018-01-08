@@ -1136,7 +1136,7 @@ def stopPlaybackAndReturnToStart(scene):
 def tool_exportLocationHistory_eventHandler(scene):
     
     ### Vars
-    qRelativeCoordinates = 0   # Enables logging of relative coordinates instead of absolute
+    logMode = 0   # Logging mode (0 absolute location, 1 relative location, 2 velocity, 3 acceleration)
 
     props = bpy.context.window_manager.bcb
     filenamePath = props.postprocTools_lox_nam
@@ -1198,25 +1198,10 @@ def tool_exportLocationHistory_eventHandler(scene):
                     print('Error: Could not open file.')
                     stopPlaybackAndReturnToStart(scene); return
                 else:
-                    line = "X; Y; Z; Name: %s\n" %objName
+                    line = "# Time; X; Y; Z; Name: %s\n" %objName
                     f.write(line)
                     files.append(f)
             bpy.app.driver_namespace["log_files_open"] = files
-        
-        ### For every frame
-        if "log_objNames" in bpy.app.driver_namespace.keys():
-            objNames = bpy.app.driver_namespace["log_objNames"]
-            files = bpy.app.driver_namespace["log_files_open"]
-            for k in range(len(objNames)):
-                objName = objNames[k]
-                if qRelativeCoordinates:
-                    if "log_data_start_" +objName not in bpy.app.driver_namespace.keys():
-                        bpy.app.driver_namespace["log_data_start_" +objName] = data
-                        data = (0, 0, 0)
-                    else:
-                        data -= bpy.app.driver_namespace["log_data_start_" +objName]
-                line = "%0.6f, %0.6f, %0.6f\n" %(data[0], data[1], data[2])
-                files[k].write(line)
 
     ### Check if last frame is reached
     if scene.frame_current == scene.frame_end:
@@ -1238,6 +1223,50 @@ def tool_exportLocationHistory_eventHandler(scene):
         for key in keys:
             if "log_" in key:
                 del bpy.app.driver_namespace[key]
+        return
+
+    if len(filenamePath):
+
+        ### For every frame
+        if "log_objNames" in bpy.app.driver_namespace.keys():
+            objNames = bpy.app.driver_namespace["log_objNames"]
+            files = bpy.app.driver_namespace["log_files_open"]
+            time = (scene.frame_current -scene.frame_start -1) /scene.render.fps
+
+            for k in range(len(objNames)):
+                objName = objNames[k]
+                loc = data
+                #if obj.parent != None:
+                #    loc = loc *obj.parent.matrix_world
+
+                if logMode == 0:
+                    data = loc
+                elif logMode == 1:
+                    if "log_loc_start_" +objName not in bpy.app.driver_namespace.keys():
+                        bpy.app.driver_namespace["log_loc_start_" +objName] = loc
+                        loc = Vector((0, 0, 0))
+                    else:
+                        loc -= bpy.app.driver_namespace["log_loc_start_" +objName]
+                    data = loc
+                if logMode >= 2:
+                    if "log_loc_" +objName not in bpy.app.driver_namespace.keys():
+                        bpy.app.driver_namespace["log_loc_" +objName] = loc
+                        vel = Vector((0, 0, 0))
+                    else:
+                        vel = (bpy.app.driver_namespace["log_loc_" +objName] -loc) *scene.render.fps
+                        bpy.app.driver_namespace["log_loc_" +objName] = loc
+                    data = vel
+                if logMode == 3:
+                    if "log_vel_" +objName not in bpy.app.driver_namespace.keys():
+                        bpy.app.driver_namespace["log_vel_" +objName] = vel
+                        accel = Vector((0, 0, 0))
+                    else:
+                        accel = (bpy.app.driver_namespace["log_vel_" +objName] -vel) *scene.render.fps
+                        bpy.app.driver_namespace["log_vel_" +objName] = vel
+                    data = accel
+
+                line = "%0.4f, %0.6f, %0.6f, %0.6f\n" %(time, data[0], data[1], data[2])
+                files[k].write(line)
 
 ########################################
 
@@ -1359,24 +1388,11 @@ def tool_constraintForceHistory_eventHandler(scene):
                         print('Error: Could not open file.')
                         stopPlaybackAndReturnToStart(scene); return
                     else:
-                        line = "1: Fmax for connection; Rest: F for individual constraints; Name: %s\n" %objName
+                        line = "# Time; 1,2,3..: Fmax for connection and F for individual constraints; Name: %s\n" %objName
                         f.write(line)
                         files.append(f)
                 bpy.app.driver_namespace["log_files_open"] = files
             
-    ### For every frame
-    if "log_objNames" in bpy.app.driver_namespace.keys():
-        objNames = bpy.app.driver_namespace["log_objNames"]
-        files = bpy.app.driver_namespace["log_files_open"]
-        for k in range(len(objNames)):
-            fmax = data[0]
-            for val in data: fmax = max(fmax, abs(val))
-            line = "%0.6f" %fmax
-            for val in data:
-                line += " %0.6f" %val
-            line += "\n"
-            files[k].write(line)
-
     ### Check if last frame is reached
     if scene.frame_current == scene.frame_end:
         if bpy.context.screen.is_animation_playing:
@@ -1397,6 +1413,23 @@ def tool_constraintForceHistory_eventHandler(scene):
         for key in keys:
             if "log_" in key:
                 del bpy.app.driver_namespace[key]
+        return
+
+    ### For every frame
+    if "log_objNames" in bpy.app.driver_namespace.keys():
+        objNames = bpy.app.driver_namespace["log_objNames"]
+        files = bpy.app.driver_namespace["log_files_open"]
+        time = (scene.frame_current -scene.frame_start-1) /scene.render.fps
+
+        for k in range(len(objNames)):
+            line = "%0.4f" %time
+            fmax = data[0]
+            for val in data: fmax = max(fmax, abs(val))
+            line += " %0.6f" %fmax
+            for val in data:
+                line += " %0.6f" %val
+            line += "\n"
+            files[k].write(line)
 
 ########################################
 

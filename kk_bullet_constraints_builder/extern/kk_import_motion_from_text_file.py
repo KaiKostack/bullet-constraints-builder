@@ -1,5 +1,5 @@
 ﻿#############################################
-# Motion From Text File v1.1 by Kai Kostack #
+# Motion From Text File v1.2 by Kai Kostack #
 #############################################
 # This script imports ASCII based time histories of motion data.
 # - Pay attention to the fps rate in Render panel before import
@@ -25,7 +25,7 @@
 bl_info = {
     "name": "Motion Data Importer",
     "author": "Kai Kostack",
-    "version": (1, 1, 0),
+    "version": (1, 2, 0),
     "blender": (2, 69, 0),
     "location": "File > Import-Export",
     "warning": "",
@@ -53,9 +53,9 @@ def importData(filepath):
     ### Main function
     
     ### Vars
-    qImportAsDelta = 2   # Interpret data as relative transformation instead of absolute (1 for velocities, 2 for accelerations)
-    timeStep = 0         # Timestep for value scaling (0 = off, > 0 = time step, overrides timescale derived from file time steps)
-                         # This is only used for qImportAsDelta > 0, you have to manually fit the length in curve editor, though. Set to 1 if unsure.
+    logMode = 3    # Data interpretion mode (0 absolute location, 1 relative location, 2 velocity, 3 acceleration)
+    timeStep = 0   # Timestep for value scaling (0 = off, > 0 = time step, overrides timescale derived from file time steps)
+                   # This is only used for logMode > 1, you have to manually fit the length in curve editor, though. Set to 1 if unsure.
 
     ### Define columns (by column number, -1 = disabled)
     timS = 0  # Time step
@@ -121,13 +121,16 @@ def importData(filepath):
 
     ### Create new curves
     if locX != -1:
-        curveLocX = owner.animation_data.action.fcurves.new(data_path="delta_location", index=0)  
+        try: curveLocX = owner.animation_data.action.fcurves.new(data_path="delta_location", index=0)
+        except: curveLocX = owner.animation_data.action.fcurves.find(data_path="delta_location", index=0)
         curveLocX.keyframe_points.add(frameCount)
     if locY != -1:
-        curveLocY = owner.animation_data.action.fcurves.new(data_path="delta_location", index=1)  
+        try: curveLocY = owner.animation_data.action.fcurves.new(data_path="delta_location", index=1)
+        except: curveLocY = owner.animation_data.action.fcurves.find(data_path="delta_location", index=1)
         curveLocY.keyframe_points.add(frameCount)
     if locZ != -1:
-        curveLocZ = owner.animation_data.action.fcurves.new(data_path="delta_location", index=2)  
+        try: curveLocZ = owner.animation_data.action.fcurves.new(data_path="delta_location", index=2)
+        except: curveLocZ = owner.animation_data.action.fcurves.find(data_path="delta_location", index=2)
         curveLocZ.keyframe_points.add(frameCount)
    
     print("Animated frames:", frameCount)
@@ -149,9 +152,11 @@ def importData(filepath):
     if not timeStep and timS != -1: timeS = linesItems[1][timS] -linesItems[0][timS]
     else: timeS = timeStep
         
-    if qImportAsDelta == 1:
+    if logMode == 1:
+        ox = linesItems[0][locX]; oy = linesItems[0][locY]; oz = linesItems[0][locZ]
+    elif logMode == 2:
         x = linesItems[0][locX] *timeS; y = linesItems[0][locY] *timeS; z = linesItems[0][locZ] *timeS
-    elif qImportAsDelta == 2:
+    elif logMode == 3:
         x = 0; y = 0; z = 0
         vx = 0; vy = 0; vz = 0
     lIdx = 0
@@ -165,13 +170,15 @@ def importData(filepath):
             # If no timeStep scale is given then calculate custom timeStep scaling from time steps in file (current line minus last line)
             if not timeStep and lIdx < lCnt-1: timeS = linesItems[lIdx][timS] -linesItems[lIdx+1][timS]
 
-        if qImportAsDelta == 1:
+        if logMode == 0:
+            x = lineItems[locX]; y = lineItems[locY]; z = lineItems[locZ]
+        elif logMode == 1:
+            x = lineItems[locX] -ox; y = lineItems[locY] -oy; z = lineItems[locZ] -oz
+        elif logMode == 2:
             x += lineItems[locX] *timeS; y += lineItems[locY] *timeS; z += lineItems[locZ] *timeS
-        elif qImportAsDelta == 2:
+        elif logMode == 3:
             vx += lineItems[locX] *timeS**2; vy += lineItems[locY] *timeS**2; vz += lineItems[locZ] *timeS**2
             x += vx; y += vy ; z += vz
-        else:
-            x = lineItems[locX]; y = lineItems[locY]; z = lineItems[locZ]
 
         if locX != -1:
             curvePoint = curveLocX.keyframe_points[pIdx]; curvePoint.co = frame, x
@@ -229,18 +236,19 @@ def readData(filename):
         lineSplits = line.split(';')
         items = []
         for item in lineSplits:
-            try: value = float(item)
-            except:
-                print("Error: Value could not be converted:", item)
-                qError = 1
-                break
-            else: items.append(value)
+            if len(item) > 0:
+                try: value = float(item)
+                except:
+                    print("Error: Value could not be converted:", item)
+                    qError = 1
+                    break
+                else: items.append(value)
         linesItems.append(items)
         if qError: break
 
     f.close()
  
-    if len(linesItems) >= 1: print("Last rows of values:")
+    if len(linesItems) >= 1: print("Last row(s) of values:")
     if len(linesItems) >= 2: print(linesItems[-2])
     if len(linesItems) >= 1: print(linesItems[-1])
     print("(If corrupted file structure might be wrong.)")
