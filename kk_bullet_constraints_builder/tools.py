@@ -1424,7 +1424,7 @@ def tool_constraintForceHistory_eventHandler(scene):
         for k in range(len(objNames)):
             line = "%0.4f" %time
             fmax = data[0]
-            for val in data: fmax = max(fmax, abs(val))
+            for val in data: fmax = max(fmax, abs(val))  # Evaluate maximum force
             line += " %0.6f" %fmax
             for val in data:
                 line += " %0.6f" %val
@@ -1707,7 +1707,12 @@ def tool_constraintForceVisualization_eventHandler(scene):
                 cons = result[1]  # (data, cons)
                 data = [val *rbw_steps_per_second /rbw_time_scale for val in data]  # Conversion from impulse to force
                 
+                fmax = data[0]
+                for val in data: fmax = max(fmax, abs(val))  # Evaluate maximum force
+
                 # Write properties into visualization objects for user review
+                vizObjs[i]['#Fmax N'] = fmax
+                vizObjs[i]['#Fmax N/mm²'] = fmax /a
                 for k in range(len(cons)):
                     vizObjs[i][name +'.%d N' %k] = data[k]
                     vizObjs[i][name +'.%d N/mm²' %k] = data[k] /a
