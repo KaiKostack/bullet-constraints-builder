@@ -64,8 +64,10 @@ def createElementGroupIndex(objs):
         for elemGrp in elemGrps:
             elemGrpName = elemGrp[EGSidxName]
             if elemGrpName in bpy.data.groups:
-                if obj.name in bpy.data.groups[elemGrpName].objects:
-                    objGrpsTmp.append(elemGrps.index(elemGrp))
+                if obj != None:
+                    try: bpy.data.groups[elemGrpName].objects[obj.name]
+                    except: pass
+                    else: objGrpsTmp.append(elemGrps.index(elemGrp))
         if len(objGrpsTmp) > 1:
             sys.stdout.write("Warning: Object %s belongs to more than one element group, defaults are used. Element groups:" %obj.name)
             for idx in objGrpsTmp: sys.stdout.write(" #%d %s" %(idx, elemGrps[idx][EGSidxName]))
@@ -1346,7 +1348,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         objsSelected = []
         for k in range(len(objs)):
             obj = objs[k]
-            if obj.rigid_body != None:
+            if obj != None and obj.rigid_body != None:
                 CT = elemGrps[objsEGrp[k]][EGSidxCTyp]
                 if CT == 0:
                     # The foundation buffer objects need a large mass so they won't pushed away
@@ -1396,7 +1398,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
     print()
     groupsMass = {}; groupsArea = {}
     for obj in objs:
-        if obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE':
+        if obj != None and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE':
             for group in bpy.data.groups:
                 try: obj = group.objects[obj.name]
                 except: pass

@@ -170,6 +170,17 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         consts = next(connectsConsts_iter)
         loc = Vector(next(connectsLoc_iter))
         geo = next(connectsGeo_iter)
+
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
+        # If objects are missing fill in empty data and skip rest
+        if objA == None or objB == None:
+            cData = {}; cDatb = []
+            for cIdx in consts:
+                setConstParams(cData,cDatb,cDef)
+                constsData.append([cData, cDatb])
+            connectsTol.append([0, 0, 0, 0])
+            continue
         
         # Geometry array: [area, height, width, surfThick, axisNormal, axisHeight, axisWidth]
         # Height is always smaller than width
@@ -191,8 +202,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         h = geoHeight *1000
         w = geoWidth *1000
         
-        objA = objs[pair[0]]
-        objB = objs[pair[1]]
         elemGrpA = objsEGrp[objsDict[objA]] 
         elemGrpB = objsEGrp[objsDict[objB]]
         elemGrps_elemGrpA = elemGrps[elemGrpA]
@@ -1178,19 +1187,21 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData, cDatb = next(constsData_iter)
             
             ### Write empty object parameters (BCB specific attributes, commented out lines are defined elsewhere)
-            if cDatb[0] != None: objConst.name                          = cDatb[0]
-            if cDatb[1] != None: objConst.location                      = cDatb[1]
-            if cDatb[2] != None: objConst.rigid_body_constraint.object1 = cDatb[2]
-            if cDatb[3] != None: objConst.rigid_body_constraint.object2 = cDatb[3]
-            if cDatb[6] != None: objConst.rotation_mode                 = cDatb[6]
-            if cDatb[7] != None: objConst.rotation_quaternion           = cDatb[7]
+            if cDatb != None and objConst != None:
+                if cDatb[0] != None: objConst.name                          = cDatb[0]
+                if cDatb[1] != None: objConst.location                      = cDatb[1]
+                if cDatb[2] != None: objConst.rigid_body_constraint.object1 = cDatb[2]
+                if cDatb[3] != None: objConst.rigid_body_constraint.object2 = cDatb[3]
+                if cDatb[6] != None: objConst.rotation_mode                 = cDatb[6]
+                if cDatb[7] != None: objConst.rotation_quaternion           = cDatb[7]
             
             ### Overwrite default constraint settings with new and different settings
-            setAttribsOfConstraint(objConst.rigid_body_constraint, cData)
+            if objConst != None:
+                setAttribsOfConstraint(objConst.rigid_body_constraint, cData)
         print()
 
         # Update names in database in case they were changed
-        scene["bcb_emptyObjs"] = [obj.name for obj in emptyObjs]
+        scene["bcb_emptyObjs"] = [obj.name for obj in emptyObjs if obj != None]
 
         ### Calculating constraint widgets for drawing
         print("Calculating constraint widgets for drawing... (%d)" %len(connectsPair))
@@ -1214,14 +1225,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             yl = 0; zl = 0; ya = 0; za = 0
             for cIdx in consts:
                 objConst = emptyObjs[cIdx]
-                constData = objConst.rigid_body_constraint
-                if constData.type == 'GENERIC' or (constData.type == 'GENERIC_SPRING' and constData.enabled):
-                    # Use shearing thresholds as base for empty scaling
-                    if constData.use_limit_lin_y: yl = constData.breaking_threshold
-                    if constData.use_limit_lin_z: zl = constData.breaking_threshold
-                    # Use bending thresholds as base for empty scaling (reminder: axis swapped)
-                    if constData.use_limit_ang_y: za = constData.breaking_threshold
-                    if constData.use_limit_ang_z: ya = constData.breaking_threshold
+                if objConst != None:
+                    constData = objConst.rigid_body_constraint
+                    if constData.type == 'GENERIC' or (constData.type == 'GENERIC_SPRING' and constData.enabled):
+                        # Use shearing thresholds as base for empty scaling
+                        if constData.use_limit_lin_y: yl = constData.breaking_threshold
+                        if constData.use_limit_lin_z: zl = constData.breaking_threshold
+                        # Use bending thresholds as base for empty scaling (reminder: axis swapped)
+                        if constData.use_limit_ang_y: za = constData.breaking_threshold
+                        if constData.use_limit_ang_z: ya = constData.breaking_threshold
             ### Calculate new scaling from values
             if yl > 0 and zl > 0: aspect = yl /zl
             else: aspect = 1
@@ -1244,15 +1256,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             for idx in range(constCnt):
                 cIdx = consts[idx]
                 objConst = emptyObjs[cIdx]
-                constData = objConst.rigid_body_constraint
-                #objConst.object.empty_draw_type = 'CUBE'  # This is set before duplication for performance reasons
-                objConst.empty_draw_size = .502  # Scale size slightly larger to make lines visible over solid elements
-                if not props.disableCollisionPerm and idx != idxLast:  # Use simple if constraint is for permanent collision suppression
-                    # Scale the cube to the dimensions of the connection area
-                    if constData.type == 'GENERIC' or (constData.type == 'GENERIC_SPRING' and constData.enabled):
-                          objConst.scale = axs
+                if objConst != None:
+                    constData = objConst.rigid_body_constraint
+                    #objConst.object.empty_draw_type = 'CUBE'  # This is set before duplication for performance reasons
+                    objConst.empty_draw_size = .502  # Scale size slightly larger to make lines visible over solid elements
+                    if not props.disableCollisionPerm and idx != idxLast:  # Use simple if constraint is for permanent collision suppression
+                        # Scale the cube to the dimensions of the connection area
+                        if constData.type == 'GENERIC' or (constData.type == 'GENERIC_SPRING' and constData.enabled):
+                              objConst.scale = axs
+                        else: objConst.scale = axs_s
                     else: objConst.scale = axs_s
-                else: objConst.scale = axs_s
         print()
         
     elif props.asciiExport:
@@ -1261,7 +1274,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         constsData_iter = iter(constsData)
         for k in range(len(emptyObjs)):
             cData, cDatb = next(constsData_iter)
-            if cDatb[0] != None: emptyObjs[k] = cDatb[0]
+            if cDatb != None:
+                if cDatb[0] != None: emptyObjs[k] = cDatb[0]
 
         ### Export constraint settings
         print("Exporting constraint settings... (%d)" %len(emptyObjs))
@@ -1276,11 +1290,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             
             cData, cDatb = next(constsData_iter)
             ### Prepare data to be packed
-            if cDatb[1] != None: cDatb[1] = cDatb[1].to_tuple()          # loc
-            if cDatb[2] != None: cDatb[2] = cDatb[2].name                # obj1
-            if cDatb[3] != None: cDatb[3] = cDatb[3].name                # obj2
-            if cDatb[6] != None: cDatb[6] = str(cDatb[6])                # rotm
-            if cDatb[7] != None: cDatb[7] = Vector(cDatb[7]).to_tuple()  # rot
+            if cDatb != None and objConst != None:
+                if cDatb[1] != None: cDatb[1] = cDatb[1].to_tuple()          # loc
+                if cDatb[2] != None: cDatb[2] = cDatb[2].name                # obj1
+                if cDatb[3] != None: cDatb[3] = cDatb[3].name                # obj2
+                if cDatb[6] != None: cDatb[6] = str(cDatb[6])                # rotm
+                if cDatb[7] != None: cDatb[7] = Vector(cDatb[7]).to_tuple()  # rot
             exData.append([cData, cDatb])
         print()
 

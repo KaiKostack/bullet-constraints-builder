@@ -406,8 +406,13 @@ def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsP
     if objsEGrp != None:
         scene["bcb_objsEGrp"] = objsEGrp
     if emptyObjs != None:
-        if hasattr(emptyObjs[0], 'name'): scene["bcb_emptyObjs"] = [obj.name for obj in emptyObjs]
-        else: scene["bcb_emptyObjs"] = emptyObjs  # Since empties are not build for FM export we also expect just a list of names
+        data = []
+        for obj in emptyObjs:
+            if obj != None:
+                if hasattr(obj, 'name'): data.append(obj.name)
+                else: data.append(obj)  # When empties are not build for FM export we also expect just names
+            else: data.append("")
+        scene["bcb_emptyObjs"] = data
     if childObjs != None:
         scene["bcb_childObjs"] = [obj.name for obj in childObjs]
     if connectsPair != None:
@@ -448,23 +453,29 @@ def getBuildDataFromScene(scene):
     except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
     objs = []
     for name in names:
-        try: objs.append(scnObjs[name])
-        except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-
+        if len(name):
+            try: objs.append(scnObjs[name])
+            except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+        else: objs.append(None)
+        
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
     emptyObjs = []
     for name in names:
-        try: emptyObjs.append(scnEmptyObjs[name])
-        except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-
+        if len(name):
+            try: emptyObjs.append(scnEmptyObjs[name])
+            except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+        else: emptyObjs.append(None)
+        
     try: names = scene["bcb_childObjs"]
     except: names = []; print("Error: bcb_childObjs property not found, rebuilding constraints is required.")
     childObjs = []
     for name in names:
-        try: childObjs.append(scnObjs[name])
-        except: childObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-
+        if len(name):
+            try: childObjs.append(scnObjs[name])
+            except: childObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+        else: childObjs.append(None)
+        
     try: connectsPair = scene["bcb_connectsPair"]
     except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
 
@@ -509,7 +520,7 @@ def getBuildDataFromScene(scene):
 
 ################################################################################   
 
-def clearAllDataFromScene(scene):
+def clearAllDataFromScene(scene, qKeepBuildData=0):
     
     ### Clear all data related to Bullet Constraints Builder from scene
 
@@ -517,7 +528,7 @@ def clearAllDataFromScene(scene):
         print("\nWarning: Clearing scene of BCB data for Fracture Modifier not yet implemented.")
         return
 
-    print("\nStarting to clear all data related to Bullet Constraints Builder from scene...")
+    print("\nStarting to clear data related to Bullet Constraints Builder from scene...")
     time_start = time.time()
 
     props = bpy.context.window_manager.bcb
@@ -539,23 +550,29 @@ def clearAllDataFromScene(scene):
     except: names = []; print("Warning: bcb_objs property not found, cleanup may be incomplete.")
     objs = []
     for name in names:
-        try: objs.append(scnObjs[name])
-        except: objs.append(None); print("Warning: Object %s missing, cleanup may be incomplete." %name)
-
+        if len(name):
+            try: objs.append(scnObjs[name])
+            except: objs.append(None); print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        else: objs.append(None)
+        
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Warning: bcb_emptyObjs property not found, cleanup may be incomplete.")
     emptyObjs = []
     for name in names:
-        try: emptyObjs.append(scnEmptyObjs[name])
-        except: emptyObjs.append(None); print("Warning: Object %s missing, cleanup may be incomplete." %name)
-
+        if len(name):
+            try: emptyObjs.append(scnEmptyObjs[name])
+            except: emptyObjs.append(None); print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        else: emptyObjs.append(None)
+        
     try: names = scene["bcb_childObjs"]
     except: names = []; print("Warning: bcb_childObjs property not found, cleanup may be incomplete.")
     childObjs = []
     for name in names:
-        try: childObjs.append(scnObjs[name])
-        except: childObjs.append(None); print("Warning: Object %s missing, cleanup may be incomplete." %name)
-
+        if len(name):
+            try: childObjs.append(scnObjs[name])
+            except: childObjs.append(None); print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        else: childObjs.append(None)
+        
     try: connectsPairParent = scene["bcb_connectsPairParent"]
     except: connectsPairParent = []; print("Warning: bcb_connectsPairParent property not found, cleanup may be incomplete.")
 
@@ -621,16 +638,20 @@ def clearAllDataFromScene(scene):
     except: names = []; print("Warning: bcb_objs property not found, cleanup may be incomplete.")
     objs = []
     for name in names:
-        try: objs.append(scnObjs[name])
-        except: objs.append(None) #; print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        if len(name):
+            try: objs.append(scnObjs[name])
+            except: objs.append(None) #; print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        else: objs.append(None)
 
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Warning: bcb_emptyObjs property not found, cleanup may be incomplete.")
     emptyObjs = []
     for name in names:
-        try: emptyObjs.append(scnEmptyObjs[name])
-        except: emptyObjs.append(None) #; print("Warning: Object %s missing, cleanup may be incomplete." %name)
-
+        if len(name):
+            try: emptyObjs.append(scnEmptyObjs[name])
+            except: emptyObjs.append(None) #; print("Warning: Object %s missing, cleanup may be incomplete." %name)
+        else: emptyObjs.append(None)
+        
     ### Revert element scaling
     for k in range(len(objs)):
         try: scale = mem["elemGrps"][objsEGrp[k]][EGSidxScal]  # Try in case elemGrps is from an old BCB version
@@ -640,28 +661,38 @@ def clearAllDataFromScene(scene):
             if obj != None and scale != 0 and scale != 1:
                 obj.scale /= scale
 
-    print("Removing ID properties...")
-    
-    ### Clear object properties
-    for obj in objs:
-        if obj != None:
-            for key in obj.keys():
-                if "bcb_" in key: del obj[key]
+    ######
 
-    ### Remove ID property build data (leaves menu props in place)
-    for key in scene.keys():
-        if "bcb_" in key: del scene[key]
+    if not qKeepBuildData:
+        
+        print("Removing ID properties...")
+    
+        ### Clear object properties
+        for obj in objs:
+            if obj != None:
+                for key in obj.keys():
+                    if "bcb_" in key: del obj[key]
+
+        ### Remove ID property build data (leaves menu props in place)
+        for key in scene.keys():
+            if "bcb_" in key: del scene[key]
+
+    ######
 
     print("Deleting objects...")
 
     ### Select modified elements for deletion from scene 
     for parentObj in parentTmpObjs:
         if parentObj != None:
-            parentObj.select = 1
+            try: scene.objects[parentObj.name]  # Check if object is still linked to scene (can crash otherwise on deletion)
+            except: pass
+            else: parentObj.select = 1
     ### Select constraint empty objects for deletion from scene
     for emptyObj in emptyObjs:
         if emptyObj != None:
-            emptyObj.select = 1
+            try: scene.objects[emptyObj.name]  # Check if object is still linked to scene (can crash otherwise on deletion)
+            except: pass
+            else: emptyObj.select = 1
     
     if props.automaticMode and props.saveBackups:
         ### Quick and dirty delete function (faster but can cause problems on immediate rebuilding, requires saving and reloading first)

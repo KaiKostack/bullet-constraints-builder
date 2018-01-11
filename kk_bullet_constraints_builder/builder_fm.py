@@ -132,7 +132,7 @@ def build_fm(use_handler=0):
         objParent = None
 
         ### Unpack BCB data from text file
-        try: s = bpy.data.texts[asciiExportName].as_string()
+        try: s = bpy.data.texts[asciiExportName +".txt"].as_string()
         except:
             print("Error: No export data found, couldn't build Fracture Modifier object.")
             return
@@ -268,7 +268,7 @@ def FM_shards(ob):
     md.fracture_mode = 'EXTERNAL'
 
     ### Unpack BCB data from text file
-    try: s = bpy.data.texts[asciiExportName].as_string()
+    try: s = bpy.data.texts[asciiExportName +".txt"].as_string()
     except:
         print("Error: No export data found, couldn't build Fracture Modifier object.")
         return
@@ -369,7 +369,7 @@ def FM_constraints(ob):
     md.fracture_mode = 'EXTERNAL'
 
     ### Unpack BCB data from text file
-    try: s = bpy.data.texts[asciiExportName].as_string()
+    try: s = bpy.data.texts[asciiExportName +".txt"].as_string()
     except:
         print("Error: No export data found, couldn't build Fracture Modifier object.")
         return

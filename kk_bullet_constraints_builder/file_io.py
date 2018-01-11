@@ -205,13 +205,13 @@ def setAttribsOfConstraint(const, props):
 def exportDataToText(exportData):
 
     ### Exporting data into internal ASCII text file
-    print("Exporting data into internal ASCII text file:", asciiExportName)
+    print("Exporting data into internal ASCII text file:", asciiExportName +".txt")
     
     ### Ascii export into internal text file
     exportDataStr = pickle.dumps(exportData, 4)  # 0 for using real ASCII pickle protocol and comment out the base64 lines (slower but human readable)
     exportDataStr = zlib.compress(exportDataStr, 9)
     exportDataStr = base64.encodebytes(exportDataStr)  # Convert binary data into "text" representation
-    text = bpy.data.texts.new(asciiExportName)
+    text = bpy.data.texts.new(asciiExportName +".txt")
     text.write(exportDataStr.decode())
     
     ### Code for loading data back from text

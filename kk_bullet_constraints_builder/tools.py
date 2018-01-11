@@ -1553,15 +1553,19 @@ def tool_constraintForceVisualization_eventHandler(scene):
             except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
             objs = []
             for name in names:
-                try: objs.append(scnObjs[name])
-                except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-
+                if len(name):
+                    try: objs.append(scnObjs[name])
+                    except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+                else: objs.append(None)
+                
             try: names = scene["bcb_emptyObjs"]
             except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
             emptyObjs = []
             for name in names:
-                try: emptyObjs.append(scnEmptyObjs[name])
-                except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+                if len(name):
+                    try: emptyObjs.append(scnEmptyObjs[name])
+                    except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+                else: emptyObjs.append(None)
 
         ### Fracture Modifier
         else:
@@ -1575,16 +1579,20 @@ def tool_constraintForceVisualization_eventHandler(scene):
             except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
             objs = []
             for name in names:
-                try: objs.append(md.mesh_islands[name])
-                except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-
+                if len(name):
+                    try: objs.append(md.mesh_islands[name])
+                    except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+                else: objs.append(None)
+                
             try: names = scene["bcb_emptyObjs"]
             except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
             emptyObjs = []
             for name in names:
-                try: emptyObjs.append(md.mesh_constraints[name])
-                except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-
+                if len(name):
+                    try: emptyObjs.append(md.mesh_constraints[name])
+                    except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+                else: emptyObjs.append(None)
+            
         try: connectsPair = scene["bcb_connectsPair"]
         except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
         try: connectsGeo = scene["bcb_connectsGeo"]

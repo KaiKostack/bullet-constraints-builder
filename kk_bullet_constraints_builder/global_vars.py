@@ -35,7 +35,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 8, 1)
+bcb_version = (2, 8, 2)
 
 ### Customizable element group presets
 presets = [
@@ -252,7 +252,7 @@ maxMenuElementGroupItems = 300       # 300   | Maximum allowed element group ent
 emptyDrawSize = 0.25                 # 0.25  | Display size of constraint empty objects as radius in meters
 visualizerDrawSize = 1.0             # 1     | Maximum radius the visualizer will be scaled to when reaching maximum force
 minimumContactArea = 0.001           # 0.001 | Zero limit for a detected contact area to be considered for connection
-asciiExportName = "BCB_export.txt"   #       | Name of ASCII text file to be exported
+asciiExportName = "BCB_export"       #       | Name of ASCII text file to be exported
 grpNameBuilding = "BCB_Building"
 grpNameVisualization = "BCB_Visualization"
 grpNameFoundation = "Foundation"

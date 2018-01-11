@@ -88,7 +88,7 @@ class OBJECT_OT_bcb_clear(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         ###### Clear all data from scene and delete also constraint empty objects
-        if "bcb_prop_elemGrps" in scene.keys(): clearAllDataFromScene(scene)
+        if "bcb_prop_elemGrps" in scene.keys(): clearAllDataFromScene(scene, qKeepBuildData=0)
         props.menu_gotConfig = 0
         props.menu_gotData = 0
         return{'FINISHED'} 
@@ -202,9 +202,9 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             if props.menu_gotData:
                 ###### Fracture Modifier export
                 build_fm(use_handler=self.use_handler)
-                if not self.use_handler and asciiExportName in bpy.data.texts:
-                    try:    bpy.data.texts.remove(bpy.data.texts[asciiExportName], do_unlink=1)
-                    except: bpy.data.texts.remove(bpy.data.texts[asciiExportName])
+                if not self.use_handler and asciiExportName +".txt" in bpy.data.texts:
+                    try:    bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"], do_unlink=1)
+                    except: bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"])
                 ### Free previous bake data
                 contextFix = bpy.context.copy()
                 contextFix['point_cache'] = scene.rigidbody_world.point_cache
@@ -230,8 +230,8 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         ### Build constraints if required (menu_gotData will be set afterwards and this operator restarted)
-        ### If "BCB_export" exists then the use of Fracture Modifier is assumed and building is skipped
-        if not props.menu_gotData and not "BCB_export" in scene.objects:
+        ### If asciiExportName exists then the use of Fracture Modifier is assumed and building is skipped
+        if not props.menu_gotData and not asciiExportName in scene.objects:
             if props.automaticMode and props.preprocTools_aut:
                 OBJECT_OT_bcb_preprocess_do_all_steps_at_once.execute(self, context)
             OBJECT_OT_bcb_build.execute(self, context)

@@ -200,7 +200,7 @@ def automaticModeAfterStop():
     scene = bpy.context.scene
     if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
     ###### Clear all data from scene and delete also constraint empty objects
-    if "bcb_prop_elemGrps" in scene.keys(): clearAllDataFromScene(scene)
+    if "bcb_prop_elemGrps" in scene.keys(): clearAllDataFromScene(scene, qKeepBuildData=1)
     props.menu_gotData = 0
     ###### Store menu config data in scene (again)
     storeConfigDataInScene(scene)
@@ -279,16 +279,20 @@ def monitor_initBuffers(scene):
     except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
     objs = []
     for name in names:
-        try: objs.append(scnObjs[name])
-        except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+        if len(name):
+            try: objs.append(scnObjs[name])
+            except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+        else: objs.append(None)
 
     try: names = scene["bcb_emptyObjs"]
     except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
     emptyObjs = []
     for name in names:
-        try: emptyObjs.append(scnEmptyObjs[name])
-        except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-
+        if len(name):
+            try: emptyObjs.append(scnEmptyObjs[name])
+            except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+        else: emptyObjs.append(None)
+        
     try: connectsPair = scene["bcb_connectsPair"]
     except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
 

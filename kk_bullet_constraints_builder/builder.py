@@ -178,7 +178,9 @@ def build():
                     # Deselect all objects
                     bpy.ops.object.select_all(action='DESELECT')
                     # Select all new constraint empties
-                    for emptyObj in emptyObjs: emptyObj.select = 1
+                    for emptyObj in emptyObjs:
+                        try: emptyObj.select = 1
+                        except: pass
                 
                 print('-- Time total: %0.2f s\n' %(time.time()-time_start))
                 print('Constraints:', len(emptyObjs), '| Elements:', len(objs), '| Children:', len(childObjs))
