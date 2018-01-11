@@ -165,30 +165,45 @@ def importData(filepath):
     while lIdx < lCnt:
         lineItems = linesItems[lIdx]
 
-        if timS != -1:
-            frame = lineItems[timS] *bpy.context.scene.render.fps
-            # If no timeStep scale is given then calculate custom timeStep scaling from time steps in file (current line minus last line)
-            if not timeStep and lIdx < lCnt-1: timeS = linesItems[lIdx][timS] -linesItems[lIdx+1][timS]
+        qError = 0
+        try: val_timS = lineItems[timS]
+        except: qError = 1
+        try: val_locX = lineItems[locX]
+        except: qError = 1
+        try: val_locY = lineItems[locY]
+        except: qError = 1
+        try: val_locZ = lineItems[locZ]
+        except: qError = 1
 
-        if logMode == 0:
-            x = lineItems[locX]; y = lineItems[locY]; z = lineItems[locZ]
-        elif logMode == 1:
-            x = lineItems[locX] -ox; y = lineItems[locY] -oy; z = lineItems[locZ] -oz
-        elif logMode == 2:
-            x += lineItems[locX] *timeS; y += lineItems[locY] *timeS; z += lineItems[locZ] *timeS
-        elif logMode == 3:
-            vx += lineItems[locX] *timeS**2; vy += lineItems[locY] *timeS**2; vz += lineItems[locZ] *timeS**2
-            x += vx; y += vy ; z += vz
+        if qError:
+            print("Error: Unexpected missing data in line:", lIdx)
 
-        if locX != -1:
-            curvePoint = curveLocX.keyframe_points[pIdx]; curvePoint.co = frame, x
-            curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co; curvePoint.handle_left_type = 'AUTO_CLAMPED'; curvePoint.handle_right_type = 'AUTO_CLAMPED'
-        if locY != -1:
-            curvePoint = curveLocY.keyframe_points[pIdx]; curvePoint.co = frame, y
-            curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co; curvePoint.handle_left_type = 'AUTO_CLAMPED'; curvePoint.handle_right_type = 'AUTO_CLAMPED'
-        if locZ != -1:
-            curvePoint = curveLocZ.keyframe_points[pIdx]; curvePoint.co = frame, z
-            curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co; curvePoint.handle_left_type = 'AUTO_CLAMPED'; curvePoint.handle_right_type = 'AUTO_CLAMPED'
+        else:
+            if timS != -1:
+                frame = val_timS *bpy.context.scene.render.fps
+                # If no timeStep scale is given then calculate custom timeStep scaling from time steps in file (current line minus last line)
+                if not timeStep and lIdx < lCnt-1: timeS = linesItems[lIdx][timS] -linesItems[lIdx+1][timS]
+
+            if logMode == 0:
+                x = val_locX; y = val_locY; z = val_locZ
+            elif logMode == 1:
+                x = val_locX -ox; y = val_locY -oy; z = val_locZ -oz
+            elif logMode == 2:
+                x += val_locX *timeS; y += val_locY *timeS; z += val_locZ *timeS
+            elif logMode == 3:
+                vx += val_locX *timeS**2; vy += val_locY *timeS**2; vz += val_locZ *timeS**2
+                x += vx; y += vy ; z += vz
+
+            if locX != -1:
+                curvePoint = curveLocX.keyframe_points[pIdx]; curvePoint.co = frame, x
+                curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co; curvePoint.handle_left_type = 'AUTO_CLAMPED'; curvePoint.handle_right_type = 'AUTO_CLAMPED'
+            if locY != -1:
+                curvePoint = curveLocY.keyframe_points[pIdx]; curvePoint.co = frame, y
+                curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co; curvePoint.handle_left_type = 'AUTO_CLAMPED'; curvePoint.handle_right_type = 'AUTO_CLAMPED'
+            if locZ != -1:
+                curvePoint = curveLocZ.keyframe_points[pIdx]; curvePoint.co = frame, z
+                curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co; curvePoint.handle_left_type = 'AUTO_CLAMPED'; curvePoint.handle_right_type = 'AUTO_CLAMPED'
+
         lIdx += 1
         pIdx += 1
         if timS == -1: frame += 1
