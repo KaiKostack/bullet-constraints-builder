@@ -1362,11 +1362,11 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                             if "bcb_child" in obj.keys():
                                 obj = scene.objects[obj["bcb_child"]]
                             obj.select = 1
+                            objsSelected.append(obj)
                             # Temporarily revert element scaling for mass calculation
                             if qScale:
                                 if scale != 0 and scale != 1:
                                     obj.scale /= scale
-                                    objsSelected.append(obj)
                                     objsTotal.append(obj)
                                     objsScale.append(scale)
 
