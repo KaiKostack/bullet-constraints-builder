@@ -1535,6 +1535,7 @@ def tool_constraintForceVisualization_eventHandler(scene):
 
     ###### On first run
     if "log_connectsViz" not in bpy.app.driver_namespace.keys():
+        print("Gathering data...")
 
         ###### Get data from scene
 
@@ -1549,24 +1550,6 @@ def tool_constraintForceVisualization_eventHandler(scene):
                 if obj.type == 'MESH':    scnObjs[obj.name] = obj
                 elif obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
 
-            try: names = scene["bcb_objs"]
-            except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
-            objs = []
-            for name in names:
-                if len(name):
-                    try: objs.append(scnObjs[name])
-                    except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-                else: objs.append(None)
-                
-            try: names = scene["bcb_emptyObjs"]
-            except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
-            emptyObjs = []
-            for name in names:
-                if len(name):
-                    try: emptyObjs.append(scnEmptyObjs[name])
-                    except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-                else: emptyObjs.append(None)
-
         ### Fracture Modifier
         else:
             qFM = 1
@@ -1575,23 +1558,31 @@ def tool_constraintForceVisualization_eventHandler(scene):
             except: print("Error: Fracture Modifier object expected but not found."); return
             md = ob.modifiers["Fracture"]
 
-            try: names = scene["bcb_objs"]
-            except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
-            objs = []
-            for name in names:
-                if len(name):
-                    try: objs.append(md.mesh_islands[name])
-                    except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-                else: objs.append(None)
-                
-            try: names = scene["bcb_emptyObjs"]
-            except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
-            emptyObjs = []
-            for name in names:
-                if len(name):
-                    try: emptyObjs.append(md.mesh_constraints[name])
-                    except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-                else: emptyObjs.append(None)
+            ### Prepare scene object dictionaries again after we changed obj names (optimization)
+            scnObjs = {}
+            scnEmptyObjs = {}
+            for obj in md.mesh_islands:
+                scnObjs[obj.name] = obj
+            for obj in md.mesh_constraints:
+                scnEmptyObjs[obj.name] = obj
+
+        try: names = scene["bcb_objs"]
+        except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+        objs = []
+        for name in names:
+            if len(name):
+                try: objs.append(scnObjs[name])
+                except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+            else: objs.append(None)
+            
+        try: names = scene["bcb_emptyObjs"]
+        except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
+        emptyObjs = []
+        for name in names:
+            if len(name):
+                try: emptyObjs.append(scnEmptyObjs[name])
+                except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+            else: emptyObjs.append(None)
             
         try: connectsPair = scene["bcb_connectsPair"]
         except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
@@ -1606,11 +1597,13 @@ def tool_constraintForceVisualization_eventHandler(scene):
             try: objRange = scene.objects[objRangeName]
             except: print("Warning: Range limiting object not found, visualizing all connections instead.")
 
-        ### Make list of connections for visualization
+        ### Create list of connections for visualization
+        print("Creating list of connections for visualization... (%d)" %len(connectsPair))
         connectsViz = []
         connectsPair_iter = iter(connectsPair)
         connectsConsts_iter = iter(connectsConsts)
         for k in range(len(connectsPair)):
+            sys.stdout.write('\r' +"%d" %k)
             consts = next(connectsConsts_iter)
             pair = next(connectsPair_iter)   
 
@@ -1632,8 +1625,13 @@ def tool_constraintForceVisualization_eventHandler(scene):
                     else: qUse = 0
                 else: qUse = 1
                 
-                if not qFM and (objA.rigid_body.type == 'PASSIVE' or objB.rigid_body.type == 'PASSIVE'): qUse = 0
-                if qFM and (objA.rigidbody.type == 'PASSIVE' or objB.rigidbody.type == 'PASSIVE'): qUse = 0
+                # Skip connections with passive elements
+                #if not qFM and (objA.rigid_body.type == 'PASSIVE' or objB.rigid_body.type == 'PASSIVE'): qUse = 0
+                #if qFM and (objA.rigidbody.type == 'PASSIVE' or objB.rigidbody.type == 'PASSIVE'): qUse = 0
+
+                # Only use connections with passive elements
+                #if not qFM and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'): qUse = 0
+                #if qFM and (objA.rigidbody.type == 'ACTIVE' and objB.rigidbody.type == 'ACTIVE'): qUse = 0
             
                 if qUse:
                     name = objConst.name.rsplit('.', 1)[0]
@@ -1641,6 +1639,7 @@ def tool_constraintForceVisualization_eventHandler(scene):
                     geoContactArea = geo[0]
                     a = geoContactArea *1000000
                     connectsViz.append([name, objConst.location, len(consts), objA, objB, a])
+        print()
 
         # Store connection data for next frame use
         bpy.app.driver_namespace["log_connectsViz"] = connectsViz
@@ -1656,7 +1655,7 @@ def tool_constraintForceVisualization_eventHandler(scene):
         initMaterials()
 
         ### Prepare visualization objects
-        print("Prepare visualization objects... (%d)" %len(connectsViz))
+        print("Preparing visualization objects... (%d)" %len(connectsViz))
         grpName = grpNameVisualization
         try: grp = bpy.data.groups[grpName]
         except: grp = bpy.data.groups.new(grpName)
@@ -1729,8 +1728,9 @@ def tool_constraintForceVisualization_eventHandler(scene):
                 dataNorm = []
                 for k in range(len(cons)):
                     #brkThres = cons[k].breaking_threshold *rbw_steps_per_second /rbw_time_scale  # Conversion from impulse to force
-                    #dataNorm.append(data[k] /brkThres /props.postprocTools_fcv_max)
-                    dataNorm.append(abs(data[k] /a) /props.postprocTools_fcv_max)
+                    #dataNorm.append(data[k] /brkThres /props.postprocTools_fcv_max)  # Visualize force normalized to breaking threshold
+                    #dataNorm.append(abs(data[k]) /props.postprocTools_fcv_max)  # Visualize absolute force per connection 
+                    dataNorm.append(abs(data[k] /a) /props.postprocTools_fcv_max)  # Visualize relative force per connection 
                     
                 # Finding the maximum strain of all constraints
                 fmax = dataNorm[0]
@@ -1778,6 +1778,9 @@ def tool_constraintForceVisualization(scene):
         try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
         except: pass
         else: obj.location = obj.location
+
+    # Go to start frame
+    scene.frame_current = scene.frame_start
 
     print('Init event handler.')
     bpy.app.handlers.frame_change_pre.append(tool_constraintForceVisualization_eventHandler)
