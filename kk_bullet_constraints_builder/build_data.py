@@ -108,6 +108,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_postprocTools_fcv_con"] = props.postprocTools_fcv_con
     scene["bcb_prop_postprocTools_fcv_frm"] = props.postprocTools_fcv_frm
     scene["bcb_prop_postprocTools_fcv_max"] = props.postprocTools_fcv_max
+    scene["bcb_prop_postprocTools_fcv_pas"] = props.postprocTools_fcv_pas
 
     scene["bcb_prop_postprocTools_cav"] = props.postprocTools_cav
     scene["bcb_prop_postprocTools_cav_siz"] = props.postprocTools_cav_siz
@@ -281,6 +282,8 @@ def getConfigDataFromScene(scene):
         props.postprocTools_fcv_frm = scene["bcb_prop_postprocTools_fcv_frm"]
     if "bcb_prop_postprocTools_fcv_max" in scene.keys():
         props.postprocTools_fcv_max = scene["bcb_prop_postprocTools_fcv_max"]
+    if "bcb_prop_postprocTools_fcv_pas" in scene.keys():
+        props.postprocTools_fcv_pas = scene["bcb_prop_postprocTools_fcv_pas"]
 
     if "bcb_prop_postprocTools_cav" in scene.keys():
         props.postprocTools_cav = scene["bcb_prop_postprocTools_cav"]

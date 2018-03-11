@@ -1533,6 +1533,11 @@ def tool_constraintForceVisualization_eventHandler(scene):
     rbw_time_scale = scene.rigidbody_world.time_scale
     objRangeName = props.postprocTools_fcv_con
 
+    # Detect if official Blender or Fracture Modifier is in use
+    if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
+          qFM = 0
+    else: qFM = 1
+
     ###### On first run
     if "log_connectsViz" not in bpy.app.driver_namespace.keys():
         print("Gathering data...")
@@ -1540,8 +1545,7 @@ def tool_constraintForceVisualization_eventHandler(scene):
         ###### Get data from scene
 
         ### Official Blender
-        if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
-            qFM = 0
+        if not qFM:
             
             ### Prepare scene object dictionaries by type to be used for faster item search (optimization)
             scnObjs = {}
@@ -1552,8 +1556,7 @@ def tool_constraintForceVisualization_eventHandler(scene):
 
         ### Fracture Modifier
         else:
-            qFM = 1
-            
+        
             try: ob = scene.objects[asciiExportName]
             except: print("Error: Fracture Modifier object expected but not found."); return
             md = ob.modifiers["Fracture"]
@@ -1625,20 +1628,21 @@ def tool_constraintForceVisualization_eventHandler(scene):
                     else: qUse = 0
                 else: qUse = 1
                 
-                # Skip connections with passive elements
+                # Only use connections with one passive element
+                if props.postprocTools_fcv_pas:
+                    if not qFM and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'): qUse = 0
+                    if qFM and (objA.rigidbody.type == 'ACTIVE' and objB.rigidbody.type == 'ACTIVE'): qUse = 0
+
+                # Skip connections with one passive element
                 #if not qFM and (objA.rigid_body.type == 'PASSIVE' or objB.rigid_body.type == 'PASSIVE'): qUse = 0
                 #if qFM and (objA.rigidbody.type == 'PASSIVE' or objB.rigidbody.type == 'PASSIVE'): qUse = 0
-
-                # Only use connections with passive elements
-                #if not qFM and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'): qUse = 0
-                #if qFM and (objA.rigidbody.type == 'ACTIVE' and objB.rigidbody.type == 'ACTIVE'): qUse = 0
             
                 if qUse:
                     name = objConst.name.rsplit('.', 1)[0]
                     geo = connectsGeo[k]
                     geoContactArea = geo[0]
                     a = geoContactArea *1000000
-                    connectsViz.append([name, objConst.location, len(consts), objA, objB, a])
+                    connectsViz.append([objConst, name, objConst.location, len(consts), objA, objB, a])
         print()
 
         # Store connection data for next frame use
@@ -1648,7 +1652,7 @@ def tool_constraintForceVisualization_eventHandler(scene):
         vizObjNames = []
         for i in range(len(connectsViz)):
             connect = connectsViz[i]
-            name = connect[0]
+            name = connect[1]
             vizObjNames.append(name)
 
         # Generate gradient materials
@@ -1663,7 +1667,7 @@ def tool_constraintForceVisualization_eventHandler(scene):
         for i in range(len(connectsViz)):
             sys.stdout.write('\r' +"%d" %i)
             connect = connectsViz[i]
-            name = connect[0]
+            name = connect[1]
             nameViz = "Viz_" +name
             try: obj = scene.objects[nameViz]
             except:
@@ -1690,15 +1694,16 @@ def tool_constraintForceVisualization_eventHandler(scene):
         
         for i in range(len(connectsViz)):
             connect = connectsViz[i]
-            name = connect[0]
-            loc = connect[1]
-            length = connect[2]
-            objA = connect[3]
-            objB = connect[4]
-            a = connect[5]
-
+            objConst, name, loc, length, objA, objB, a = connect
+          
+            normal = Vector((1.0, 0.0, 0.0))
+            if not qFM: normal.rotate(objConst.rotation_quaternion)
+            else:       normal.rotate(objConst.rotation)
+                
+            # Write some properties into visualization objects for user review
             vizObjs[i]["Obj.A"] = objA.name
             vizObjs[i]["Obj.B"] = objB.name 
+            vizObjs[i]['Normal'] = normal
 
 #            ### Set location to center of (possibly moving) element pair (comment out for original connection position)
 #            try: locA = objA.matrix_world.to_translation()  # Get actual Bullet object's position as .location only returns its simulation starting position
@@ -1717,18 +1722,18 @@ def tool_constraintForceVisualization_eventHandler(scene):
                 fmax = data[0]
                 for val in data: fmax = max(fmax, abs(val))  # Evaluate maximum force
 
-                # Write properties into visualization objects for user review
+                ### Write forces properties into visualization objects for user review
                 vizObjs[i]['#Fmax N'] = fmax
                 vizObjs[i]['#Fmax N/mm²'] = fmax /a
                 for k in range(len(cons)):
                     vizObjs[i][name +'.%d N' %k] = data[k]
                     vizObjs[i][name +'.%d N/mm²' %k] = data[k] /a
 
-                # Normalization
+                ### Normalization
                 dataNorm = []
                 for k in range(len(cons)):
                     #brkThres = cons[k].breaking_threshold *rbw_steps_per_second /rbw_time_scale  # Conversion from impulse to force
-                    #dataNorm.append(data[k] /brkThres /props.postprocTools_fcv_max)  # Visualize force normalized to breaking threshold
+                    #dataNorm.append(abs(data[k]) /brkThres /props.postprocTools_fcv_max)  # Visualize force normalized to breaking threshold
                     #dataNorm.append(abs(data[k]) /props.postprocTools_fcv_max)  # Visualize absolute force per connection 
                     dataNorm.append(abs(data[k] /a) /props.postprocTools_fcv_max)  # Visualize relative force per connection 
                     

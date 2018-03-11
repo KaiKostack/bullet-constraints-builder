@@ -909,6 +909,7 @@ class bcb_panel_postprocessing_tools(bpy.types.Panel):
         box.operator("bcb.postproc_tool_visualize_forces", icon="DOT")
         col2 = box.column(align=1)
         row2 = col2.row(align=1); row2.prop(props, "postprocTools_fcv_con")
+        row2 = col2.row(align=1); row2.prop(props, "postprocTools_fcv_pas")
         row2 = col2.row(align=1)
         row2.prop(props, "postprocTools_fcv_frm")
         row2.prop(props, "postprocTools_fcv_max")
