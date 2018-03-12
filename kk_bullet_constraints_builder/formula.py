@@ -172,10 +172,11 @@ def combineExpressions():
     elemGrps = mem["elemGrps"]
     asst = elemGrps[i][EGSidxAsst]
     
-    ### Reinforced Concrete (Beams & Columns)
+    ###### Reinforced Concrete (Beams & Columns)
     if props.assistant_menu == "con_rei_beam":
         # Switch connection type to the recommended type
         #elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
+        
         # Prepare also a height and width swapped (90)
         for qHWswapped in range(2):
             if not qHWswapped:
@@ -190,6 +191,8 @@ def combineExpressions():
             fs = asst['fs']
             fsu = asst['fsu']
             elu = asst['elu']
+            densc = asst['densc']
+            denss = asst['denss']
             c = asst['c']
             s = asst['s']
             ds = asst['ds']
@@ -211,6 +214,10 @@ def combineExpressions():
             # divided by 4 to replicate the aspect that in most concrete failing cases only one half or less of the reinforcement will bear the load
             Sp = "fsu*rho*(h*w)/4"
 
+            # Calculate density from ratio of steel and concrete
+            dens = "rho*denss+(1-rho)*densc"
+            print(denss, densc)
+
             ### Normalize result upon 1 mm^2, 'a' should be the only var left over
             a = 'a'
             Nn = "(" +Nn +")/(h*w)"
@@ -220,7 +227,8 @@ def combineExpressions():
             Sp = "(" +Sp +")/(h*w)"
             
             ### Combine all available expressions with each other      
-            symbols = ['rho','Vpn','Mpn','fsu','elu','pi','fs','fc','Sp','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
+            symbols = ['densc','denss','rho','Vpn','Mpn','fsu','elu','pi','fs','fc','Sp',
+                       'ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
             cnt = 0; cntLast = -1
             while cnt != cntLast:
                 cntLast = cnt
@@ -265,15 +273,26 @@ def combineExpressions():
                     try:    Sp = Sp.replace(symbol, convertFloatToStr(eval(symbol), 4))
                     except: Sp = Sp.replace(symbol, eval(symbol))
                     cnt += len(Sp)
+                    cnt -= len(dens)
+                    try:    dens = dens.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: dens = dens.replace(symbol, eval(symbol))
+                    cnt += len(dens)
             
+            ### Simplify formulas when SymPy module is available
             if qSymPy:
-                # Simplify formulas when SymPy module is available
-                Nn = str(sympy.simplify(Nn))
-                Np = str(sympy.simplify(Np))
-                Vpn = str(sympy.simplify(Vpn))
-                Mpn = str(sympy.simplify(Mpn))
-                Sp = str(sympy.simplify(Sp))
-            
+                try: Nn = str(sympy.simplify(Nn))
+                except: Mn = ""
+                try: Np = str(sympy.simplify(Np))
+                except: Np = ""
+                try: Vpn = str(sympy.simplify(Vpn))
+                except: Vpn = ""
+                try: Mpn = str(sympy.simplify(Mpn))
+                except: Mpn = ""
+                try: Sp = str(sympy.simplify(Sp))
+                except: Sp = ""
+                try: dens = sympy.simplify(dens)
+                except: dens = 0
+                
             ### Output main results into BCB settings
             if not qHWswapped:
                 elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
@@ -281,6 +300,7 @@ def combineExpressions():
                 elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
                 elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
                 elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
+                elemGrps[i][EGSidxDens] = dens
                 elemGrps[i][EGSidxBTPL] = 0  # 0 means calculation will be postponed to setConstraint() function
                 elemGrps[i][EGSidxTl2D] = 0  # Unlike Tl2R we could do this calculation here but for consistency reasons we postpone this as well
                 elemGrps[i][EGSidxTl2R] = 0  # 0 means calculation will be postponed to setConstraint() function
@@ -298,10 +318,11 @@ def combineExpressions():
                 if Mpn9 != Mpn: elemGrps[i][EGSidxBTB9] = splitAndApplyPrecisionToFormula(Mpn9)
                 else:           elemGrps[i][EGSidxBTS9] = ""
        
-    ### Reinforced Concrete (Walls & Slabs)
+    ###### Reinforced Concrete (Walls & Slabs)
     elif props.assistant_menu == "con_rei_wall":
         # Switch connection type to the recommended type
         #elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
+        
         # Prepare also a height and width swapped (90)
         for qHWswapped in range(2):
             if not qHWswapped:
@@ -316,6 +337,8 @@ def combineExpressions():
             fs = asst['fs']
             fsu = asst['fsu']
             elu = asst['elu']
+            densc = asst['densc']
+            denss = asst['denss']
             c = asst['c']
             s = asst['s']
             ds = asst['ds']
@@ -337,6 +360,9 @@ def combineExpressions():
             # divided by 4 to replicate the aspect that in most concrete failing cases only one half or less of the reinforcement will bear the load
             Sp = "fsu*rho*(h*w)/4"
 
+            # Calculate density from ratio of steel and concrete
+            dens = "rho*denss+(1-rho)*densc"
+        
             ### Normalize result upon 1 mm^2, 'a' should be the only var left over
             a = 'a'
             Nn = "(" +Nn +")/(h*w)"
@@ -346,7 +372,8 @@ def combineExpressions():
             Sp = "(" +Sp +")/(h*w)"
 
             ### Combine all available expressions with each other      
-            symbols = ['rho','Vpn','Mpn','fsu','elu','pi','fs','fc','Sp','ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
+            symbols = ['densc','denss','rho','Vpn','Mpn','fsu','elu','pi','fs','fc','Sp',
+                       'ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
             cnt = 0; cntLast = -1
             while cnt != cntLast:
                 cntLast = cnt
@@ -391,15 +418,26 @@ def combineExpressions():
                     try:    Sp = Sp.replace(symbol, convertFloatToStr(eval(symbol), 4))
                     except: Sp = Sp.replace(symbol, eval(symbol))
                     cnt += len(Sp)
+                    cnt -= len(dens)
+                    try:    dens = dens.replace(symbol, convertFloatToStr(eval(symbol), 4))
+                    except: dens = dens.replace(symbol, eval(symbol))
+                    cnt += len(dens)
 
             if qSymPy:
                 # Simplify formulas when SymPy module is available
-                Nn = str(sympy.simplify(Nn))
-                Np = str(sympy.simplify(Np))
-                Vpn = str(sympy.simplify(Vpn))
-                Mpn = str(sympy.simplify(Mpn))
-                Sp = str(sympy.simplify(Sp))
-            
+                try: Nn = str(sympy.simplify(Nn))
+                except: Nn = ""
+                try: Np = str(sympy.simplify(Np))
+                except: Np = ""
+                try: Vpn = str(sympy.simplify(Vpn))
+                except: Vpn = ""
+                try: Mpn = str(sympy.simplify(Mpn))
+                except: Mpn = ""
+                try: Sp = str(sympy.simplify(Sp))
+                except: Sp = ""
+                try: dens = sympy.simplify(dens)
+                except: dens = 0
+                
             ### Output main results into BCB settings
             if not qHWswapped:
                 elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
@@ -407,6 +445,7 @@ def combineExpressions():
                 elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
                 elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
                 elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
+                elemGrps[i][EGSidxDens] = dens
                 elemGrps[i][EGSidxBTPL] = 0  # 0 means calculation will be postponed to setConstraint() function
                 elemGrps[i][EGSidxTl2D] = 0  # Unlike Tl2R we could do this calculation here but for consistency reasons we postpone this as well
                 elemGrps[i][EGSidxTl2R] = 0  # 0 means calculation will be postponed to setConstraint() function

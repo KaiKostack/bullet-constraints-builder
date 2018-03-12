@@ -575,6 +575,8 @@ class bcb_panel_formula_assistant(bpy.types.Panel):
                 if props.submenu_assistant_advanced:
                     row = col.split(align=1); row.prop(props_asst_con_rei_beam, "elu")
                     row.prop(props_asst_con_rei_beam, "fsu")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_beam, "densc")
+                    row.prop(props_asst_con_rei_beam, "denss")
                 col.separator()
                 col.label(text="Geometry Parameters and Coefficients:")
                 row = col.split(align=1); row.prop(props_asst_con_rei_beam, "h")
@@ -611,6 +613,8 @@ class bcb_panel_formula_assistant(bpy.types.Panel):
                 if props.submenu_assistant_advanced:
                     row = col.split(align=1); row.prop(props_asst_con_rei_wall, "elu")
                     row.prop(props_asst_con_rei_wall, "fsu")
+                    row = col.split(align=1); row.prop(props_asst_con_rei_beam, "densc")
+                    row.prop(props_asst_con_rei_beam, "denss")
                 col.separator()
                 col.label(text="Geometry Parameters and Coefficients:")
                 row = col.split(align=1); row.prop(props_asst_con_rei_wall, "h")

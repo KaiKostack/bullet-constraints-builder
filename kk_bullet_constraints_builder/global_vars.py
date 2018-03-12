@@ -35,7 +35,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (2, 8, 2)
+bcb_version = (2, 8, 3)
 
 ### Customizable element group presets
 presets = [
@@ -126,7 +126,8 @@ connectTypes = [           # Cnt C T S B S T T T T      CT
 formulaAssistants = [
 {"Name":"None", "ID":"None"},
 {"Name":"Reinforced Concrete (Beams & Columns)", "ID":"con_rei_beam",
- "h":250, "w":150, "fc":30, "fs":500, "fsu":650, "elu":12, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
+ "h":250, "w":150, "fc":30, "fs":500, "fsu":650, "elu":12, "densc":2400, "denss":7800,
+ "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
  "Exp:d":   "h-c-dl/2",
  "Exp:e":   "h-2*c-dl",
  "Exp:rho": "(dl/2)**2*pi*n/(h*w)",
@@ -138,7 +139,8 @@ formulaAssistants = [
  "Exp:M+/-":"(fc*(1-rho)+fs*rho*e1*4.5)*h*h*w/12/1000"
 },
 {"Name":"Reinforced Concrete (Walls & Slabs)", "ID":"con_rei_wall",
- "h":250, "w":150, "fc":30, "fs":500, "fsu":650, "elu":12, "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
+ "h":250, "w":150, "fc":30, "fs":500, "fsu":650, "elu":12, "densc":2400, "denss":7800,
+ "c":20, "s":100, "ds":6, "dl":10, "n":5, "k":1.9,
  "Exp:d":   "h/2",
  "Exp:e":   "h-2*c-dl",
  "Exp:rho": "(dl/2)**2*pi*n/(h*w)",

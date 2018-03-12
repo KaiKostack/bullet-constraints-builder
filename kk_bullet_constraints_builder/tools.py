@@ -1704,6 +1704,7 @@ def tool_constraintForceVisualization_eventHandler(scene):
             vizObjs[i]["Obj.A"] = objA.name
             vizObjs[i]["Obj.B"] = objB.name 
             vizObjs[i]['Normal'] = normal
+            vizObjs[i]['ContactArea'] = a
 
 #            ### Set location to center of (possibly moving) element pair (comment out for original connection position)
 #            try: locA = objA.matrix_world.to_translation()  # Get actual Bullet object's position as .location only returns its simulation starting position
