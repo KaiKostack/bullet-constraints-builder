@@ -1529,6 +1529,8 @@ def changeMaterials(obj, dif):
 def tool_constraintForceVisualization_eventHandler(scene):
 
     props = bpy.context.window_manager.bcb
+    elemGrps = mem["elemGrps"]
+
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
     objRangeName = props.postprocTools_fcv_con
@@ -1568,6 +1570,9 @@ def tool_constraintForceVisualization_eventHandler(scene):
                 scnObjs[obj.name] = obj
             for obj in md.mesh_constraints:
                 scnEmptyObjs[obj.name] = obj
+
+        try: objsEGrp = scene["bcb_objsEGrp"]
+        except: objsEGrp = []; print("Warning: bcb_objsEGrp property not found, cleanup may be incomplete.")
 
         try: names = scene["bcb_objs"]
         except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
@@ -1628,10 +1633,27 @@ def tool_constraintForceVisualization_eventHandler(scene):
                     else: qUse = 0
                 else: qUse = 1
                 
-                # Only use connections with one passive element
+                ### Only use connections with one foundation element
                 if props.postprocTools_fcv_pas:
-                    if not qFM and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'): qUse = 0
-                    if qFM and (objA.rigidbody.type == 'ACTIVE' and objB.rigidbody.type == 'ACTIVE'): qUse = 0
+                    # Check for foundation group
+                    if len(elemGrps) > 0:
+                        qFoundation = 0
+                        for i in range(len(elemGrps)):
+                            CT = elemGrps[i][EGSidxCTyp]
+                            if CT == 0: qFoundation = 1; break
+                    # If foundation group is present then consider it (to visualize buffer objects correctly)
+                    if qFoundation:       
+                        elemGrpA = objsEGrp[pair[0]]
+                        elemGrpB = objsEGrp[pair[1]]
+                        CT_A = elemGrps[elemGrpA][EGSidxCTyp]
+                        CT_B = elemGrps[elemGrpB][EGSidxCTyp]
+                        if CT_A != 0 and CT_B == 0: pass # Only A is active and B is passive group
+                        elif CT_A == 0 and CT_B != 0: pass # Only B is active and A is passive group
+                        else: qUse = 0
+                    # Fallback in case no foundation group is available, then check for passive objects instead
+                    else:
+                        if not qFM and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'): qUse = 0
+                        if qFM and (objA.rigidbody.type == 'ACTIVE' and objB.rigidbody.type == 'ACTIVE'): qUse = 0
 
                 # Skip connections with one passive element
                 #if not qFM and (objA.rigid_body.type == 'PASSIVE' or objB.rigid_body.type == 'PASSIVE'): qUse = 0

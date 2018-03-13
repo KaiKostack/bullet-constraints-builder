@@ -836,8 +836,12 @@ def createConnectionData(objs, objsEGrp, connectsPair):
         elemGrpB = objsEGrp[pair[1]]
         objA = objs[pair[0]]
         objB = objs[pair[1]]
-        CT_A = elemGrps[elemGrpA][EGSidxCTyp]
-        CT_B = elemGrps[elemGrpB][EGSidxCTyp]
+        elemGrps_elemGrpA = elemGrps[elemGrpA]
+        elemGrps_elemGrpB = elemGrps[elemGrpB]
+        CT_A = elemGrps_elemGrpA[EGSidxCTyp]
+        CT_B = elemGrps_elemGrpB[EGSidxCTyp]
+        NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
+        NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
 
         ### Check for passive groups and decide which group settings should be used
         constCnt = 0
@@ -867,6 +871,11 @@ def createConnectionData(objs, objsEGrp, connectsPair):
             # Both A and B are in passive group but either one is actually an active RB (a xor b)
             if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                 constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
+
+        ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
+        dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+        dirVecN = dirVec.normalized()
+        if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
         
         # In case the connection type is passive or unknown reserve no space for constraints
         if constCnt == 0: connectsConsts.append([])

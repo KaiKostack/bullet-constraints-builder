@@ -835,6 +835,7 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
 
             col.separator()
             row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxPrio" %i)
+            row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxNoHo" %i)
             
             col.separator()
             row = col.row(align=1)

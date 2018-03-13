@@ -126,7 +126,7 @@ class bcb_props(bpy.types.PropertyGroup):
     postprocTools_fcv_con = string_(name="Range Object",  default='Visualization Limiter', description="Enter the name of a helper object whose dimensions will be used to define for which connections forces should be visualized, i.e. all within its boundary range. For instance an empty object can be placed and scaled accordingly to fit a specific area of interest.")
     postprocTools_fcv_frm = int_(name="Frame",            default=40, min=1, max=32767,   description="Frame number at which the visualization snap-shot of forces will be taken.")
     postprocTools_fcv_max = float_(name="Maximum",        default=30, min=0.0, max=10000000, description="Maximum force to be expected, actual forces will be normalized accordingly. This will only influence the appearance of the visualizer, but the readout value stored within the visualizer's properties will not be modified.")
-    postprocTools_fcv_pas = bool_(name="Limit To Passive Connections", default=0, description="Limits visualization to connections with passive elements, e.g. connections with the foundation.")
+    postprocTools_fcv_pas = bool_(name="Limit To Foundation Connections", default=0, description="Limits visualization to connections with foundation / passive elements.")
 
     postprocTools_cav = bool_(default=1)
     postprocTools_cav_siz = float_(name="Cell Size",      default=.3, min=0.0, max=100, description="Cell size for cavity detection algorithm to consider empty spaces (smaller values are more accurate but take longer to compute).")
@@ -183,6 +183,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxDens" %i +" = float_(name='Density', default=presets[j][EGSidxDens], min=0.0, max=100000, description='Custom density value to use instead of material preset in kg/m^3 (0 = disabled).')")
         exec("elemGrp_%d_EGSidxLoad" %i +" = float_(name='Live Load', default=presets[j][EGSidxLoad], min=0.0, max=100000, description='Additional weight representing live load which will be added to the total mass with respect to floor area in kg/m^2.')")
         exec("elemGrp_%d_EGSidxPrio" %i +" = int_(name='Connection Priority', default=presets[j][EGSidxPrio], min=1, max=9, description='Changes the connection priority for this element group which will override that the weaker breaking threshold of two elements is preferred for an connection. Lower Strength Priority has similar functionality but works on all groups, however, it is ignored if the priority here is different for a particular connection.')")
+        exec("elemGrp_%d_EGSidxNoHo" %i +" = bool_(name='No Horizontal Connections', default=presets[j][EGSidxNoHo], description='Removes horizontal connections between elements of different element groups. This can be useful for masonry walls touching a framing structure without a particular fixation.')")
 
         exec("elemGrp_%d_EGSidxTl1D" %i +" = float_(name='1st Dist. Tol.', default=presets[j][EGSidxTl1D], min=0.0, max=10.0, description='First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %).')")
         exec("elemGrp_%d_EGSidxTl1R" %i +" = float_(name='1st Rot. Tol.', default=presets[j][EGSidxTl1R], min=0.0, max=pi, description='First deformation tolerance limit for angular change in radian for connection removal or plastic deformation.')")
@@ -219,6 +220,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxDens" %i +" = elemGrps[i][EGSidxDens]")
                 exec("self.elemGrp_%d_EGSidxLoad" %i +" = elemGrps[i][EGSidxLoad]")
                 exec("self.elemGrp_%d_EGSidxPrio" %i +" = elemGrps[i][EGSidxPrio]")
+                exec("self.elemGrp_%d_EGSidxNoHo" %i +" = elemGrps[i][EGSidxNoHo]")
 
                 exec("self.elemGrp_%d_EGSidxTl1D" %i +" = elemGrps[i][EGSidxTl1D]")
                 exec("self.elemGrp_%d_EGSidxTl1R" %i +" = elemGrps[i][EGSidxTl1R]")
@@ -266,6 +268,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxDens] = eval("self.elemGrp_%d_EGSidxDens" %i)
                 elemGrps[i][EGSidxLoad] = eval("self.elemGrp_%d_EGSidxLoad" %i)
                 elemGrps[i][EGSidxPrio] = eval("self.elemGrp_%d_EGSidxPrio" %i)
+                elemGrps[i][EGSidxNoHo] = eval("self.elemGrp_%d_EGSidxNoHo" %i)
 
                 elemGrps[i][EGSidxTl1D] = eval("self.elemGrp_%d_EGSidxTl1D" %i)
                 elemGrps[i][EGSidxTl1R] = eval("self.elemGrp_%d_EGSidxTl1R" %i)
