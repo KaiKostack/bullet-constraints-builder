@@ -6,8 +6,9 @@
 # "Technological and Methodological Solutions for Integrated
 # Wide Area Situation Awareness and Survivor Localisation to
 # Support Search and Rescue (USaR) Teams"
-# This version is developed at the Laurea University of Applied Sciences, Finland
-# Copyright (C) 2015-2017 Kai Kostack
+# Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
+# Finland. Later versions are independently developed.
+# Copyright (C) 2015-2018 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
