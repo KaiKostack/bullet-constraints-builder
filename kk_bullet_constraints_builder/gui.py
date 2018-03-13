@@ -73,7 +73,7 @@ class bcb_report(bpy.types.Operator):
 class bcb_add_preset(bpy.types.Menu):
     bl_idname = "bcb.add_preset"
     bl_label = "Available Presets"
-    bl_description = "Duplicates selected element group."
+    bl_description = "Duplicates selected element group"
     def draw(self, context):
         layout = self.layout
         #layout.operator("wm.open_mainfile")

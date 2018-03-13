@@ -48,7 +48,7 @@ from tools import *            # Contains smaller independently working tools
 class OBJECT_OT_bcb_set_config(bpy.types.Operator):
     bl_idname = "bcb.set_config"
     bl_label = ""
-    bl_description = "Stores actual config data in current scene."
+    bl_description = "Stores actual config data in current scene"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -62,7 +62,7 @@ class OBJECT_OT_bcb_set_config(bpy.types.Operator):
 class OBJECT_OT_bcb_get_config(bpy.types.Operator):
     bl_idname = "bcb.get_config"
     bl_label = ""
-    bl_description = "Loads previous config data from current scene."
+    bl_description = "Loads previous config data from current scene"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -83,7 +83,7 @@ class OBJECT_OT_bcb_get_config(bpy.types.Operator):
 class OBJECT_OT_bcb_clear(bpy.types.Operator):
     bl_idname = "bcb.clear"
     bl_label = ""
-    bl_description = "Clears constraints from scene and revert back to original state (required to rebuild constraints from scratch)."
+    bl_description = "Clears constraints from scene and revert back to original state (required to rebuild constraints from scratch)"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -98,7 +98,7 @@ class OBJECT_OT_bcb_clear(bpy.types.Operator):
 class OBJECT_OT_bcb_build(bpy.types.Operator):
     bl_idname = "bcb.build"
     bl_label = "Build"
-    bl_description = "Starts building process and adds constraints to selected elements."
+    bl_description = "Starts building process and adds constraints to selected elements"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -133,7 +133,7 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
 class OBJECT_OT_bcb_update(bpy.types.Operator):
     bl_idname = "bcb.update"
     bl_label = "Update"
-    bl_description = "Updates constraints generated from a previous built."
+    bl_description = "Updates constraints generated from a previous built"
     def execute(self, context):
         OBJECT_OT_bcb_build.execute(self, context)
         return{'FINISHED'} 
@@ -173,7 +173,7 @@ class OBJECT_OT_bcb_import_config(bpy.types.Operator):
 class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
     bl_idname = "bcb.export_ascii"
     bl_label = "Export to Text"
-    bl_description = "Exports all constraint data to an ASCII text file within this .blend file instead of creating actual empty objects (only useful for developers at the moment)."
+    bl_description = "Exports all constraint data to an ASCII text file within this .blend file instead of creating actual empty objects (only useful for developers at the moment)"
     def execute(self, context):
         props = context.window_manager.bcb
         props.asciiExport = 1
@@ -188,7 +188,7 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
 class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
     bl_idname = "bcb.export_ascii_fm"
     bl_label = "Build FM"
-    bl_description = "Builds and simulates with help of the Fracture Modifier (special Blender version required). 'Build FM' will simulate scientifically like 'Build'; Dynamic: Enables geometry also to shatter for more realistic appearance but is actually non-scientific."
+    bl_description = "Builds and simulates with help of the Fracture Modifier (special Blender version required). 'Build FM' will simulate scientifically like 'Build'; Dynamic: Enables geometry also to shatter for more realistic but non-scientific appearance"
     int_ = bpy.props.IntProperty 
     use_handler = int_(default = 0)
     def execute(self, context):
@@ -225,7 +225,7 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
 class OBJECT_OT_bcb_bake(bpy.types.Operator):
     bl_idname = "bcb.bake"
     bl_label = "Simulate"
-    bl_description = "Starts the rigid body simulation and creates a bake of it for later real-time playback. A build is invoked beforehand if not already done. Use of this button instead of the regular Blender baking is crucial because BCB constraints require to be monitored on per frame basis for the entire simulation."
+    bl_description = "Starts the rigid body simulation. A build is invoked beforehand if not already done. Use this button instead of the regular Blender physics baking as the BCB needs to monitor the simulation for constraint detaching"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -264,7 +264,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
 class OBJECT_OT_bcb_add(bpy.types.Operator):
     bl_idname = "bcb.add"
     bl_label = ""
-    bl_description = "Adds a preset element group to list."
+    bl_description = "Adds a preset element group to list"
     int_ =    bpy.props.IntProperty 
     menuIdx = int_(default = -1)
     def execute(self, context):
@@ -292,7 +292,7 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
 class OBJECT_OT_bcb_dup(bpy.types.Operator):
     bl_idname = "bcb.dup"
     bl_label = ""
-    bl_description = "Duplicates selected element group."
+    bl_description = "Duplicates selected element group"
     def execute(self, context):
         props = context.window_manager.bcb
         elemGrps = mem["elemGrps"]
@@ -313,7 +313,7 @@ class OBJECT_OT_bcb_dup(bpy.types.Operator):
 class OBJECT_OT_bcb_del(bpy.types.Operator):
     bl_idname = "bcb.del"
     bl_label = ""
-    bl_description = "Deletes element group from list."
+    bl_description = "Deletes element group from list"
     def execute(self, context):
         props = context.window_manager.bcb
         elemGrps = mem["elemGrps"]
@@ -333,7 +333,7 @@ class OBJECT_OT_bcb_del(bpy.types.Operator):
 class OBJECT_OT_bcb_move_up(bpy.types.Operator):
     bl_idname = "bcb.move_up"
     bl_label = ""
-    bl_description = "Moves element group in list."
+    bl_description = "Moves element group in list"
     def execute(self, context):
         props = context.window_manager.bcb
         elemGrps = mem["elemGrps"]
@@ -353,7 +353,7 @@ class OBJECT_OT_bcb_move_up(bpy.types.Operator):
 class OBJECT_OT_bcb_move_down(bpy.types.Operator):
     bl_idname = "bcb.move_down"
     bl_label = ""
-    bl_description = "Moves element group in list."
+    bl_description = "Moves element group in list"
     def execute(self, context):
         props = context.window_manager.bcb
         elemGrps = mem["elemGrps"]
@@ -373,7 +373,7 @@ class OBJECT_OT_bcb_move_down(bpy.types.Operator):
 class OBJECT_OT_bcb_up(bpy.types.Operator):
     bl_idname = "bcb.up"
     bl_label = " Previous"
-    bl_description = "Selects previous element group from list."
+    bl_description = "Selects previous element group from list"
     def execute(self, context):
         props = context.window_manager.bcb
         if props.menu_selectedElemGrp > 0:
@@ -387,7 +387,7 @@ class OBJECT_OT_bcb_up(bpy.types.Operator):
 class OBJECT_OT_bcb_down(bpy.types.Operator):
     bl_idname = "bcb.down"
     bl_label = " Next"
-    bl_description = "Selects next element group from list."
+    bl_description = "Selects next element group from list"
     def execute(self, context):
         props = context.window_manager.bcb
         elemGrps = mem["elemGrps"]
@@ -435,7 +435,7 @@ class OBJECT_OT_bcb_down_more(bpy.types.Operator):
 class OBJECT_OT_bcb_reset(bpy.types.Operator):
     bl_idname = "bcb.reset"
     bl_label = ""
-    bl_description = "Resets element group list to defaults."
+    bl_description = "Resets element group list to defaults"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -452,7 +452,7 @@ class OBJECT_OT_bcb_reset(bpy.types.Operator):
 class OBJECT_OT_bcb_asst_update(bpy.types.Operator):
     bl_idname = "bcb.asst_update"
     bl_label = "Evaluate"
-    bl_description = "Combines and evaluates above expressions for constraint breaking threshold calculation. It is recommended to choose a Connection Type with 7x Generic constraints to get the best simulation results."
+    bl_description = "Combines and evaluates above expressions for constraint breaking threshold calculation. It is recommended to choose a Connection Type with 7x Generic constraints to get the best simulation results"
     def execute(self, context):
         props = context.window_manager.bcb
         ###### Execute expression evaluation
@@ -466,7 +466,7 @@ class OBJECT_OT_bcb_asst_update(bpy.types.Operator):
 class OBJECT_OT_bcb_asst_update_all(bpy.types.Operator):
     bl_idname = "bcb.asst_update_all"
     bl_label = "Evaluate All"
-    bl_description = "Combines and evaluates expressions for every element groups with active Formula Assistant. Warning: Use this with care as it will overwrite also manually changed breaking thresholds for these element groups."
+    bl_description = "Combines and evaluates expressions for every element groups with active Formula Assistant. Warning: Use this with care as it will overwrite also manually changed breaking thresholds for these element groups"
     def execute(self, context):
         props = context.window_manager.bcb
         elemGrps = mem["elemGrps"]
@@ -490,7 +490,7 @@ class OBJECT_OT_bcb_asst_update_all(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_estimate_cluster_radius(bpy.types.Operator):
     bl_idname = "bcb.tool_estimate_cluster_radius"
     bl_label = ""
-    bl_description = "Estimate optimal cluster radius from selected objects in scene (even if you already have built a BCB structure only selected objects are considered)."
+    bl_description = "Estimate optimal cluster radius from selected objects in scene (even if you already have built a BCB structure only selected objects are considered)"
     def execute(self, context):
         scene = bpy.context.scene
         result = tool_estimateClusterRadius(scene)
@@ -506,7 +506,7 @@ class OBJECT_OT_bcb_tool_estimate_cluster_radius(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_select_group(bpy.types.Operator):
     bl_idname = "bcb.tool_select_group"
     bl_label = ""
-    bl_description = "Selects objects belonging to this element group in viewport."
+    bl_description = "Selects objects belonging to this element group in viewport"
     def execute(self, context):
         scene = bpy.context.scene
         tool_selectGroup(scene)
@@ -517,7 +517,7 @@ class OBJECT_OT_bcb_tool_select_group(bpy.types.Operator):
 class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
     bl_idname = "bcb.preprocess_do_all_steps_at_once"
     bl_label = "Do All Selected Steps At Once!"
-    bl_description = "Executes all selected tools in the order from top to bottom."
+    bl_description = "Executes all selected tools in the order from top to bottom"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -538,7 +538,7 @@ class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
             count = tool_removeIntersections(scene, mode=4)
             if count > 0:
                 # Throw warning
-                bpy.context.window_manager.bcb.message = "Warning: Some element intersections could not automatically be resolved, please review selected objects."
+                bpy.context.window_manager.bcb.message = "Warning: Some element intersections could not automatically be resolved, please review selected objects"
                 bpy.ops.bcb.report('INVOKE_DEFAULT')  # Create popup message box
         print('-- Time total: %0.2f s' %(time.time()-time_start))
         print()
@@ -553,7 +553,7 @@ class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_run_python_script(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_run_python_script"
     bl_label = "Run Python Script"
-    bl_description = "Executes a user-defined Python script for customizable automatization purposes (e.g. for scene management and modification)."
+    bl_description = "Executes a user-defined Python script for customizable automatization purposes (e.g. for scene management and modification)"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -566,7 +566,7 @@ class OBJECT_OT_bcb_preproc_tool_run_python_script(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_select_py_file(bpy.types.Operator):
     bl_idname = "bcb.tool_select_py_file"
     bl_label = "Select"
-    bl_description = "Search for Python file (.py)."
+    bl_description = "Search for Python file (.py)"
     string_ = bpy.props.StringProperty
     filepath = string_(subtype='FILE_PATH')
     filter_glob = string_(default="*.py", options={'HIDDEN'})
@@ -589,7 +589,7 @@ class OBJECT_OT_bcb_tool_select_py_file(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_create_groups_from_names(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_create_groups_from_names"
     bl_label = "Create Groups From Names"
-    bl_description = "Creates groups for all selected objects based on a specified naming convention and adds them also to the element groups list."
+    bl_description = "Creates groups for all selected objects based on a specified naming convention and adds them also to the element groups list"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -602,7 +602,7 @@ class OBJECT_OT_bcb_preproc_tool_create_groups_from_names(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_apply_all_modifiers(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_apply_all_modifiers"
     bl_label = "Apply All Modifiers"
-    bl_description = "Applies all modifiers on all selected objects."
+    bl_description = "Applies all modifiers on all selected objects"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -615,7 +615,7 @@ class OBJECT_OT_bcb_preproc_tool_apply_all_modifiers(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_center_model(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_center_model"
     bl_label = "Center Model"
-    bl_description = "Shifts all selected objects as a whole to the world center of the scene."
+    bl_description = "Shifts all selected objects as a whole to the world center of the scene"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -628,7 +628,7 @@ class OBJECT_OT_bcb_preproc_tool_center_model(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_separate_loose(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_separate_loose"
     bl_label = "Separate Loose"
-    bl_description = "Separates all loose (not connected) mesh elements within an object into separate objects, this is done for all selected objects."
+    bl_description = "Separates all loose (not connected) mesh elements within an object into separate objects, this is done for all selected objects"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -641,7 +641,7 @@ class OBJECT_OT_bcb_preproc_tool_separate_loose(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_discretize(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_discretize"
     bl_label = "Discretize"
-    bl_description = "Discretizes (subdivides) all selected objects into smaller segments by splitting them into halves as long as a specified minimum size is reached."
+    bl_description = "Discretizes (subdivides) all selected objects into smaller segments by splitting them into halves as long as a specified minimum size is reached"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -654,7 +654,7 @@ class OBJECT_OT_bcb_preproc_tool_discretize(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_enable_rigid_bodies(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_enable_rigid_bodies"
     bl_label = "Enable Rigid Bodies"
-    bl_description = "Enables rigid body settings for all selected objects."
+    bl_description = "Enables rigid body settings for all selected objects"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -667,7 +667,7 @@ class OBJECT_OT_bcb_preproc_tool_enable_rigid_bodies(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_remove_intersections(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_remove_intersections"
     bl_label = "Intersection Removal"
-    bl_description = "Detects and removes intersecting objects (one per found pair). Intesecting objects can be caused by several reasons: accidental object duplication, forgotten boolean cutout objects, careless modeling etc."
+    bl_description = "Detects and removes intersecting objects (one per found pair). Intesecting objects can be caused by several reasons: accidental object duplication, forgotten boolean cutout objects, careless modeling etc"
     int_ =    bpy.props.IntProperty 
     mode = int_(default = 0)
     def execute(self, context):
@@ -682,7 +682,7 @@ class OBJECT_OT_bcb_preproc_tool_remove_intersections(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_fix_foundation(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_fix_foundation"
     bl_label = "Fix Foundation"
-    bl_description = "Either uses name based search to find foundation objects or creates foundation objects for all objects touching the overall model boundary box. These foundation objects will be set to be 'Passive' rigid bodies."
+    bl_description = "Either uses name based search to find foundation objects or creates foundation objects for all objects touching the overall model boundary box. These foundation objects will be set to be 'Passive' rigid bodies"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -695,7 +695,7 @@ class OBJECT_OT_bcb_preproc_tool_fix_foundation(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_ground_motion(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_ground_motion"
     bl_label = "Ground Motion"
-    bl_description = "Attaches all selected passive rigid body objects to a specified and animated ground object. This can be useful for simulating earthquakes through a pre-animated ground motion object like a virtual shake table."
+    bl_description = "Attaches all selected passive rigid body objects to a specified and animated ground object. This can be useful for simulating earthquakes through a pre-animated ground motion object like a virtual shake table"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -708,7 +708,7 @@ class OBJECT_OT_bcb_preproc_tool_ground_motion(bpy.types.Operator):
 class OBJECT_OT_bcb_tool_select_csv_file(bpy.types.Operator):
     bl_idname = "bcb.tool_select_csv_file"
     bl_label = "Select"
-    bl_description = "Select location for .csv time history file."
+    bl_description = "Select location for .csv time history file"
     string_ = bpy.props.StringProperty
     filepath = string_(subtype='FILE_PATH')
     filter_glob = string_(default="*.csv", options={'HIDDEN'})
@@ -732,7 +732,7 @@ class OBJECT_OT_bcb_tool_select_csv_file(bpy.types.Operator):
 class OBJECT_OT_bcb_postprocess_do_all_steps_at_once(bpy.types.Operator):
     bl_idname = "bcb.postprocess_do_all_steps_at_once"
     bl_label = "Do All Selected Steps At Once!"
-    bl_description = "Executes all selected tools in the order from top to bottom."
+    bl_description = "Executes all selected tools in the order from top to bottom"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -756,7 +756,7 @@ class OBJECT_OT_bcb_postprocess_do_all_steps_at_once(bpy.types.Operator):
 class OBJECT_OT_bcb_postproc_tool_export_location_history(bpy.types.Operator):
     bl_idname = "bcb.postproc_tool_export_location_history"
     bl_label = "Export Location History"
-    bl_description = "Exports the location time history of an element centroid into a .csv file."
+    bl_description = "Exports the location time history of an element centroid into a .csv file"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -769,7 +769,7 @@ class OBJECT_OT_bcb_postproc_tool_export_location_history(bpy.types.Operator):
 class OBJECT_OT_bcb_postproc_tool_export_force_history(bpy.types.Operator):
     bl_idname = "bcb.postproc_tool_export_force_history"
     bl_label = "Export Force History"
-    bl_description = "Exports the force time history for a constraint into a .csv file."
+    bl_description = "Exports the force time history for a constraint into a .csv file"
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
             self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit graphicall.org/1148 for the FM-enabled Blender version.")  # Create popup message
@@ -785,7 +785,7 @@ class OBJECT_OT_bcb_postproc_tool_export_force_history(bpy.types.Operator):
 class OBJECT_OT_bcb_postproc_tool_visualize_forces(bpy.types.Operator):
     bl_idname = "bcb.postproc_tool_visualize_forces"
     bl_label = "Visualize Forces"
-    bl_description = "Visualizes forces for constraints in form of spheres generated within the scene whereby each sphere's radius is normalized to the corresponding maximum strength of the connection (each constraint is normalized individually). Accurate values can be found in each sphere's properties."
+    bl_description = "Visualizes forces for constraints as spheres to be created in the scene whereby each sphere's radius is normalized to the predefined maximum force. Accurate values can be found in each sphere's properties"
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
             self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit graphicall.org/1148 for the FM-enabled Blender version.")  # Create popup message
@@ -801,7 +801,7 @@ class OBJECT_OT_bcb_postproc_tool_visualize_forces(bpy.types.Operator):
 class OBJECT_OT_bcb_postproc_tool_detect_cavities(bpy.types.Operator):
     bl_idname = "bcb.postproc_tool_detect_cavities"
     bl_label = "Detect Cavities"
-    bl_description = "Visualizes cavities on the selected mesh in form of a cell grid where each cell represents an air pocket large enough to contain the cell."
+    bl_description = "Visualizes cavities on the selected mesh in form of a cell grid where each cell represents an air pocket large enough to contain the cell"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -814,7 +814,7 @@ class OBJECT_OT_bcb_postproc_tool_detect_cavities(bpy.types.Operator):
 class OBJECT_OT_bcb_postproc_tool_run_python_script(bpy.types.Operator):
     bl_idname = "bcb.postproc_tool_run_python_script"
     bl_label = "Run Python Script"
-    bl_description = "Executes a user-defined Python script for customizable automatization purposes (e.g. for scene management and modification)."
+    bl_description = "Executes a user-defined Python script for customizable automatization purposes (e.g. for scene management and modification)"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
