@@ -284,6 +284,11 @@ def tool_centerModel(scene):
         print("No mesh objects selected.")
         return
 
+    # Deselect all objects.
+    bpy.ops.object.select_all(action='DESELECT')
+    # Select valid mesh objects only as we don't want to center other accidentally selected objects
+    for obj in objs: obj.select = 1
+
     # Remove instances
     bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True, material=False, texture=False, animation=False)
 
