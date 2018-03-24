@@ -70,9 +70,9 @@ def monitor_eventHandler(scene):
         bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
         bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
 
-    # Only evaluate monitor when there are empties (for Fracture Modifier there are none)
-    if "bcb_emptyObjs" in scene.keys():
-
+    # Only evaluate monitor when official Blender and not Fracture Modifier is in use
+    if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
+        
         #############################
         ### What to do on start frame
         if not "bcb_monitor" in bpy.app.driver_namespace:
@@ -229,8 +229,8 @@ def stop_eventHandler(scene):
 
     ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
     if not bpy.context.screen.is_animation_playing:
-        # Only show monitor message when there are empties (for Fracture Modifier there are none)
-        if "bcb_emptyObjs" in scene.keys():
+        # Only show monitor message when official Blender and not Fracture Modifier is in use
+        if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
             print('Removing BCB monitor event handler.')
         for i in range( len( bpy.app.handlers.frame_change_pre ) ):
              bpy.app.handlers.frame_change_pre.pop()
