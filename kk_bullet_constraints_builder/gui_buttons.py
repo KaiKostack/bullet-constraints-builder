@@ -523,7 +523,7 @@ class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         time_start = time.time()
-        if props.preprocTools_rps: tool_runPythonScript(scene); props.preprocTools_rps = 0
+        if props.preprocTools_rps: tool_runPythonScript(scene, props.preprocTools_rps_nam); props.preprocTools_rps = 0
         if props.preprocTools_grp: tool_createGroupsFromNames(scene); props.preprocTools_grp = 0
         if props.preprocTools_mod: tool_applyAllModifiers(scene); props.preprocTools_mod = 0
         if props.preprocTools_ctr: tool_centerModel(scene); props.preprocTools_ctr = 0
@@ -742,7 +742,7 @@ class OBJECT_OT_bcb_postprocess_do_all_steps_at_once(bpy.types.Operator):
         if props.postprocTools_fcx: tool_constraintForceHistory(scene); props.postprocTools_fcx = 0
         if props.postprocTools_fcv: tool_constraintForceVisualization(scene); props.postprocTools_fcv = 0
         if props.postprocTools_cav: tool_cavityDetection(scene); props.postprocTools_cav = 0
-        if props.postprocTools_rps: tool_runPythonScript(scene); props.postprocTools_rps = 0
+        if props.postprocTools_rps: tool_runPythonScript(scene, props.postprocTools_rps_nam); props.postprocTools_rps = 0
         props.postprocTools_aut = 0
         print('-- Time total: %0.2f s' %(time.time()-time_start))
         print()
