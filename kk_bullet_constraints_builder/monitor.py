@@ -47,8 +47,8 @@ def monitor_eventHandler(scene):
     ### Render part
     if qRenderAnimation:
         # Need to disable handlers while rendering, otherwise Blender crashes
-        bpy.app.handlers.frame_change_pre.pop()
-        bpy.app.handlers.frame_change_pre.pop()
+        bpy.app.handlers.frame_change_pre.remove(monitor_eventHandler)
+        bpy.app.handlers.frame_change_pre.remove(monitor_stop_eventHandler)
         
         filepathOld = bpy.context.scene.render.filepath
         bpy.context.scene.render.filepath += "%04d" %(scene.frame_current -1)
@@ -68,14 +68,14 @@ def monitor_eventHandler(scene):
         
         # Append handlers again
         bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
-        bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
+        bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
 
     # Only evaluate monitor when official Blender and not Fracture Modifier is in use
     if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
         
         #############################
         ### What to do on start frame
-        if not "bcb_monitor" in bpy.app.driver_namespace:
+        if not "bcb_monitor" in bpy.app.driver_namespace.keys():
             print('Init BCB monitor event handler.')
             
             # Store frame time
@@ -148,7 +148,7 @@ def monitor_eventHandler(scene):
                                                 
         ################################
         ### What to do AFTER start frame
-        elif scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
+        elif "bcb_monitor" in bpy.app.driver_namespace.keys() and scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
             time_last = bpy.app.driver_namespace["bcb_time"]
             sys.stdout.write("Frm: %d - T: %0.2f s" %(scene.frame_current, time.time() -time_last))
             bpy.app.driver_namespace["bcb_time"] = time.time()
@@ -158,7 +158,7 @@ def monitor_eventHandler(scene):
         
             ###### Function
             cntBroken = monitor_checkForChange(scene)
-
+            
             # Debug: Stop on first broken connection
             #if cntBroken > 0: bpy.ops.screen.animation_play()
                 
@@ -210,12 +210,12 @@ def automaticModeAfterStop():
         
 ########################################
 
-def stop_eventHandler(scene):
+def monitor_stop_eventHandler(scene):
 
     props = bpy.context.window_manager.bcb
 
     # Store start time if not available
-    if "bcb_time_start" not in bpy.app.driver_namespace.keys():
+    if not "bcb_time_start" in bpy.app.driver_namespace.keys():
         bpy.app.driver_namespace["bcb_time_start"] = time.time()
 
     ### Check if last frame is reached
@@ -227,13 +227,14 @@ def stop_eventHandler(scene):
                 print("Baking stopped by user through external file command.")
                 os.remove(commandStop)
 
-    ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
+    ### If animation playback has stopped (can also be done by user) then free all monitor data and unload the event handler 
     if not bpy.context.screen.is_animation_playing:
-        # Only show monitor message when official Blender and not Fracture Modifier is in use
-        if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
-            print('Removing BCB monitor event handler.')
-        for i in range( len( bpy.app.handlers.frame_change_pre ) ):
-             bpy.app.handlers.frame_change_pre.pop()
+        try: bpy.app.handlers.frame_change_pre.remove(monitor_eventHandler)
+        except: pass
+        else: print("Removed event handler: monitor_eventHandler")
+        try: bpy.app.handlers.frame_change_pre.remove(monitor_stop_eventHandler)
+        except: pass
+        else: print("Removed event handler: monitor_stop_eventHandler")
         # Convert animation point cache to fixed bake data 
         contextFix = bpy.context.copy()
         contextFix['point_cache'] = scene.rigidbody_world.point_cache
@@ -241,7 +242,7 @@ def stop_eventHandler(scene):
         # Free all monitor related data
         monitor_freeBuffers(scene)
         # Go back to start frame
-        scene.frame_current = scene.frame_start
+        #scene.frame_current = scene.frame_start
 
         time_start = bpy.app.driver_namespace["bcb_time_start"]
         del bpy.app.driver_namespace["bcb_time_start"]
@@ -253,6 +254,8 @@ def stop_eventHandler(scene):
         else:
             print()
             print('Done.')
+            print()
+        bpy.context.screen.scene = scene  # Hack to update other event handlers once again to finish their clean up
             
 ################################################################################
 

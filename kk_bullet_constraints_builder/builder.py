@@ -161,7 +161,7 @@ def build():
                 ###### Calculate mass for all mesh objects
                 calculateMass(scene, objs, objsEGrp, childObjs)
                 ###### Correct bbox based contact area by volume
-                if props.useAccurateArea: correctContactAreaByVolume(objs, connectsPair, connectsGeo)
+                if props.useAccurateArea: correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo)
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
                 if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings

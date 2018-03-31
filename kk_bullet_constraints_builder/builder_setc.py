@@ -1268,12 +1268,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     constData = objConst.rigid_body_constraint
                     #objConst.object.empty_draw_type = 'CUBE'  # This is set before duplication for performance reasons
                     objConst.empty_draw_size = .502  # Scale size slightly larger to make lines visible over solid elements
-                    if not props.disableCollisionPerm and idx != idxLast:  # Use simple if constraint is for permanent collision suppression
+                    if props.disableCollisionPerm and idx == idxLast:  # Use simple if constraint is for permanent collision suppression
+                        objConst.scale = axs_s
+                    else:
                         # Scale the cube to the dimensions of the connection area
                         if constData.type == 'GENERIC' or (constData.type == 'GENERIC_SPRING' and constData.enabled):
                               objConst.scale = axs
                         else: objConst.scale = axs_s
-                    else: objConst.scale = axs_s
         print()
         
     elif props.asciiExport:

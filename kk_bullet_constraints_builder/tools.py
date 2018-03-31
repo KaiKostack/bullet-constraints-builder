@@ -1133,9 +1133,16 @@ def tool_groundMotion(scene):
 
 def stopPlaybackAndReturnToStart(scene):
 
-    bpy.app.handlers.frame_change_pre.pop()   # Remove event handler
-    bpy.ops.screen.animation_play()           # Stop animation playback
+    try: bpy.app.handlers.frame_change_pre.remove(tool_exportLocationHistory_eventHandler)
+    except: pass
+    else: print("Removed event handler: tool_exportLocationHistory_eventHandler")
+    try: bpy.app.handlers.frame_change_pre.remove(tool_exportForceHistory_eventHandler)
+    except: pass
+    else: print("Removed event handler: tool_exportForceHistory_eventHandler")
+    if bpy.context.screen.is_animation_playing:
+        bpy.ops.screen.animation_play()           # Stop animation playback
     scene.frame_current = scene.frame_start  # Reset to start frame
+    bpy.context.screen.scene = scene  # Hack to update other event handlers once again to finish their clean up
 
 ########################################
 
@@ -1216,8 +1223,9 @@ def tool_exportLocationHistory_eventHandler(scene):
 
     ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
     if not bpy.context.screen.is_animation_playing:
-        print('Removing event handler.')
-        bpy.app.handlers.frame_change_pre.pop()  # Remove event handler
+        try: bpy.app.handlers.frame_change_pre.remove(tool_exportLocationHistory_eventHandler)
+        except: pass
+        else: print("Removed event handler: tool_exportLocationHistory_eventHandler")
         scene.frame_current == scene.frame_start  # Reset to start frame
         ### Close log files
         try: files = bpy.app.driver_namespace["log_files_open"]
@@ -1229,6 +1237,7 @@ def tool_exportLocationHistory_eventHandler(scene):
         for key in keys:
             if "log_" in key:
                 del bpy.app.driver_namespace[key]
+        bpy.context.screen.scene = scene  # Hack to update other event handlers once again to finish their clean up
         return
 
     if len(filenamePath):
@@ -1284,10 +1293,11 @@ def tool_exportLocationHistory(scene):
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
 
-    print('Init event handler.')
+    print('Init location export event handler.')
     bpy.app.handlers.frame_change_pre.append(tool_exportLocationHistory_eventHandler)
     # Start animation playback
-    bpy.ops.screen.animation_play()
+    if not bpy.context.screen.is_animation_playing:
+        bpy.ops.screen.animation_play()
 
 ################################################################################
 
@@ -1350,7 +1360,7 @@ def tool_constraintForce_getData(scene, name):
 
 ########################################
 
-def tool_constraintForceHistory_eventHandler(scene):
+def tool_exportForceHistory_eventHandler(scene):
 
     props = bpy.context.window_manager.bcb
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
@@ -1359,8 +1369,18 @@ def tool_constraintForceHistory_eventHandler(scene):
     result = tool_constraintForce_getData(scene, name)
 
     if result != None:
-        data = result[0]  # (data, cons)
-        data = [val *rbw_steps_per_second /rbw_time_scale for val in data]  # Conversion from impulse to force
+        data = result[0]
+        cons = result[1]
+
+        ### Check if connection is broken
+        qIntact = 1
+        for con in cons:
+            if con.enabled == 0:
+                qIntact = 0
+                break
+
+        # Conversion from impulse to force
+        data = [val *rbw_steps_per_second /rbw_time_scale for val in data]
         
         filenamePath = props.postprocTools_fcx_nam
         logPath = os.path.dirname(filenamePath)
@@ -1406,8 +1426,9 @@ def tool_constraintForceHistory_eventHandler(scene):
 
     ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
     if not bpy.context.screen.is_animation_playing:
-        print('Removing event handler.')
-        bpy.app.handlers.frame_change_pre.pop()  # Remove event handler
+        try: bpy.app.handlers.frame_change_pre.remove(tool_exportForceHistory_eventHandler)
+        except: pass
+        else: print("Removed event handler: tool_exportForceHistory_eventHandler")
         scene.frame_current == scene.frame_start  # Reset to start frame
         ### Close log files
         try: files = bpy.app.driver_namespace["log_files_open"]
@@ -1419,6 +1440,7 @@ def tool_constraintForceHistory_eventHandler(scene):
         for key in keys:
             if "log_" in key:
                 del bpy.app.driver_namespace[key]
+        bpy.context.screen.scene = scene  # Hack to update other event handlers once again to finish their clean up
         return
 
     ### For every frame
@@ -1428,18 +1450,22 @@ def tool_constraintForceHistory_eventHandler(scene):
         time = (scene.frame_current -scene.frame_start-1) /scene.render.fps
 
         for k in range(len(objNames)):
-            line = "%0.4f" %time
-            fmax = data[0]
-            for val in data: fmax = max(fmax, abs(val))  # Evaluate maximum force
-            line += " %0.6f" %fmax
-            for val in data:
-                line += " %0.6f" %val
-            line += "\n"
-            files[k].write(line)
+            if qIntact:
+                line = "%0.4f" %time
+
+                fmax = data[0]
+                for val in data: fmax = max(fmax, abs(val))  # Evaluate maximum force
+                line += " %0.6f" %fmax
+
+                for val in data:
+                    line += " %0.6f" %val
+                line += "\n"
+
+                files[k].write(line)
 
 ########################################
 
-def tool_constraintForceHistory(scene):
+def tool_exportForceHistory(scene):
 
     print("\nExporting constraint force time history...")
 
@@ -1457,10 +1483,11 @@ def tool_constraintForceHistory(scene):
         except: pass
         else: obj.location = obj.location
 
-    print('Init event handler.')
-    bpy.app.handlers.frame_change_pre.append(tool_constraintForceHistory_eventHandler)
+    print('Init constraint force export event handler.')
+    bpy.app.handlers.frame_change_pre.append(tool_exportForceHistory_eventHandler)
     # Start animation playback
-    bpy.ops.screen.animation_play()
+    if not bpy.context.screen.is_animation_playing:
+        bpy.ops.screen.animation_play()
 
 ########################################
 
@@ -1475,8 +1502,8 @@ def initMaterials():
     emission = 0.33          # Add some emission to the material in case scene is not illuminated (BI only, good value: 0.33)
     zBufferOffset = 0        # Add z-buffer offset for visualized objects for rendering (can be useful to make objects to appear on top of the rendering similar to x-ray display mode)
     
-    ### Create gradient materials for later use and reuse
-    for step in range(displaySteps):
+    ### Create gradient materials for later use and reuse plus one extra color for disabled connections
+    for step in range(displaySteps +1):
         x = step *(1 /(displaySteps -1))  # Normalized dif value in [0..1]
         
         col = Color((0, 0, 0))
@@ -1488,9 +1515,13 @@ def initMaterials():
         #col.b = (0.5 -x) *2
         
         ### New colors (blue to cyan to green to yellow to red)
-        col.r = 2 -(abs(1 -x) *4)
-        col.g = 2 -(abs(0.5 -x) *4)
-        col.b = 2 -(abs(x) *4)
+        if step < displaySteps:
+            col.r = 2 -(abs(1 -x) *4)
+            col.g = 2 -(abs(0.5 -x) *4)
+            col.b = 2 -(abs(x) *4)
+        # Extra color for broken connections
+        else:
+            col.r = 0; col.g = 0; col.b = 0
         
         col.r *= colMultiplier
         col.g *= colMultiplier
@@ -1511,7 +1542,7 @@ def initMaterials():
 
 ########################################
 
-def changeMaterials(obj, dif):
+def changeMaterials(obj, dif, qIntact=1):
     # Lend from kk_material_deformation-visualizer.py
 
     ###### Changes object material by deformation
@@ -1520,9 +1551,13 @@ def changeMaterials(obj, dif):
     displaySteps = 300       # Gradient steps / material count to be used for visualization
     
     ### Only calculate gradient mat index when the actual normalized deformation lies within [0..1] otherwise use the last gradient material
-    if dif < 1: step = int(dif *displaySteps)
-    else: step = displaySteps -1
-    mat = bpy.data.materials[materialName +"%03d" %step]
+    if qIntact:
+        if dif < 1: step = int(dif *displaySteps)
+        else: step = displaySteps -1
+        mat = bpy.data.materials[materialName +"%03d" %step]
+    # For broken connections use last special material
+    else:
+        mat = bpy.data.materials[materialName +"%03d" %displaySteps]
 
     ### Add new materials slot and material
     if len(obj.material_slots) == 0:
@@ -1532,7 +1567,7 @@ def changeMaterials(obj, dif):
 
 ################################################################################
 
-def tool_constraintForceVisualization_eventHandler(scene):
+def tool_forcesVisualization_eventHandler(scene):
 
     props = bpy.context.window_manager.bcb
     elemGrps = mem["elemGrps"]
@@ -1734,48 +1769,65 @@ def tool_constraintForceVisualization_eventHandler(scene):
             vizObjs[i]['Normal'] = normal
             vizObjs[i]['ContactArea'] = a
 
-#            ### Set location to center of (possibly moving) element pair (comment out for original connection position)
-#            try: locA = objA.matrix_world.to_translation()  # Get actual Bullet object's position as .location only returns its simulation starting position
-#            except: locA = objA.centroid  # If the above fails it's an FM object, so we have to derive the location differently
-#            try: locB = objB.matrix_world.to_translation()
-#            except: locB = objB.centroid
-#            loc = (locA +locB) /2 
+            ### Set location to center of (possibly moving) element pair (comment out for original connection position)
+            try: locA = objA.matrix_world.to_translation()  # Get actual Bullet object's position as .location only returns its simulation starting position
+            except: locA = objA.centroid  # If the above fails it's an FM object, so we have to derive the location differently
+            try: locB = objB.matrix_world.to_translation()
+            except: locB = objB.centroid
+            loc = (locA +locB) /2 
             
             result = tool_constraintForce_getData(scene, name)
 
             if result != None:
-                data = result[0]  # (data, cons)
-                cons = result[1]  # (data, cons)
-                data = [val *rbw_steps_per_second /rbw_time_scale for val in data]  # Conversion from impulse to force
+                data = result[0]
+                cons = result[1]
                 
-                fmax = data[0]
-                for val in data: fmax = max(fmax, abs(val))  # Evaluate maximum force
+                ### Check if connection is broken
+                qIntact = 1
+                for con in cons:
+                    if con.enabled == 0:
+                        qIntact = 0
+                        break
 
-                ### Write forces properties into visualization objects for user review
-                vizObjs[i]['#Fmax N'] = fmax
-                vizObjs[i]['#Fmax N/mm²'] = fmax /a
-                for k in range(len(cons)):
-                    vizObjs[i][name +'.%d N' %k] = data[k]
-                    vizObjs[i][name +'.%d N/mm²' %k] = data[k] /a
+                vizObjs[i]['#Intact'] = qIntact
 
-                ### Normalization
-                dataNorm = []
-                for k in range(len(cons)):
-                    #brkThres = cons[k].breaking_threshold *rbw_steps_per_second /rbw_time_scale  # Conversion from impulse to force
-                    #dataNorm.append(abs(data[k]) /brkThres /props.postprocTools_fcv_max)  # Visualize force normalized to breaking threshold
-                    #dataNorm.append(abs(data[k]) /props.postprocTools_fcv_max)  # Visualize absolute force per connection 
-                    dataNorm.append(abs(data[k] /a) /props.postprocTools_fcv_max)  # Visualize relative force per connection 
-                    
-                # Finding the maximum strain of all constraints
-                fmax = dataNorm[0]
-                for val in dataNorm: fmax = min(max(fmax, abs(val)), 1)
+                if qIntact:
+                    # Conversion from impulse to force
+                    data = [val *rbw_steps_per_second /rbw_time_scale for val in data]
 
-                ### Scaling by strain
+                    # Evaluate maximum force
+                    fmax = data[0]
+                    for val in data: fmax = max(fmax, abs(val))
+
+                    ### Write forces properties into visualization objects for user review
+                    vizObjs[i]['#Fmax N'] = fmax
+                    vizObjs[i]['#Fmax N/mm²'] = fmax /a
+                    for k in range(len(cons)):
+                        vizObjs[i][name +'.%d N' %k] = data[k]
+                        vizObjs[i][name +'.%d N/mm²' %k] = data[k] /a
+
+                    ### Normalization to maximum force defined by user
+                    dataNorm = []
+                    for k in range(len(cons)):
+                        #brkThres = cons[k].breaking_threshold *rbw_steps_per_second /rbw_time_scale  # Conversion from impulse to force
+                        #dataNorm.append(abs(data[k]) /brkThres /props.postprocTools_fcv_max)  # Visualize force normalized to breaking threshold
+                        #dataNorm.append(abs(data[k]) /props.postprocTools_fcv_max)  # Visualize absolute force per connection 
+                        dataNorm.append(abs(data[k] /a) /props.postprocTools_fcv_max)  # Visualize relative force per connection 
+                        
+                    # Finding the maximum strain of all constraints
+                    fmax = dataNorm[0]
+                    for val in dataNorm: fmax = min(max(fmax, abs(val)), 1)
+
+                ### Adding settings to visualization objects
                 obj = vizObjs[i]
                 obj.location = loc
-                obj.scale = Vector((fmax, fmax, fmax)) *visualizerDrawSize
-                # Change also color
-                changeMaterials(obj, fmax)
+                # Scaling by strain
+                if qIntact:
+                    obj.scale = Vector((fmax, fmax, fmax)) *visualizerDrawSize
+                    changeMaterials(obj, fmax)
+                else:
+                    obj.scale = Vector((.5, .5, .5)) *visualizerDrawSize
+                    changeMaterials(obj, 0, qIntact=0)
 
     ### Check if last frame is reached
     if scene.frame_current == scene.frame_end or scene.frame_current == props.postprocTools_fcv_frm:
@@ -1784,18 +1836,21 @@ def tool_constraintForceVisualization_eventHandler(scene):
 
     ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
     if not bpy.context.screen.is_animation_playing:
-        print('Removing event handler.')
-        bpy.app.handlers.frame_change_pre.pop()  # Remove event handler
-        scene.frame_current == scene.frame_start  # Reset to start frame
+        try: bpy.app.handlers.frame_change_pre.remove(tool_forcesVisualization_eventHandler)
+        except: pass
+        else: print("Removed event handler: tool_forcesVisualization_eventHandler")
+        #scene.frame_current == scene.frame_start  # Reset to start frame
         ### Delete keys
         keys = [key for key in bpy.app.driver_namespace.keys()]
         for key in keys:
             if "log_" in key:
                 del bpy.app.driver_namespace[key]
+        bpy.context.screen.scene = scene  # Hack to update other event handlers once again to finish their clean up
+        return
 
 ########################################
 
-def tool_constraintForceVisualization(scene):
+def tool_forcesVisualization(scene):
 
     print("\nGenerating constraint force visualization...")
 
@@ -1816,10 +1871,11 @@ def tool_constraintForceVisualization(scene):
     # Go to start frame
     scene.frame_current = scene.frame_start
 
-    print('Init event handler.')
-    bpy.app.handlers.frame_change_pre.append(tool_constraintForceVisualization_eventHandler)
+    print('Init constraint force visualization event handler.')
+    bpy.app.handlers.frame_change_pre.append(tool_forcesVisualization_eventHandler)
     # Start animation playback
-    bpy.ops.screen.animation_play()
+    if not bpy.context.screen.is_animation_playing:
+        bpy.ops.screen.animation_play()
 
 ################################################################################
 

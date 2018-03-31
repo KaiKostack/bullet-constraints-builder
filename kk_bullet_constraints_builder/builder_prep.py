@@ -1459,7 +1459,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
 
 ################################################################################   
 
-def correctContactAreaByVolume(objs, connectsPair, connectsGeo):
+def correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo):
     
     ### Correct the preliminary calculated boundary box based contact areas by considering the element volumes
     print("Correcting contact areas...")
@@ -1470,6 +1470,7 @@ def correctContactAreaByVolume(objs, connectsPair, connectsGeo):
 
     for j in range(len(elemGrps)):
         elemGrp = elemGrps[j]
+        liveLoad = elemGrp[EGSidxLoad]
 
         ### Find out density of the element group
         materialDensity = elemGrp[EGSidxDens]
@@ -1478,32 +1479,54 @@ def correctContactAreaByVolume(objs, connectsPair, connectsGeo):
             if materialPreset != "": materialDensity = materialPresets[materialPreset]
 
         ### Calculate volumes from densities and derive correctional factors for contact areas
-        for obj in objs:
-            volume = obj.rigid_body.mass /materialDensity
+        for k in range(len(objs)):
+            if objsEGrp[k] == j:  # If object is in current element group
+                obj = objs[k]
 
-            # Find out element thickness to be used for bending threshold calculation 
-            dim = obj.dimensions; dimAxis = [1, 2, 3]
-            dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
-            dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
-            # Derive contact area correction factor from geometry section area divided by bbox section area
-            sectionArea = volume /dimLength  # Full geometry section area of element
-            if dimHeight *dimWidth != 0:
-                corFac = sectionArea / (dimHeight *dimWidth)
-            else: corFac = 1
-            obj["CA Corr.Fac."] = corFac
-            obj["Density"] = materialDensity
-            obj["Volume"] = volume
+                mass = obj.rigid_body.mass
+
+                ### Remove live load from mass if present
+                if liveLoad > 0:
+                    dims = obj.dimensions
+                    floorArea = dims[0] *dims[1]  # Simple approximation by assuming rectangular floor area (x *y) for live load
+                    mass -= floorArea *liveLoad
+
+                volume = mass /materialDensity
+                
+                ### Find out element thickness to be used for bending threshold calculation 
+                dim = obj.dimensions; dimAxis = [1, 2, 3]
+                dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
+                dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
+
+                # Derive contact area correction factor from geometry section area divided by bbox section area
+                sectionArea = volume /dimLength  # Full geometry section area of element
+
+                ### Compensate section area for rescaling
+                try: scale = elemGrp[EGSidxScal]  # Try in case elemGrps is from an old BCB version
+                except: pass
+                else:
+                    if obj != None and scale != 0 and scale != 1:
+                        sectionArea *= scale**3  # Cubic instead of square because dimLength is included as well
+
+                ### Determine contact area correction factor
+                if dimHeight *dimWidth != 0:
+                    corFac = sectionArea / (dimHeight *dimWidth)
+                else: corFac = 1
+
+                obj["CA Corr.Fac."] = corFac
+                obj["Density"] = materialDensity
+                obj["Volume"] = volume
         
-        ### Apply corrections to geometry lists  
-        connectsPair_iter = iter(connectsPair)
-        connectsGeo_iter = iter(connectsGeo)
-        for k in range(len(connectsGeo)):
-            pair = next(connectsPair_iter)   
-            geo = next(connectsGeo_iter)
-            objA = objs[pair[0]]
-            objB = objs[pair[1]]
+    ### Apply corrections to geometry lists  
+    connectsPair_iter = iter(connectsPair)
+    connectsGeo_iter = iter(connectsGeo)
+    for k in range(len(connectsGeo)):
+        pair = next(connectsPair_iter)   
+        geo = next(connectsGeo_iter)
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
 
-            corFacA = objA["CA Corr.Fac."]
-            corFacB = objB["CA Corr.Fac."]
-            geo[0] *= corFacA *corFacB  # = geoContactArea
+        corFacA = objA["CA Corr.Fac."]
+        corFacB = objB["CA Corr.Fac."]
+        geo[0] *= corFacA *corFacB  # = geoContactArea
         

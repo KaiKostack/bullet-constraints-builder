@@ -212,7 +212,7 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
                 bpy.ops.ptcache.free_bake(contextFix)
                 if props.automaticMode:
                     # Prepare event handler
-                    bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
+                    bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
                     # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
                     #bpy.ops.ptcache.bake(contextFix, bake=True)
                     # Start animation playback and by that the baking process
@@ -230,6 +230,20 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
+        # Go to start frame for cache data removal
+        if scene.frame_current != scene.frame_start:
+            scene.frame_current = scene.frame_start
+            bpy.context.screen.scene = scene  # Hack to update scene completely (scene.update() is not enough causing the monitor not work correctly when invoking at a frame > 1)
+        ### Free previous bake data
+        contextFix = bpy.context.copy()
+        contextFix['point_cache'] = scene.rigidbody_world.point_cache
+        bpy.ops.ptcache.free_bake(contextFix)
+        ### Invalidate point cache to enforce a full bake without using previous cache data
+        if "RigidBodyWorld" in bpy.data.groups:
+            try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
+            except: pass
+            else: obj.location = obj.location
+
         ### Build constraints if required (menu_gotData will be set afterwards and this operator restarted)
         ### If asciiExportName exists then the use of Fracture Modifier is assumed and building is skipped
         if not props.menu_gotData and not asciiExportName in scene.objects:
@@ -239,20 +253,10 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
             if props.menu_gotData: OBJECT_OT_bcb_bake.execute(self, context)
         ### Start baking when we have constraints set
         else:
-            # Free old monitor data if still in memory (can happen if user stops baking before finished)
-            monitor_freeBuffers(scene)
             # Prepare event handlers
             bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
-            bpy.app.handlers.frame_change_pre.append(stop_eventHandler)
-            ### Free previous bake data
-            contextFix = bpy.context.copy()
-            contextFix['point_cache'] = scene.rigidbody_world.point_cache
-            bpy.ops.ptcache.free_bake(contextFix)
-            ### Invalidate point cache to enforce a full bake without using previous cache data
-            if "RigidBodyWorld" in bpy.data.groups:
-                try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
-                except: pass
-                else: obj.location = obj.location
+            bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
+            monitor_eventHandler(scene)  # Init at current frame before starting simulation
             # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
             #bpy.ops.ptcache.bake(contextFix, bake=True)
             # Start animation playback and by that the baking process
@@ -739,8 +743,8 @@ class OBJECT_OT_bcb_postprocess_do_all_steps_at_once(bpy.types.Operator):
         scene = bpy.context.scene
         time_start = time.time()
         if props.postprocTools_lox: tool_exportLocationHistory(scene); props.postprocTools_lox = 0
-        if props.postprocTools_fcx: tool_constraintForceHistory(scene); props.postprocTools_fcx = 0
-        if props.postprocTools_fcv: tool_constraintForceVisualization(scene); props.postprocTools_fcv = 0
+        if props.postprocTools_fcx: tool_exportForceHistory(scene); props.postprocTools_fcx = 0
+        if props.postprocTools_fcv: tool_forcesVisualization(scene); props.postprocTools_fcv = 0
         if props.postprocTools_cav: tool_cavityDetection(scene); props.postprocTools_cav = 0
         if props.postprocTools_rps: tool_runPythonScript(scene, props.postprocTools_rps_nam); props.postprocTools_rps = 0
         props.postprocTools_aut = 0
@@ -759,6 +763,7 @@ class OBJECT_OT_bcb_postproc_tool_export_location_history(bpy.types.Operator):
     bl_label = "Export Location History"
     bl_description = "Exports the location time history of an element centroid into a .csv file"
     def execute(self, context):
+        OBJECT_OT_bcb_bake.execute(self, context)
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_exportLocationHistory(scene)
@@ -775,9 +780,10 @@ class OBJECT_OT_bcb_postproc_tool_export_force_history(bpy.types.Operator):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
             self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit graphicall.org/1148 for the FM-enabled Blender version.")  # Create popup message
         else:
+            OBJECT_OT_bcb_bake.execute(self, context)
             props = context.window_manager.bcb
             scene = bpy.context.scene
-            tool_constraintForceHistory(scene)
+            tool_exportForceHistory(scene)
             props.postprocTools_fcx = 0
         return{'FINISHED'}
 
@@ -791,9 +797,10 @@ class OBJECT_OT_bcb_postproc_tool_visualize_forces(bpy.types.Operator):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
             self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit graphicall.org/1148 for the FM-enabled Blender version.")  # Create popup message
         else:
+            OBJECT_OT_bcb_bake.execute(self, context)
             props = context.window_manager.bcb
             scene = bpy.context.scene
-            tool_constraintForceVisualization(scene)
+            tool_forcesVisualization(scene)
             props.postprocTools_fcv = 0
         return{'FINISHED'}
 
