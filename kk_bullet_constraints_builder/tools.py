@@ -618,9 +618,6 @@ def tool_enableRigidBodies(scene):
     bpy.context.scene.objects.active = objs[0]
     # Apply rigid body settings
     bpy.ops.rigidbody.objects_add()
-    # Set friction for all to 1.0
-    for obj in objs:
-        obj.rigid_body.friction = 2
     
     # Set rigid bodies which are members of some specific groups to passive
     # (Todo: Each Preprocessing Tool removing RB information like Separate Loose should backup those for all objects and refresh it after operation, then this can be removed)   
