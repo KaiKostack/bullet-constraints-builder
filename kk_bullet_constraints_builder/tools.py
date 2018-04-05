@@ -1833,7 +1833,8 @@ def tool_forcesVisualization_eventHandler(scene):
                     changeMaterials(obj, 0, qIntact=0)
 
     ### Check if last frame is reached
-    if scene.frame_current == scene.frame_end or scene.frame_current == props.postprocTools_fcv_frm:
+    if scene.frame_current == scene.frame_end \
+    or (props.postprocTools_fcv_frm and scene.frame_current == props.postprocTools_fcv_frm):
         if bpy.context.screen.is_animation_playing:
             bpy.ops.screen.animation_play()  # Stop animation playback
 

@@ -113,7 +113,7 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_gnd_nam = string_(name="CSV File",                default='', description="Enter filename or search for earthquake time history file as plain ASCII text with comma-separated values (.csv). File structure: 4 columns: t [s], X [m/s²], Y [m/s²], Z [m/s²]. Lines starting with '#' are skipped")
 
     ### Postprocessing Tools
-    postprocTools_aut = bool_(default=1, name="Run On Automatic Mode", description="Enables that postprocessing will be performed on Automatic Mode. To avoid accidental double execution, this will be disabled whenever a postprocessing tool is activated manually, but it can be activated again at any time")
+    postprocTools_aut = bool_(default=0, name="Run On Automatic Mode", description="Enables that postprocessing will be performed on Automatic Mode. To avoid accidental double execution, this will be disabled whenever a postprocessing tool is activated manually, but it can be activated again at any time")
 
     postprocTools_lox = bool_(default=1)
     postprocTools_lox_elm = string_(name="Element",       default='Cube', description="Enter the name of an element for which the location time history should be exported")
@@ -125,7 +125,7 @@ class bcb_props(bpy.types.PropertyGroup):
 
     postprocTools_fcv = bool_(default=1)
     postprocTools_fcv_con = string_(name="Range Object",  default='Visualization Limiter', description="Enter the name of a helper object whose dimensions will be used to define for which connections forces should be visualized, i.e. all within its boundary range. For instance an empty object can be placed and scaled accordingly to fit a specific area of interest")
-    postprocTools_fcv_frm = int_(name="Frame",            default=40, min=1, max=32767,   description="Frame number at which the visualization snap-shot of forces will be taken")
+    postprocTools_fcv_frm = int_(name="Frame",            default=40, min=0, max=32767,   description="Frame number at which the visualization snap-shot of forces will be taken")
     postprocTools_fcv_nbt = bool_(name="Normalize To Breaking Threshold", default=1, description="Normalizes the visualizer to the breaking thresholds of the constraints, so that red color always means close to failure.")
     postprocTools_fcv_max = float_(name="Maximum",        default=30, min=0.0, max=10000000, description="Maximum force per mm² to be expected, actual forces will be normalized accordingly. This will only influence the appearance of the visualizer, but the readout value stored within the visualizer's properties will not be modified")
     postprocTools_fcv_pas = bool_(name="Limit To Foundation Connections", default=0, description="Limits visualization to connections with foundation / passive elements")
