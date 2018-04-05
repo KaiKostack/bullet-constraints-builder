@@ -916,10 +916,11 @@ class bcb_panel_postprocessing_tools(bpy.types.Panel):
         col2 = box.column(align=1)
         row2 = col2.row(align=1); row2.prop(props, "postprocTools_fcv_con")
         row2 = col2.row(align=1); row2.prop(props, "postprocTools_fcv_pas")
-        row2 = col2.row(align=1)
-        row2.prop(props, "postprocTools_fcv_frm")
-        row2.prop(props, "postprocTools_fcv_max")
-
+        row2 = col2.row(align=1); row2.prop(props, "postprocTools_fcv_frm")
+        row2 = col2.row(align=1); row2.prop(props, "postprocTools_fcv_nbt")
+        row2 = col2.row(align=1); row2.prop(props, "postprocTools_fcv_max")
+        if props.postprocTools_fcv_nbt: row2.enabled = 0
+        
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "postprocTools_cav", text="")
         box = split.box()

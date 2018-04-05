@@ -620,7 +620,7 @@ def tool_enableRigidBodies(scene):
     bpy.ops.rigidbody.objects_add()
     # Set friction for all to 1.0
     for obj in objs:
-        obj.rigid_body.friction = 1
+        obj.rigid_body.friction = 2
     
     # Set rigid bodies which are members of some specific groups to passive
     # (Todo: Each Preprocessing Tool removing RB information like Separate Loose should backup those for all objects and refresh it after operation, then this can be removed)   
@@ -1785,7 +1785,8 @@ def tool_forcesVisualization_eventHandler(scene):
                 ### Check if connection is broken
                 qIntact = 1
                 for con in cons:
-                    if con.enabled == 0:
+                    if (con.type == 'GENERIC' or con.type == 'FIXED' or con.type == 'POINT') \
+                    and con.enabled == 0:  # Needs to use .intact() instead as soon as it's implemented in FM
                         qIntact = 0
                         break
 
@@ -1809,10 +1810,12 @@ def tool_forcesVisualization_eventHandler(scene):
                     ### Normalization to maximum force defined by user
                     dataNorm = []
                     for k in range(len(cons)):
-                        #brkThres = cons[k].breaking_threshold *rbw_steps_per_second /rbw_time_scale  # Conversion from impulse to force
-                        #dataNorm.append(abs(data[k]) /brkThres /props.postprocTools_fcv_max)  # Visualize force normalized to breaking threshold
-                        #dataNorm.append(abs(data[k]) /props.postprocTools_fcv_max)  # Visualize absolute force per connection 
-                        dataNorm.append(abs(data[k] /a) /props.postprocTools_fcv_max)  # Visualize relative force per connection 
+                        if props.postprocTools_fcv_nbt:
+                            brkThres = cons[k].breaking_threshold *rbw_steps_per_second /rbw_time_scale  # Conversion from impulse to force
+                            dataNorm.append(abs(data[k]) /brkThres)  # Visualize force normalized to breaking threshold
+                        else:
+                            dataNorm.append(abs(data[k] /a) /props.postprocTools_fcv_max)  # Visualize relative force per connection 
+                            #dataNorm.append(abs(data[k]) /props.postprocTools_fcv_max)  # Visualize absolute force per connection 
                         
                     # Finding the maximum strain of all constraints
                     fmax = dataNorm[0]
