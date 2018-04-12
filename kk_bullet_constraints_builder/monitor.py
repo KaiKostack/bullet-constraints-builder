@@ -374,7 +374,6 @@ def monitor_checkForChange(scene):
         if connect[12] == 0:
             d += 1
             consts = connect[4]
-            print(len(consts))
             if consts[0].rigid_body_constraint.use_breaking:
                 objA = connect[0][0]
                 objB = connect[1][0]
