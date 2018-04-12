@@ -330,7 +330,8 @@ def monitor_initBuffers(scene):
             constsUseBrk = []
             constsBrkThres = []
             mode = 1
-            if 1: conConsts = connectsConsts[d][:-1]
+            if props.disableCollisionPerm: conConsts = connectsConsts[d][:-1]  # For permanent collision suppression the last constraint should be ignored
+            else: conConsts = connectsConsts[d]
             for const in conConsts:
                 emptyObj = emptyObjs[const]
                 consts.append(emptyObj)
@@ -373,6 +374,7 @@ def monitor_checkForChange(scene):
         if connect[12] == 0:
             d += 1
             consts = connect[4]
+            print(len(consts))
             if consts[0].rigid_body_constraint.use_breaking:
                 objA = connect[0][0]
                 objB = connect[1][0]

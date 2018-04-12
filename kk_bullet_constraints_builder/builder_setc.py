@@ -30,7 +30,7 @@
 
 ################################################################################
 
-import bpy, mathutils, math, sys, copy
+import bpy, mathutils, math, sys, copy, random
 from mathutils import Vector
 mem = bpy.app.driver_namespace
 
@@ -65,7 +65,7 @@ def setConstParams(cData,cDatb,cDef, name=None,loc=None,obj1=None,obj2=None,tol1
     ### Constraint attributes (compatible with Blender class)
     # s,e,bt,ub,dc,ct
     if e  != None and e  != cDef["enabled"]:            cData["enabled"] = e
-    if bt != None and bt != cDef["breaking_threshold"]: cData["breaking_threshold"] = bt
+    if bt != None and bt != cDef["breaking_threshold"]: cData["breaking_threshold"] = bt  # +(0.15 *bt *(random.random()-0.5)) 
     if ub != None and ub != cDef["use_breaking"]:       cData["use_breaking"] = ub
     if dc != None and dc != cDef["disable_collisions"]: cData["disable_collisions"] = dc
     if ct != None and ct != cDef["type"]:               cData["type"] = ct
@@ -157,6 +157,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         except: detonatorObj = None
 
     ### Generate settings and prepare the attributes but only store those which are different from the defaults
+    llxl=-.000; llxu=.000; llyl=-.000; llyu=.000; llzl=-.000; llzu=.000  # Limits constraint room linear (x = normal direction)
+    laxl=-.000; laxu=.000; layl=-.000; layu=.000; lazl=-.000; lazu=.000  # Limits constraint room angular
     constsData = []
     connectsConsts_iter = iter(connectsConsts)
     connectsLoc_iter = iter(connectsLoc)
@@ -571,8 +573,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         if CT == -1:
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             #rotm = 'QUATERNION'
-            #setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm,rot=rotN, ub=0, dc=1, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=0,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-            #setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='GENERIC_SPRING', sslx=999,ssly=999,sslz=999, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, ullx=1,ully=1,ullz=1, llxl=0,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+            #setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm,rot=rotN, ub=0, dc=1, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=llxl,llxu=llxu,llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=1,ulay=1,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
+            #setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='GENERIC_SPRING', sslx=999,ssly=999,sslz=999, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, ullx=1,ully=1,ullz=1, llxl=llxl,llxu=llxu,llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=1,ulay=1,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=props.passiveUseBreaking,si=1)
             constsData.append([cData, cDatb])
 
@@ -633,7 +635,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 ### Lock all directions for the compressive force
                 ### I left Y and Z unlocked because for this CT we have no separate breaking threshold for lateral force, the tensile constraint and its breaking threshold should apply for now
                 ### Also rotational forces should only be carried by the tensile constraint
-                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0)
+                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=llxl,llxu=99999, ulax=0,ulay=0,ulaz=0)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
             constsData.append([cData, cDatb])
@@ -649,7 +651,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock all directions for the tensile force
-                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=llxu,llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=1,ulay=1,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
             constsData.append([cData, cDatb])
@@ -665,7 +667,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for shearing force
-                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=0,llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=-99999,llxu=llxu,llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
             constsData.append([cData, cDatb])
@@ -679,7 +681,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for bending force
-                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -695,7 +697,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock direction for tensile force
-                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0)
+                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=llxu, ulax=0,ulay=0,ulaz=0)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -711,7 +713,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for shearing force
-                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=1,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -725,7 +727,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for bending force
-                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -767,8 +769,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
                     else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
-                if constAxisToLock == 2:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
-                elif constAxisToLock == 3: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=0,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                if constAxisToLock == 2:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=1,ullz=0, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0)
+                elif constAxisToLock == 3: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=0,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -782,8 +784,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                if constAxisToLock == 3:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=1,ullz=0, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
-                elif constAxisToLock == 2: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=0,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0)
+                if constAxisToLock == 3:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=1,ullz=0, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0)
+                elif constAxisToLock == 2: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ully=0,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -825,8 +827,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
                     else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
-                if constAxisToLock == 2:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-                elif constAxisToLock == 3: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 2:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
+                elif constAxisToLock == 3: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -840,8 +842,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                if constAxisToLock == 3:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-                elif constAxisToLock == 2: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 3:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
+                elif constAxisToLock == 2: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=1,ulaz=0, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -883,8 +885,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     if abs(dirEul[1]) > abs(dirEul[2]): constAxisToLock = 3
                     else: constAxisToLock = 2
                 ### Lock directions accordingly to axis
-                if constAxisToLock == 2:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-                elif constAxisToLock == 3: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 2:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
+                elif constAxisToLock == 3: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -898,8 +900,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                if constAxisToLock == 3:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-                elif constAxisToLock == 2: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 3:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=0,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
+                elif constAxisToLock == 2: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=0,ulay=1,ulaz=0, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -926,8 +928,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
-                if constAxisToLock == 3:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
-                elif constAxisToLock == 2: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=0,laxu=0,layl=0,layu=0,lazl=0,lazu=0)
+                if constAxisToLock == 3:   setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
+                elif constAxisToLock == 2: setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=0,ully=0,ullz=0, ulax=1,ulay=0,ulaz=0, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot],rotm=rotm)
             constsData.append([cData, cDatb])
@@ -1045,7 +1047,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock direction for compressive force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=llxl,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1062,7 +1064,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock direction for tensile force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=llxu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1079,7 +1081,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock directions for shearing force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1112,7 +1114,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock direction for compressive force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=0,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=llxl,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1130,7 +1132,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock direction for tensile force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=llxu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1148,7 +1150,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock directions for shearing force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=0,llyu=0,llzl=0,llzu=0, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])

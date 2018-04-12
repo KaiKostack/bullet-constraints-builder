@@ -709,14 +709,20 @@ def tool_fixFoundation(scene):
         else: foundationName = grpNameFoundation
 
         ### Calculate boundary boxes for all objects
-        verts = []; edges = []; faces = []  # Active buffer mesh object
-        verts2 = []; edges2 = []; faces2 = []  # Passive mesh object
         objsBB = []
+        margin_all = 0
         qFirst = 1
         for obj in objs:
             # Calculate boundary box corners
             bbMin, bbMax, bbCenter = boundaryBox(obj, 1)
+            # Also consider collision margin
+            if obj.rigid_body.use_margin and obj.rigid_body.collision_margin > 0:
+                margin = obj.rigid_body.collision_margin
+                if margin > margin_all: margin_all = margin
+                bbMin = Vector((bbMin[0]-margin, bbMin[1]-margin, bbMin[2]-margin))
+                bbMax = Vector((bbMax[0]+margin, bbMax[1]+margin, bbMax[2]+margin))
             objsBB.append([bbMin, bbMax])
+            ### Evaluate global boundary box
             if qFirst:
                 bbMin_all = bbMin.copy(); bbMax_all = bbMax.copy()
                 qFirst = 0
@@ -729,92 +735,95 @@ def tool_fixFoundation(scene):
                 if bbMin_all[2] > bbMin[2]: bbMin_all[2] = bbMin[2]
 
         ### Calculate geometry for adjacent foundation geometry for all sides
+        verts = []; edges = []; faces = []  # Active buffer mesh object
+        verts2 = []; edges2 = []; faces2 = []  # Passive mesh object
+        bufferSize = props.preprocTools_fix_rng
         for bb in objsBB:
             bbMin = bb[0]
             bbMax = bb[1]
 
             # X+
             if props.preprocTools_fix_axp:
-                if bbMax[0] >= bbMax_all[0] -props.preprocTools_fix_rng:
-                    newCorner = Vector(( bbMax[0]+props.preprocTools_fix_rng, bbMin[1], bbMin[2] ))
+                if bbMax[0] >= bbMax_all[0] -bufferSize:
+                    newCorner = Vector(( bbMax[0]+bufferSize, bbMin[1], bbMin[2] ))
                     createBoxData(verts, edges, faces, bbMax, newCorner)
-                    newCorner2 = Vector(( 2*bbMax[0]-bbMin[0]+props.preprocTools_fix_rng, bbMax[1], bbMax[2] ))
+                    newCorner2 = Vector(( 2*bbMax[0]-bbMin[0]+bufferSize, bbMax[1], bbMax[2] ))
                     createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
             # X-
             if props.preprocTools_fix_axn:
-                if bbMin[0] <= bbMin_all[0] +props.preprocTools_fix_rng:
-                    newCorner = Vector(( bbMin[0]-props.preprocTools_fix_rng, bbMax[1], bbMax[2] ))
+                if bbMin[0] <= bbMin_all[0] +bufferSize:
+                    newCorner = Vector(( bbMin[0]-bufferSize, bbMax[1], bbMax[2] ))
                     createBoxData(verts, edges, faces, newCorner, bbMin)
-                    newCorner2 = Vector(( 2*bbMin[0]-bbMax[0]-props.preprocTools_fix_rng, bbMin[1], bbMin[2] ))
+                    newCorner2 = Vector(( 2*bbMin[0]-bbMax[0]-bufferSize, bbMin[1], bbMin[2] ))
                     createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
             # Y+
             if props.preprocTools_fix_ayp:
-                if bbMax[1] >= bbMax_all[1] -props.preprocTools_fix_rng:
-                    newCorner = Vector(( bbMin[0], bbMax[1]+props.preprocTools_fix_rng, bbMin[2] ))
+                if bbMax[1] >= bbMax_all[1] -bufferSize:
+                    newCorner = Vector(( bbMin[0], bbMax[1]+bufferSize, bbMin[2] ))
                     createBoxData(verts, edges, faces, bbMax, newCorner)
-                    newCorner2 = Vector(( bbMax[0], 2*bbMax[1]-bbMin[1]+props.preprocTools_fix_rng, bbMax[2] ))
+                    newCorner2 = Vector(( bbMax[0], 2*bbMax[1]-bbMin[1]+bufferSize, bbMax[2] ))
                     createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
             # Y-
             if props.preprocTools_fix_ayn:
-                if bbMin[1] <= bbMin_all[1] +props.preprocTools_fix_rng:
-                    newCorner = Vector(( bbMax[0], bbMin[1]-props.preprocTools_fix_rng, bbMax[2] ))
+                if bbMin[1] <= bbMin_all[1] +bufferSize:
+                    newCorner = Vector(( bbMax[0], bbMin[1]-bufferSize, bbMax[2] ))
                     createBoxData(verts, edges, faces, newCorner, bbMin)
-                    newCorner2 = Vector(( bbMin[0], 2*bbMin[1]-bbMax[1]-props.preprocTools_fix_rng, bbMin[2] ))
+                    newCorner2 = Vector(( bbMin[0], 2*bbMin[1]-bbMax[1]-bufferSize, bbMin[2] ))
                     createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
             # Z+
             if props.preprocTools_fix_azp:
-                if bbMax[2] >= bbMax_all[2] -props.preprocTools_fix_rng:
-                    newCorner = Vector(( bbMin[0], bbMin[1], bbMax[2]+props.preprocTools_fix_rng ))
+                if bbMax[2] >= bbMax_all[2] -bufferSize:
+                    newCorner = Vector(( bbMin[0], bbMin[1], bbMax[2]+bufferSize ))
                     createBoxData(verts, edges, faces, bbMax, newCorner)
-                    newCorner2 = Vector(( bbMax[0], bbMax[1], 2*bbMax[2]-bbMin[2]+props.preprocTools_fix_rng ))
+                    newCorner2 = Vector(( bbMax[0], bbMax[1], 2*bbMax[2]-bbMin[2]+bufferSize ))
                     createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
             # Z-
             if props.preprocTools_fix_azn:
-                if bbMin[2] <= bbMin_all[2] +props.preprocTools_fix_rng:
-                    newCorner = Vector(( bbMax[0], bbMax[1], bbMin[2]-props.preprocTools_fix_rng ))
+                if bbMin[2] <= bbMin_all[2] +bufferSize:
+                    newCorner = Vector(( bbMax[0], bbMax[1], bbMin[2]-bufferSize ))
                     createBoxData(verts, edges, faces, newCorner, bbMin)
-                    newCorner2 = Vector(( bbMin[0], bbMin[1], 2*bbMin[2]-bbMax[2]-props.preprocTools_fix_rng ))
+                    newCorner2 = Vector(( bbMin[0], bbMin[1], 2*bbMin[2]-bbMax[2]-bufferSize ))
                     createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
 
 #            ### Old method with equal sizes for foundation objects 
 #            # X+
 #            if props.preprocTools_fix_axp:
-#                if bbMax[0] >= bbMax_all[0] -props.preprocTools_fix_rng:
+#                if bbMax[0] >= bbMax_all[0] -bufferSize:
 #                    newCorner = Vector(( 2*bbMax[0]-bbMin[0], bbMin[1], bbMin[2] ))
 #                    createBoxData(verts, edges, faces, bbMax, newCorner)
 #                    newCorner2 = Vector(( 3*bbMax[0]-2*bbMin[0], bbMax[1], bbMax[2] ))
 #                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
 #            # X-
 #            if props.preprocTools_fix_axn:
-#                if bbMin[0] <= bbMin_all[0] +props.preprocTools_fix_rng:
+#                if bbMin[0] <= bbMin_all[0] +bufferSize:
 #                    newCorner = Vector(( 2*bbMin[0]-bbMax[0], bbMax[1], bbMax[2] ))
 #                    createBoxData(verts, edges, faces, newCorner, bbMin)
 #                    newCorner2 = Vector(( 3*bbMin[0]-2*bbMax[0], bbMin[1], bbMin[2] ))
 #                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
 #            # Y+
 #            if props.preprocTools_fix_ayp:
-#                if bbMax[1] >= bbMax_all[1] -props.preprocTools_fix_rng:
+#                if bbMax[1] >= bbMax_all[1] -bufferSize:
 #                    newCorner = Vector(( bbMin[0], 2*bbMax[1]-bbMin[1], bbMin[2] ))
 #                    createBoxData(verts, edges, faces, bbMax, newCorner)
 #                    newCorner2 = Vector(( bbMax[0], 3*bbMax[1]-2*bbMin[1], bbMax[2] ))
 #                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
 #            # Y-
 #            if props.preprocTools_fix_ayn:
-#                if bbMin[1] <= bbMin_all[1] +props.preprocTools_fix_rng:
+#                if bbMin[1] <= bbMin_all[1] +bufferSize:
 #                    newCorner = Vector(( bbMax[0], 2*bbMin[1]-bbMax[1], bbMax[2] ))
 #                    createBoxData(verts, edges, faces, newCorner, bbMin)
 #                    newCorner2 = Vector(( bbMin[0], 3*bbMin[1]-2*bbMax[1], bbMin[2] ))
 #                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
 #            # Z+
 #            if props.preprocTools_fix_azp:
-#                if bbMax[2] >= bbMax_all[2] -props.preprocTools_fix_rng:
+#                if bbMax[2] >= bbMax_all[2] -bufferSize:
 #                    newCorner = Vector(( bbMin[0], bbMin[1], 2*bbMax[2]-bbMin[2] ))
 #                    createBoxData(verts, edges, faces, bbMax, newCorner)
 #                    newCorner2 = Vector(( bbMax[0], bbMax[1], 3*bbMax[2]-2*bbMin[2] ))
 #                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
 #            # Z-
 #            if props.preprocTools_fix_azn:
-#                if bbMin[2] <= bbMin_all[2] +props.preprocTools_fix_rng:
+#                if bbMin[2] <= bbMin_all[2] +bufferSize:
 #                    newCorner = Vector(( bbMax[0], bbMax[1], 2*bbMin[2]-bbMax[2] ))
 #                    createBoxData(verts, edges, faces, newCorner, bbMin)
 #                    newCorner2 = Vector(( bbMin[0], bbMin[1], 3*bbMin[2]-2*bbMax[2] ))
@@ -964,6 +973,7 @@ def tool_groundMotion(scene):
         objsA = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE' and len(obj.data.vertices) > 0]
         if len(objsA) > 0:
             ### Calculate boundary boxes for all active objects with connection type > 0
+            margin = 0
             qFirst = 1
             for obj in objsA:
                 # Calculate boundary box corners
@@ -973,7 +983,10 @@ def tool_groundMotion(scene):
                     qFirst = 0
                 else:
                     if bbMin_all[2] > bbMin[2]: bbMin_all[2] = bbMin[2]
-            height = bbMin_all[2]
+                # Also consider collision margin (find largest one)
+                if obj.rigid_body.use_margin:
+                    if obj.rigid_body.collision_margin > margin: margin = obj.rigid_body.collision_margin
+            height = bbMin_all[2] -margin
         else: height = 0
         ### Create ground object data
         verts = []; edges = []; faces = []
@@ -1736,6 +1749,7 @@ def tool_forcesVisualization_eventHandler(scene):
                 bpy.ops.object.shade_smooth()  # Shade smooth
                 obj = bpy.context.scene.objects.active
                 obj.name = nameViz
+                #obj.scale = Vector((0, 0, 0))
                 obj.select = 0
             vizObjs.append(obj)
             # Add to visualization group
@@ -1766,12 +1780,12 @@ def tool_forcesVisualization_eventHandler(scene):
             vizObjs[i]['Normal'] = normal
             vizObjs[i]['ContactArea'] = a
 
-            ### Set location to center of (possibly moving) element pair (comment out for original connection position)
-            try: locA = objA.matrix_world.to_translation()  # Get actual Bullet object's position as .location only returns its simulation starting position
-            except: locA = objA.centroid  # If the above fails it's an FM object, so we have to derive the location differently
-            try: locB = objB.matrix_world.to_translation()
-            except: locB = objB.centroid
-            loc = (locA +locB) /2 
+#            ### Set location to center of (possibly moving) element pair (comment out for original connection position)
+#            try: locA = objA.matrix_world.to_translation()  # Get actual Bullet object's position as .location only returns its simulation starting position
+#            except: locA = objA.centroid  # If the above fails it's an FM object, so we have to derive the location differently
+#            try: locB = objB.matrix_world.to_translation()
+#            except: locB = objB.centroid
+#            loc = (locA +locB) /2 
             
             result = tool_constraintForce_getData(scene, name)
 
@@ -1821,9 +1835,11 @@ def tool_forcesVisualization_eventHandler(scene):
                 ### Adding settings to visualization objects
                 obj = vizObjs[i]
                 obj.location = loc
-                # Scaling by strain
+                
+                ### Scaling by force
                 if qIntact:
-                    obj.scale = Vector((fmax, fmax, fmax)) *visualizerDrawSize
+                    size = fmax *visualizerDrawSize
+                    obj.scale = Vector((size, size, size))
                     changeMaterials(obj, fmax)
                 else:
                     obj.scale = Vector((.5, .5, .5)) *visualizerDrawSize
