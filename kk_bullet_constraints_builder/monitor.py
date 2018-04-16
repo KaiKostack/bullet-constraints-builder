@@ -320,11 +320,11 @@ def monitor_initBuffers(scene):
 
         if objA != None and objB != None:
             # Calculate distance between both elements of the connection
-            distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+            dist = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
             # Calculate angle between two elements
             quat0 = objA.matrix_world.to_quaternion()
             quat1 = objB.matrix_world.to_quaternion()
-            angle = quat0.rotation_difference(quat1).angle
+            angl = quat0.rotation_difference(quat1).angle
             consts = []
             constsEnabled = []
             constsUseBrk = []
@@ -352,8 +352,8 @@ def monitor_initBuffers(scene):
                     constsEnabled.append(0)
                     constsUseBrk.append(0)
                     constsBrkThres.append(0)
-            #                0                1                2         3      4       5              6             7 (unused) 8       9       10      11      12    13
-            connects.append([[objA, pair[0]], [objB, pair[1]], distance, angle, consts, constsEnabled, constsUseBrk, None,      tol[0], tol[1], tol[2], tol[3], mode, constsBrkThres])
+            #                0                1                2     3     4       5              6             7 (unused) 8       9       10      11      12    13              14 15
+            connects.append([[objA, pair[0]], [objB, pair[1]], dist, angl, consts, constsEnabled, constsUseBrk, None,      tol[0], tol[1], tol[2], tol[3], mode, constsBrkThres, 0, 0])
             cCnt += 1
         d += 1
         
@@ -367,30 +367,40 @@ def monitor_checkForChange(scene):
     
     props = bpy.context.window_manager.bcb
     connects = bpy.app.driver_namespace["bcb_monitor"]
+    rbw_steps_per_second = scene.rigidbody_world.steps_per_second
+    rbw_time_scale = scene.rigidbody_world.time_scale
+
     d = 0; e = 0; cntP = 0; cntB = 0
     for connect in connects:
+        conMode = connect[12]
 
         ### If connection is in fixed mode then check if first tolerance is reached
-        if connect[12] == 0:
+        if conMode == 0:
             d += 1
             consts = connect[4]
             if consts[0].rigid_body_constraint.use_breaking:
                 objA = connect[0][0]
                 objB = connect[1][0]
-                toleranceDist = connect[8]
-                toleranceRot = connect[9]
+                distOrig = connect[2]
+                anglOrig = connect[3]
+                tolDist = connect[8]
+                tolRot = connect[9]
+                distDifLast = connect[14]
+                anglDifLast = connect[15]
                 
                 # Calculate distance between both elements of the connection
-                distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
-                if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
-                else: distanceDif = 1
+                dist = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+                if dist > 0: distDif = abs(1 -(distOrig /dist))
+                else: distDif = 1
+
                 # Calculate angle between two elements
                 quatA = objA.matrix_world.to_quaternion()
                 quatB = objB.matrix_world.to_quaternion()
-                angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+                anglDif = math.asin(math.sin( abs(anglOrig -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-                if distanceDif > toleranceDist +(angleDif /pi) \
-                or angleDif > toleranceRot:
+                if distDif > tolDist +(anglDif /pi) \
+                or anglDif > tolRot:
                     qPlastic = 0
                     for const in consts:
                         # Enable spring constraints for this connection by setting its stiffness
@@ -401,7 +411,7 @@ def monitor_checkForChange(scene):
                         else: const.rigid_body_constraint.enabled = 0
                     if qPlastic:
                         # Update distance in comparison list so we use the last elastic deformation
-                        connect[2] = distance
+                        connect[2] = dist
                         # Flag connection as being in plastic mode
                         connect[12] += 1
                         cntP += 1
@@ -410,27 +420,78 @@ def monitor_checkForChange(scene):
                         connect[12] += 2
                         cntB += 1
 
+#                # When no breaking or mode change happens
+#                else:
+
+#                    ### Modify limits from applied forces
+#                    strainDist = 1 # Maximum linear strain for the given breaking threshold
+#                    strainAngl = 2 # Maximum angular strain for the given breaking threshold
+#                    for const in consts:
+#                        con = const.rigid_body_constraint
+#                        force = con.appliedImpulse() *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+#                        brkThres = con.breaking_threshold *rbw_steps_per_second /rbw_time_scale
+#                        strainLin = strainDist *(abs(force) /brkThres)  # Normalized to breaking threshold
+#                        strainAng = strainAngl *(abs(force) /brkThres)
+#                        # Limits Linear
+#                        if con.use_limit_lin_x:
+#                            if con.limit_lin_x_lower > -1: con.limit_lin_x_lower -= strainLin
+#                            if con.limit_lin_x_upper < 1: con.limit_lin_x_upper += strainLin
+#                        if con.use_limit_lin_y:
+#                            if con.limit_lin_y_lower > -1: con.limit_lin_y_lower -= strainLin
+#                            if con.limit_lin_y_upper < 1: con.limit_lin_y_upper += strainLin
+#                        if con.use_limit_lin_z:
+#                            if con.limit_lin_z_lower > -1: con.limit_lin_z_lower -= strainLin
+#                            if con.limit_lin_z_upper < 1: con.limit_lin_z_upper += strainLin
+#                        # Limits Angular
+#                        if con.use_limit_ang_x:
+#                            if con.limit_ang_x_lower > -1: con.limit_ang_x_lower -= strainAng
+#                            if con.limit_ang_x_upper < 1: con.limit_ang_x_upper += strainAng
+#                        if con.use_limit_ang_y:
+#                            if con.limit_ang_y_lower > -1: con.limit_ang_y_lower -= strainAng
+#                            if con.limit_ang_y_upper < 1: con.limit_ang_y_upper += strainAng
+#                        if con.use_limit_ang_z:
+#                            if con.limit_ang_z_lower > -1: con.limit_ang_z_lower -= strainAng
+#                            if con.limit_ang_z_upper < 1: con.limit_ang_z_upper += strainAng
+
+#                    ### Calculate fatigue from the change in distance between last frame and current one
+#                    fatigueDist = 0.002  # [%/mm]
+#                    if fatigueDist:
+#                        facDist = max(0, 1 -(abs(distDif -distDifLast) *1000) *fatigueDist)
+#                        connect[14] = distDif
+#                    fatigueAngl = 0.2  # [%/rad]
+#                    if fatigueAngl:
+#                        facAngl = max(0, 1 -abs(anglDif -anglDifLast) *fatigueAngl)
+#                        connect[15] = anglDif
+#                    fac = facDist *facAngl
+#                    if fac < 1:
+#                        for const in consts:
+#                            const.rigid_body_constraint.breaking_threshold *= fac
+
         ### If connection is in plastic mode then check if second tolerance is reached
-        if connect[12] == 1:
+        if conMode == 1:
             e += 1
             consts = connect[4]
             if len(consts) and consts[0].rigid_body_constraint.use_breaking:
                 objA = connect[0][0]
                 objB = connect[1][0]
-                toleranceDist = connect[10]
-                toleranceRot = connect[11]
+                distOrig = connect[2]
+                anglOrig = connect[3]
+                tolDist = connect[10]
+                tolRot = connect[11]
                 
                 # Calculate distance between both elements of the connection
-                distance = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
-                if distance > 0: distanceDif = abs(1 -(connect[2] /distance))
-                else: distanceDif = 1
+                dist = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
+                if dist > 0: distDif = abs(1 -(distOrig /dist))
+                else: distDif = 1
+
                 # Calculate angle between two elements
                 quatA = objA.matrix_world.to_quaternion()
                 quatB = objB.matrix_world.to_quaternion()
-                angleDif = math.asin(math.sin( abs(connect[3] -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+                anglDif = math.asin(math.sin( abs(anglOrig -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-                if distanceDif > toleranceDist +(angleDif /pi) \
-                or angleDif > toleranceRot:
+                if distDif > tolDist +(anglDif /pi) \
+                or anglDif > tolRot:
                     # Disable plastic constraints for this connection
                     for const in consts:
                         if const.rigid_body_constraint.type == 'GENERIC_SPRING':
@@ -466,7 +527,6 @@ def progressiveWeakening(scene, progrWeakVar):
     for connect in connects:
         sys.stdout.write("\r%d" %i)
         consts = connect[4]
-        constsUseBrk = connect[6]
         for const in consts:
             const.rigid_body_constraint.breaking_threshold *= progrWeakVar
         i += 1

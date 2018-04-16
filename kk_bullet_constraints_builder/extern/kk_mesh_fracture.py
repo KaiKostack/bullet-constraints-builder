@@ -74,7 +74,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         qTriangulate = parameters[2]
         halvingCutter = cookyCutterPlane = parameters[3]  # Object name
         objectCountLimit = 100000000
-        boolErrorRetryLimit = 0
+        boolErrorRetryLimit = 1
         qSeparateLoose = 0
         qSeparateLooseStep = 1
         qSilentVerbose = 1

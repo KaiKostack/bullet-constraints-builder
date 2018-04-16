@@ -328,6 +328,9 @@ def tool_separateLoose(scene):
     # Remove rigid body settings because of the unlinking optimization in the external module they will be lost anyway (while the RBW group remains)
     bpy.ops.rigidbody.objects_remove()
 
+    # Remove instances
+    bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True, material=False, texture=False, animation=False)
+
     ###### External function
     kk_mesh_separate_loose.run()
 
