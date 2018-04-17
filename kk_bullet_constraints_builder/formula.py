@@ -176,7 +176,7 @@ def combineExpressions():
     ###### Reinforced Concrete (Beams & Columns)
     if props.assistant_menu == "con_rei_beam":
         # Switch connection type to the recommended type
-        #elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
+        elemGrps[i][EGSidxCTyp] = 22  # 6x Generic + 1x Spring
         
         # Prepare also a height and width swapped (90)
         for qHWswapped in range(2):
@@ -322,8 +322,8 @@ def combineExpressions():
     ###### Reinforced Concrete (Walls & Slabs)
     elif props.assistant_menu == "con_rei_wall":
         # Switch connection type to the recommended type
-        #elemGrps[i][EGSidxCTyp] = 16  # 7 x Generic
-        
+        elemGrps[i][EGSidxCTyp] = 22  # 6x Generic + 1x Spring
+                        
         # Prepare also a height and width swapped (90)
         for qHWswapped in range(2):
             if not qHWswapped:

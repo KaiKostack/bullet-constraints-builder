@@ -103,21 +103,18 @@ def importData(filepath):
             curveP = curve.keyframe_points[0]  # start value: 0 or end value: -1
             frame, value = curveP.co
             owner.animation_data.action.fcurves.remove(curve)  # Delete curve
-            bpy.context.scene.gravity[2] = value  # Restore original value
     curve = owner.animation_data.action.fcurves.find(data_path="delta_location", index=1)
     if curve != None:
         if len(curve.keyframe_points) > 0:
             curveP = curve.keyframe_points[0]  # start value: 0 or end value: -1
             frame, value = curveP.co
             owner.animation_data.action.fcurves.remove(curve)  # Delete curve
-            bpy.context.scene.gravity[2] = value  # Restore original value
     curve = owner.animation_data.action.fcurves.find(data_path="delta_location", index=2)
     if curve != None:
         if len(curve.keyframe_points) > 0:
             curveP = curve.keyframe_points[0]  # start value: 0 or end value: -1
             frame, value = curveP.co
             owner.animation_data.action.fcurves.remove(curve)  # Delete curve
-            bpy.context.scene.gravity[2] = value  # Restore original value
 
     ### Create new curves
     if locX != -1:
