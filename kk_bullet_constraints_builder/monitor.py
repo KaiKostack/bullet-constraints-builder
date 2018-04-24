@@ -424,8 +424,8 @@ def monitor_checkForChange(scene):
 #                else:
 
 #                    ### Modify limits from applied forces
-#                    strainDist = 1 # Maximum linear strain for the given breaking threshold
-#                    strainAngl = 2 # Maximum angular strain for the given breaking threshold
+#                    strainDist = .001 # Maximum linear strain for the given breaking threshold
+#                    strainAngl = .002 # Maximum angular strain for the given breaking threshold
 #                    for const in consts:
 #                        con = const.rigid_body_constraint
 #                        force = con.appliedImpulse() *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces

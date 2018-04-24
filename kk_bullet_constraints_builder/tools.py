@@ -1800,7 +1800,7 @@ def tool_forcesVisualization_eventHandler(scene):
                 qIntact = 1
                 for con in cons:
                     if (con.type == 'GENERIC' or con.type == 'FIXED' or con.type == 'POINT') \
-                    and con.enabled == 0:  # Needs to use .intact() instead as soon as it's implemented in FM
+                    and not con.isIntact():  # Needs Fracture Modifier build
                         qIntact = 0
                         break
 
