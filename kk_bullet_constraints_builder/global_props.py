@@ -125,9 +125,9 @@ class bcb_props(bpy.types.PropertyGroup):
 
     postprocTools_fcv = bool_(default=1)
     postprocTools_fcv_con = string_(name="Range Object",  default='Visualization Limiter', description="Enter the name of a helper object whose dimensions will be used to define for which connections forces should be visualized, i.e. all within its boundary range. For instance an empty object can be placed and scaled accordingly to fit a specific area of interest")
-    postprocTools_fcv_frm = int_(name="Frame",            default=40, min=0, max=32767,   description="Frame number at which the visualization snap-shot of forces will be taken")
+    postprocTools_fcv_frm = int_(name="Frame",            default=80, min=0, max=32767,   description="Frame number at which the visualization snap-shot of forces will be taken")
     postprocTools_fcv_nbt = bool_(name="Normalize To Breaking Threshold", default=1, description="Normalizes the visualizer to the breaking thresholds of the constraints, so that red color always means close to failure")
-    postprocTools_fcv_max = float_(name="Maximum",        default=30, min=0.0, max=10000000, description="Maximum force per mm² to be expected, actual forces will be normalized accordingly. This will only influence the appearance of the visualizer, but the readout value stored within the visualizer's properties will not be modified")
+    postprocTools_fcv_max = float_(name="Maximum",        default=20, min=0.0, max=10000000, description="Maximum force per mm² to be expected, actual forces will be normalized accordingly. This will only influence the appearance of the visualizer, but the readout value stored within the visualizer's properties will not be modified")
     postprocTools_fcv_pas = bool_(name="Limit To Foundation Connections", default=0, description="Limits visualization to connections with foundation / passive elements")
 
     postprocTools_cav = bool_(default=1)

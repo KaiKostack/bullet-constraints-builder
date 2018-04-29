@@ -740,97 +740,101 @@ def tool_fixFoundation(scene):
         ### Calculate geometry for adjacent foundation geometry for all sides
         verts = []; edges = []; faces = []  # Active buffer mesh object
         verts2 = []; edges2 = []; faces2 = []  # Passive mesh object
+        bufferMargin = props.preprocTools_fix_rng
         bufferSize = props.preprocTools_fix_rng
         for bb in objsBB:
             bbMin = bb[0]
             bbMax = bb[1]
+            
+            ### Method with small buffer elements for foundation objects
+            if 1:
+                # X+
+                if props.preprocTools_fix_axp:
+                    if bbMax[0] >= bbMax_all[0] -bufferMargin:
+                        newCorner = Vector(( bbMax[0]+bufferSize, bbMin[1], bbMin[2] ))
+                        createBoxData(verts, edges, faces, bbMax, newCorner)
+                        newCorner2 = Vector(( 2*bbMax[0]-bbMin[0]+bufferSize, bbMax[1], bbMax[2] ))
+                        createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
+                # X-
+                if props.preprocTools_fix_axn:
+                    if bbMin[0] <= bbMin_all[0] +bufferMargin:
+                        newCorner = Vector(( bbMin[0]-bufferSize, bbMax[1], bbMax[2] ))
+                        createBoxData(verts, edges, faces, newCorner, bbMin)
+                        newCorner2 = Vector(( 2*bbMin[0]-bbMax[0]-bufferSize, bbMin[1], bbMin[2] ))
+                        createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+                # Y+
+                if props.preprocTools_fix_ayp:
+                    if bbMax[1] >= bbMax_all[1] -bufferMargin:
+                        newCorner = Vector(( bbMin[0], bbMax[1]+bufferSize, bbMin[2] ))
+                        createBoxData(verts, edges, faces, bbMax, newCorner)
+                        newCorner2 = Vector(( bbMax[0], 2*bbMax[1]-bbMin[1]+bufferSize, bbMax[2] ))
+                        createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
+                # Y-
+                if props.preprocTools_fix_ayn:
+                    if bbMin[1] <= bbMin_all[1] +bufferMargin:
+                        newCorner = Vector(( bbMax[0], bbMin[1]-bufferSize, bbMax[2] ))
+                        createBoxData(verts, edges, faces, newCorner, bbMin)
+                        newCorner2 = Vector(( bbMin[0], 2*bbMin[1]-bbMax[1]-bufferSize, bbMin[2] ))
+                        createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+                # Z+
+                if props.preprocTools_fix_azp:
+                    if bbMax[2] >= bbMax_all[2] -bufferMargin:
+                        newCorner = Vector(( bbMin[0], bbMin[1], bbMax[2]+bufferSize ))
+                        createBoxData(verts, edges, faces, bbMax, newCorner)
+                        newCorner2 = Vector(( bbMax[0], bbMax[1], 2*bbMax[2]-bbMin[2]+bufferSize ))
+                        createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
+                # Z-
+                if props.preprocTools_fix_azn:
+                    if bbMin[2] <= bbMin_all[2] +bufferMargin:
+                        newCorner = Vector(( bbMax[0], bbMax[1], bbMin[2]-bufferSize ))
+                        createBoxData(verts, edges, faces, newCorner, bbMin)
+                        newCorner2 = Vector(( bbMin[0], bbMin[1], 2*bbMin[2]-bbMax[2]-bufferSize ))
+                        createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
 
-            # X+
-            if props.preprocTools_fix_axp:
-                if bbMax[0] >= bbMax_all[0] -bufferSize:
-                    newCorner = Vector(( bbMax[0]+bufferSize, bbMin[1], bbMin[2] ))
-                    createBoxData(verts, edges, faces, bbMax, newCorner)
-                    newCorner2 = Vector(( 2*bbMax[0]-bbMin[0]+bufferSize, bbMax[1], bbMax[2] ))
-                    createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
-            # X-
-            if props.preprocTools_fix_axn:
-                if bbMin[0] <= bbMin_all[0] +bufferSize:
-                    newCorner = Vector(( bbMin[0]-bufferSize, bbMax[1], bbMax[2] ))
-                    createBoxData(verts, edges, faces, newCorner, bbMin)
-                    newCorner2 = Vector(( 2*bbMin[0]-bbMax[0]-bufferSize, bbMin[1], bbMin[2] ))
-                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
-            # Y+
-            if props.preprocTools_fix_ayp:
-                if bbMax[1] >= bbMax_all[1] -bufferSize:
-                    newCorner = Vector(( bbMin[0], bbMax[1]+bufferSize, bbMin[2] ))
-                    createBoxData(verts, edges, faces, bbMax, newCorner)
-                    newCorner2 = Vector(( bbMax[0], 2*bbMax[1]-bbMin[1]+bufferSize, bbMax[2] ))
-                    createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
-            # Y-
-            if props.preprocTools_fix_ayn:
-                if bbMin[1] <= bbMin_all[1] +bufferSize:
-                    newCorner = Vector(( bbMax[0], bbMin[1]-bufferSize, bbMax[2] ))
-                    createBoxData(verts, edges, faces, newCorner, bbMin)
-                    newCorner2 = Vector(( bbMin[0], 2*bbMin[1]-bbMax[1]-bufferSize, bbMin[2] ))
-                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
-            # Z+
-            if props.preprocTools_fix_azp:
-                if bbMax[2] >= bbMax_all[2] -bufferSize:
-                    newCorner = Vector(( bbMin[0], bbMin[1], bbMax[2]+bufferSize ))
-                    createBoxData(verts, edges, faces, bbMax, newCorner)
-                    newCorner2 = Vector(( bbMax[0], bbMax[1], 2*bbMax[2]-bbMin[2]+bufferSize ))
-                    createBoxData(verts2, edges2, faces2, newCorner, newCorner2)
-            # Z-
-            if props.preprocTools_fix_azn:
-                if bbMin[2] <= bbMin_all[2] +bufferSize:
-                    newCorner = Vector(( bbMax[0], bbMax[1], bbMin[2]-bufferSize ))
-                    createBoxData(verts, edges, faces, newCorner, bbMin)
-                    newCorner2 = Vector(( bbMin[0], bbMin[1], 2*bbMin[2]-bbMax[2]-bufferSize ))
-                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
-
-#            ### Old method with equal sizes for foundation objects 
-#            # X+
-#            if props.preprocTools_fix_axp:
-#                if bbMax[0] >= bbMax_all[0] -bufferSize:
-#                    newCorner = Vector(( 2*bbMax[0]-bbMin[0], bbMin[1], bbMin[2] ))
-#                    createBoxData(verts, edges, faces, bbMax, newCorner)
-#                    newCorner2 = Vector(( 3*bbMax[0]-2*bbMin[0], bbMax[1], bbMax[2] ))
-#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
-#            # X-
-#            if props.preprocTools_fix_axn:
-#                if bbMin[0] <= bbMin_all[0] +bufferSize:
-#                    newCorner = Vector(( 2*bbMin[0]-bbMax[0], bbMax[1], bbMax[2] ))
-#                    createBoxData(verts, edges, faces, newCorner, bbMin)
-#                    newCorner2 = Vector(( 3*bbMin[0]-2*bbMax[0], bbMin[1], bbMin[2] ))
-#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
-#            # Y+
-#            if props.preprocTools_fix_ayp:
-#                if bbMax[1] >= bbMax_all[1] -bufferSize:
-#                    newCorner = Vector(( bbMin[0], 2*bbMax[1]-bbMin[1], bbMin[2] ))
-#                    createBoxData(verts, edges, faces, bbMax, newCorner)
-#                    newCorner2 = Vector(( bbMax[0], 3*bbMax[1]-2*bbMin[1], bbMax[2] ))
-#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
-#            # Y-
-#            if props.preprocTools_fix_ayn:
-#                if bbMin[1] <= bbMin_all[1] +bufferSize:
-#                    newCorner = Vector(( bbMax[0], 2*bbMin[1]-bbMax[1], bbMax[2] ))
-#                    createBoxData(verts, edges, faces, newCorner, bbMin)
-#                    newCorner2 = Vector(( bbMin[0], 3*bbMin[1]-2*bbMax[1], bbMin[2] ))
-#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
-#            # Z+
-#            if props.preprocTools_fix_azp:
-#                if bbMax[2] >= bbMax_all[2] -bufferSize:
-#                    newCorner = Vector(( bbMin[0], bbMin[1], 2*bbMax[2]-bbMin[2] ))
-#                    createBoxData(verts, edges, faces, bbMax, newCorner)
-#                    newCorner2 = Vector(( bbMax[0], bbMax[1], 3*bbMax[2]-2*bbMin[2] ))
-#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
-#            # Z-
-#            if props.preprocTools_fix_azn:
-#                if bbMin[2] <= bbMin_all[2] +bufferSize:
-#                    newCorner = Vector(( bbMax[0], bbMax[1], 2*bbMin[2]-bbMax[2] ))
-#                    createBoxData(verts, edges, faces, newCorner, bbMin)
-#                    newCorner2 = Vector(( bbMin[0], bbMin[1], 3*bbMin[2]-2*bbMax[2] ))
-#                    createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+            ### Different method with equal sizes for foundation objects and buffer elements
+            else:
+                # X+
+                if props.preprocTools_fix_axp:
+                    if bbMax[0] >= bbMax_all[0] -bufferMargin:
+                        newCorner = Vector(( 2*bbMax[0]-bbMin[0], bbMin[1], bbMin[2] ))
+                        createBoxData(verts, edges, faces, bbMax, newCorner)
+                        newCorner2 = Vector(( 3*bbMax[0]-2*bbMin[0], bbMax[1], bbMax[2] ))
+                        createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+                # X-
+                if props.preprocTools_fix_axn:
+                    if bbMin[0] <= bbMin_all[0] +bufferMargin:
+                        newCorner = Vector(( 2*bbMin[0]-bbMax[0], bbMax[1], bbMax[2] ))
+                        createBoxData(verts, edges, faces, newCorner, bbMin)
+                        newCorner2 = Vector(( 3*bbMin[0]-2*bbMax[0], bbMin[1], bbMin[2] ))
+                        createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+                # Y+
+                if props.preprocTools_fix_ayp:
+                    if bbMax[1] >= bbMax_all[1] -bufferMargin:
+                        newCorner = Vector(( bbMin[0], 2*bbMax[1]-bbMin[1], bbMin[2] ))
+                        createBoxData(verts, edges, faces, bbMax, newCorner)
+                        newCorner2 = Vector(( bbMax[0], 3*bbMax[1]-2*bbMin[1], bbMax[2] ))
+                        createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+                # Y-
+                if props.preprocTools_fix_ayn:
+                    if bbMin[1] <= bbMin_all[1] +bufferMargin:
+                        newCorner = Vector(( bbMax[0], 2*bbMin[1]-bbMax[1], bbMax[2] ))
+                        createBoxData(verts, edges, faces, newCorner, bbMin)
+                        newCorner2 = Vector(( bbMin[0], 3*bbMin[1]-2*bbMax[1], bbMin[2] ))
+                        createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+                # Z+
+                if props.preprocTools_fix_azp:
+                    if bbMax[2] >= bbMax_all[2] -bufferMargin:
+                        newCorner = Vector(( bbMin[0], bbMin[1], 2*bbMax[2]-bbMin[2] ))
+                        createBoxData(verts, edges, faces, bbMax, newCorner)
+                        newCorner2 = Vector(( bbMax[0], bbMax[1], 3*bbMax[2]-2*bbMin[2] ))
+                        createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
+                # Z-
+                if props.preprocTools_fix_azn:
+                    if bbMin[2] <= bbMin_all[2] +bufferMargin:
+                        newCorner = Vector(( bbMax[0], bbMax[1], 2*bbMin[2]-bbMax[2] ))
+                        createBoxData(verts, edges, faces, newCorner, bbMin)
+                        newCorner2 = Vector(( bbMin[0], bbMin[1], 3*bbMin[2]-2*bbMax[2] ))
+                        createBoxData(verts2, edges2, faces2, newCorner2, newCorner)
 
         ### Create actual geometry for passive and active buffer object
         # Create empty mesh object
@@ -1393,7 +1397,7 @@ def tool_exportForceHistory_eventHandler(scene):
                 break
 
         # Conversion from impulse to force
-        data = [val *rbw_steps_per_second /rbw_time_scale for val in data]
+        data = [val /rbw_time_scale *rbw_steps_per_second for val in data]
         
         filenamePath = props.postprocTools_fcx_nam
         logPath = os.path.dirname(filenamePath)
@@ -1675,7 +1679,8 @@ def tool_forcesVisualization_eventHandler(scene):
                 objB = objs[pair[1]]
                 objConst = emptyObjs[consts[0]]
 
-                # Skip object out of range of the limiting object if present
+                ### Skip object out of range of the limiting object if present
+                qUse = 0
                 if objRange != None:
                     loc = objConst.location
                     locR = objRange.location
@@ -1683,12 +1688,12 @@ def tool_forcesVisualization_eventHandler(scene):
                     if  loc[0] > locR[0] -dims[0] and loc[0] < locR[0] +dims[0] \
                     and loc[1] > locR[1] -dims[1] and loc[1] < locR[1] +dims[1] \
                     and loc[2] > locR[2] -dims[2] and loc[2] < locR[2] +dims[2]:
-                          qUse = 1
-                    else: qUse = 0
-                else: qUse = 1
+                        qUse = 1
+                qUse_limiter = qUse
                 
                 ### Only use connections with one foundation element
                 if props.postprocTools_fcv_pas:
+                    qUse = 1
                     # Check for foundation group
                     if len(elemGrps) > 0:
                         qFoundation = 0
@@ -1708,12 +1713,31 @@ def tool_forcesVisualization_eventHandler(scene):
                     else:
                         if not qFM and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'): qUse = 0
                         if qFM and (objA.rigidbody.type == 'ACTIVE' and objB.rigidbody.type == 'ACTIVE'): qUse = 0
+                qUse_foundation = qUse
 
-                # Skip connections with one passive element
+                ### Skip horizontal connections by comparing relations of both element centroids to constraint location
+                qUse = 1
+#                if not qFM: dirVec = objConst.location -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+#                else: dirVec = objConst.location -objA.centroid
+#                dirVecN = dirVec.normalized()
+#                if abs(dirVecN[2]) > 0.7: qA = 1
+#                else: qA = 0
+#                if not qFM: dirVec = objConst.location -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+#                else: dirVec = objConst.location -objB.centroid
+#                dirVecN = dirVec.normalized()
+#                if abs(dirVecN[2]) > 0.7: qB = 1
+#                else: qB = 0
+#                if qA == 0 and qB == 0: qUse = 0
+                qUse_horizontal = qUse
+                
+                ### Skip connections with one passive element
+                qUse = 1
                 #if not qFM and (objA.rigid_body.type == 'PASSIVE' or objB.rigid_body.type == 'PASSIVE'): qUse = 0
                 #if qFM and (objA.rigidbody.type == 'PASSIVE' or objB.rigidbody.type == 'PASSIVE'): qUse = 0
+                qUse_passive = qUse
             
-                if qUse:
+                if (qUse_limiter or qUse_foundation or (objRange == None and not props.postprocTools_fcv_pas)) \
+                and qUse_horizontal and qUse_passive:
                     name = objConst.name.rsplit('.', 1)[0]
                     geo = connectsGeo[k]
                     geoContactArea = geo[0]
@@ -1754,6 +1778,12 @@ def tool_forcesVisualization_eventHandler(scene):
                 obj.name = nameViz
                 #obj.scale = Vector((0, 0, 0))
                 obj.select = 0
+            k = 1
+            while 1:  # Delete values in case there are old ones and we are using sampling
+                key = name +'.%d N' %k
+                if key in obj.keys(): del obj[key]
+                else: break
+                k += 1
             vizObjs.append(obj)
             # Add to visualization group
             try: grp.objects.link(obj)
@@ -1781,8 +1811,8 @@ def tool_forcesVisualization_eventHandler(scene):
             vizObjs[i]["Obj.A"] = objA.name
             vizObjs[i]["Obj.B"] = objB.name 
             vizObjs[i]['Normal'] = normal
-            vizObjs[i]['ContactArea'] = a
-
+            vizObjs[i]['ContactArea mm²'] = a
+            
 #            ### Set location to center of (possibly moving) element pair (comment out for original connection position)
 #            try: locA = objA.matrix_world.to_translation()  # Get actual Bullet object's position as .location only returns its simulation starting position
 #            except: locA = objA.centroid  # If the above fails it's an FM object, so we have to derive the location differently
@@ -1797,22 +1827,32 @@ def tool_forcesVisualization_eventHandler(scene):
                 cons = result[1]
                 
                 ### Check if connection is broken
-                qIntact = 1
+                samples = 10  # Sampling of values over multiple frames to reduce simulation noise (0 = off)
+                qIntact = 0
                 for con in cons:
                     if (con.type == 'GENERIC' or con.type == 'FIXED' or con.type == 'POINT') \
-                    and not con.isIntact():  # Needs Fracture Modifier build
-                        qIntact = 0
+                    and con.isIntact():  # Needs Fracture Modifier build
+                        qIntact = 1
                         break
 
                 vizObjs[i]['#Intact'] = qIntact
 
                 if qIntact:
-                    # Conversion from impulse to force
-                    data = [val *rbw_steps_per_second /rbw_time_scale for val in data]
+                    # Conversion from impulse to force (absolute values preferred for sampling)
+                    data = [abs(val /rbw_time_scale *rbw_steps_per_second) for val in data]
+
+                    ### Sampling of values over multiple frames
+                    if samples:
+                        for k in range(len(cons)):
+                            val = data[k]
+                            try: valAcc = vizObjs[i][name +'.%d N' %k]
+                            except: pass
+                            else: val = (val +(valAcc *(samples-1))) /samples
+                            data[k] = val
 
                     # Evaluate maximum force
                     fmax = data[0]
-                    for val in data: fmax = max(fmax, abs(val))
+                    for val in data: fmax = max(fmax, val)
 
                     ### Write forces properties into visualization objects for user review
                     vizObjs[i]['#Fmax N'] = fmax
@@ -1824,16 +1864,21 @@ def tool_forcesVisualization_eventHandler(scene):
                     ### Normalization to maximum force defined by user
                     dataNorm = []
                     for k in range(len(cons)):
+                        brkThres = cons[k].breaking_threshold /rbw_time_scale *rbw_steps_per_second  # Conversion from impulse to force
+                        impulse = data[k]
                         if props.postprocTools_fcv_nbt:
-                            brkThres = cons[k].breaking_threshold *rbw_steps_per_second /rbw_time_scale  # Conversion from impulse to force
-                            dataNorm.append(abs(data[k]) /brkThres)  # Visualize force normalized to breaking threshold
+                            val = impulse /brkThres  # Visualize force normalized to breaking threshold
                         else:
-                            dataNorm.append(abs(data[k] /a) /props.postprocTools_fcv_max)  # Visualize relative force per connection 
-                            #dataNorm.append(abs(data[k]) /props.postprocTools_fcv_max)  # Visualize absolute force per connection 
-                        
+                            val = impulse /a /props.postprocTools_fcv_max  # Visualize relative force per connection 
+                            #val = impulse /props.postprocTools_fcv_max  # Visualize absolute force per connection 
+                        #if val <= 1:  # Skip values over the threshold for cases connection is not breakable, then we don't want to include them
+                        dataNorm.append(val)
+
                     # Finding the maximum strain of all constraints
-                    fmax = dataNorm[0]
-                    for val in dataNorm: fmax = min(max(fmax, abs(val)), 1)
+                    if len(dataNorm) > 0:
+                        fmax = dataNorm[0]
+                        for val in dataNorm: fmax = min(max(fmax, val), 1)
+                    else: fmax = 0
 
                 ### Adding settings to visualization objects
                 obj = vizObjs[i]
@@ -1846,6 +1891,7 @@ def tool_forcesVisualization_eventHandler(scene):
                     changeMaterials(obj, fmax)
                 else:
                     obj.scale = Vector((.5, .5, .5)) *visualizerDrawSize
+                    #obj.scale = Vector((0, 0, 0))
                     changeMaterials(obj, 0, qIntact=0)
 
     ### Check if last frame is reached
@@ -1856,6 +1902,66 @@ def tool_forcesVisualization_eventHandler(scene):
 
     ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
     if not bpy.context.screen.is_animation_playing:
+
+
+        ###### First calculate the sum of a specified ID property for all selected objects for console output
+
+        keyVal = "#Fmax N"       # Name of the ID property to be summarized
+        keyLim = "ContactArea mm²"   # Name of the ID property to be used as limit
+        limMin = 0               # Minimum limit for values to be counted (0 = off)
+        limMax = 0               # Maximum limit for values to be counted (0 = off)
+        qText = 0                # Generate text objects
+        vizObjs = bpy.app.driver_namespace["log_vizObjs"]
+
+        ### Summarize all values
+        objs = []
+        sum = 0
+        cnt = 0
+        for obj in vizObjs:
+            if keyVal in obj.keys() and keyLim in obj.keys():
+                val = obj[keyVal]
+                limVal = obj[keyLim]
+                if (not limMin or limVal >= limMin) and (not limMax or limVal <= limMax):
+                    objs.append((obj, val))
+                    sum += val
+                    cnt += 1
+                else: obj.select = 0
+            else: obj.select = 0
+
+        ### Create text objects
+        if qText:
+            # Deselect all objects
+            bpy.ops.object.select_all(action='DESELECT')
+           
+            textObjs = []
+            for obj, val in objs:
+                name = "Text_" +obj.name
+                loc = obj.location.copy()
+                loc += Vector((.25, -.15, 1.5))
+                if name not in scene.objects:
+                    bpy.ops.object.text_add(view_align=True, enter_editmode=False, location=(0, 0, 0))
+                    textObj = bpy.context.scene.objects.active
+                    textObj.name = name
+                    textObj.location = loc
+                else:
+                    textObj = scene.objects[name]
+                textObj.data.body = "%0.0f" %(val /1000 /9.81) # tons
+                textObj.data.align_y = 'TOP'
+                textObj.data.align_x = 'LEFT'
+                textObj.scale = (.6, .6, .6)
+                textObjs.append(textObj)
+            # Select all texts
+            for obj in textObjs: obj.select = 1
+                 
+        print()
+        print(keyVal +" sum = %0.0f acting on %d connections." %(sum, cnt))
+        if sum > 0:
+            print(keyVal +" = %0.0f averaged per connection." %(sum /cnt))
+        print("Weight = %0.3f tons (might not be the actual weight, it's just the sum of the visible)." %(sum /9.81 /1000))
+        print()
+
+        ###### Unload the event handler and free all monitor data
+
         try: bpy.app.handlers.frame_change_pre.remove(tool_forcesVisualization_eventHandler)
         except: pass
         else: print("Removed event handler: tool_forcesVisualization_eventHandler")

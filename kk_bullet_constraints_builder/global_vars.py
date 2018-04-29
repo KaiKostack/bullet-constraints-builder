@@ -36,14 +36,14 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (3, 0, 9)
+bcb_version = (3, 1, 0)
 
 ### Customizable element group presets
 presets = [
 # 0                     1    2           3        4    5       6       7       8      9       10     11       12   13   14   15    16   17    18     19             20  21   22  23   24   25   26
 # Name                  RVP  Mat.preset  Density  CT   BTC     BTT     BTS     BTS90  BTB     BTB90  BTP      T1D  T1R  T2D  T2R   Bev. Scale Facing F.Assist.+Data Cyl PLen BTX Prio Load NoHo Fric
 [ "",                   1,   "Uncategorized", 2400, 15, "35",  "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
-[ "Base",               1,   "Uncategorized", 1,  0,   "0",    "0",    "0",    "",    "0",    "",    "0",     0,   0,   0,   0,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
+[ "Base",               1,   "Uncategorized", 1,  0,   "0",    "0",    "0",    "",    "0",    "",    "0",     0,   0,   0,   0,   0,   1.0,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
 [ "Concrete",           1,   "Concrete", 2400,    15,  "35",   "3.5",  "0.9",  "",    "1.0",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
 [ "RC Columns",         1,   "Concrete", 2400,    15,  "35",   "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
 [ "RC Walls",           1,   "Concrete", 2400,    15,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
@@ -256,7 +256,7 @@ commandStop = r"/tmp/bcb-stop"       #       | For very large simulations Blende
 maxMenuElementGroupItems = 300       # 300   | Maximum allowed element group entries in menu 
 emptyDrawSize = 0.25                 # 0.25  | Display size of constraint empty objects as radius in meters
 visualizerDrawSize = 1.0             # 1     | Maximum radius the visualizer will be scaled to when reaching maximum force
-minimumContactArea = 0.0000001       # 0.001 | Zero limit for a detected contact area to be considered for connection
+minimumContactArea = 0.000001        # 1 mm  | Zero limit for a detected contact area to be considered for connection in m²
 asciiExportName = "BCB_export"       #       | Name of ASCII text file to be exported
 grpNameBuilding = "BCB_Building"
 grpNameVisualization = "BCB_Visualization"

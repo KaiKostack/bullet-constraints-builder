@@ -738,6 +738,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             
             ### Shearing constraint #1
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
+            btRatio = 1
             value = brkThresValueS
             if brkThresValueS9 != -1:
                 value1 = value
@@ -746,8 +747,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-                btRatio = 1
-            else:
+            elif brkThresValueB9 == -1:  # Only use btRatio if neither shear nor bend have a 90° value
                 btRatio = geoHeight /geoWidth
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
@@ -800,6 +800,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             
             ### Bending with torsion constraint #1
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
+            btRatio = 1
             value = brkThresValueB
             if brkThresValueB9 != -1:
                 value1 = value
@@ -808,8 +809,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-                btRatio = 1
-            else:
+            elif brkThresValueS9 == -1:  # Only use btRatio if neither shear nor bend have a 90° value
                 btRatio = geoHeight /geoWidth
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
@@ -862,6 +862,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             
             ### Bending without torsion constraint #1
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
+            btRatio = 1
             value = brkThresValueB
             if brkThresValueB9 != -1:
                 value1 = value
@@ -870,8 +871,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-                btRatio = 1
-            else:
+            elif brkThresValueS9 == -1:  # Only use btRatio if neither shear nor bend have a 90° value
                 btRatio = geoHeight /geoWidth
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
@@ -920,11 +920,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
             ### Torsion constraint
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-            
             try: value = values[0]  # Use the smaller value from either standard or 90n
             except: pass
-            value *= .5  # Use 50% of the bending thresholds for torsion (we really need a formula for that)
-
+            btRatio = 1
 #            value = brkThresValueS
 #            if brkThresValueS9 != -1:
 #                value1 = value
@@ -933,9 +931,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 #                values = [value1, value2]
 #                values.sort()
 #                value = values[0]  # Find and use smaller value (to be used along h axis)
-#            value /= 2  # Use half of the smaller shearing breaking thresholds for torsion
-
-            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
+#            elif brkThresValueB9 == -1:  # Only use btRatio if neither shear nor bend have a 90° value
+#                btRatio = geoHeight /geoWidth
+            value *= .5  # Use 50% of the bending thresholds for torsion (we really need a formula for that)
+            brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
             if qUpdateComplete:
                 rotm = 'QUATERNION'

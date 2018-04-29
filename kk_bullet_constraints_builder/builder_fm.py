@@ -191,10 +191,10 @@ def build_fm(use_handler=0):
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
 
-    # Enable trigger possibility
+    # Enable trigger possibility (might not work at the moment, see .use_kinematic_deactivation comment)
     ob.select = 1
     bpy.ops.rigidbody.object_add()
-    ob.rigid_body.use_kinematic_deactivation = 1
+    #ob.rigid_body.use_kinematic_deactivation = 1  # Commented this out because it prevents .kinematic from being set
     ob.rigid_body.constraint_dissolve = 1
     ob.rigid_body.plastic_dissolve = True
     ob.select = 0
