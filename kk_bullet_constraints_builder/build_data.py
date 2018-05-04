@@ -591,6 +591,10 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
         layersNew.append(1)
     scene.layers = [bool(q) for q in layersNew]  # Convert array into boolean (required by layers)
     
+    ###### Removing data from scene
+    
+    del scene["bcb_valid"]  # Removing flag for valid data first
+
     ### Remove parents for too small elements 
     for k in range(len(connectsPairParent)):
         objChild = objs[connectsPairParent[k][0]]

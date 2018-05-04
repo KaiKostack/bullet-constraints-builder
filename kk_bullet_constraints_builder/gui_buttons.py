@@ -74,7 +74,7 @@ class OBJECT_OT_bcb_get_config(bpy.types.Operator):
             props.menu_gotConfig = 1
             ###### Get build data from scene
             #getBuildDataFromScene(scene)
-            if "bcb_objs" in scene.keys(): props.menu_gotData = 1
+            if "bcb_valid" in scene.keys(): props.menu_gotData = 1
             # Update menu related properties from global vars
             props.props_update_menu()
         return{'FINISHED'} 

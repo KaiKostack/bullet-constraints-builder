@@ -1390,10 +1390,10 @@ def tool_exportForceHistory_eventHandler(scene):
         cons = result[1]
 
         ### Check if connection is broken
-        qIntact = 1
+        qIntact = 0
         for con in cons:
-            if con.enabled == 0:
-                qIntact = 0
+            if con.isIntact():  # Needs Fracture Modifier build
+                qIntact = 1
                 break
 
         # Conversion from impulse to force
@@ -1830,8 +1830,8 @@ def tool_forcesVisualization_eventHandler(scene):
                 samples = 10  # Sampling of values over multiple frames to reduce simulation noise (0 = off)
                 qIntact = 0
                 for con in cons:
-                    if (con.type == 'GENERIC' or con.type == 'FIXED' or con.type == 'POINT') \
-                    and con.isIntact():  # Needs Fracture Modifier build
+                    #if (con.type == 'GENERIC' or con.type == 'FIXED' or con.type == 'POINT') and \
+                    if con.enabled and (not hasattr(con, 'isIntact') or con.isIntact()):  # Needs Fracture Modifier build
                         qIntact = 1
                         break
 
@@ -1850,10 +1850,48 @@ def tool_forcesVisualization_eventHandler(scene):
                             else: val = (val +(valAcc *(samples-1))) /samples
                             data[k] = val
 
-                    # Evaluate maximum force
-                    fmax = data[0]
-                    for val in data: fmax = max(fmax, val)
+                    ### Evaluate total connection load by summarizing all forces
+                    ### (very simple, inaccurate for fixed connections)
+                    fmax = 0
+                    for val in data: fmax += val
 
+                    ### Evaluate total connection load by picking the maximum value
+                    ### (simple, good for fixed connections but might be inaccurate for complex structures with lots of lateral and angular forces)
+#                    fmax = 0
+#                    for val in data: fmax = max(fmax, val)
+
+                    ### Evaluate total connection load by combining individual force components (better)
+#                    # First detect orientation (x = connection normal)
+#                    flx = 0; fly = 0; flz = 0
+#                    fax = 0; fay = 0; faz = 0
+#                    for k in range(len(cons)):
+#                        con = cons[k]
+#                        val = data[k]
+#                        if   con.use_limit_lin_x and val != 0: flx += val  # Usually only one force per axis should exist
+#                        elif con.use_limit_lin_y and val != 0: fly += val  # but to make sure we are not ignoring forces
+#                        elif con.use_limit_lin_z and val != 0: flz += val  # we adding them up
+#                        elif con.use_limit_ang_x and val != 0: fax = max(val, fax)  # For angles we are using the maximum
+#                        elif con.use_limit_ang_y and val != 0: fay = max(val, fay)  # because some connection types are
+#                        elif con.use_limit_ang_z and val != 0: faz = max(val, faz)  # sharing two or three axis
+#                    # For linear forces we are using the good old Pythagoras
+#                    fl = (flx**2 +fly**2 +flz**2)**0.5
+#                    # Convert moments to forces by using the elements distances to the pivot point
+#                    if not qFM: dirVec = objConst.location -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+#                    else: dirVec = objConst.location -objA.centroid
+#                    distA = dirVec.length
+#                    if not qFM: dirVec = objConst.location -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+#                    else: dirVec = objConst.location -objB.centroid
+#                    distB = dirVec.length
+#                    dist = (distA +distB) /2  # Use average distance
+#                    fa = (fax +fay +faz) /dist  # Angular forces (moments) are added up and divided by the distance (lever) to get a linear force
+#                    # Add linear and linearized angular forces
+#                    fmax = fl +fa
+#                    # Debug prints
+#                    #if name == "Con.6243":
+#                    #    print("fl: %0.2f %0.2f %0.2f = %0.2f" %(flx,fly,flz,fl))
+#                    #    print("fa: %0.2f %0.2f %0.2f = %0.2f" %(fax,fay,faz,fa))
+#                    #    print("fmax: %0.2f" %fmax)
+                    
                     ### Write forces properties into visualization objects for user review
                     vizObjs[i]['#Fmax N'] = fmax
                     vizObjs[i]['#Fmax N/mm²'] = fmax /a
@@ -1871,8 +1909,8 @@ def tool_forcesVisualization_eventHandler(scene):
                         else:
                             val = impulse /a /props.postprocTools_fcv_max  # Visualize relative force per connection 
                             #val = impulse /props.postprocTools_fcv_max  # Visualize absolute force per connection 
-                        #if val <= 1:  # Skip values over the threshold for cases connection is not breakable, then we don't want to include them
-                        dataNorm.append(val)
+                        if val <= 1:  # Skip values over the threshold for cases connection is not breakable, then we don't want to include them
+                            dataNorm.append(val)
 
                     # Finding the maximum strain of all constraints
                     if len(dataNorm) > 0:

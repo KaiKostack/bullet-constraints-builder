@@ -58,7 +58,7 @@ def build():
         
         #########################
         ###### Create new empties
-        if not "bcb_objs" in scene.keys():
+        if not "bcb_valid" in scene.keys():
                 
             ###### Create object lists of selected objects
             childObjs = []
@@ -122,6 +122,8 @@ def build():
                         #if not props.asciiExport:  # Commented out b/c: Postprocessing Tools need some data so we keep it also for FM export, object references are converted to names
                         storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, None, constsConnect)
                         
+                        scene["bcb_valid"] = 1
+                        
                         print('-- Time: %0.2f s\n' %(time.time()-time_start_building))
                     
                     ###### No connections found   
@@ -144,7 +146,7 @@ def build():
        
         ##########################################     
         ###### Update already existing constraints
-        if "bcb_objs" in scene.keys() or props.asciiExport:
+        if "bcb_valid" in scene.keys() or props.asciiExport:
             
             ###### Store menu config data in scene
             storeConfigDataInScene(scene)
