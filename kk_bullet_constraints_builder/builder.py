@@ -91,7 +91,7 @@ def build():
                     ###### Delete connections with zero contact area
                     connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connectsLoc)
                     ###### Create connection data
-                    connectsPair, connectsConsts, constsConnect = createConnectionData(objs, objsEGrp, connectsPair)
+                    connectsConsts, constsConnect = createConnectionData(objs, objsEGrp, connectsPair, connectsLoc)
                     
                     print('-- Time: %0.2f s\n' %(time.time()-time_start_connections))
                     

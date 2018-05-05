@@ -218,8 +218,20 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         geoLengthApprox = dirVec.length
 
         ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
-        if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB:
+        ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
+        dirVecA = loc -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+        dirVecAN = dirVecA.normalized()
+        if abs(dirVecAN[2]) > 0.7: qA = 1
+        else: qA = 0
+        dirVecB = loc -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+        dirVecBN = dirVecB.normalized()
+        if abs(dirVecBN[2]) > 0.7: qB = 1
+        else: qB = 0
+        if qA == 0 and qB == 0 and (NoHoA or NoHoB) and elemGrpA != elemGrpB:
             CT = 0
+        ### Old code
+        #if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB:
+        #    CT = 0
         
         ###### Decision on which material settings from both groups will be used for connection
         else:

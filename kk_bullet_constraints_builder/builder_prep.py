@@ -819,7 +819,7 @@ def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connec
 
 ################################################################################   
 
-def createConnectionData(objs, objsEGrp, connectsPair):
+def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc):
     
     ### Create connection data
     if debug: print("Creating connection data...")
@@ -831,6 +831,7 @@ def createConnectionData(objs, objsEGrp, connectsPair):
     constCntOfs = 0
     for i in range(len(connectsPair)):
         pair = connectsPair[i]
+        loc = connectsLoc[i]
 
         ### Count constraints by connection type preset
         elemGrpA = objsEGrp[pair[0]]
@@ -874,9 +875,20 @@ def createConnectionData(objs, objsEGrp, connectsPair):
                 constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
 
         ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
-        dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-        dirVecN = dirVec.normalized()
-        if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
+        ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py        if (:
+        dirVecA = loc -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+        dirVecAN = dirVecA.normalized()
+        if abs(dirVecAN[2]) > 0.7: qA = 1
+        else: qA = 0
+        dirVecB = loc -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+        dirVecBN = dirVecB.normalized()
+        if abs(dirVecBN[2]) > 0.7: qB = 1
+        else: qB = 0
+        if qA == 0 and qB == 0 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
+        ### Old code
+        #dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+        #dirVecN = dirVec.normalized()
+        #if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
         
         # In case the connection type is passive or unknown reserve no space for constraints
         if constCnt == 0: connectsConsts.append([])
@@ -892,7 +904,7 @@ def createConnectionData(objs, objsEGrp, connectsPair):
             connectsConsts.append(items)
             constCntOfs += len(items)
             
-    return connectsPair, connectsConsts, constsConnect
+    return connectsConsts, constsConnect
 
 ################################################################################   
 

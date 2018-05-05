@@ -1716,18 +1716,20 @@ def tool_forcesVisualization_eventHandler(scene):
                 qUse_foundation = qUse
 
                 ### Skip horizontal connections by comparing relations of both element centroids to constraint location
+                ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
                 qUse = 1
-#                if not qFM: dirVec = objConst.location -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-#                else: dirVec = objConst.location -objA.centroid
-#                dirVecN = dirVec.normalized()
-#                if abs(dirVecN[2]) > 0.7: qA = 1
-#                else: qA = 0
-#                if not qFM: dirVec = objConst.location -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-#                else: dirVec = objConst.location -objB.centroid
-#                dirVecN = dirVec.normalized()
-#                if abs(dirVecN[2]) > 0.7: qB = 1
-#                else: qB = 0
-#                if qA == 0 and qB == 0: qUse = 0
+                if 0:  # Experimental and thus disabled
+                    if not qFM: dirVecA = objConst.location -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                    else: dirVecA = objConst.location -objA.centroid
+                    dirVecAN = dirVecA.normalized()
+                    if abs(dirVecAN[2]) > 0.7: qA = 1
+                    else: qA = 0
+                    if not qFM: dirVecB = objConst.location -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                    else: dirVecB = objConst.location -objB.centroid
+                    dirVecBN = dirVecB.normalized()
+                    if abs(dirVecBN[2]) > 0.7: qB = 1
+                    else: qB = 0
+                    if qA == 0 and qB == 0: qUse = 0
                 qUse_horizontal = qUse
                 
                 ### Skip connections with one passive element
@@ -1857,8 +1859,8 @@ def tool_forcesVisualization_eventHandler(scene):
 
                     ### Evaluate total connection load by picking the maximum value
                     ### (simple, good for fixed connections but might be inaccurate for complex structures with lots of lateral and angular forces)
-#                    fmax = 0
-#                    for val in data: fmax = max(fmax, val)
+                    #fmax = 0
+                    #for val in data: fmax = max(fmax, val)
 
                     ### Evaluate total connection load by combining individual force components (better)
 #                    # First detect orientation (x = connection normal)
