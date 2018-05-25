@@ -1695,8 +1695,8 @@ def tool_forcesVisualization_eventHandler(scene):
                 if props.postprocTools_fcv_pas:
                     qUse = 1
                     # Check for foundation group
+                    qFoundation = 0
                     if len(elemGrps) > 0:
-                        qFoundation = 0
                         for i in range(len(elemGrps)):
                             CT = elemGrps[i][EGSidxCTyp]
                             if CT == 0: qFoundation = 1; break
@@ -1774,7 +1774,7 @@ def tool_forcesVisualization_eventHandler(scene):
             try: obj = scene.objects[nameViz]
             except:
                 # Create sphere
-                bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0))
+                bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, size=1, view_align=False, enter_editmode=False, location=(0, 0, 0))
                 bpy.ops.object.shade_smooth()  # Shade smooth
                 obj = bpy.context.scene.objects.active
                 obj.name = nameViz
@@ -1854,15 +1854,15 @@ def tool_forcesVisualization_eventHandler(scene):
 
                     ### Evaluate total connection load by summarizing all forces
                     ### (very simple, inaccurate for fixed connections)
-                    fmax = 0
-                    for val in data: fmax += val
+                    #fmax = 0
+                    #for val in data: fmax += val
 
                     ### Evaluate total connection load by picking the maximum value
                     ### (simple, good for fixed connections but might be inaccurate for complex structures with lots of lateral and angular forces)
-                    #fmax = 0
-                    #for val in data: fmax = max(fmax, val)
+                    fmax = 0
+                    for val in data: fmax = max(fmax, val)
 
-                    ### Evaluate total connection load by combining individual force components (better)
+                    ### Evaluate total connection load by combining individual force components (best in theory)
 #                    # First detect orientation (x = connection normal)
 #                    flx = 0; fly = 0; flz = 0
 #                    fax = 0; fay = 0; faz = 0
@@ -1885,7 +1885,7 @@ def tool_forcesVisualization_eventHandler(scene):
 #                    else: dirVec = objConst.location -objB.centroid
 #                    distB = dirVec.length
 #                    dist = (distA +distB) /2  # Use average distance
-#                    fa = (fax +fay +faz) /dist  # Angular forces (moments) are added up and divided by the distance (lever) to get a linear force
+#                    fa = (fax +fay +faz) #/dist  # Angular forces (moments) are added up and divided by the distance (lever) to get a linear force
 #                    # Add linear and linearized angular forces
 #                    fmax = fl +fa
 #                    # Debug prints
@@ -1911,8 +1911,9 @@ def tool_forcesVisualization_eventHandler(scene):
                         else:
                             val = impulse /a /props.postprocTools_fcv_max  # Visualize relative force per connection 
                             #val = impulse /props.postprocTools_fcv_max  # Visualize absolute force per connection 
-                        if val <= 1:  # Skip values over the threshold for cases connection is not breakable, then we don't want to include them
-                            dataNorm.append(val)
+                        #if val <= 1.25:  # Skip values over the threshold for cases connection is not breakable, then we don't want to include them
+                        #    if a >= 70000: # Skip values with a too small contact area (mm²)
+                        dataNorm.append(val)
 
                     # Finding the maximum strain of all constraints
                     if len(dataNorm) > 0:

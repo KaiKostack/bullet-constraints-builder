@@ -593,7 +593,8 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
     
     ###### Removing data from scene
     
-    del scene["bcb_valid"]  # Removing flag for valid data first
+    try: del scene["bcb_valid"]  # Removing flag for valid data first
+    except: pass
 
     ### Remove parents for too small elements 
     for k in range(len(connectsPairParent)):
