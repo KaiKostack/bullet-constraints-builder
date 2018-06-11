@@ -84,10 +84,11 @@ def build():
                     #connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
                     ###### Calculate contact area for all connections
                     ### For now this is not used anymore as it is less safe than to derive an accurate contact area indirectly by using: volume /length
-                    #if props.useAccurateArea:
-                    #    connectsGeo, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
-                    #else:
-                    connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair)
+                    if props.useAccurateArea:
+                        #connectsGeo, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
+                        connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate=1)
+                    else:
+                        connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate=0)
                     ###### Delete connections with zero contact area
                     connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connectsLoc)
                     ###### Create connection data
@@ -162,8 +163,8 @@ def build():
                 initGeneralRigidBodyWorldSettings(scene)
                 ###### Calculate mass for all mesh objects
                 calculateMass(scene, objs, objsEGrp, childObjs)
-                ###### Correct bbox based contact area by volume
-                if props.useAccurateArea: correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo)
+                ###### Correct bbox based contact area by volume (not needed for polygon based contact area)
+                if not props.useAccurateArea: correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo)
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
                 if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
