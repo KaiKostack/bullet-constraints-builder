@@ -65,7 +65,7 @@ def setConstParams(cData,cDatb,cDef, name=None,loc=None,obj1=None,obj2=None,tol1
     ### Constraint attributes (compatible with Blender class)
     # s,e,bt,ub,dc,ct
     if e  != None and e  != cDef["enabled"]:            cData["enabled"] = e
-    if bt != None and bt != cDef["breaking_threshold"]: cData["breaking_threshold"] = bt  # +(0.15 *bt *(random.random()-0.5)) 
+    if bt != None and bt != cDef["breaking_threshold"]: cData["breaking_threshold"] = bt  # *(1-random.random()/2)
     if ub != None and ub != cDef["use_breaking"]:       cData["use_breaking"] = ub
     if dc != None and dc != cDef["disable_collisions"]: cData["disable_collisions"] = dc
     if ct != None and ct != cDef["type"]:               cData["type"] = ct
@@ -204,6 +204,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         a = geoContactArea *1000000
         h = geoHeight *1000
         w = geoWidth *1000
+        
+        x = loc[0]; y = loc[1]; z = loc[2]
         
         elemGrpA = objsEGrp[objsDict[objA]] 
         elemGrpB = objsEGrp[objsDict[objB]]

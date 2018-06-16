@@ -36,7 +36,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (3, 1, 3)
+bcb_version = (3, 1, 4)
 
 ### Customizable element group presets
 presets = [

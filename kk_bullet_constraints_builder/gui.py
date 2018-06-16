@@ -698,6 +698,7 @@ class bcb_panel_element_group_settings(bpy.types.Panel):
 
             # Prepare possible expression variables
             a = h = w = b = s = 1   
+            x = y = z = 0
 
             expression = eval("props.elemGrp_%d_EGSidxBTC" %i)
             row = col.row(align=1)
