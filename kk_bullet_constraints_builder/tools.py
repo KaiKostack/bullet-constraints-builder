@@ -236,6 +236,9 @@ def tool_applyAllModifiers(scene):
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
     
+    # Make duplis individual objects (e.g. convert particle system mesh instances into real objects)
+    bpy.ops.object.duplicates_make_real()
+
     # Backup selection
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
@@ -244,10 +247,22 @@ def tool_applyAllModifiers(scene):
     if len(objs) == 0:
         print("No mesh objects selected. Nothing done.")
         return
+    
+    # Deselect all objects.
+    bpy.ops.object.select_all(action='DESELECT')
+
+    ### Delete particle emitter objects (belongs to duplicates_make_real())
+    ### Todo: flagging as 'not to be used' for simulation would be better
+    for obj in objs:
+        if len(obj.modifiers) > 0:
+            for mod in obj.modifiers:
+                if hasattr(mod, "particle_system") and mod.particle_system != None:
+                    obj.select = 1
+    bpy.ops.object.delete(use_global=False)
 
     # Deselect all objects.
     bpy.ops.object.select_all(action='DESELECT')
-    
+
     ### At first make all objects unique mesh objects (clear instancing) which have modifiers applied
     objsM = []
     for obj in objs:
@@ -260,7 +275,7 @@ def tool_applyAllModifiers(scene):
     if len(objsM):
         bpy.context.scene.objects.active = objsM[0]
         bpy.ops.object.convert(target='MESH')
-
+    
     # Revert to start selection
     for obj in selection: obj.select = 1
     bpy.context.scene.objects.active = selectionActive
@@ -847,7 +862,22 @@ def tool_fixFoundation(scene):
         obj2 = bpy.data.objects.new(foundationName, me2)
         scene.objects.link(obj)
         scene.objects.link(obj2)
-        
+
+        ### Create new materials if not already existing
+        if foundationName not in bpy.data.materials:
+            foundationCol = (.5,.5,.5)   # Color for foundation material
+            mat = bpy.data.materials.new(foundationName)
+            mat.diffuse_color = foundationCol
+            mat.specular_color = foundationCol
+            mat.specular_intensity = 0
+        else:
+            mat = bpy.data.materials[foundationName]
+        # Add to objects
+        for ob in [obj, obj2]:
+            bpy.context.scene.objects.active = ob
+            bpy.ops.object.material_slot_add() 
+            bpy.context.scene.objects.active.material_slots[-1].material = mat
+                                                        
         ### Add to main group
         grpName = grpNameBuilding
         try: grp = bpy.data.groups[grpName]

@@ -36,7 +36,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (3, 1, 4)
+bcb_version = (3, 1, 5)
 
 ### Customizable element group presets
 presets = [
@@ -44,6 +44,7 @@ presets = [
 # Name                  RVP  Mat.preset  Density  CT   BTC     BTT     BTS     BTS90  BTB     BTB90  BTP      T1D  T1R  T2D  T2R   Bev. Scale Facing F.Assist.+Data Cyl PLen BTX Prio Load NoHo Fric
 [ "",                   1,   "Uncategorized", 2400, 15, "35",  "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
 [ "Base",               1,   "Uncategorized", 1,  0,   "0",    "0",    "0",    "",    "0",    "",    "0",     0,   0,   0,   0,   0,   1.0,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
+[ "Victims",            1,   "Uncategorized", 1060, 20, "13",  "15",   "7",    "",    "0.1",  "",    "15",   .1,  .4,  .6,  3.14, 0,   1.0,  0,     "None",        0, .001, 1,  5,    0,   0,   .5 ],
 [ "Concrete",           1,   "Concrete", 2400,    15,  "35",   "3.5",  "0.9",  "",    "1.0",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
 [ "RC Columns",         1,   "Concrete", 2400,    15,  "35",   "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
 [ "RC Walls",           1,   "Concrete", 2400,    15,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
@@ -117,7 +118,7 @@ connectTypes = [           # Cnt C T S B S T T T T      CT
 [ "6x GENERIC + 3x SPRING",  9, [1,1,1,1,1,1,1,1,1]], # 17. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability
 [ "7x GENERIC + 3x SPRING", 10, [1,1,1,1,1,1,1,1,1]], # 18. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability
 [ "1x FIXED + 1x SPRING",    2, [1,0,0,0,1,1,1,1,1]], # 19. Linear omni-directional + bending breaking threshold with plastic deformability
-[ "1x PNT + 1x FXD + 1x SPR",3, [1,0,0,1,0,1,1,1,1]], # 20. Linear omni-directional and bending breaking thresholds with plastic deformability
+[ "1x PNT + 1x FXD + 1x SPR",3, [1,0,0,1,1,1,1,1,1]], # 20. Linear omni-directional and bending breaking thresholds with plastic deformability
 [ "4x GENERIC + 1x SPRING",  5, [1,1,1,1,1,1,1,1,1]], # 21. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability
 [ "6x GENERIC + 1x SPRING",  7, [1,1,1,1,1,1,1,1,1]], # 22. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability
 [ "7x GENERIC + 1x SPRING",  8, [1,1,1,1,1,1,1,1,1]]  # 23. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability

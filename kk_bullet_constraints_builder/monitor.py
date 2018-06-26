@@ -420,7 +420,7 @@ def monitor_checkForChange(scene):
                         connect[12] += 2
                         cntB += 1
 
-#                # When no breaking or mode change happens
+#                # When no breaking or mode change happens but connection is breakable
 #                else:
 
 #                    ### Modify limits from applied forces
@@ -466,6 +466,26 @@ def monitor_checkForChange(scene):
 #                    if fac < 1:
 #                        for const in consts:
 #                            const.rigid_body_constraint.breaking_threshold *= fac
+
+#            ### Adaptive change of constraint solver iterations depending on acting force
+#            iterMin = 100     # Minimum iterations when acting force is 0
+#            iterMax = 100000  # Maximum iterations when acting force is equal to the breaking threshold
+#            # Find the maximum strain of the compressive constraints in connection
+#            strainMax = 0
+#            for const in consts:
+#                con = const.rigid_body_constraint
+#                if con.use_limit_lin_x:  # Compressive constraints - Comment this line out to include all constraints 
+#                    force = con.appliedImpulse() *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+#                    brkThres = con.breaking_threshold *rbw_steps_per_second /rbw_time_scale
+#                    strain = abs(force) /brkThres  # Normalized to breaking threshold
+#                    if strain > strainMax: strainMax = strain
+#            strainIters = iterMin +(iterMax -iterMin) *strainMax  # Compute iterations from strain
+#            # Set override only to shear connections in connection
+#            for const in consts:
+#                con = const.rigid_body_constraint
+#                if con.use_limit_lin_y or con.use_limit_lin_z:  # Shear constraints - Comment this line out to include all constraints
+#                    if not con.use_override_solver_iterations: con.use_override_solver_iterations = 1
+#                    con.solver_iterations = strainIters
 
         ### If connection is in plastic mode then check if second tolerance is reached
         if conMode == 1:
