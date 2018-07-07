@@ -148,24 +148,6 @@ def build_fm(use_handler=0):
             try: objs.append(scnObjs[name])
             except: objs.append(None)
 
-#        ### Create element list from BCB data (duplicated code from FM_shards() but required for use_handler)
-#        objs = []; objsName = []
-#        for const in consts:
-#            objN1 = const["obj1"]
-#            objN2 = const["obj2"]
-#            if not objN1 in objsName:
-#                try: obj1 = scene.objects[objN1]
-#                except: pass
-#                else:
-#                    objs.append(obj1)
-#                    objsName.append(objN1)
-#            if not objN2 in objsName:
-#                try: obj2 = scene.objects[objN2]
-#                except: pass
-#                else:
-#                    objs.append(obj2)
-#                    objsName.append(objN2)
-
         for obj in objs:
             if obj.parent: objParent = obj.parent; break
 
@@ -284,24 +266,6 @@ def FM_shards(ob):
         try: objs.append(scnObjs[name])
         except: objs.append(None)
 
-#    ### Create element lists from BCB data
-#    objs = []; objsName = []
-#    for const in consts:
-#        objN1 = const["obj1"]
-#        objN2 = const["obj2"]
-#        if not objN1 in objsName:
-#            try: obj1 = scene.objects[objN1]
-#            except: pass
-#            else:
-#                objs.append(obj1)
-#                objsName.append(objN1)
-#        if not objN2 in objsName:
-#            try: obj2 = scene.objects[objN2]
-#            except: pass
-#            else:
-#                objs.append(obj2)
-#                objsName.append(objN2)
-
     ### Sort mesh objects by database order
     objsSource = objs
     objsDB = bpy.context.scene.objects
@@ -370,6 +334,11 @@ def FM_constraints(ob):
     fmode_bak = md.fracture_mode
     md.fracture_mode = 'EXTERNAL'
 
+    ### Create dict of FM mesh islands (speed optimization)
+    mesh_islands = {}
+    for mi in md.mesh_islands:
+        mesh_islands[mi.name] = mi
+
     ### Unpack BCB data from text file
     try: s = bpy.data.texts[asciiExportName +".txt"].as_string()
     except:
@@ -399,12 +368,37 @@ def FM_constraints(ob):
 #    if qHandler:
 #        bpy.app.handlers.fracture_refresh.append(FM_shards)
 
-    ### Create dict of FM mesh islands (speed optimization)
-    mesh_islands = {}
-    for mi in md.mesh_islands:
-        mesh_islands[mi.name] = mi
+    ### Copy custom (not BCB generated) constraints between original shards to the FM
+    try: emptyObjs = bpy.data.groups["RigidBodyConstraints"].objects
+    except: emptyObjs = []
+    emptyObjs = [obj for obj in emptyObjs if obj.type == 'EMPTY' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body_constraint != None]
+    for objConst in emptyObjs:
+        if "BCB_FM" not in objConst.keys():
+            objA = objConst.rigid_body_constraint.object1
+            objB = objConst.rigid_body_constraint.object2
+            if objA.name in objNames and objB.name in objNames:
+                cProps = getAttribsOfConstraint(objConst.rigid_body_constraint)
+                ### Add settings to constraint
+                try: con = md.mesh_constraints.new(mesh_islands[objA.name], mesh_islands[objB.name], cProps["type"])
+                except: pass
+                else:
+                    objConst["BCB_FM"] = 1  # Mark empty as used in FM
+                    con.name = objConst.name
+                    con.location = objConst.location
+                    if objConst.rotation_mode == "QUATERNION": con.rotation = objConst.rotation_quaternion
+                    else: con.rotation = objConst.rotation_euler.to_quaternion()
+                    ### Write constraint parameters
+                    for p in cProps.items():
+                        if p[0] not in {"object1", "object2"}:
+                            try: attr = getattr(con, p[0])  # Current value
+                            except:
+                                if p[0] not in missingAttribs: missingAttribs.append(p[0])
+                            else:
+                                if p[1] != attr:           # Overwrite only when different
+                                    #print("Set: ", p[0], p[1])
+                                    setattr(con, p[0], p[1])
 
-    ### Create constraints
+    ### Create BCB constraints
     cnt = 0
     missingAttribs = []
     for pair in exPairs:
@@ -446,12 +440,6 @@ def FM_constraints(ob):
                 tol2dist = -1
                 tol2rot = -1
                 plastic = False
-            #if "655" in name:
-            #    print("FMC: %s %0.2f %0.2f %0.2f %0.2f" %(name, tol1dist, tol1rot, tol2dist, tol2rot))
-            #tol1dist = 0
-            #tol1rot = 0
-            #tol2dist = 0
-            #tol2rot = 0
 
             # Rotation
             if rotm == "QUATERNION":  # If no quaternion exists we assume no rotation is available
@@ -460,10 +448,8 @@ def FM_constraints(ob):
                 rot = mathutils.Quaternion((1.0, 0.0, 0.0, 0.0))
             
             ### Add settings to constraint
-            # OK, first check whether the mesh island exists via is object in group (else it's double)
-            #try: con = md.mesh_constraints.new(indexmap[ob1], indexmap[ob2], type)
             try: con = md.mesh_constraints.new(mesh_islands[ob1], mesh_islands[ob2], type)
-            except: pass #print("Failing:", ob1, ob2)
+            except: pass
             else:
                 con.name = name
                 con.location = loc

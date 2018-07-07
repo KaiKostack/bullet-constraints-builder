@@ -340,6 +340,19 @@ def tool_separateLoose(scene):
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
 
+    # Backup selection
+    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selectionActive = bpy.context.scene.objects.active
+    # Find empty objects with constraints in selection
+    emptyObjs = [obj for obj in selection if obj.type == 'EMPTY' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body_constraint != None]
+    # Remove mesh objects which are used within constraints from selection (we want to leave them untouched)
+    objsConst = set()
+    for objC in emptyObjs:
+        for i in range(2):
+            if i == 0: obj = objC.rigid_body_constraint.object1
+            else:      obj = objC.rigid_body_constraint.object2
+            if obj.select: obj.select = 0
+
     # Remove rigid body settings because of the unlinking optimization in the external module they will be lost anyway (while the RBW group remains)
     bpy.ops.rigidbody.objects_remove()
 
@@ -351,6 +364,10 @@ def tool_separateLoose(scene):
 
     # Set object centers to geometry origin
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+
+    # Revert to start selection
+    for obj in selection: obj.select = 1
+    bpy.context.scene.objects.active = selectionActive
 
 ################################################################################
 
@@ -382,7 +399,23 @@ def tool_discretize(scene):
     if len(objs) == 0:
         print("No mesh objects selected.")
         return
-
+    # Find empty objects with constraints in selection
+    emptyObjs = [obj for obj in selection if obj.type == 'EMPTY' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body_constraint != None]
+    # Remove mesh objects which are used within constraints (we want to leave them untouched)
+    objsConst = set()
+    for objC in emptyObjs:
+        for i in range(2):
+            if i == 0: obj = objC.rigid_body_constraint.object1
+            else:      obj = objC.rigid_body_constraint.object2
+            objsConst.add(obj)
+    objsNew = []
+    for obj in objs:
+        if obj not in objsConst: objsNew.append(obj)
+    objs = objsNew
+    if len(objs) == 0:
+        print("No mesh objects changed because of attached constraints.")
+        return
+            
     props = bpy.context.window_manager.bcb
 
     ###### Junction splitting and preparation for boolean halving
@@ -1058,27 +1091,28 @@ def tool_groundMotion(scene):
         bpy.context.scene.objects.active = objGnd  # Parent
         bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
         
-        if objGnd.is_visible(bpy.context.scene):
-
-            # Apply rigid body settings to ground object
-            if objGnd.rigid_body == None:
-                # Deselect all objects.
-                bpy.ops.object.select_all(action='DESELECT')
-                # Apply rigid body settings
-                objGnd.select = 1
-                bpy.context.scene.objects.active = objGnd
-                bpy.ops.rigidbody.objects_add()
-                objGnd.select = 0
-                # Set friction for all to 1.0
-                objGnd.rigid_body.friction = 1
-
-            objGnd.rigid_body.type = 'PASSIVE'
-        
-            # Enable animated flag for all passive rigid bodies so that Bullet takes their motion into account
-            objGnd.rigid_body.kinematic = True
-        
+        # Enable animated flag for all passive rigid bodies so that Bullet takes their motion into account
         for obj in objs: obj.rigid_body.kinematic = True
-        
+
+    if objGnd.is_visible(bpy.context.scene):
+
+        # Apply rigid body settings to ground object
+        if objGnd.rigid_body == None:
+            # Deselect all objects.
+            bpy.ops.object.select_all(action='DESELECT')
+            # Apply rigid body settings
+            objGnd.select = 1
+            bpy.context.scene.objects.active = objGnd
+            bpy.ops.rigidbody.objects_add()
+            objGnd.select = 0
+            # Set friction for all to 1.0
+            objGnd.rigid_body.friction = 1
+
+        objGnd.rigid_body.type = 'PASSIVE'
+    
+        # Enable animated flag for passive rigid bodies so that Bullet takes its motion into account
+        objGnd.rigid_body.kinematic = True
+                
     ###### Parenting ground object to motion object
 
     if objMot != None:

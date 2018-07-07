@@ -91,6 +91,8 @@ def build():
                         connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate=0)
                     ###### Delete connections with zero contact area
                     connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connectsLoc)
+                    ###### Delete connections with references from predefined constraints
+                    connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithReferences(objs, emptyObjs, connectsPair, connectsGeo, connectsLoc)
                     ###### Create connection data
                     connectsConsts, constsConnect = createConnectionData(objs, objsEGrp, connectsPair, connectsLoc)
                     

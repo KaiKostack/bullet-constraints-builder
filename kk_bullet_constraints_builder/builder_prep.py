@@ -920,6 +920,42 @@ def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connec
 
 ################################################################################   
 
+def deleteConnectionsWithReferences(objs, emptyObjs, connectsPair, connectsGeo, connectsLoc):
+    
+    ### Delete connections with references from predefined constraints
+    if debug: print("Deleting connections with predefined constraints...")
+
+    props = bpy.context.window_manager.bcb    
+    connectsPairTmp = []
+    connectsGeoTmp = []
+    connectsLocTmp = []
+    connectCntOld = len(connectsPair)
+    connectCnt = 0
+    connectsPair_iter = iter(connectsPair)
+    for i in range(len(connectsPair)):
+        pair = next(connectsPair_iter)   
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
+        qKeep = 1
+        for objConst in emptyObjs:
+            objAc = objConst.rigid_body_constraint.object1
+            objBc = objConst.rigid_body_constraint.object2
+            if (objA == objAc and objB == objBc) or (objA == objBc and objB == objAc):
+                qKeep = 0; break
+        if qKeep:
+            connectsPairTmp.append(connectsPair[i])
+            connectsGeoTmp.append(connectsGeo[i])
+            connectsLocTmp.append(connectsLoc[i])
+            connectCnt += 1
+    connectsPair = connectsPairTmp
+    connectsGeo = connectsGeoTmp
+    connectsLoc = connectsLocTmp
+    
+    print("Connections skipped due to zero contact area:", connectCntOld -connectCnt)
+    return connectsPair, connectsGeo, connectsLoc
+
+################################################################################   
+
 def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc):
     
     ### Create connection data
