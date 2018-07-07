@@ -41,7 +41,9 @@ from builder_prep import *     # Contains preparation steps functions called by 
 
 import kk_import_motion_from_text_file    # Contains earthquake motion import function
 import kk_mesh_fracture                   # Contains boolean based discretization function
+import kk_mesh_separate_less_loose        # Contains polygon based discretization function for non-manifolds
 import kk_mesh_separate_loose             # Contains speed-optimized mesh island separation function
+import kk_mesh_subdiv_to_level            # Contains edge length based subdivision function for non-manifolds
 import kk_mesh_voxel_cell_grid_from_mesh  # Contains voxel based discretization function
 import kk_select_intersecting_objects     # Contains intersection detection and resolving function
 
@@ -416,6 +418,35 @@ def tool_discretize(scene):
         print("No mesh objects changed because of attached constraints.")
         return
             
+    ### Sort out non-manifold meshes (not water tight and thus not suited for boolean operations)
+    objsNew = []
+    objsNonMan = []
+    for obj in objs:
+        bpy.context.scene.objects.active = obj
+        me = obj.data
+        bpy.context.tool_settings.mesh_select_mode = False, True, False
+
+        # Enter edit mode              
+        try: bpy.ops.object.mode_set(mode='EDIT')
+        except: pass 
+        # Deselect all elements
+        try: bpy.ops.mesh.select_all(action='DESELECT')
+        except: pass 
+        # Select non-manifold elements
+        bpy.ops.mesh.select_non_manifold()
+        # Leave edit mode
+        try: bpy.ops.object.mode_set(mode='OBJECT')
+        except: pass 
+        # check mesh if there are selected elements found
+        qNonManifolds = 0
+        for edge in me.edges:
+            if edge.select: qNonManifolds = 1; break
+        
+        if qNonManifolds: objsNonMan.append(obj)
+        else:             objsNew.append(obj)
+    objs = objsNew
+    print("Non-manifold elements found:", len(objsNonMan))
+
     props = bpy.context.window_manager.bcb
 
     ###### Junction splitting and preparation for boolean halving
@@ -456,10 +487,10 @@ def tool_discretize(scene):
         # We have to repeat separate loose here
         tool_separateLoose(scene)
 
-    ###### Boolean based discretization
-
     elif not props.preprocTools_dis_cel:
 
+        ###### Boolean based discretization
+    
         print("\nDiscretization - Halving pass:")
         ###### External function
         kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
@@ -573,6 +604,24 @@ def tool_discretize(scene):
         else: print("\nDiscretization verified and successful!")
         print("Final element count:", len(objs))
 
+        ###### Polygon based discretization (for non-manifolds)
+        
+        if len(objsNonMan):
+            print("\nDiscretization - Non-manifold pass:")
+            # Deselect all objects.
+            #bpy.ops.object.select_all(action='DESELECT')
+            for obj in bpy.data.objects:  # We need to clear the entire database because the subdiv module sees deleted objects
+                if obj.select: obj.select = 0
+            # Select non-manifold mesh objects
+            for obj in objsNonMan: obj.select = 1
+            bpy.context.scene.objects.active = obj
+            ###### External function
+            kk_mesh_subdiv_to_level.run('BCB', [props.preprocTools_dis_siz])
+            ###### External function
+            kk_mesh_separate_less_loose.run('BCB', [props.preprocTools_dis_siz])
+            ### Add new objects to the object list and remove deleted ones
+            updateObjList(scene, selection)
+        
     ###### Clean-up for junction splitting and boolean halving
     
     # Update selection list if voxel cells together with junction search is used

@@ -110,7 +110,6 @@ def gatherObjects(scene):
             if obj.type == 'MESH' and obj.rigid_body != None and len(obj.data.vertices) > 0:
                 objs.append(obj)
             elif obj.type == 'EMPTY' and obj.rigid_body_constraint != None:
-                sys.stdout.write('\r' +"%s      " %obj.name)
                 emptyObjs.append(obj)
     
     return objs, emptyObjs
@@ -951,7 +950,7 @@ def deleteConnectionsWithReferences(objs, emptyObjs, connectsPair, connectsGeo, 
     connectsGeo = connectsGeoTmp
     connectsLoc = connectsLocTmp
     
-    print("Connections skipped due to zero contact area:", connectCntOld -connectCnt)
+    print("Connections skipped due to predefined constraints:", connectCntOld -connectCnt)
     return connectsPair, connectsGeo, connectsLoc
 
 ################################################################################   
@@ -1472,11 +1471,40 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
     ### Calculate a mass for all mesh objects according to element groups settings
     print("Calculating masses from preset material... (Children: %d)" %len(childObjs))
      
+    props = bpy.context.window_manager.bcb
     elemGrps = mem["elemGrps"]
 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
-    
+
+    ### Find non-manifold meshes (not suited for volume based mass calculation)
+    if props.surfaceThickness:
+        objsAll = objs
+        objsAll.extend(childObjs)
+        objsNonMan = []
+        for obj in objsAll:
+            bpy.context.scene.objects.active = obj
+            me = obj.data
+            bpy.context.tool_settings.mesh_select_mode = False, True, False
+
+            # Enter edit mode              
+            try: bpy.ops.object.mode_set(mode='EDIT')
+            except: pass 
+            # Deselect all elements
+            try: bpy.ops.mesh.select_all(action='DESELECT')
+            except: pass 
+            # Select non-manifold elements
+            bpy.ops.mesh.select_non_manifold()
+            # Leave edit mode
+            try: bpy.ops.object.mode_set(mode='OBJECT')
+            except: pass 
+            # check mesh if there are selected elements found
+            qNonManifolds = 0
+            for edge in me.edges:
+                if edge.select: qNonManifolds = 1; break
+            if qNonManifolds: objsNonMan.append(obj)
+        print("Non-manifold elements found:", len(objsNonMan))
+
     ### Create new rigid body settings for children with the data from its parent (so mass can be calculated on children)
     i = 0
     for childObj in childObjs:
@@ -1520,21 +1548,41 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                         if obj != None:
                             if "bcb_child" in obj.keys():
                                 obj = scene.objects[obj["bcb_child"]]
-                            obj.select = 1
-                            objsSelected.append(obj)
-                            # Temporarily revert element scaling for mass calculation
-                            if qScale:
-                                if scale != 0 and scale != 1:
-                                    obj.scale /= scale
-                                    objsTotal.append(obj)
-                                    objsScale.append(scale)
+                            if props.surfaceThickness == 0 or obj not in objsNonMan:
+                                obj.select = 1
+                                objsSelected.append(obj)
+                                # Temporarily revert element scaling for mass calculation
+                                if qScale:
+                                    if scale != 0 and scale != 1:
+                                        obj.scale /= scale
+                                        objsTotal.append(obj)
+                                        objsScale.append(scale)
 
-        ### Calculating and applying material masses
+        ### Calculating and applying material masses based on volume
         materialPreset = elemGrp[EGSidxMatP]
         materialDensity = elemGrp[EGSidxDens]
         if not materialDensity:
             if materialPreset != "": bpy.ops.rigidbody.mass_calculate(material=materialPreset)
         else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
+
+        ### Calculating and applying material masses based on surface area * thickness
+        if props.surfaceThickness and len(objsNonMan):
+            # Deselect all objects
+            bpy.ops.object.select_all(action='DESELECT')
+
+            for obj in objsNonMan:
+                # Calculate object surface and volume
+                me = obj.data
+                surface = 0
+                for poly in me.polygons: surface += poly.area
+                volume = surface *props.surfaceThickness
+                # Find out density of the element group
+                materialDensity = elemGrp[EGSidxDens]
+                if not materialDensity:
+                    materialPreset = elemGrp[EGSidxMatP]
+                    if materialPreset != "": materialDensity = materialPresets[materialPreset]
+                # Calculate mass
+                obj.rigid_body.mass = volume *materialDensity
                 
         ### Adding live load to masses
         liveLoad = elemGrp[EGSidxLoad]
