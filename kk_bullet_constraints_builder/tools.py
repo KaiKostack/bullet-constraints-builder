@@ -30,7 +30,7 @@
 
 ################################################################################
 
-import bpy, bmesh, os
+import bpy, bmesh, os, array
 from mathutils import Vector
 from mathutils import Color
 mem = bpy.app.driver_namespace
@@ -424,25 +424,12 @@ def tool_discretize(scene):
     for obj in objs:
         bpy.context.scene.objects.active = obj
         me = obj.data
-        bpy.context.tool_settings.mesh_select_mode = False, True, False
-
-        # Enter edit mode              
-        try: bpy.ops.object.mode_set(mode='EDIT')
-        except: pass 
-        # Deselect all elements
-        try: bpy.ops.mesh.select_all(action='DESELECT')
-        except: pass 
-        # Select non-manifold elements
-        bpy.ops.mesh.select_non_manifold()
-        # Leave edit mode
-        try: bpy.ops.object.mode_set(mode='OBJECT')
-        except: pass 
-        # check mesh if there are selected elements found
-        qNonManifolds = 0
-        for edge in me.edges:
-            if edge.select: qNonManifolds = 1; break
-        
-        if qNonManifolds: objsNonMan.append(obj)
+        # Find non-manifold elements
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        nonManifolds = array.array('i', (i for i, ele in enumerate(bm.edges) if not ele.is_manifold))
+        bm.free()
+        if nonManifolds: objsNonMan.append(obj)
         else:             objsNew.append(obj)
     objs = objsNew
     print("Non-manifold elements found:", len(objsNonMan))

@@ -36,26 +36,26 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (3, 1, 7)
+bcb_version = (3, 1, 8)
 
 ### Customizable element group presets
 presets = [
-# 0                     1    2           3        4    5       6       7       8      9       10     11       12   13   14   15    16   17    18     19             20  21   22  23   24   25   26
-# Name                  RVP  Mat.preset  Density  CT   BTC     BTT     BTS     BTS90  BTB     BTB90  BTP      T1D  T1R  T2D  T2R   Bev. Scale Facing F.Assist.+Data Cyl PLen BTX Prio Load NoHo Fric
-[ "",                   1,   "Uncategorized", 2400, 15, "35",  "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
-[ "Base",               1,   "Uncategorized", 1,  0,   "0",    "0",    "0",    "",    "0",    "",    "0",     0,   0,   0,   0,   0,   1.0,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
-[ "Victims",            1,   "Uncategorized", 1060, 20, "13",  "15",   "7",    "",    "0.1",  "",    "15",   .1,  .4,  .6,  3.14, 0,   1.0,  0,     "None",        0, .001, 1,  5,    0,   0,   .5 ],
-[ "Concrete",           1,   "Concrete", 2400,    15,  "35",   "3.5",  "0.9",  "",    "1.0",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
-[ "RC Columns",         1,   "Concrete", 2400,    15,  "35",   "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
-[ "RC Walls",           1,   "Concrete", 2400,    15,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
-[ "RC Slabs",           1,   "Concrete", 2400,    15,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1 ],
-[ "Masonry Walls",      1,   "Masonry",  1800,    15,  "10",   "2",    "0.3",  "",    "0.3",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   1,   5 ],
-[ "Timber Spruce",      1,   "Timber",   470,     15,  "40",   "80",   "7.5",  "",    "68",   "",    "80",   .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .4 ],
-[ "Timber Larch",       1,   "Timber",   590,     15,  "48",   "105",  "9",    "",    "93",   "",    "105",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .4 ],
-[ "Timber Ash",         1,   "Timber",   690,     15,  "50",   "130",  "13",   "",    "105",  "",    "130",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .4 ],
-[ "I-Beams Screwed",    1,   "Steel",    7800,    15,  "47.5", "23.5", "14.1", "",    "2.4",  "",    "30.6", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .8 ],
-[ "I-Beams Screwed 2",  1,   "Steel",    7800,    15,  "87.5", "33.8", "20.3", "",    "12.3", "",    "43.9", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .8 ],
-[ "HSS-Beams Welded",   1,   "Steel",    7800,    15,  "37.5", "75",   "45",   "",    "6.6",  "",    "97.5", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .8 ]
+# 0                     1    2           3        4    5       6       7       8      9       10     11       12   13   14   15    16   17    18     19             20  21   22  23   24   25   26   27
+# Name                  RVP  Mat.preset  Density  CT   BTC     BTT     BTS     BTS90  BTB     BTB90  BTP      T1D  T1R  T2D  T2R   Bev. Scale Facing F.Assist.+Data Cyl PLen BTX Prio Load NoHo Fric NoCo
+[ "",                   1,   "Uncategorized", 2400, 15, "35",  "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1,   0 ],
+[ "Base",               1,   "Uncategorized", 1,  0,   "0",    "0",    "0",    "",    "0",    "",    "0",     0,   0,   0,   0,   0,   1.0,  0,     "None",        0,  0,   1,  5,    0,   0,   1,   0],
+[ "Victims",            1,   "Uncategorized", 1060, 20, "13",  "15",   "7",    "",    "0.1",  "",    "15",   .1,  .4,  .6,  3.14, 0,   1.0,  0,     "None",        0, .001, 1,  5,    0,   0,   .5,  0],
+[ "Concrete",           1,   "Concrete", 2400,    15,  "35",   "3.5",  "0.9",  "",    "1.0",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1,   0],
+[ "RC Columns",         1,   "Concrete", 2400,    15,  "35",   "5.2",  "155",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1,   0],
+[ "RC Walls",           1,   "Concrete", 2400,    15,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1,   0],
+[ "RC Slabs",           1,   "Concrete", 2400,    15,  "35",   "5.2",  "0.9",  "",    "1.0",  "",    "1.3",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   1,   0],
+[ "Masonry Walls",      1,   "Masonry",  1800,    15,  "10",   "2",    "0.3",  "",    "0.3",  "",    "0",    .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   1,   5,   0],
+[ "Timber Spruce",      1,   "Timber",   470,     15,  "40",   "80",   "7.5",  "",    "68",   "",    "80",   .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .4,  0],
+[ "Timber Larch",       1,   "Timber",   590,     15,  "48",   "105",  "9",    "",    "93",   "",    "105",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .4,  0],
+[ "Timber Ash",         1,   "Timber",   690,     15,  "50",   "130",  "13",   "",    "105",  "",    "130",  .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .4,  0],
+[ "I-Beams Screwed",    1,   "Steel",    7800,    15,  "47.5", "23.5", "14.1", "",    "2.4",  "",    "30.6", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .8,  0],
+[ "I-Beams Screwed 2",  1,   "Steel",    7800,    15,  "87.5", "33.8", "20.3", "",    "12.3", "",    "43.9", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .8,  0],
+[ "HSS-Beams Welded",   1,   "Steel",    7800,    15,  "37.5", "75",   "45",   "",    "6.6",  "",    "97.5", .1,  .4,  .2,  .8,   0,   .95,  0,     "None",        0,  0,   1,  5,    0,   0,   .8,  0]
 ] # Empty name means this group is to be used when element is not part of any element group
 
 # Actual element group list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
@@ -88,11 +88,12 @@ EGSidxPrio = 23   # Connection Priority      | Changes the connection priority f
 EGSidxFric = 26   # Friction                 | Coefficient of friction for the given material (dimensionless).
 EGSidxScal = 17   # Scale                    | Apply scaling factor on elements to avoid `Jenga
 EGSidxNoHo = 25   # No Horizontal Connect.   | Removes horizontal connections between elements of different element groups. This can be useful for masonry walls touching a framing structure without a particular fixation.
+EGSidxNoCo = 27   # No Connections At All    | Removes connections between elements of different element groups. This can be useful for rigs with predefined constraints where groups should stay completely detached from another even when they are actually touching or overlapping.
 EGSidxBevl = 16   # Bevel                    | Use beveling for elements to avoid `Jenga
 EGSidxFacg = 18   # Facing                   | Generate an addional layer of elements only for display (will only be used together with bevel and scale option)
 EGSidxAsst = 19   # Formula Assistant        | Material specific formula assistant with related settings
 EGSidxCyln = 20   # Cylindrical Shape        | Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns.
-# !!! Last ID: 26 !!! (Can be different from above line because list is not in order!)
+# !!! Last ID: 27 !!! (Can be different from above line because list is not in order!)
 # To add further element group variables add them here but also above in the presets at the correct index.
 # Aside from creating a corresponding UI property in global_props.py and gui.py no extra storage handling is needed like for global settings.
 

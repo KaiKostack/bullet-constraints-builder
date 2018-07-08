@@ -30,7 +30,7 @@
 
 ################################################################################
 
-import bpy, mathutils, sys, math
+import bpy, mathutils, sys, math, bmesh, array
 from mathutils import Vector
 from math import *
 mem = bpy.app.driver_namespace
@@ -980,6 +980,8 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc):
         CT_B = elemGrps_elemGrpB[EGSidxCTyp]
         NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
         NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
+        NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
+        NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
 
         ### Check for passive groups and decide which group settings should be used
         constCnt = 0
@@ -1010,22 +1012,25 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc):
             if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                 constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
 
-        ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
-        ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py        if (:
-        dirVecA = loc -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-        dirVecAN = dirVecA.normalized()
-        if abs(dirVecAN[2]) > 0.7: qA = 1
-        else: qA = 0
-        dirVecB = loc -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-        dirVecBN = dirVecB.normalized()
-        if abs(dirVecBN[2]) > 0.7: qB = 1
-        else: qB = 0
-        if qA == 0 and qB == 0 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
-        ### Old code
-        #dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-        #dirVecN = dirVec.normalized()
-        #if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
-        
+        ### Check if connection between different groups is not allowed and remove them
+        if (NoCoA or NoCoB) and elemGrpA != elemGrpB: constCnt = 0
+        else:
+            ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
+            ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py        if (:
+            dirVecA = loc -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+            dirVecAN = dirVecA.normalized()
+            if abs(dirVecAN[2]) > 0.7: qA = 1
+            else: qA = 0
+            dirVecB = loc -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+            dirVecBN = dirVecB.normalized()
+            if abs(dirVecBN[2]) > 0.7: qB = 1
+            else: qB = 0
+            if qA == 0 and qB == 0 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
+            ### Old code
+            #dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+            #dirVecN = dirVec.normalized()
+            #if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
+            
         # In case the connection type is passive or unknown reserve no space for constraints
         if constCnt == 0: connectsConsts.append([])
         # Otherwise reserve space for the predefined constraints count
@@ -1469,7 +1474,7 @@ def applyBevel(scene, objs, objsEGrp, childObjs):
 def calculateMass(scene, objs, objsEGrp, childObjs):
     
     ### Calculate a mass for all mesh objects according to element groups settings
-    print("Calculating masses from preset material... (Children: %d)" %len(childObjs))
+    print("Calculating masses from preset materials... (Children: %d)" %len(childObjs))
      
     props = bpy.context.window_manager.bcb
     elemGrps = mem["elemGrps"]
@@ -1485,24 +1490,12 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         for obj in objsAll:
             bpy.context.scene.objects.active = obj
             me = obj.data
-            bpy.context.tool_settings.mesh_select_mode = False, True, False
-
-            # Enter edit mode              
-            try: bpy.ops.object.mode_set(mode='EDIT')
-            except: pass 
-            # Deselect all elements
-            try: bpy.ops.mesh.select_all(action='DESELECT')
-            except: pass 
-            # Select non-manifold elements
-            bpy.ops.mesh.select_non_manifold()
-            # Leave edit mode
-            try: bpy.ops.object.mode_set(mode='OBJECT')
-            except: pass 
-            # check mesh if there are selected elements found
-            qNonManifolds = 0
-            for edge in me.edges:
-                if edge.select: qNonManifolds = 1; break
-            if qNonManifolds: objsNonMan.append(obj)
+            # Find non-manifold elements
+            bm = bmesh.new()
+            bm.from_mesh(me)
+            nonManifolds = array.array('i', (i for i, ele in enumerate(bm.edges) if not ele.is_manifold))
+            bm.free()
+            if nonManifolds: objsNonMan.append(obj)
         print("Non-manifold elements found:", len(objsNonMan))
 
     ### Create new rigid body settings for children with the data from its parent (so mass can be calculated on children)
@@ -1525,7 +1518,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
 
     ### Update masses
     
-    objsTotal = []; objsScale = []
+    objsTotal = []; objsScale = []; objsSelectedAll = []
     for j in range(len(elemGrps)):
         elemGrp = elemGrps[j]
         
@@ -1565,37 +1558,40 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
             if materialPreset != "": bpy.ops.rigidbody.mass_calculate(material=materialPreset)
         else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
 
-        ### Calculating and applying material masses based on surface area * thickness
-        if props.surfaceThickness and len(objsNonMan):
-            # Deselect all objects
-            bpy.ops.object.select_all(action='DESELECT')
+        objsSelectedAll.extend(objsSelected)
 
-            for obj in objsNonMan:
-                # Calculate object surface and volume
-                me = obj.data
-                surface = 0
-                for poly in me.polygons: surface += poly.area
-                volume = surface *props.surfaceThickness
-                # Find out density of the element group
-                materialDensity = elemGrp[EGSidxDens]
-                if not materialDensity:
-                    materialPreset = elemGrp[EGSidxMatP]
-                    if materialPreset != "": materialDensity = materialPresets[materialPreset]
-                # Calculate mass
-                obj.rigid_body.mass = volume *materialDensity
-                
-        ### Adding live load to masses
-        liveLoad = elemGrp[EGSidxLoad]
-        for obj in objsSelected:
-            dims = obj.dimensions
-            floorArea = dims[0] *dims[1]  # Simple approximation by assuming rectangular floor area (x *y)
-            if liveLoad > 0: obj.rigid_body.mass += floorArea *liveLoad
-            obj["Floor Area"] = floorArea  # Only needed for the diagnostic prints below
+    ### Calculating and applying material masses based on surface area * thickness
+    if props.surfaceThickness and len(objsNonMan):
+        # Deselect all objects
+        bpy.ops.object.select_all(action='DESELECT')
 
-        ### Setting friction if we are at it already (could be separate function but not because of 3 lines)
-        friction = elemGrp[EGSidxFric]
-        for obj in objsSelected:
-            obj.rigid_body.friction = friction
+        # Find out density of the element group
+        if not materialDensity:
+            materialPreset = elemGrp[EGSidxMatP]
+            if materialPreset != "": materialDensity = materialPresets[materialPreset]
+
+        for obj in objsNonMan:
+            # Calculate object surface area and volume
+            me = obj.data
+            area = sum(f.area for f in me.polygons)
+            volume = area *props.surfaceThickness
+            # Calculate mass
+            obj.rigid_body.mass = volume *materialDensity
+
+        objsSelectedAll.extend(objsNonMan)
+            
+    ### Adding live load to masses
+    liveLoad = elemGrp[EGSidxLoad]
+    for obj in objsSelectedAll:
+        dims = obj.dimensions
+        floorArea = dims[0] *dims[1]  # Simple approximation by assuming rectangular floor area (x *y)
+        if liveLoad > 0: obj.rigid_body.mass += floorArea *liveLoad
+        obj["Floor Area"] = floorArea  # Only needed for the diagnostic prints below
+
+    ### Setting friction if we are at it already (could be separate function but not because of 3 lines)
+    friction = elemGrp[EGSidxFric]
+    for obj in objsSelectedAll:
+        obj.rigid_body.friction = friction
 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
@@ -1628,8 +1624,8 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         except: mass = 0
         try: area = groupsArea[groupName]
         except: area = 0
-        if mass != groupsMass["RigidBodyWorld"]:  # Filter all groups that contain the complete structure
-            print("Group '%s' mass: %0.0f t and %0.0f kg / Floor area: %0.2f m^2" %(groupName, floor(mass/1000), mass%1000, area))
+        #if mass != groupsMass["RigidBodyWorld"]:  # Filter all groups that contain the complete structure
+        print("Group '%s' mass: %0.0f t and %0.0f kg / Floor area: %0.2f m^2" %(groupName, floor(mass/1000), mass%1000, area))
     try: mass = groupsMass["RigidBodyWorld"]
     except: mass = 0
     try: area = groupsArea["RigidBodyWorld"]

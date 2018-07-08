@@ -838,17 +838,18 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxPrio" %i)
-
-            row = col.row(align=1)
-            if props.menu_gotData: row.enabled = 0
-            row.prop(props, "elemGrp_%d_EGSidxFric" %i)
             row.prop(props, "elemGrp_%d_EGSidxScal" %i)
 
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
-            row.prop(props, "elemGrp_%d_EGSidxNoHo" %i)
+            row.prop(props, "elemGrp_%d_EGSidxFric" %i)
             row.prop(props, "elemGrp_%d_EGSidxCyln" %i)
-            
+
+            row = col.row(align=1)
+            if props.menu_gotData: row.enabled = 0
+            row.prop(props, "elemGrp_%d_EGSidxNoHo" %i)
+            row.prop(props, "elemGrp_%d_EGSidxNoCo" %i)
+                        
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxBevl" %i)
