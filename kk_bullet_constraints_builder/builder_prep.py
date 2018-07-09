@@ -515,7 +515,13 @@ def boundaryBoxFaces(obj, qGlobalSpace, selMin=None, selMax=None):
         for idx in selVerts:
             vertsNew.append(verts[idx])
         verts = vertsNew
-        
+
+        # Debug code
+        #for idx in range(len(me.vertices)):
+        #    if idx in selVerts:
+        #          me.vertices[idx].select = 1
+        #    else: me.vertices[idx].select = 0    
+                
     ### Calculate boundary box corners
     if len(verts) > 0:
         if qGlobalSpace:
@@ -707,27 +713,18 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
         except: pass
         
         ### Check if meshes are water tight (non-manifold)
-        qNonManifolds = 0
+        nonManifolds = 0
         for obj in [objA, objB]:
             bpy.context.scene.objects.active = obj
             me = obj.data
-            # Enter edit mode              
-            try: bpy.ops.object.mode_set(mode='EDIT')
-            except: pass 
-            # Deselect all elements
-            try: bpy.ops.mesh.select_all(action='DESELECT')
-            except: pass 
-            # Select non-manifold elements
-            bpy.ops.mesh.select_non_manifold()
-            # Leave edit mode
-            try: bpy.ops.object.mode_set(mode='OBJECT')
-            except: pass 
-            # check mesh if there are selected elements found
-            for edge in me.edges:
-                if edge.select: qNonManifolds = 1; break
+            # Find non-manifold elements
+            bm = bmesh.new()
+            bm.from_mesh(me)
+            nonManifolds = array.array('i', (i for i, ele in enumerate(bm.edges) if not ele.is_manifold))
+            bm.free()
 
         ###### If non-manifold then calculate a contact area estimation based on boundary boxes intersection and a user defined thickness
-        if qNonManifolds:
+        if nonManifolds:
 
             #print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
 
@@ -978,6 +975,8 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc):
         elemGrps_elemGrpB = elemGrps[elemGrpB]
         CT_A = elemGrps_elemGrpA[EGSidxCTyp]
         CT_B = elemGrps_elemGrpB[EGSidxCTyp]
+        Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+        Prio_B = elemGrps_elemGrpB[EGSidxPrio]
         NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
         NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
         NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
@@ -991,15 +990,18 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc):
         if CT_B != 0:  # B is active group
             try: constCntB = connectTypes[CT_B][1]  # Check if CT is valid
             except: constCntB = 0
-        if CT_A != 0 and CT_B != 0:  # Both A and B are active groups
+        # Both A and B are active groups and priority is the same
+        if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
             ### Use the connection type with the smaller count of constraints for connection between different element groups
             ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
             if constCntA <= constCntB:
                   constCnt = constCntA
             else: constCnt = constCntB
-        elif CT_A != 0 and CT_B == 0:  # Only A is active and B is passive group
+        # Only A is active and B is passive group or priority is higher for A
+        elif CT_A != 0 and CT_B == 0 or (CT_A != 0 and CT_B != 0 and Prio_A > Prio_B):
             constCnt = constCntA
-        elif CT_A == 0 and CT_B != 0:  # Only B is active and A is passive group
+        # Only B is active and A is passive group or priority is higher for B
+        elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
             constCnt = constCntB
         # Both A and B are in passive group but either one is actually an active RB (a xor b)
         elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
@@ -1483,10 +1485,10 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
     bpy.ops.object.select_all(action='DESELECT')
 
     ### Find non-manifold meshes (not suited for volume based mass calculation)
+    objsNonMan = []
     if props.surfaceThickness:
         objsAll = objs
         objsAll.extend(childObjs)
-        objsNonMan = []
         for obj in objsAll:
             bpy.context.scene.objects.active = obj
             me = obj.data
@@ -1541,7 +1543,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                         if obj != None:
                             if "bcb_child" in obj.keys():
                                 obj = scene.objects[obj["bcb_child"]]
-                            if props.surfaceThickness == 0 or obj not in objsNonMan:
+                            if (props.surfaceForced == 0 or props.surfaceThickness == 0) and (props.surfaceThickness == 0 or obj not in objsNonMan):
                                 obj.select = 1
                                 objsSelected.append(obj)
                                 # Temporarily revert element scaling for mass calculation
@@ -1561,7 +1563,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         objsSelectedAll.extend(objsSelected)
 
     ### Calculating and applying material masses based on surface area * thickness
-    if props.surfaceThickness and len(objsNonMan):
+    if (props.surfaceForced and props.surfaceThickness) or (props.surfaceThickness and len(objsNonMan)):
         # Deselect all objects
         bpy.ops.object.select_all(action='DESELECT')
 

@@ -113,6 +113,7 @@ def exportConfigData(scene):
     configData.append(props.useAccurateArea)
     configData.append(props.rebarMesh)
     configData.append(props.surfaceThickness)
+    configData.append(props.surfaceForced)
     configData.append(props.minimumElementSize)
     configData.append(props.automaticMode)
     configData.append(props.saveBackups)
@@ -156,6 +157,7 @@ def importConfigData(scene):
         props.useAccurateArea = configData[i]; i += 1
         props.rebarMesh = configData[i]; i += 1
         props.surfaceThickness = configData[i]; i += 1
+        props.surfaceForced = configData[i]; i += 1
         props.minimumElementSize = configData[i]; i += 1
         props.automaticMode = configData[i]; i += 1
         props.saveBackups = configData[i]; i += 1

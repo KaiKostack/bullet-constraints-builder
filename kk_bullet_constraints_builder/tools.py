@@ -389,6 +389,8 @@ def updateObjList(scene, objs):
 
 def tool_discretize(scene):
 
+    props = bpy.context.window_manager.bcb
+
     # Leave edit mode to make sure next operator works in object mode
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
@@ -429,12 +431,10 @@ def tool_discretize(scene):
         bm.from_mesh(me)
         nonManifolds = array.array('i', (i for i, ele in enumerate(bm.edges) if not ele.is_manifold))
         bm.free()
-        if nonManifolds: objsNonMan.append(obj)
-        else:             objsNew.append(obj)
+        if nonManifolds or props.surfaceForced: objsNonMan.append(obj)
+        else:                                   objsNew.append(obj)
     objs = objsNew
     print("Non-manifold elements found:", len(objsNonMan))
-
-    props = bpy.context.window_manager.bcb
 
     ###### Junction splitting and preparation for boolean halving
     

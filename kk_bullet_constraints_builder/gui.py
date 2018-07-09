@@ -383,11 +383,17 @@ class bcb_panel_advanced_global_settings(bpy.types.Panel):
         row.prop(props, "rebarMesh")
         row = col.row(align=1)
         row.prop(props, "useAccurateArea")
+
+        col.separator()
+        row = col.row(align=1)
+        row.prop(props, "surfaceForced")
+        row = col.row(align=1)
+        row.prop(props, "surfaceThickness")
+
+        col.separator()
         row = col.row(align=1)
         if props.menu_gotData: row.enabled = 0
         row.prop(props, "connectionCountLimit")
-        row = col.row(align=1)
-        row.prop(props, "surfaceThickness")
         row = col.row(align=1)
         if props.menu_gotData: row.enabled = 0
         row.prop(props, "minimumElementSize")

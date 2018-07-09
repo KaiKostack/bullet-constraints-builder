@@ -129,6 +129,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_useAccurateArea"] = props.useAccurateArea 
     scene["bcb_prop_rebarMesh"] = props.rebarMesh
     scene["bcb_prop_surfaceThickness"] = props.surfaceThickness 
+    scene["bcb_prop_surfaceForced"] = props.surfaceForced 
     scene["bcb_prop_minimumElementSize"] = props.minimumElementSize 
     scene["bcb_prop_automaticMode"] = props.automaticMode 
     scene["bcb_prop_saveBackups"] = props.saveBackups 
@@ -321,6 +322,8 @@ def getConfigDataFromScene(scene):
         props.rebarMesh = scene["bcb_prop_rebarMesh"]
     if "bcb_prop_surfaceThickness" in scene.keys():
         props.surfaceThickness = scene["bcb_prop_surfaceThickness"]
+    if "bcb_prop_surfaceForced" in scene.keys():
+        props.surfaceForced = scene["bcb_prop_surfaceForced"]
     if "bcb_prop_minimumElementSize" in scene.keys():
         props.minimumElementSize = scene["bcb_prop_minimumElementSize"]
     if "bcb_prop_automaticMode" in scene.keys():
