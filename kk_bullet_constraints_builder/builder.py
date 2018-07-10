@@ -154,7 +154,8 @@ def build():
             ###### Store menu config data in scene
             storeConfigDataInScene(scene)
             ###### Get temp data from scene
-            if not props.asciiExport: objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect = getBuildDataFromScene(scene)
+            if not props.asciiExport:
+                objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect = getBuildDataFromScene(scene)
             ###### Create fresh element group index to make sure the data is still valid (reordering in menu invalidates it for instance)
             objsEGrp, objCntInEGrps = createElementGroupIndex(objs)
             ###### Store updated build data in scene
@@ -180,7 +181,11 @@ def build():
                 ###### Exporting data into internal ASCII text file
                 if props.asciiExport and exData != None: exportDataToText(exData)
             
-                if not props.asciiExport:
+                if props.asciiExport:
+                    # Removing flag for valid data for asciiExport & FM export
+                    try: del scene["bcb_valid"]
+                    except: pass
+                else:
                     # Deselect all objects
                     bpy.ops.object.select_all(action='DESELECT')
                     # Select all new constraint empties

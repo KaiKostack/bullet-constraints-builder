@@ -1192,6 +1192,28 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
 
+        ### 1x SPRING; Now with angular limits circular placement is not required for plastic deformability anymore
+        if CT == 24:
+            constCount = 1; correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
+            cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
+            value = brkThresValueP
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
+            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
+            if qUpdateComplete:
+                ### Enable linear and angular spring
+                setConstParams(cData,cDatb,cDef, loc=loc, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, usax=1,usay=1,usaz=1, sdax=1,sday=1,sdaz=1)
+            # Disable springs on start (requires plastic activation during simulation, comment out if not required)
+            #setConstParams(cData,cDatb,cDef, e=0)
+            if props.asciiExport:
+                # Enable springs on start (if this spring is not for plastic deformation, comment out if not required)
+                setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
+                # Disable springs on start (requires plastic activation during simulation, comment out if not required)
+                setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC_OFF",tol2dist,tol2rot])
+            constsData.append([cData, cDatb])
+
+        ###### Special CTs
+        
         ### 1x GENERIC; Constraint for permanent collision suppression and no influence otherwise
         if CT != 0 and props.disableCollisionPerm:
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1

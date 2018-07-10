@@ -376,7 +376,8 @@ def FM_constraints(ob):
         if "BCB_FM" not in objConst.keys():
             objA = objConst.rigid_body_constraint.object1
             objB = objConst.rigid_body_constraint.object2
-            if objA.name in objNames and objB.name in objNames:
+            if objA != None and objB != None \
+            and objA.name in objNames and objB.name in objNames:
                 cProps = getAttribsOfConstraint(objConst.rigid_body_constraint)
                 ### Add settings to constraint
                 try: con = md.mesh_constraints.new(mesh_islands[objA.name], mesh_islands[objB.name], cProps["type"])
@@ -455,11 +456,7 @@ def FM_constraints(ob):
                 con.location = loc
                 con.rotation = rot
                 con.plastic = plastic
-                con.breaking_distance = tol1dist
-                con.breaking_angle = tol1rot
-                con.plastic_distance = tol2dist
-                con.plastic_angle = tol2rot
-
+                    
                 ### Obsolete since FM now uses Blender defaults for constraints:
                 ### Write constraint defaults first (FM doesn't set constraint to Blender defaults)
                 for p in cDef.items():
