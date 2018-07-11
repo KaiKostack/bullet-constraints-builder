@@ -1209,7 +1209,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 # Enable springs on start (if this spring is not for plastic deformation, comment out if not required)
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 # Disable springs on start (requires plastic activation during simulation, comment out if not required)
-                setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC_OFF",tol2dist,tol2rot])
+                #setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC_OFF",tol2dist,tol2rot])
             constsData.append([cData, cDatb])
 
         ###### Special CTs
