@@ -173,6 +173,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         consts = next(connectsConsts_iter)
         loc = Vector(next(connectsLoc_iter))
         geo = next(connectsGeo_iter)
+        connectsTol.append([0, 0, 0, 0])
 
         objA = objs[pair[0]]
         objB = objs[pair[1]]
@@ -182,7 +183,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             for cIdx in consts:
                 setConstParams(cData,cDatb,cDef)
                 constsData.append([cData, cDatb])
-            connectsTol.append([0, 0, 0, 0])
             continue
         
         # Geometry array: [area, height, width, surfThick, axisNormal, axisHeight, axisWidth]
@@ -516,7 +516,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                           #tol2rot = math.atan(((asst['elu']/100) *((asst['w']/1000)/asst['n'])) /(geoHeight/2))
                     else: tol2rot = presets[0][EGSidxTl2R]  # Use tolerance from preset #0 as last resort
                 # Add new tolerances to build data array
-                connectsTol.append([tol1dist, tol1rot, tol2dist, tol2rot])
+                connectsTol[-1] = [tol1dist, tol1rot, tol2dist, tol2rot]
                 
                 ### Check if full update is necessary (optimization)
                 if not props.asciiExport:
@@ -530,9 +530,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                         for idx in consts: emptyObjs[idx]['Damage %'] = damage
                 else:
                     qUpdateComplete = 1
-            else:
-                # Add dummy tolerances between indestructible foundation elements
-                connectsTol.append([0, 0, 0, 0])
             
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
@@ -1224,6 +1221,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     print()
     if len(emptyObjs) != len(constsData):
         print("WARNING: Size mismatch: emptyObjs, constsData;", len(emptyObjs), len(constsData))
+    if len(connectsPair) != len(connectsTol):
+        print("WARNING: Size mismatch: connectsPair, connectsTol;", len(connectsPair), len(connectsTol))
 
     ### Debug: Naming of the constraints according to their connection participation and storage of object names
     connectsPair_iter = iter(connectsPair)

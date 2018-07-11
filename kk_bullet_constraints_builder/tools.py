@@ -673,7 +673,9 @@ def tool_removeIntersections(scene, mode=1):
                 
     if mode == 1 or (mode == 4 and count == 0):
         # Revert to start selection
-        for obj in selection: obj.select = 1
+        for obj in selection:
+            try: obj.select = 1
+            except: pass
         bpy.context.scene.objects.active = selectionActive
 
     return count

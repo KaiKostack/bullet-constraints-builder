@@ -168,7 +168,9 @@ def run(source=None, parameters=None):
             ### Delete all selected objects
             bpy.ops.object.delete(use_global=True)
             # Revert to backup selection again
-            for obj in selection: obj.select = 1
+            for obj in selection:
+                try: obj.select = 1
+                except: pass
             
             print('Objects deleted because of zero volume:', cnt)
 
