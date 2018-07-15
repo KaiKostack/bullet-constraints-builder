@@ -456,6 +456,10 @@ def FM_constraints(ob):
                 con.location = loc
                 con.rotation = rot
                 con.plastic = plastic
+                con.breaking_distance = tol1dist
+                con.breaking_angle = tol1rot
+                con.plastic_distance = tol2dist
+                con.plastic_angle = tol2rot
                     
                 ### Obsolete since FM now uses Blender defaults for constraints:
                 ### Write constraint defaults first (FM doesn't set constraint to Blender defaults)

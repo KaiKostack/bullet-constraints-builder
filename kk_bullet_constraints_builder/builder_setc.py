@@ -133,6 +133,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
 
+    # Blender version handling
+    if bpy.app.version <= (2, 79, 0) or hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'): version_spring = 1
+    else:                                                                                 version_spring = 2
+
     exData = None
     connectsTol = []  # Create new array to store individual tolerances per connection
     ### Prepare dictionary of element indices for faster item search (optimization)
@@ -174,6 +178,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         loc = Vector(next(connectsLoc_iter))
         geo = next(connectsGeo_iter)
         connectsTol.append([0, 0, 0, 0])
+        if version_spring == 1: springDamp = 1   # Later versions use "spring2" which need
+        else:                  springDamp = 10  # different values to achieve the same behavior
 
         objA = objs[pair[0]]
         objB = objs[pair[1]]
@@ -589,7 +595,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             #rotm = 'QUATERNION'
             #setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm,rot=rotN, ub=0, dc=1, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=llxl,llxu=llxu,llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=1,ulay=1,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
-            #setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='GENERIC_SPRING', sslx=999,ssly=999,sslz=999, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, ullx=1,ully=1,ullz=1, llxl=llxl,llxu=llxu,llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=1,ulay=1,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
+            #setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='GENERIC_SPRING', sslx=999,ssly=999,sslz=999, uslx=1,usly=1,uslz=1, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, ullx=1,ully=1,ullz=1, llxl=llxl,llxu=llxu,llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=1,ulay=1,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=props.passiveUseBreaking,si=1)
             constsData.append([cData, cDatb])
 
@@ -976,11 +982,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            if version_spring == 1:
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
             ### Loop through all constraints of this connection
             for i in range(3):
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
                     ### Rotate constraint matrix
@@ -990,7 +999,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING')
                 if CT != 7:
                     # Disable springs on start (requires plastic activation during simulation)
                     setConstParams(cData,cDatb,cDef, e=0)
@@ -1007,11 +1016,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             radius = geoHeight /2
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            if version_spring == 1:
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
             ### Loop through all constraints of this connection
             for i in range(4):
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
                     ### Rotate constraint matrix
@@ -1022,7 +1034,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING')
                 if CT != 8:
                     # Disable springs on start (requires plastic activation during simulation)
                     setConstParams(cData,cDatb,cDef, e=0)
@@ -1038,11 +1050,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
+            if version_spring == 1:
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
             if qUpdateComplete:
                 ### Enable linear and angular spring
-                setConstParams(cData,cDatb,cDef, loc=loc, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, usax=1,usay=1,usaz=1, sdax=1,sday=1,sdaz=1)
+                setConstParams(cData,cDatb,cDef, loc=loc, ct='GENERIC_SPRING')
             # Disable springs on start (requires plastic activation during simulation, comment out if not required)
             setConstParams(cData,cDatb,cDef, e=0)
             if props.asciiExport:
@@ -1065,13 +1080,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             value = brkThresValueS
             brkThres3 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             value = brkThresValueP
-            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            if version_spring == 1:
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
             # Loop through all constraints of this connection
             for j in range(3):
 
                 ### First constraint
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDatb,cDef, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDatb,cDef, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
                     ### Rotate constraint matrix
@@ -1081,7 +1099,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock direction for compressive force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=llxl,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=llxl,llxu=99999, ulax=0,ulay=0,ulaz=0)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1098,7 +1116,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock direction for tensile force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=llxu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=llxu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1115,7 +1133,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock directions for shearing force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1131,13 +1149,16 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             value = brkThresValueS
             brkThres3 = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             value = brkThresValueP
-            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            if version_spring == 1:
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
             # Loop through all constraints of this connection
             for j in range(4):
 
                 ### First constraint
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDatb,cDef, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDatb,cDef, bt=brkThres1, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
                     ### Rotate constraint matrix
@@ -1148,7 +1169,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock direction for compressive force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=llxl,llxu=99999, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=llxl,llxu=99999, ulax=0,ulay=0,ulaz=0)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1166,7 +1187,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock direction for tensile force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=llxu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=llxu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1184,7 +1205,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     vec.rotate(rotN)
                     locN = loc +vec
                     ### Lock directions for shearing force and enable linear spring
-                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1)
+                    setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if props.asciiExport:
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
@@ -1195,11 +1216,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff, ssax=springStiff,ssay=springStiff,ssaz=springStiff)
+            if version_spring == 1:
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
             if qUpdateComplete:
                 ### Enable linear and angular spring
-                setConstParams(cData,cDatb,cDef, loc=loc, ct='GENERIC_SPRING', uslx=1,usly=1,uslz=1, sdlx=1,sdly=1,sdlz=1, usax=1,usay=1,usaz=1, sdax=1,sday=1,sdaz=1)
+                setConstParams(cData,cDatb,cDef, loc=loc, ct='GENERIC_SPRING')
             # Disable springs on start (requires plastic activation during simulation, comment out if not required)
             #setConstParams(cData,cDatb,cDef, e=0)
             if props.asciiExport:

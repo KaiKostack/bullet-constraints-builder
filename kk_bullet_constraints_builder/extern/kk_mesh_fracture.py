@@ -1,5 +1,5 @@
 ######################################
-# Mesh Fracture v1.71 by Kai Kostack #
+# Mesh Fracture v1.72 by Kai Kostack #
 ######################################
 
 # ##### BEGIN GPL LICENSE BLOCK #####
@@ -29,7 +29,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     """"""
     ### Vars
     cookyCutterPlane = 'Plane'      #      | The "knife" object, can be arbitrary geometry like a subdivided plane with displacement
-    objectCountLimit = 3            # 10   | Shard count to be generated per selected object (might be less because of other limits)
+    objectCountLimit = 5            # 10   | Shard count to be generated per selected object (might be less because of other limits)
     boolErrorRetryLimit = 10        # 30   | How often to retry if boolean operation fails
     qTriangulate = 0                # 0    | Perform triangulation on all objects before doing boolean operations
     minimumSizeLimit = 0.5          # 0.3  | Minimum dimension for a shard to be still considered for fracturing, at least two dimension axis must be above this size
@@ -45,7 +45,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     qSeparateLooseStep = 1          # 1    | Perform Separate Loose on shards after each fracture step
 
     ### Vars for halving
-    qUseHalving = 1                 # 0    | Enables special mode for subdividing meshes into halves until either minimumSizeLimit or objectCountLimit is reached (sets boolErrorRetryLimit = 0)
+    qUseHalving = 0                 # 0    | Enables special mode for subdividing meshes into halves until either minimumSizeLimit or objectCountLimit is reached (sets boolErrorRetryLimit = 0)
                                     #      | It's recommended to set the latter to a very high count to get a universal shard size. This is incompatible with Dynamic Fracture because object centers are changed.
     qSplitAtJunctions = 0           # 1    | Try to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes
     junctionTol = .001              # .001 | Tolerance for junction detection to avoid cutting off of very thin geometry slices (requires normals consistently pointing outside)
@@ -94,6 +94,11 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     bpy.context.tool_settings.mesh_select_mode = False, True, False
     #random.seed(0)
     time_start = time.time()
+
+    # Blender version handling
+    if bpy.app.version <= (2, 79, 0) or hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'): version_carve = 1
+    else:                                                                                 version_carve = 0
+
     try: grpRBWorld = bpy.data.groups["RigidBodyWorld"]
     except: grpRBWorld = None
         
@@ -356,8 +361,9 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         obj.modifiers.new(name="Boolean", type='BOOLEAN')
                         mod = obj.modifiers["Boolean"]
                         mod.operation = 'UNION'
-                        try: mod.solver = 'CARVE'
-                        except: pass
+                        if version_carve:
+                            try: mod.solver = 'CARVE'
+                            except: pass
                         mod.object = objCdup
                         meA = obj.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
                         # Clean boolean result in case it is corrupted, because otherwise Blender sometimes crashes with "Error: EXCEPTION_ACCESS_VIOLATION"
@@ -647,8 +653,9 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         obj.modifiers.new(name="Boolean", type='BOOLEAN')
                         mod = obj.modifiers["Boolean"]
                         mod.operation = 'INTERSECT'
-                        try: mod.solver = 'CARVE'
-                        except: pass
+                        if version_carve:
+                            try: mod.solver = 'CARVE'
+                            except: pass
                         mod.object = objC
                         meA = obj.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
                         # Clean boolean result in case it is corrupted, because otherwise Blender sometimes crashes with "Error: EXCEPTION_ACCESS_VIOLATION"
@@ -702,39 +709,51 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objB.scale = obj.scale.copy()
                         objB.location = obj.location.copy()
                         objB.rotation_euler = obj.rotation_euler.copy()
-                        
+                                                                
                         ### Check mesh results for sanity (preparation)
                         if qDebugVerbose: print("## MF: Check mesh results for sanity (preparation)")
                         ### Check for non-manifolds on both new meshes
                         bpy.context.scene.objects.active = objA
                         try: bpy.ops.object.mode_set(mode='EDIT')
                         except: pass
+                        if not version_carve:
+                            try: bpy.ops.mesh.select_all(action='SELECT')
+                            except: pass
+                            # Recalculate normals outside
+                            bpy.ops.mesh.normals_make_consistent(inside=False)
                         try: bpy.ops.mesh.select_all(action='DESELECT')
-                        except: pass 
+                        except: pass
+                        # Select non-manifolds
                         bpy.ops.mesh.select_non_manifold()
                         bpy.ops.mesh.delete(type='EDGE')    # Wild try to fix loose triangles
                         bpy.ops.mesh.select_non_manifold()
                         try: bpy.ops.object.mode_set(mode='OBJECT')
                         except: pass 
                         meA = objA.data
-                        qManifoldsA = 0
+                        qNonManifoldsA = 0
                         for edge in meA.edges:
-                            if edge.select: qManifoldsA = 1; break
+                            if edge.select: qNonManifoldsA = 1; break
                         ### Second one starts here
                         bpy.context.scene.objects.active = objB
                         try: bpy.ops.object.mode_set(mode='EDIT')
                         except: pass 
+                        if not version_carve:
+                            try: bpy.ops.mesh.select_all(action='SELECT')
+                            except: pass
+                            # Recalculate normals outside
+                            bpy.ops.mesh.normals_make_consistent(inside=False)
                         try: bpy.ops.mesh.select_all(action='DESELECT')
-                        except: pass 
+                        except: pass
+                        # Select non-manifolds
                         bpy.ops.mesh.select_non_manifold()
                         bpy.ops.mesh.delete(type='EDGE')    # Wild try to fix loose triangles
                         bpy.ops.mesh.select_non_manifold()
                         try: bpy.ops.object.mode_set(mode='OBJECT')
                         except: pass 
                         meB = objB.data
-                        qManifoldsB = 0
+                        qNonManifoldsB = 0
                         for edge in meB.edges:
-                            if edge.select: qManifoldsB = 1; break
+                            if edge.select: qNonManifoldsB = 1; break
                         # Calculate dimension difference for sanity check
                         dimA = objA.dimensions -obj.dimensions
                         dimB = objB.dimensions -obj.dimensions
@@ -746,9 +765,9 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         # 3 Continue only if dimensions of the new objects are smaller,
                         #   just then we can expect a successful boolean attempt
                         if len(meA.vertices) == 0 or len(meB.vertices) == 0 \
-                        or qManifoldsA or qManifoldsB \
+                        or qNonManifoldsA or qNonManifoldsB \
                         or (((dimA.x >= 0 and dimA.y >= 0 and dimA.z >= 0) \
-                        or (dimB.x >= 0 and dimB.y >= 0 and dimB.z >= 0)) and objC == objCP):  
+                        and (dimB.x >= 0 and dimB.y >= 0 and dimB.z >= 0)) and objC == objCP):  
                             if not qSilentVerbose: print('Error on boolean operation, retrying with different location and angle...')
                             boolErrorCount += 1
                             # Remove both objects for new retry

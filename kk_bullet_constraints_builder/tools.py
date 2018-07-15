@@ -255,15 +255,29 @@ def tool_applyAllModifiers(scene):
 
     ### Delete particle emitter objects (belongs to duplicates_make_real())
     ### Todo: flagging as 'not to be used' for simulation would be better
+    objRem = []
     for obj in objs:
         if len(obj.modifiers) > 0:
             for mod in obj.modifiers:
                 if hasattr(mod, "particle_system") and mod.particle_system != None:
                     obj.select = 1
+                    objRem.append(obj)
     bpy.ops.object.delete(use_global=False)
 
     # Deselect all objects.
     bpy.ops.object.select_all(action='DESELECT')
+
+    ### Update object lists
+    selectionNew = []
+    for obj in selection:
+        if obj not in objRem:
+            selectionNew.append(obj) 
+    selection = selectionNew
+    objsNew = []
+    for obj in objs:
+        if obj not in objRem:
+            objsNew.append(obj) 
+    objs = objsNew
 
     ### At first make all objects unique mesh objects (clear instancing) which have modifiers applied
     objsM = []
@@ -521,7 +535,7 @@ def tool_discretize(scene):
                     except: pass 
                     me = obj.data
                     bm = bmesh.from_edit_mesh(me)
-
+                    
                     # Select all elements
                     try: bpy.ops.mesh.select_all(action='SELECT')
                     except: pass
@@ -529,7 +543,12 @@ def tool_discretize(scene):
                     bpy.ops.mesh.remove_doubles(threshold=0.0001)
                     # Smooth vertices slightly so overlapping geometry will shift a bit increasing possibility for successful next splitting attempt
                     bpy.ops.mesh.vertices_smooth(factor=0.0001)
-
+                  
+                    try: bpy.ops.mesh.select_all(action='SELECT')
+                    except: pass
+                    # Recalculate normals outside
+                    bpy.ops.mesh.normals_make_consistent(inside=False)
+                        
                     ### Check if mesh has non-manifolds
                     # Deselect all elements
                     try: bpy.ops.mesh.select_all(action='DESELECT')
@@ -581,7 +600,7 @@ def tool_discretize(scene):
                 ### Add new objects to the object list and remove deleted ones
                 updateObjList(scene, selection)
                 updateObjList(scene, objs)
-
+                
         ### If there are still objects larger than minimumSizeLimit left (due to failed boolean operations)
         ### print warning message together with a list of the problematic objects
         if count > 0:
