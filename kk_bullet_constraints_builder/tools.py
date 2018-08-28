@@ -238,14 +238,46 @@ def tool_applyAllModifiers(scene):
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
     
-    # Make duplis individual objects (e.g. convert particle system mesh instances into real objects)
-    bpy.ops.object.duplicates_make_real()
-
     # Backup selection
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
-    objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene)]
+    objs = [obj for obj in selection if (obj.type == 'MESH' or obj.type == 'CURVE') and not obj.hide and obj.is_visible(bpy.context.scene)]
+
+    # Make duplis individual objects (e.g. convert particle system mesh instances into real objects)
+    objRem = []
+    for obj in objs:
+        if len(obj.modifiers) > 0:
+            for mod in obj.modifiers:
+                if hasattr(mod, "particle_system") and mod.particle_system != None:
+                    # Deselect all objects.
+                    bpy.ops.object.select_all(action='DESELECT')
+
+                    bpy.context.scene.objects.active = obj
+                    obj.select = 1
+                    # Make particles real
+                    bpy.ops.object.duplicates_make_real()
+                    obj.select = 0
+                    objRem.append(obj)
+                    objO = obj
+
+                    # Find new objects and add them to selection backup
+                    selectionNew = [obj for obj in bpy.context.scene.objects if obj.select]
+                    selection.extend(selectionNew)
+                    # Find objects in selection
+                    objsNew = [obj for obj in selectionNew if (obj.type == 'MESH' or obj.type == 'CURVE')  and not obj.hide and obj.is_visible(bpy.context.scene)]
+                    objs.extend(objsNew)
+
+                    ## Temporary workaround for triggered objects in FM (rotation is not initialized properly in FM when using triggers, needs to be fixed by Martin)
+                    bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
+                    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+
+                    # Add particle objects to same groups as emitter object                            
+                    for grp in bpy.data.groups:
+                        if objO.name in grp.objects:
+                            for obj in objsNew:
+                                grp.objects.link(obj)
+                            
     if len(objs) == 0:
         print("No mesh objects selected. Nothing done.")
         return
@@ -255,17 +287,8 @@ def tool_applyAllModifiers(scene):
 
     ### Delete particle emitter objects (belongs to duplicates_make_real())
     ### Todo: flagging as 'not to be used' for simulation would be better
-    objRem = []
-    for obj in objs:
-        if len(obj.modifiers) > 0:
-            for mod in obj.modifiers:
-                if hasattr(mod, "particle_system") and mod.particle_system != None:
-                    obj.select = 1
-                    objRem.append(obj)
+    for obj in objRem: obj.select = 1
     bpy.ops.object.delete(use_global=False)
-
-    # Deselect all objects.
-    bpy.ops.object.select_all(action='DESELECT')
 
     ### Update object lists
     selectionNew = []
@@ -279,15 +302,15 @@ def tool_applyAllModifiers(scene):
             objsNew.append(obj) 
     objs = objsNew
 
-    ### At first make all objects unique mesh objects (clear instancing) which have modifiers applied
+    ### Make all objects unique mesh objects (clear instancing) which have modifiers applied
     objsM = []
     for obj in objs:
-        if len(obj.modifiers) > 0:
+        if len(obj.modifiers) > 0 or obj.type == 'CURVE':
             obj.select = 1
             objsM.append(obj)
     bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True, material=False, texture=False, animation=False)
 
-    # Apply modifiers
+    # Apply modifiers and convert curves to meshes
     if len(objsM):
         bpy.context.scene.objects.active = objsM[0]
         bpy.ops.object.convert(target='MESH')

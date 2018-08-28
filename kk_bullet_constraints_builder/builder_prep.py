@@ -517,10 +517,10 @@ def boundaryBoxFaces(obj, qGlobalSpace, selMin=None, selMax=None):
         verts = vertsNew
 
         # Debug code
-        #for idx in range(len(me.vertices)):
-        #    if idx in selVerts:
-        #          me.vertices[idx].select = 1
-        #    else: me.vertices[idx].select = 0    
+#        for idx in range(len(me.vertices)):
+#            if idx in selVerts:
+#                  me.vertices[idx].select = 1
+#            else: me.vertices[idx].select = 0    
                 
     ### Calculate boundary box corners
     if len(verts) > 0:
@@ -612,13 +612,22 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         ### Or calculate contact area based on predefined custom thickness
         else:
             geoContactArea = (overlapX +overlapY +overlapZ) *props.surfaceThickness
-            
-    else: geoContactArea = 0
 
-    # Sanity check: contact area based on faces is expected to be smaller than boundary box contact area
+    else: geoContactArea = 0
+            
+    ### Calculate an alternative sanity check contact area value from element dimensions in case no boundary box intersection is found  
+    if geoContactArea == 0:
+        dimA = objA.dimensions
+        dimB = objB.dimensions
+        # We use the surface area of the smallest side since we don't want to artificially strengthen the structure in case later sanity check fails
+        areaA = min(min(dimA[0]*dimA[1], dimA[0]*dimA[2]), dimA[1]*dimA[2])
+        areaB = min(min(dimB[0]*dimB[1], dimB[0]*dimB[2]), dimB[1]*dimB[2])
+        geoContactArea = min(areaA, areaB)
+
+    # Sanity check: contact area based on faces is expected to be smaller than boundary box / fallback contact area, only then use face based contact area
     if geoContactAreaF > 0 and (geoContactAreaF < geoContactArea or geoContactArea == 0):
         geoContactArea = geoContactAreaF
-                
+
     # Check if both boundary boxes are intersecting considering also search distance
     if not qAccurate \
     or (qAccurate and not qAreaZero \
@@ -1534,7 +1543,9 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                 CT = elemGrps[objsEGrp[k]][EGSidxCTyp]
                 if CT == 0:
                     # The foundation buffer objects need a large mass so they won't pushed away
-                    obj.rigid_body.mass = 1000
+                    materialDensity = elemGrp[EGSidxDens]
+                    if materialDensity > 1: obj.rigid_body.mass = materialDensity
+                    else: obj.rigid_body.mass = 1000  # Backward compatibility for older settings
                 else:
                     try: scale = elemGrps[objsEGrp[k]][EGSidxScal]  # Try in case elemGrps is from an old BCB version
                     except: qScale = 0
@@ -1562,38 +1573,38 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
 
         objsSelectedAll.extend(objsSelected)
 
-    ### Calculating and applying material masses based on surface area * thickness
-    if (props.surfaceForced and props.surfaceThickness) or (props.surfaceThickness and len(objsNonMan)):
-        # Deselect all objects
-        bpy.ops.object.select_all(action='DESELECT')
+        ### Calculating and applying material masses based on surface area * thickness
+        if (props.surfaceForced and props.surfaceThickness) or (props.surfaceThickness and len(objsNonMan)):
+            # Deselect all objects
+            bpy.ops.object.select_all(action='DESELECT')
 
-        # Find out density of the element group
-        if not materialDensity:
-            materialPreset = elemGrp[EGSidxMatP]
-            if materialPreset != "": materialDensity = materialPresets[materialPreset]
+            # Find out density of the element group
+            if not materialDensity:
+                materialPreset = elemGrp[EGSidxMatP]
+                if materialPreset != "": materialDensity = materialPresets[materialPreset]
 
-        for obj in objsNonMan:
-            # Calculate object surface area and volume
-            me = obj.data
-            area = sum(f.area for f in me.polygons)
-            volume = area *props.surfaceThickness
-            # Calculate mass
-            obj.rigid_body.mass = volume *materialDensity
+            for obj in objsNonMan:
+                # Calculate object surface area and volume
+                me = obj.data
+                area = sum(f.area for f in me.polygons)
+                volume = area *props.surfaceThickness
+                # Calculate mass
+                obj.rigid_body.mass = volume *materialDensity
 
-        objsSelectedAll.extend(objsNonMan)
-            
-    ### Adding live load to masses
-    liveLoad = elemGrp[EGSidxLoad]
-    for obj in objsSelectedAll:
-        dims = obj.dimensions
-        floorArea = dims[0] *dims[1]  # Simple approximation by assuming rectangular floor area (x *y)
-        if liveLoad > 0: obj.rigid_body.mass += floorArea *liveLoad
-        obj["Floor Area"] = floorArea  # Only needed for the diagnostic prints below
+            objsSelectedAll.extend(objsNonMan)
+                
+        ### Adding live load to masses
+        liveLoad = elemGrp[EGSidxLoad]
+        for obj in objsSelectedAll:
+            dims = obj.dimensions
+            floorArea = dims[0] *dims[1]  # Simple approximation by assuming rectangular floor area (x *y)
+            if liveLoad > 0: obj.rigid_body.mass += floorArea *liveLoad
+            obj["Floor Area"] = floorArea  # Only needed for the diagnostic prints below
 
-    ### Setting friction if we are at it already (could be separate function but not because of 3 lines)
-    friction = elemGrp[EGSidxFric]
-    for obj in objsSelectedAll:
-        obj.rigid_body.friction = friction
+        ### Setting friction if we are at it already (could be separate function but not because of 3 lines)
+        friction = elemGrp[EGSidxFric]
+        for obj in objsSelectedAll:
+            obj.rigid_body.friction = friction
 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')

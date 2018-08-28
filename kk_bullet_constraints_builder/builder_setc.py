@@ -179,7 +179,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         geo = next(connectsGeo_iter)
         connectsTol.append([0, 0, 0, 0])
         if version_spring == 1: springDamp = 1   # Later versions use "spring2" which need
-        else:                  springDamp = 10  # different values to achieve the same behavior
+        else:                   springDamp = 20  # different values to achieve the same behavior
 
         objA = objs[pair[0]]
         objB = objs[pair[1]]
