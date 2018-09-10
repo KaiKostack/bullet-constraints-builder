@@ -36,7 +36,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (3, 2, 2)
+bcb_version = (3, 2, 3)
 
 ### Customizable element group presets
 presets = [
@@ -259,7 +259,7 @@ commandStop = r"/tmp/bcb-stop"       #       | For very large simulations Blende
 maxMenuElementGroupItems = 300       # 300   | Maximum allowed element group entries in menu 
 emptyDrawSize = 0.25                 # 0.25  | Display size of constraint empty objects as radius in meters
 visualizerDrawSize = 1.0             # 1     | Maximum radius the visualizer will be scaled to when reaching maximum force
-minimumContactArea = 0.000001        # 1 mm  | Zero limit for a detected contact area to be considered for connection in m²
+minimumContactArea = 0.000001        # 1 mm² | Zero limit for a detected contact area to be considered for connection in m²
 asciiExportName = "BCB_export"       #       | Name of ASCII text file to be exported
 grpNameBuilding = "BCB_Building"
 grpNameVisualization = "BCB_Visualization"

@@ -516,7 +516,7 @@ def boundaryBoxFaces(obj, qGlobalSpace, selMin=None, selMax=None):
             vertsNew.append(verts[idx])
         verts = vertsNew
 
-        # Debug code
+#        # Debug code
 #        for idx in range(len(me.vertices)):
 #            if idx in selVerts:
 #                  me.vertices[idx].select = 1
@@ -563,30 +563,41 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
 
     ### Determine faces within search range of both objects and return their surface area
     geoContactAreaF = 0
-    qAreaZero = 0
+    qSkipConnect = 0
     if qAccurate:
         # Create new faces bbox for A for faces within search range of bbox B
         bbBMinSD = Vector((bbBMin[0]-searchDist, bbBMin[1]-searchDist, bbBMin[2]-searchDist))
         bbBMaxSD = Vector((bbBMax[0]+searchDist, bbBMax[1]+searchDist, bbBMax[2]+searchDist))
-        bbAMinF, bbAMaxF, bbACenterF, bbAarea = boundaryBoxFaces(objA, 1, selMin=bbBMinSD, selMax=bbBMaxSD)
+        bbAMinF, bbAMaxF, bbACenterF, areaA = boundaryBoxFaces(objA, 1, selMin=bbBMinSD, selMax=bbBMaxSD)
         # Create new faces bbox for B for faces within search range of bbox A
         bbAMinSD = Vector((bbAMin[0]-searchDist, bbAMin[1]-searchDist, bbAMin[2]-searchDist))
         bbAMaxSD = Vector((bbAMax[0]+searchDist, bbAMax[1]+searchDist, bbAMax[2]+searchDist))
-        bbBMinF, bbBMaxF, bbBCenterF, bbBarea = boundaryBoxFaces(objB, 1, selMin=bbAMinSD, selMax=bbAMaxSD)
+        bbBMinF, bbBMaxF, bbBCenterF, areaB = boundaryBoxFaces(objB, 1, selMin=bbAMinSD, selMax=bbAMaxSD)
+        # Check if detected contact area is implausible high compared to the total surface area of the objects
+        areaAtot = 0; areaBtot = 0
+        for face in objA.data.polygons: areaAtot += face.area
+        for face in objB.data.polygons: areaBtot += face.area
+        if areaA >= areaAtot /2 or areaB >= areaBtot /2: 
+            if areaA > 0:
+                if areaA < areaAtot /2: geoContactAreaF = areaA
+                bbAMin, bbAMax, bbACenter = bbAMinF, bbAMaxF, bbACenterF
+            if areaB > 0:
+                if areaB < areaBtot /2: geoContactAreaF = areaB
+                bbBMin, bbBMax, bbBCenter = bbBMinF, bbBMaxF, bbBCenterF
         # Use the smallest detected area of both objects as contact area
-        if bbAarea > 0 and bbBarea > 0:
-            geoContactAreaF = min(bbAarea, bbBarea)
+        elif areaA > 0 and areaB > 0:
+            geoContactAreaF = min(areaA, areaB)
             bbAMin, bbAMax, bbACenter = bbAMinF, bbAMaxF, bbACenterF
             bbBMin, bbBMax, bbBCenter = bbBMinF, bbBMaxF, bbBCenterF
         # Or if only one area is greater zero then use that one
-        elif bbAarea > 0:
-            geoContactAreaF = bbAarea
+        elif areaA > 0:
+            geoContactAreaF = areaA
             bbAMin, bbAMax, bbACenter = bbAMinF, bbAMaxF, bbACenterF
-        elif bbBarea > 0:
-            geoContactAreaF = bbBarea
+        elif areaB > 0:
+            geoContactAreaF = areaB
             bbBMin, bbBMax, bbBCenter = bbBMinF, bbBMaxF, bbBCenterF
-        else: qAreaZero = 1
-        
+        else: qSkipConnect = 1
+
     ### Calculate contact surface area from boundary box projection
     ### Project along all axis'
     overlapXneg = min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0])
@@ -596,65 +607,78 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
     overlapY = max(0, overlapYneg)
     overlapZ = max(0, overlapZneg)
 
-    # Formula only valid if we have overlap for all 3 axis
-    # (This line is commented out because of the earlier connection pair check which ensured contact including a margin.)
-    #if overlapX > 0 and overlapY > 0 and overlapZ > 0:  
-    if 1:
-        
-        ### Calculate area based on either the sum of all axis surfaces...
-        if not qNonManifold:
-            overlapAreaX = overlapY *overlapZ
-            overlapAreaY = overlapX *overlapZ
-            overlapAreaZ = overlapX *overlapY
-            # Add up all contact areas
-            geoContactArea = overlapAreaX +overlapAreaY +overlapAreaZ
-                
-        ### Or calculate contact area based on predefined custom thickness
-        else:
-            geoContactArea = (overlapX +overlapY +overlapZ) *props.surfaceThickness
+    if not qSkipConnect:
 
-    else: geoContactArea = 0
+        # Formula only valid if we have overlap for all 3 axis
+        # (This line is commented out because of the earlier connection pair check which ensured contact including a margin.)
+        #if overlapX > 0 and overlapY > 0 and overlapZ > 0:  
+        if 1:
             
-    ### Calculate an alternative sanity check contact area value from element dimensions in case no boundary box intersection is found  
-    if geoContactArea == 0:
+            ### Calculate area based on either the sum of all axis surfaces...
+            if not qNonManifold:
+                overlapAreaX = overlapY *overlapZ
+                overlapAreaY = overlapX *overlapZ
+                overlapAreaZ = overlapX *overlapY
+                # Add up all contact areas
+                geoContactArea = overlapAreaX +overlapAreaY +overlapAreaZ
+                    
+            ### Or calculate contact area based on predefined custom thickness
+            else:
+                geoContactArea = (overlapX +overlapY +overlapZ) *props.surfaceThickness
+
+        else: geoContactArea = 0
+                
+        ### Calculate alternative contact area from object dimensions
         dimA = objA.dimensions
         dimB = objB.dimensions
         # We use the surface area of the smallest side since we don't want to artificially strengthen the structure in case later sanity check fails
         areaA = min(min(dimA[0]*dimA[1], dimA[0]*dimA[2]), dimA[1]*dimA[2])
         areaB = min(min(dimB[0]*dimB[1], dimB[0]*dimB[2]), dimB[1]*dimB[2])
-        geoContactArea = min(areaA, areaB)
+        geoContactAreaD = min(areaA, areaB)
 
-    # Sanity check: contact area based on faces is expected to be smaller than boundary box / fallback contact area, only then use face based contact area
-    if geoContactAreaF > 0 and (geoContactAreaF < geoContactArea or geoContactArea == 0):
-        geoContactArea = geoContactAreaF
+#        print("geoContactAreaB", geoContactArea)
+#        print("geoContactAreaD", geoContactAreaD)
+#        print("geoContactAreaF", geoContactAreaF)
+            
+        ### Sanity check: in case no boundary box intersection is found use element dimensions based contact area as fallback 
+        if geoContactArea == 0:
+            geoContactArea = geoContactAreaD
 
-    # Check if both boundary boxes are intersecting considering also search distance
-    if not qAccurate \
-    or (qAccurate and not qAreaZero \
-    and overlapXneg > -halfSize[0] and overlapYneg > -halfSize[1] and overlapZneg > -halfSize[2]):
-                
-        ### Find out element thickness to be used for bending threshold calculation 
-        geo = [overlapX, overlapY, overlapZ]
-        geoAxis = [1, 2, 3]
-        geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
-        geoHeight = geo[1]  # First item = mostly 0, second item = thickness/height, third item = width 
-        geoWidth = geo[2]
+        # Sanity check: contact area based on faces is expected to be smaller than boundary box and dimensions contact area, only then use face based contact area
+        if geoContactAreaF < geoContactArea and geoContactAreaF > 0:
+            geoContactArea = geoContactAreaF
+            qVolCorrect = 0
+        else:
+            qVolCorrect = 1
 
-        # Add custom thickness to contact area (only for manifolds as it is already included in non-manifolds)
-        if not qNonManifold:
-            geoContactArea += geoWidth *props.surfaceThickness
+#        print("geoContactArea final", geoContactArea)
+#        print("qVolCorrect", qVolCorrect)
 
-        ### Use center of contact area boundary box as constraints location
-        centerX = (max(bbAMin[0],bbBMin[0]) + min(bbAMax[0],bbBMax[0])) /2
-        centerY = (max(bbAMin[1],bbBMin[1]) + min(bbAMax[1],bbBMax[1])) /2
-        centerZ = (max(bbAMin[2],bbBMin[2]) + min(bbAMax[2],bbBMax[2])) /2
-        center = Vector((centerX, centerY, centerZ))
-        #center = (bbACenter +bbBCenter) /2     # Debug: Place constraints at the center of both elements like in bashi's addon
+        # Check if both boundary boxes are intersecting considering also search distance
+        if overlapXneg > -halfSize[0] and overlapYneg > -halfSize[1] and overlapZneg > -halfSize[2]:
+                    
+            ### Find out element thickness to be used for bending threshold calculation 
+            geo = [overlapX, overlapY, overlapZ]
+            geoAxis = [1, 2, 3]
+            geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
+            geoHeight = geo[1]  # First item = mostly 0, second item = thickness/height, third item = width 
+            geoWidth = geo[2]
 
-        return geoContactArea, geoHeight, geoWidth, center, geoAxis
+            # Add custom thickness to contact area (only for manifolds as it is already included in non-manifolds)
+            if not qNonManifold:
+                geoContactArea += geoWidth *props.surfaceThickness
+            
+            ### Use center of contact area boundary box as constraints location
+            centerX = (max(bbAMin[0],bbBMin[0]) + min(bbAMax[0],bbBMax[0])) /2
+            centerY = (max(bbAMin[1],bbBMin[1]) + min(bbAMax[1],bbBMax[1])) /2
+            centerZ = (max(bbAMin[2],bbBMin[2]) + min(bbAMax[2],bbBMax[2])) /2
+            
+            center = Vector((centerX, centerY, centerZ))
+            #center = (bbACenter +bbBCenter) /2     # Debug: Place constraints at the center of both elements like in bashi's addon
 
-    else:
-        return 0, 0, 0, [0,0,0], [1,2,3]  # Dummy data, connection will be remove later because of zero area anyway
+            return geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect
+
+    return 0, 0, 0, [0,0,0], [1,2,3], 0  # Dummy data, connection will be remove later because of zero area anyway
 
 ########################################
 
@@ -670,10 +694,10 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate
         objB = objs[connectsPair[k][1]]
         
         ###### Calculate contact area for a single pair of objects
-        geoContactArea, geoHeight, geoWidth, center, geoAxis = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qAccurate=qAccurate)
+        geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qAccurate=qAccurate)
                     
-        # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth]
-        connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2]])
+        # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth, qVolCorrect]
+        connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2], qVolCorrect])
         connectsLoc.append(center)
         
     return connectsGeo, connectsLoc
@@ -738,10 +762,10 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
             #print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
 
             ###### Calculate contact area for a single pair of objects
-            geoContactArea, geoHeight, geoWidth, center, geoAxis = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=1)
+            geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=1)
             
             # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth]
-            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2]])
+            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2], qVolCorrect])
             connectsLoc.append(center)
 
         ###### If both meshes are manifold continue with regular boolean based approach
@@ -885,7 +909,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
                 bpy.context.screen.scene = sceneTemp
             
             # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth]
-            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2]])
+            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2], 0])
             connectsLoc.append(center)
                 
     # Switch back to original scene
@@ -1734,10 +1758,13 @@ def correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo):
     for k in range(len(connectsGeo)):
         pair = next(connectsPair_iter)   
         geo = next(connectsGeo_iter)
-        objA = objs[pair[0]]
-        objB = objs[pair[1]]
+        qVolCorrect = geo[6]
 
-        corFacA = objA["CA Corr.Fac."]
-        corFacB = objB["CA Corr.Fac."]
-        geo[0] *= corFacA *corFacB  # = geoContactArea
-        
+        if not qVolCorrect: continue  # No correction needed in valid polygon based contact area cases 
+        else:
+            objA = objs[pair[0]]
+            objB = objs[pair[1]]
+            corFacA = objA["CA Corr.Fac."]
+            corFacB = objB["CA Corr.Fac."]
+            geo[0] *= corFacA *corFacB  # = geoContactArea
+            

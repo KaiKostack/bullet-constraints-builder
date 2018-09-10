@@ -1356,7 +1356,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                         objConst.scale = axs_s
                     else:
                         # Scale the cube to the dimensions of the connection area
-                        if constData.type == 'GENERIC' or (constData.type == 'GENERIC_SPRING' and constData.enabled):
+                        if constCnt > 1 and (constData.type == 'GENERIC' or (constData.type == 'GENERIC_SPRING' and constData.enabled)):
                               objConst.scale = axs
                         else: objConst.scale = axs_s
         print()

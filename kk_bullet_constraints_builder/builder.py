@@ -166,8 +166,8 @@ def build():
                 initGeneralRigidBodyWorldSettings(scene)
                 ###### Calculate mass for all mesh objects
                 calculateMass(scene, objs, objsEGrp, childObjs)
-                ###### Correct bbox based contact area by volume (not needed for polygon based contact area)
-                if not props.useAccurateArea: correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo)
+                ###### Correct bbox based contact area by volume
+                correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo)
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
                 if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
