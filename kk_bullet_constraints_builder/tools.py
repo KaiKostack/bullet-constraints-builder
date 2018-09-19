@@ -1827,7 +1827,7 @@ def tool_forcesVisualization_eventHandler(scene):
                 qUse = 0
                 if objRange != None:
                     loc = objRange.matrix_world.inverted() *ob.matrix_world *objConst.location  # Convert coordinates into range object space
-                    dims = objRange.scale
+                    dims = (1,1,1)  # We assume origin is located at range object center (always true for empty objects)
                     if  loc[0] > -dims[0] and loc[0] < +dims[0] \
                     and loc[1] > -dims[1] and loc[1] < +dims[1] \
                     and loc[2] > -dims[2] and loc[2] < +dims[2]:
