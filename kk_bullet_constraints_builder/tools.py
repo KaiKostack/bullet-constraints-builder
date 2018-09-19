@@ -1826,12 +1826,11 @@ def tool_forcesVisualization_eventHandler(scene):
                 ### Skip object out of range of the limiting object if present
                 qUse = 0
                 if objRange != None:
-                    loc = objConst.location
-                    locR = objRange.location
+                    loc = objRange.matrix_world.inverted() *ob.matrix_world *objConst.location  # Convert coordinates into range object space
                     dims = objRange.scale
-                    if  loc[0] > locR[0] -dims[0] and loc[0] < locR[0] +dims[0] \
-                    and loc[1] > locR[1] -dims[1] and loc[1] < locR[1] +dims[1] \
-                    and loc[2] > locR[2] -dims[2] and loc[2] < locR[2] +dims[2]:
+                    if  loc[0] > -dims[0] and loc[0] < +dims[0] \
+                    and loc[1] > -dims[1] and loc[1] < +dims[1] \
+                    and loc[2] > -dims[2] and loc[2] < +dims[2]:
                         qUse = 1
                 qUse_limiter = qUse
                 
