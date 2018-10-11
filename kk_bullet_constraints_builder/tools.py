@@ -38,6 +38,7 @@ mem = bpy.app.driver_namespace
 ### Import submodules
 from global_vars import *      # Contains global variables
 from builder_prep import *     # Contains preparation steps functions called by the builder
+from file_io import *          # Contains file input & output functions
 
 import kk_import_motion_from_text_file    # Contains earthquake motion import function
 import kk_mesh_fracture                   # Contains boolean based discretization function
@@ -1314,7 +1315,7 @@ def tool_exportLocationHistory_eventHandler(scene):
 
     props = bpy.context.window_manager.bcb
     filenamePath = props.postprocTools_lox_nam
-    logPath = os.path.dirname(filenamePath)
+    logPath = filenamePath
     name = props.postprocTools_lox_elm
 
     ###### Get data
@@ -1360,7 +1361,7 @@ def tool_exportLocationHistory_eventHandler(scene):
             files = []
             for objName in objNames:
                 # Stupid Windows interprets "Con." in path as system variable and writes into console
-                filename = objName.replace(".", "_") +".csv"
+                filename = removeBadCharsFromFilename(objName.replace(".", "_")) +".csv"
                 filename = os.path.join(logPath, filename)
                 print("Creating file:", filename)
                 # Remove old log file at start frame
@@ -1544,7 +1545,7 @@ def tool_exportForceHistory_eventHandler(scene):
         data = [val /rbw_time_scale *rbw_steps_per_second for val in data]
         
         filenamePath = props.postprocTools_fcx_nam
-        logPath = os.path.dirname(filenamePath)
+        logPath = filenamePath
 
         # If filepath is empty then print data into console
         if len(filenamePath) == 0:
@@ -1563,7 +1564,7 @@ def tool_exportForceHistory_eventHandler(scene):
                 files = []
                 for objName in objNames:
                     # Stupid Windows interprets "Con." in path as system variable and writes into console
-                    filename = objName.replace(".", "_") +".csv"
+                    filename = removeBadCharsFromFilename(objName.replace(".", "_")) +".csv"
                     filename = os.path.join(logPath, filename)
                     print("Creating file:", filename)
                     # Remove old log file at start frame

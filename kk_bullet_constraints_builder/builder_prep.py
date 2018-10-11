@@ -58,7 +58,8 @@ def createElementGroupIndex(objs):
 
     ### Create a list about which object belongs to which element group
     elemGrps = mem["elemGrps"]
-    objsEGrp = []
+    objsEGrps = []
+    errorsShown = 1
     cnt = 0
     for obj in objs:
         objGrpsTmp = []
@@ -70,30 +71,47 @@ def createElementGroupIndex(objs):
                     except: pass
                     else: objGrpsTmp.append(elemGrps.index(elemGrp))
         if len(objGrpsTmp) > 1:
-            sys.stdout.write("Warning: Object %s belongs to more than one element group, defaults are used. Element groups:" %obj.name)
-            for idx in objGrpsTmp: sys.stdout.write(" #%d %s" %(idx, elemGrps[idx][EGSidxName]))
-            print()
-            q = 1
-        elif len(objGrpsTmp) == 0: q = 1
-        else: q = 0
-        ### If selected object is not part of any scene group try to find an element group with empty name to use (default group)
-        if q:
-            for elemGrp in elemGrps:
-                elemGrpName = elemGrp[EGSidxName]
+            if errorsShown < 2:
+                sys.stdout.write("Warning: Object %s belongs to more than one element group, defaults are used. Element groups:" %obj.name)
+                for idx in objGrpsTmp: sys.stdout.write(" #%d %s" %(idx, elemGrps[idx][EGSidxName]))
+                print()
+                errorsShown += 1
+            elif errorsShown == 2:
+                print("There are further warnings, only the first one is shown here.")
+                print()
+                errorsShown += 1
+        # If selected object is not part of any scene group try to find an element group with empty name to use (default group)
+        elif len(objGrpsTmp) == 0:
+            for k in range(len(elemGrps)):
+                elemGrpName = elemGrps[k][EGSidxName]
                 if elemGrpName == '':
-                    objGrpsTmp = [elemGrps.index(elemGrp)]
-                    break
-        # If empty name is found assign object to it
+                    objGrpsTmp.append(k)
+            objsEGrps.append(objGrpsTmp)
+        # Assign all found groups to object
         if len(objGrpsTmp) > 0:
-              objsEGrp.append(objGrpsTmp[0])
-              cnt += 1
+            objsEGrps.append(objGrpsTmp)
         # If not even a default group is available then use element group 0 as fallback
         # (Todo: flag the group as -1 and deal with it later, but that's also complex)
-        else: objsEGrp.append(0)
+        else: objsEGrps.append([0])
 
+    ### Taking only first item of the element group lists per object into account (the BCB can only manage one element group per object)
+    ### Earlier idea was to expand objs array for objects being member of multiple element groups (item duplication allowed)
+    ### but this is not feasible since all the other functions within the BCB would need to respect these.
+    #objsNew = []
+    objsEGrp = []
+    objsEGrps_iter = iter(objsEGrps)
+    for obj in objs:
+        eGrps = next(objsEGrps_iter)
+        #for eGrp in eGrps:
+        #    objsEGrp.append(eGrp)
+        #    objsNew.append(obj)
+        if len(eGrps) > 0:
+            objsEGrp.append(eGrps[0])
+            cnt += 1
+    
     return objsEGrp, cnt
 
-########################################
+################################################################################   
 
 def gatherObjects(scene):
 
@@ -227,6 +245,7 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
             co_find = mat *vert.co     # Multiply matrix by vertex coordinates to get global coordinates
                         
             # Loop through comparison object found
+            connectCnt = 0
             for j in range(len(aIndex)):
                 l = aIndex[j]
                 
@@ -241,7 +260,6 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                         co = (co_find +coComp) /2             # Calculate center of both vertices
                         
                         ### Store connection if not already existing
-                        connectCnt = 0
                         pair = [k, l]
                         pair.sort()
                         if pair not in connectsPair:
@@ -308,6 +326,7 @@ def findConnectionsByBoundaryBoxIntersection(objs):
         aIndex = aIndex[1:]; aDist = aDist[1:]  # Remove first item because it's the same as co_find (zero distance)
     
         # Loop through comparison objects found
+        connectCnt = 0
         for j in range(len(aIndex)):
             l = aIndex[j]
             
@@ -323,7 +342,6 @@ def findConnectionsByBoundaryBoxIntersection(objs):
                 volume = overlapX *overlapY *overlapZ
                 if volume > 0:                
                     ### Store connection if not already existing
-                    connectCnt = 0
                     pair = [k, l]
                     pair.sort()
                     if pair not in connectsPair:

@@ -38,6 +38,23 @@ from global_vars import *      # Contains global variables
 
 ################################################################################
 
+def removeBadCharsFromFilename(filename):
+    
+    # Replaces problematic chars from a filename string with a clean underscore
+    filenameNew = ""
+    for b in filename:
+        if b > chr(0x2c) and b not in ":?<>|/\\":  # General conditions 
+            filenameNew += b
+        elif b in " ,'`!.()[]{}+-&$^=":  # Accepted under 0x2c
+            filenameNew += b
+        elif b == '\"':
+            filenameNew += '\''
+        else:
+            filenameNew += '_'
+    return filenameNew
+        
+################################################################################
+
 def dataToFile(data, pathName):
     try: f = open(pathName, "wb")
     except:

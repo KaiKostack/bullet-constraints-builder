@@ -723,8 +723,8 @@ class OBJECT_OT_bcb_tool_select_csv_file(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         if   self.opNo == 1: props.preprocTools_gnd_nam = self.filepath
-        elif self.opNo == 2: props.postprocTools_lox_nam = self.filepath
-        elif self.opNo == 3: props.postprocTools_fcx_nam = self.filepath
+        elif self.opNo == 2: props.postprocTools_lox_nam = os.path.dirname(self.filepath)
+        elif self.opNo == 3: props.postprocTools_fcx_nam = os.path.dirname(self.filepath)
         return {'FINISHED'}
 
     def invoke(self, context, event):

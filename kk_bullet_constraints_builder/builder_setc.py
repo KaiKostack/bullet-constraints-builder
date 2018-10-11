@@ -549,7 +549,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         # Basic CTs:
         #   if CT == 1 or CT == 9 or CT == 10 or CT == 19:
         #       1x FIXED; Linear omni-directional + bending breaking threshold
-        #   if CT == 2:
+        #   if CT == 2 or CT == 25:
         #       1x POINT; Linear omni-directional breaking threshold
         #   if CT == 3 or CT == 20:
         #       1x POINT + 1x FIXED; Linear omni-directional, bending breaking thresholds
@@ -574,14 +574,20 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         #   if CT == 16 or CT == 18 or CT == 23:
         #       3x GENERIC; Bending (1D), torsion (1D) breaking thresholds
         
-        # Springs (additional):
+        # Springs:
+        #   if CT == 24:
+        #       1x SPRING; All degrees of freedom with plastic deformability
+        #   if CT == 25:
+        #       1x SPRING; Bending + torsion (1D) breaking thresholds with plastic deformability
+        
+        # Springs (2nd mode):
         #   if CT == 7 or CT == 9 or CT == 11 or CT == 17 or CT == 18:
         #       3x SPRING; Circular placed for plastic deformability
         #   if CT == 8 or CT == 10 or CT == 12:
         #       4x SPRING; Circular placed for plastic deformability
         #   if CT == 9 or CT == 11 or CT == 17 or CT == 18:
         #       1x SPRING; Now with angular limits circular placement is not required for plastic deformability anymore
-        
+
         # Springs only CTs
         #   if CT == 13:
         #       3 x 3x SPRING; Compressive (1D), tensile (1D), shearing (2D) breaking thresholds; circular placed for plastic deformability
@@ -611,7 +617,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             constsData.append([cData, cDatb])
 
         ### 1x POINT; Linear omni-directional breaking threshold
-        if CT == 2:
+        if CT == 2 or CT == 25:
             constCount = 1; correction = 1  # No correction required for this constraint type
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
@@ -1210,7 +1216,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
                 constsData.append([cData, cDatb])
 
-        ### 1x SPRING; Now with angular limits circular placement is not required for plastic deformability anymore
+        ### 1x SPRING; All degrees of freedom with plastic deformability
         if CT == 24:
             constCount = 1; correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
@@ -1221,6 +1227,29 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
                 springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
             setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
+            if qUpdateComplete:
+                ### Enable linear and angular spring
+                setConstParams(cData,cDatb,cDef, loc=loc, ct='GENERIC_SPRING')
+            # Disable springs on start (requires plastic activation during simulation, comment out if not required)
+            #setConstParams(cData,cDatb,cDef, e=0)
+            if props.asciiExport:
+                # Enable springs on start (if this spring is not for plastic deformation, comment out if not required)
+                setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC",tol2dist,tol2rot])
+                # Disable springs on start (requires plastic activation during simulation, comment out if not required)
+                #setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC_OFF",tol2dist,tol2rot])
+            constsData.append([cData, cDatb])
+
+        ### 1x SPRING; Bending + torsion (1D) breaking thresholds with plastic deformability
+        if CT == 25:
+            constCount = 1; correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
+            cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
+            value = brkThresValueP
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
+            if version_spring == 1:
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
+            else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
+                springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=0,usly=0,uslz=0, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
             if qUpdateComplete:
                 ### Enable linear and angular spring
                 setConstParams(cData,cDatb,cDef, loc=loc, ct='GENERIC_SPRING')

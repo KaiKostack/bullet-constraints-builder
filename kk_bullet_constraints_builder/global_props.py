@@ -117,11 +117,11 @@ class bcb_props(bpy.types.PropertyGroup):
 
     postprocTools_lox = bool_(default=1)
     postprocTools_lox_elm = string_(name="Element",       default='Cube', description="Enter the name of an element for which the location time history should be exported")
-    postprocTools_lox_nam = string_(name="CSV File",      default='', description="Enter filename or search for file for data export as plain ASCII text with comma-separated values (.csv)")
+    postprocTools_lox_nam = string_(name="CSV Folder",    default='', description="Enter a path or search for folder for data export as plain ASCII text with comma-separated values (.csv)")
 
     postprocTools_fcx = bool_(default=1)
     postprocTools_fcx_con = string_(name="Constraint",    default='Con.000', description="Enter the name of a constraint for which the location time history should be exported")
-    postprocTools_fcx_nam = string_(name="CSV File",      default='', description="Enter filename or search for file for data export as plain ASCII text with comma-separated values (.csv)")
+    postprocTools_fcx_nam = string_(name="CSV Folder",    default='', description="Enter a path or search for folder for data export as plain ASCII text with comma-separated values (.csv)")
 
     postprocTools_fcv = bool_(default=1)
     postprocTools_fcv_con = string_(name="Range Object",  default='Visualization Limiter', description="Enter the name of a helper object whose dimensions will be used to define for which connections forces should be visualized, i.e. all within its boundary range. For instance an empty object can be placed and scaled accordingly to fit a specific area of interest")
