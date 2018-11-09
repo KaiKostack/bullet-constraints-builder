@@ -615,7 +615,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             geoContactAreaF = areaB
             bbBMin, bbBMax, bbBCenter = bbBMinF, bbBMaxF, bbBCenterF
         else: qSkipConnect = 1
-
+        
     ### Calculate contact surface area from boundary box projection
     ### Project along all axis'
     overlapXneg = min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0])
@@ -625,7 +625,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
     overlapY = max(0, overlapYneg)
     overlapZ = max(0, overlapZneg)
 
-    if not qSkipConnect:
+    if not qSkipConnect or props.surfaceForced:
 
         # Formula only valid if we have overlap for all 3 axis
         # (This line is commented out because of the earlier connection pair check which ensured contact including a margin.)
@@ -654,23 +654,23 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         areaB = min(min(dimB[0]*dimB[1], dimB[0]*dimB[2]), dimB[1]*dimB[2])
         geoContactAreaD = min(areaA, areaB)
 
-#        print("geoContactAreaB", geoContactArea)
-#        print("geoContactAreaD", geoContactAreaD)
-#        print("geoContactAreaF", geoContactAreaF)
+        #print("geoContactAreaB", geoContactArea)
+        #print("geoContactAreaD", geoContactAreaD)
+        #print("geoContactAreaF", geoContactAreaF)
             
         ### Sanity check: in case no boundary box intersection is found use element dimensions based contact area as fallback 
         if geoContactArea == 0:
             geoContactArea = geoContactAreaD
 
         # Sanity check: contact area based on faces is expected to be smaller than boundary box and dimensions contact area, only then use face based contact area
+        qVolCorrect = 0
         if geoContactAreaF < geoContactArea and geoContactAreaF > 0:
             geoContactArea = geoContactAreaF
-            qVolCorrect = 0
-        else:
+        elif not qNonManifold:
             qVolCorrect = 1
 
-#        print("geoContactArea final", geoContactArea)
-#        print("qVolCorrect", qVolCorrect)
+        #print("geoContactArea final", geoContactArea)
+        #print("qVolCorrect", qVolCorrect)
 
         # Check if both boundary boxes are intersecting considering also search distance
         if overlapXneg > -halfSize[0] and overlapYneg > -halfSize[1] and overlapZneg > -halfSize[2]:
@@ -711,8 +711,19 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate
         objA = objs[connectsPair[k][0]]
         objB = objs[connectsPair[k][1]]
         
+        ### Check if meshes are water tight (non-manifold)
+        nonManifolds = 0
+        for obj in [objA, objB]:
+            bpy.context.scene.objects.active = obj
+            me = obj.data
+            # Find non-manifold elements
+            bm = bmesh.new()
+            bm.from_mesh(me)
+            nonManifolds = array.array('i', (i for i, ele in enumerate(bm.edges) if not ele.is_manifold))
+            bm.free()
+
         ###### Calculate contact area for a single pair of objects
-        geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qAccurate=qAccurate)
+        geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qAccurate=qAccurate, qNonManifold=len(nonManifolds))
                     
         # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth, qVolCorrect]
         connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2], qVolCorrect])
@@ -946,21 +957,32 @@ def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connec
     ### Delete connections with zero contact area
     if debug: print("Deleting connections with zero contact area...")
 
-    props = bpy.context.window_manager.bcb    
-    connectsPairTmp = []
-    connectsGeoTmp = []
-    connectsLocTmp = []
+    props = bpy.context.window_manager.bcb
     connectCntOld = len(connectsPair)
     connectCnt = 0
-    for i in range(len(connectsPair)):
-        if connectsGeo[i][0] > minimumContactArea:
-            connectsPairTmp.append(connectsPair[i])
-            connectsGeoTmp.append(connectsGeo[i])
-            connectsLocTmp.append(connectsLoc[i])
-            connectCnt += 1
-    connectsPair = connectsPairTmp
-    connectsGeo = connectsGeoTmp
-    connectsLoc = connectsLocTmp
+    
+    if props.disableCollisionPerm:
+        # Mark as zero instead of removing (special case for collision suppression connections)
+        for i in range(len(connectsPair)):
+            geoContactArea = connectsGeo[i][0]
+            if geoContactArea <= minimumContactArea:
+                connectsGeo[i][0] = 0
+                connectCnt += 1
+    else:    
+        ### Delete connections with zero contact area
+        connectsPairTmp = []
+        connectsGeoTmp = []
+        connectsLocTmp = []
+        for i in range(len(connectsPair)):
+            geoContactArea = connectsGeo[i][0]
+            if geoContactArea > minimumContactArea:
+                connectsPairTmp.append(connectsPair[i])
+                connectsGeoTmp.append(connectsGeo[i])
+                connectsLocTmp.append(connectsLoc[i])
+                connectCnt += 1
+        connectsPair = connectsPairTmp
+        connectsGeo = connectsGeoTmp
+        connectsLoc = connectsLocTmp
     
     print("Connections skipped due to zero contact area:", connectCntOld -connectCnt)
     return connectsPair, connectsGeo, connectsLoc
@@ -1003,7 +1025,7 @@ def deleteConnectionsWithReferences(objs, emptyObjs, connectsPair, connectsGeo, 
 
 ################################################################################   
 
-def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc):
+def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo):
     
     ### Create connection data
     if debug: print("Creating connection data...")
@@ -1014,78 +1036,82 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc):
     constsConnect = []
     constCntOfs = 0
     for i in range(len(connectsPair)):
-        pair = connectsPair[i]
-        loc = connectsLoc[i]
-
+        geoContactArea = connectsGeo[i][0]
+        
         ### Count constraints by connection type preset
-        elemGrpA = objsEGrp[pair[0]]
-        elemGrpB = objsEGrp[pair[1]]
-        objA = objs[pair[0]]
-        objB = objs[pair[1]]
-        elemGrps_elemGrpA = elemGrps[elemGrpA]
-        elemGrps_elemGrpB = elemGrps[elemGrpB]
-        CT_A = elemGrps_elemGrpA[EGSidxCTyp]
-        CT_B = elemGrps_elemGrpB[EGSidxCTyp]
-        Prio_A = elemGrps_elemGrpA[EGSidxPrio]
-        Prio_B = elemGrps_elemGrpB[EGSidxPrio]
-        NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
-        NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
-        NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
-        NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
-
-        ### Check for passive groups and decide which group settings should be used
         constCnt = 0
-        if CT_A != 0:  # A is active group
-            try: constCntA = connectTypes[CT_A][1]  # Check if CT is valid
-            except: constCntA = 0
-        if CT_B != 0:  # B is active group
-            try: constCntB = connectTypes[CT_B][1]  # Check if CT is valid
-            except: constCntB = 0
-        # Both A and B are active groups and priority is the same
-        if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
-            ### Use the connection type with the smaller count of constraints for connection between different element groups
-            ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-            if constCntA <= constCntB:
-                  constCnt = constCntA
-            else: constCnt = constCntB
-        # Only A is active and B is passive group or priority is higher for A
-        elif CT_A != 0 and CT_B == 0 or (CT_A != 0 and CT_B != 0 and Prio_A > Prio_B):
-            constCnt = constCntA
-        # Only B is active and A is passive group or priority is higher for B
-        elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
-            constCnt = constCntB
-        # Both A and B are in passive group but either one is actually an active RB (a xor b)
-        elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
-            constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
-        else:  # Both A and B are in passive group and both are passive RBs
-            constCnt = 0
-        # For unbreakable passive connections above settings can be overwritten
-        if not props.passiveUseBreaking:
-            # Both A and B are in passive group but either one is actually an active RB (a xor b)
-            if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
-                constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
+        # Initially check for valid contact area (zero check can invalidate connections for collision suppression instead of removing them)
+        if geoContactArea > 0:
+            pair = connectsPair[i]
+            loc = connectsLoc[i]
 
-        ### Check if connection between different groups is not allowed and remove them
-        if (NoCoA or NoCoB) and elemGrpA != elemGrpB: constCnt = 0
-        else:
-            ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
-            ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py        if (:
-            dirVecA = loc -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-            dirVecAN = dirVecA.normalized()
-            if abs(dirVecAN[2]) > 0.7: qA = 1
-            else: qA = 0
-            dirVecB = loc -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-            dirVecBN = dirVecB.normalized()
-            if abs(dirVecBN[2]) > 0.7: qB = 1
-            else: qB = 0
-            if qA == 0 and qB == 0 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
-            ### Old code
-            #dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-            #dirVecN = dirVec.normalized()
-            #if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
-            
+            elemGrpA = objsEGrp[pair[0]]
+            elemGrpB = objsEGrp[pair[1]]
+            objA = objs[pair[0]]
+            objB = objs[pair[1]]
+            elemGrps_elemGrpA = elemGrps[elemGrpA]
+            elemGrps_elemGrpB = elemGrps[elemGrpB]
+            CT_A = elemGrps_elemGrpA[EGSidxCTyp]
+            CT_B = elemGrps_elemGrpB[EGSidxCTyp]
+            Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+            Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+            NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
+            NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
+            NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
+            NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
+
+            ### Check for passive groups and decide which group settings should be used
+            if CT_A != 0:  # A is active group
+                try: constCntA = connectTypes[CT_A][1]  # Check if CT is valid
+                except: constCntA = 0
+            if CT_B != 0:  # B is active group
+                try: constCntB = connectTypes[CT_B][1]  # Check if CT is valid
+                except: constCntB = 0
+            # Both A and B are active groups and priority is the same
+            if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
+                ### Use the connection type with the smaller count of constraints for connection between different element groups
+                ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+                if constCntA <= constCntB:
+                      constCnt = constCntA
+                else: constCnt = constCntB
+            # Only A is active and B is passive group or priority is higher for A
+            elif CT_A != 0 and CT_B == 0 or (CT_A != 0 and CT_B != 0 and Prio_A > Prio_B):
+                constCnt = constCntA
+            # Only B is active and A is passive group or priority is higher for B
+            elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
+                constCnt = constCntB
+            # Both A and B are in passive group but either one is actually an active RB (a xor b)
+            elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
+            else:  # Both A and B are in passive group and both are passive RBs
+                constCnt = 0
+            # For unbreakable passive connections above settings can be overwritten
+            if not props.passiveUseBreaking:
+                # Both A and B are in passive group but either one is actually an active RB (a xor b)
+                if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                    constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
+
+            ### Check if connection between different groups is not allowed and remove them
+            if (NoCoA or NoCoB) and elemGrpA != elemGrpB: constCnt = 0
+            else:
+                ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
+                ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py        if (:
+                dirVecA = loc -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                dirVecAN = dirVecA.normalized()
+                if abs(dirVecAN[2]) > 0.7: qA = 1
+                else: qA = 0
+                dirVecB = loc -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                dirVecBN = dirVecB.normalized()
+                if abs(dirVecBN[2]) > 0.7: qB = 1
+                else: qB = 0
+                if qA == 0 and qB == 0 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
+                ### Old code
+                #dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                #dirVecN = dirVec.normalized()
+                #if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
+        
         # In case the connection type is passive or unknown reserve no space for constraints
-        if constCnt == 0: connectsConsts.append([])
+        if constCnt == 0 and geoContactArea > 0: connectsConsts.append([])
         # Otherwise reserve space for the predefined constraints count
         else:
             # Add one extra slot for a possible constraint for permanent collision suppression
