@@ -36,7 +36,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (3, 2, 5)
+bcb_version = (3, 2, 6)
 
 ### Customizable element group presets
 presets = [
@@ -124,7 +124,8 @@ connectTypes = [           # Cnt C T S B S T T T T      CT
 [ "6x GENERIC + 1x SPRING",  7, [1,1,1,1,1,1,1,1,1]], # 22. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability (2nd mode)
 [ "7x GENERIC + 1x SPRING",  8, [1,1,1,1,1,1,1,1,1]], # 23. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability (2nd mode)
 [ "1x SPRING",               1, [1,0,0,0,0,0,0,1,1]], # 24. Linear omni-directional + bending breaking threshold with plastic deformability
-[ "1x POINT + 1x SPRING",    2, [1,0,0,0,1,1,1,0,0]]  # 25. Linear omni-directional and bending breaking threshold with plastic deformability
+[ "1x POINT + 1x SPRING",    2, [1,0,0,0,1,1,1,0,0]], # 25. Linear omni-directional and bending breaking threshold with plastic deformability
+[ "1x HINGE",                1, [1,0,0,0,0,1,0,0,0]]  # 26. Linear omni-directional + bending XY breaking threshold
 ]
 # To add further connection types changes to following functions are necessary:
 # setConstraintSettings() and bcb_panel() for the UI

@@ -183,8 +183,8 @@ class bcb_props(bpy.types.PropertyGroup):
 
         exec("elemGrp_%d_EGSidxRqVP" %i +" = int_(name='Req. Vertex Pairs', default=presets[j][EGSidxRqVP], min=0, max=100, description='How many vertex pairs between two elements are required to generate a connection')")
         exec("elemGrp_%d_EGSidxMatP" %i +" = string_(name='Mat. Preset', default=presets[j][EGSidxMatP], description='Preset name of the physical material to be used from Blender´s internal database. See Blender´s Rigid Body Tools for a list of available presets')")
-        exec("elemGrp_%d_EGSidxDens" %i +" = float_(name='Density', default=presets[j][EGSidxDens], min=0.0, max=100000, description='Custom density value to use instead of material preset in kg/m^3 (0 = disabled)')")
-        exec("elemGrp_%d_EGSidxLoad" %i +" = float_(name='Live Load', default=presets[j][EGSidxLoad], min=0.0, max=100000, description='Additional weight representing live load which will be added to the total mass with respect to floor area (kg/m^2)')")
+        exec("elemGrp_%d_EGSidxDens" %i +" = float_(name='Density', default=presets[j][EGSidxDens], min=0.0, max=10000000, description='Custom density value to use instead of material preset in kg/m^3 (0 = disabled)')")
+        exec("elemGrp_%d_EGSidxLoad" %i +" = float_(name='Live Load', default=presets[j][EGSidxLoad], min=0.0, max=10000000, description='Additional weight representing live load which will be added to the total mass with respect to floor area (kg/m^2)')")
 
         exec("elemGrp_%d_EGSidxTl1D" %i +" = float_(name='1st Dist. Tol.', default=presets[j][EGSidxTl1D], min=0.0, max=10.0, description='First deformation tolerance limit for distance change in percent for connection removal or plastic deformation (1.00 = 100 %)')")
         exec("elemGrp_%d_EGSidxTl1R" %i +" = float_(name='1st Rot. Tol.', default=presets[j][EGSidxTl1R], min=0.0, max=pi, description='First deformation tolerance limit for angular change in radian for connection removal or plastic deformation')")

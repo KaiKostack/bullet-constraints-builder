@@ -712,14 +712,14 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate
         objB = objs[connectsPair[k][1]]
         
         ### Check if meshes are water tight (non-manifold)
-        nonManifolds = 0
+        nonManifolds = []
         for obj in [objA, objB]:
             bpy.context.scene.objects.active = obj
             me = obj.data
             # Find non-manifold elements
             bm = bmesh.new()
             bm.from_mesh(me)
-            nonManifolds = array.array('i', (i for i, ele in enumerate(bm.edges) if not ele.is_manifold))
+            nonManifolds.extend([i for i, ele in enumerate(bm.edges) if not ele.is_manifold])
             bm.free()
 
         ###### Calculate contact area for a single pair of objects
@@ -775,18 +775,18 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
         except: pass
         
         ### Check if meshes are water tight (non-manifold)
-        nonManifolds = 0
+        nonManifolds = []
         for obj in [objA, objB]:
             bpy.context.scene.objects.active = obj
             me = obj.data
             # Find non-manifold elements
             bm = bmesh.new()
             bm.from_mesh(me)
-            nonManifolds = array.array('i', (i for i, ele in enumerate(bm.edges) if not ele.is_manifold))
+            nonManifolds.extend([i for i, ele in enumerate(bm.edges) if not ele.is_manifold])
             bm.free()
 
         ###### If non-manifold then calculate a contact area estimation based on boundary boxes intersection and a user defined thickness
-        if nonManifolds:
+        if len(nonManifolds):
 
             #print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
 
@@ -1572,9 +1572,9 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
             # Find non-manifold elements
             bm = bmesh.new()
             bm.from_mesh(me)
-            nonManifolds = array.array('i', (i for i, ele in enumerate(bm.edges) if not ele.is_manifold))
+            nonManifolds = [i for i, ele in enumerate(bm.edges) if not ele.is_manifold]
             bm.free()
-            if nonManifolds: objsNonMan.append(obj)
+            if len(nonManifolds): objsNonMan.append(obj)
         print("Non-manifold elements found:", len(objsNonMan))
 
     ### Create new rigid body settings for children with the data from its parent (so mass can be calculated on children)
@@ -1649,17 +1649,25 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
             # Find out density of the element group
             if not materialDensity:
                 materialPreset = elemGrp[EGSidxMatP]
-                if materialPreset != "": materialDensity = materialPresets[materialPreset]
-
-            for obj in objsNonMan:
-                # Calculate object surface area and volume
-                me = obj.data
-                area = sum(f.area for f in me.polygons)
-                volume = area *props.surfaceThickness
-                # Calculate mass
-                obj.rigid_body.mass = volume *materialDensity
-
-            objsSelectedAll.extend(objsNonMan)
+                if materialPreset != "":
+                    try: materialDensity = materialPresets[materialPreset]
+                    except:
+                        print("Warning: No material density nor correct density preset defined, a density of 1000 is used.")
+                        materialDensity = 1000
+            
+            objsNonManSelected = []
+            for k in range(len(objsNonMan)):
+                obj = objs[k]
+                if j == objsEGrp[k]:
+                    # Calculate object surface area and volume
+                    me = obj.data
+                    area = sum(f.area for f in me.polygons)
+                    volume = area *props.surfaceThickness
+                    # Calculate mass
+                    obj.rigid_body.mass = volume *materialDensity
+                    objsNonManSelected.append(obj)
+                                
+            objsSelectedAll.extend(objsNonManSelected)
                 
         ### Adding live load to masses
         liveLoad = elemGrp[EGSidxLoad]

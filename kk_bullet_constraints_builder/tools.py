@@ -467,10 +467,10 @@ def tool_discretize(scene):
         # Find non-manifold elements
         bm = bmesh.new()
         bm.from_mesh(me)
-        nonManifolds = array.array('i', (i for i, ele in enumerate(bm.edges) if not ele.is_manifold))
+        nonManifolds = [i for i, ele in enumerate(bm.edges) if not ele.is_manifold]
         bm.free()
-        if nonManifolds or props.surfaceForced: objsNonMan.append(obj)
-        else:                                   objsNew.append(obj)
+        if len(nonManifolds) or props.surfaceForced: objsNonMan.append(obj)
+        else:                                        objsNew.append(obj)
     objs = objsNew
     print("Non-manifold elements found:", len(objsNonMan))
 

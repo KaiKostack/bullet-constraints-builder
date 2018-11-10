@@ -1271,6 +1271,26 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 #setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot], tol2=["PLASTIC_OFF",tol2dist,tol2rot])
             constsData.append([cData, cDatb])
 
+        ### 1x HINGE; Linear omni-directional + bending XY breaking threshold
+        if CT == 26:
+            ### First constraint
+            constCount = 1; correction = 2.2   # Generic constraints detach already when less force than the breaking threshold is applied (around a factor of 0.455) so we multiply our threshold by this correctional value
+            cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
+            value = brkThresValueC
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            if qUpdateComplete:
+                rotm = 'QUATERNION'
+                ### Lock all directions for the compressive force
+                ### I left Y and Z unlocked because for this CT we have no separate breaking threshold for lateral force, the tensile constraint and its breaking threshold should apply for now
+                ### Also rotational forces should only be carried by the tensile constraint
+                setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=llxl,llxu=llxu,llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=1,ulaz=1, layl=layl,layu=layu,lazl=lazl,lazu=lazu)
+                # Disable angular tolerances in build data array (required for monitor)
+                connectsTol[-1] = [tol1dist, -1, tol2dist, -1]
+            if props.asciiExport:
+                setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,-1])
+            constsData.append([cData, cDatb])
+
         ###### Special CTs
         
         ### 1x GENERIC; Constraint for permanent collision suppression and no influence otherwise

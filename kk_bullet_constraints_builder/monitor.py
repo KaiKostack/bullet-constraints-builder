@@ -399,8 +399,8 @@ def monitor_checkForChange(scene):
                 anglDif = math.asin(math.sin( abs(anglOrig -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
 
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-                if distDif > tolDist +(anglDif /pi) \
-                or anglDif > tolRot:
+                if (tolDist != -1 and distDif > tolDist +(anglDif /pi)) \
+                or (tolRot != -1 and anglDif > tolRot):
                     qPlastic = 0
                     for const in consts:
                         # Enable spring constraints for this connection by setting its stiffness
@@ -510,8 +510,8 @@ def monitor_checkForChange(scene):
                 anglDif = math.asin(math.sin( abs(anglOrig -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
 
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
-                if distDif > tolDist +(anglDif /pi) \
-                or anglDif > tolRot:
+                if (tolDist != -1 and distDif > tolDist +(anglDif /pi)) \
+                or (tolRot != -1 and anglDif > tolRot):
                     # Disable plastic constraints for this connection
                     for const in consts:
                         if const.rigid_body_constraint.type == 'GENERIC_SPRING':
