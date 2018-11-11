@@ -249,8 +249,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 if abs(dirVecBN[2]) > 0.7: qB = 1
                 else: qB = 0
                 if qA == 0 and qB == 0 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: CT = 0
-                ### Old code
-                #if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: CT = 0
             
             ###### Decision on which material settings from both groups will be used for connection
             if CT != 0:
@@ -482,7 +480,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                         CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
 
-                ######
+                ###### CT is now known and we can prepare further settings accordingly
                 
                 if CT > 0:
                     elemGrps_elemGrp = elemGrps[elemGrp]
@@ -530,6 +528,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                         else: tol2rot = presets[0][EGSidxTl2R]  # Use tolerance from preset #0 as last resort
                     # Add new tolerances to build data array
                     connectsTol[-1] = [tol1dist, tol1rot, tol2dist, tol2rot]
+                    
+                    ### Other settings
+                    so = bool(elemGrps_elemGrp[EGSidxIter])
+                    si = elemGrps_elemGrp[EGSidxIter]
                     
                     ### Check if full update is necessary (optimization)
                     if not props.asciiExport:
@@ -608,9 +610,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         ### 1x FIXED; Indestructible buffer between passive and active foundation elements
         if CT == -1:
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-            #rotm = 'QUATERNION'
-            #setConstParams(cData,cDatb,cDef, loc=loc,rotm=rotm,rot=rotN, ub=0, dc=1, ct='GENERIC', ullx=1,ully=1,ullz=1, llxl=llxl,llxu=llxu,llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=1,ulay=1,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
-            #setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='GENERIC_SPRING', sslx=999,ssly=999,sslz=999, uslx=1,usly=1,uslz=1, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, ullx=1,ully=1,ullz=1, llxl=llxl,llxu=llxu,llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=1,ulay=1,ulaz=1, laxl=laxl,laxu=laxu,layl=layl,layu=layu,lazl=lazl,lazu=lazu)
             setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=props.passiveUseBreaking,si=1)
             constsData.append([cData, cDatb])
 
@@ -620,7 +619,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED')
+            setConstParams(cData,cDatb,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED', so=so,si=si)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
             constsData.append([cData, cDatb])
@@ -631,7 +630,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT')
+            setConstParams(cData,cDatb,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT', so=so,si=si)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
             constsData.append([cData, cDatb])
@@ -644,7 +643,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT')
+            setConstParams(cData,cDatb,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='POINT', so=so,si=si)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
             constsData.append([cData, cDatb])
@@ -653,7 +652,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueB
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED')
+            setConstParams(cData,cDatb,cDef, loc=loc, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, ct='FIXED', so=so,si=si)
             if props.asciiExport:
                 setConstParams(cData,cDatb,cDef, tol1=["TOLERANCE",tol1dist,tol1rot])
             constsData.append([cData, cDatb])
@@ -665,7 +664,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock all directions for the compressive force
@@ -683,7 +682,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock all directions for the tensile force
@@ -699,7 +698,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for shearing force
@@ -713,7 +712,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueS
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for bending force
@@ -729,7 +728,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueT
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock direction for tensile force
@@ -745,7 +744,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueS
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for shearing force
@@ -759,7 +758,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueB
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions for bending force
@@ -788,7 +787,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                       btRatio = geoHeight /geoWidth
                 else: btRatio = 1
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
@@ -822,7 +821,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 value = values[1]  # Find and use larger value (to be used along w axis)
             if btRatio != 1: btRatio = 1 /btRatio
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
@@ -852,7 +851,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                       btRatio = geoHeight /geoWidth
                 else: btRatio = 1
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
@@ -886,7 +885,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 value = values[1]  # Find and use larger value (to be used along w axis)
             if btRatio != 1: btRatio = 1 /btRatio
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
@@ -916,7 +915,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                       btRatio = geoHeight /geoWidth
                 else: btRatio = 1
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Find constraint axis which is closest to the height (h) orientation of the detected contact area  
@@ -950,7 +949,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 value = values[1]  # Find and use larger value (to be used along w axis)
             if btRatio != 1: btRatio = 1 /btRatio
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
@@ -979,7 +978,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 #                else: btRatio = 1
             value *= .5  # Use 50% of the bending thresholds for torsion (we really need a formula for that)
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock directions accordingly to axis
@@ -1004,7 +1003,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             ### Loop through all constraints of this connection
             for i in range(3):
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
+                setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
                     ### Rotate constraint matrix
@@ -1038,7 +1037,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             ### Loop through all constraints of this connection
             for i in range(4):
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
+                setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
                     ### Rotate constraint matrix
@@ -1069,7 +1068,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
             else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
                 springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
             if qUpdateComplete:
                 ### Enable linear and angular spring
                 setConstParams(cData,cDatb,cDef, loc=loc, ct='GENERIC_SPRING')
@@ -1121,7 +1120,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     
                 ### Second constraint
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDatb,cDef, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDatb,cDef, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
                     ### Rotate constraint matrix
@@ -1138,7 +1137,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
                 ### Third constraint
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDatb,cDef, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDatb,cDef, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
                     ### Rotate constraint matrix
@@ -1191,7 +1190,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
                 ### Second constraint
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDatb,cDef, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDatb,cDef, bt=brkThres2, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
                     ### Rotate constraint matrix
@@ -1209,7 +1208,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
                 ### Third constraint
                 cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-                setConstParams(cData,cDatb,cDef, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, sslx=springStiff,ssly=springStiff,sslz=springStiff)
+                setConstParams(cData,cDatb,cDef, bt=brkThres3, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si, sslx=springStiff,ssly=springStiff,sslz=springStiff)
                 if qUpdateComplete:
                     rotm = 'QUATERNION'
                     ### Rotate constraint matrix
@@ -1235,7 +1234,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
             else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
                 springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si, uslx=1,usly=1,uslz=1, sslx=springStiff,ssly=springStiff,sslz=springStiff, sdlx=springDamp,sdly=springDamp,sdlz=springDamp, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
             if qUpdateComplete:
                 ### Enable linear and angular spring
                 setConstParams(cData,cDatb,cDef, loc=loc, ct='GENERIC_SPRING')
@@ -1258,7 +1257,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
             else:  # Later versions use "spring2" which need different formulas to achieve the same behavior
                 springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount /2
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, uslx=0,usly=0,uslz=0, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si, uslx=0,usly=0,uslz=0, usax=1,usay=1,usaz=1, ssax=springStiff,ssay=springStiff,ssaz=springStiff, sdax=springDamp,sday=springDamp,sdaz=springDamp)
             if qUpdateComplete:
                 ### Enable linear and angular spring
                 setConstParams(cData,cDatb,cDef, loc=loc, ct='GENERIC_SPRING')
@@ -1278,7 +1277,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             value = brkThresValueC
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
-            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN)
+            setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
                 ### Lock all directions for the compressive force

@@ -869,6 +869,9 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
                 row = col.row(align=1); row.label(text="Warning: Disabled facing")
                 row = col.row(align=1); row.label(text="makes bevel permanent!")
 
+            row = col.row(align=1)
+            row.prop(props, "elemGrp_%d_EGSidxIter" %i)
+
         else:  # Message if no element group is selected
             row = layout.row(align=1); row.alignment = 'CENTER'
             row.label(text="No element group", icon="INFO")

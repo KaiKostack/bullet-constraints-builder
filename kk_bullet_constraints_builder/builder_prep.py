@@ -1558,6 +1558,11 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
     props = bpy.context.window_manager.bcb
     elemGrps = mem["elemGrps"]
 
+    ### Prepare objects index lookup dictionary for faster access
+    objsIndex = {}
+    for k in range(len(objs)):
+        objsIndex[objs[k].name] = k
+
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
 
@@ -1655,9 +1660,12 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                         print("Warning: No material density nor correct density preset defined, a density of 1000 is used.")
                         materialDensity = 1000
             
+            if props.surfaceForced: objsNonMan = objs
+                
             objsNonManSelected = []
-            for k in range(len(objsNonMan)):
-                obj = objs[k]
+            for n in range(len(objsNonMan)):
+                obj = objsNonMan[n]
+                k = objsIndex[obj.name]
                 if j == objsEGrp[k]:
                     # Calculate object surface area and volume
                     me = obj.data

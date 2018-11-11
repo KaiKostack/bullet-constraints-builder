@@ -374,6 +374,7 @@ def FM_constraints(ob):
         mi.rigidbody.restitution = obj_rb.restitution
         mi.rigidbody.use_margin = obj_rb.use_margin
         mi.rigidbody.collision_margin = obj_rb.collision_margin
+        
 #    # Reload refresh handler
 #    if qHandler:
 #        bpy.app.handlers.fracture_refresh.append(FM_shards)
