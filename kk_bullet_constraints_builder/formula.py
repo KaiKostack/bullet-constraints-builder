@@ -141,7 +141,7 @@ def splitAndApplyPrecisionToFormula(formulaIn):
 
     if not isinstance(formulaIn, str):
         print("ERROR: Input formula is not a string, got:", formulaIn)
-        return 0
+        return "0"
 
     ### Split formula at predefined splitting strings and add spaces
     splitter = ['**', '+', '-', '*', '/', '(', ')', '[', ']', '!=', '>=', '<=', '==', '=']
@@ -225,8 +225,7 @@ def combineExpressions():
 
             # Calculate density from ratio of steel and concrete
             dens = "rho*denss+(1-rho)*densc"
-            print(denss, densc)
-
+                
             ### Normalize result upon 1 mm^2, 'a' should be the only var left over
             a = 'a'
             Nn = "(" +Nn +")/(h*w)"
@@ -236,7 +235,7 @@ def combineExpressions():
             Sp = "(" +Sp +")/(h*w)"
             
             ### Combine all available expressions with each other      
-            symbols = ['densc','denss','rho','Vpn','Mpn','fsu','elu','pi','fs','fc','Sp',
+            symbols = ['densc','denss','dens','rho','Vpn','Mpn','fsu','elu','pi','fs','fc','Sp',
                        'ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
             cnt = 0; cntLast = -1
             while cnt != cntLast:
@@ -286,7 +285,7 @@ def combineExpressions():
                     try:    dens = dens.replace(symbol, convertFloatToStr(eval(symbol), 4))
                     except: dens = dens.replace(symbol, eval(symbol))
                     cnt += len(dens)
-            
+
             ### Simplify formulas when SymPy module is available
             if qSymPy:
                 try: Nn = str(sympy.simplify(Nn))
@@ -299,16 +298,18 @@ def combineExpressions():
                 except: Mpn = ""
                 try: Sp = str(sympy.simplify(Sp))
                 except: Sp = ""
-                try: dens = sympy.simplify(dens)
-                except: dens = 0
+                try: dens = str(sympy.simplify(dens))
+                except: dens = "0"
                 
             ### Output main results into BCB settings
             if not qHWswapped:
+                # Strings
                 elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
                 elemGrps[i][EGSidxBTT] = splitAndApplyPrecisionToFormula(Np)
                 elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
                 elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
                 elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
+                # Floats
                 elemGrps[i][EGSidxDens] = eval(splitAndApplyPrecisionToFormula(dens))
                 elemGrps[i][EGSidxBTPL] = 0  # 0 means calculation will be postponed to setConstraint() function
                 elemGrps[i][EGSidxTl2D] = 0  # Unlike Tl2R we could do this calculation here but for consistency reasons we postpone this as well
@@ -318,6 +319,7 @@ def combineExpressions():
                 #elemGrps[i][EGSidxTl1R] = .2
                 #elemGrps[i][EGSidxScal] = 1
             else:
+                # Strings
                 Vpn9 = splitAndApplyPrecisionToFormula(Vpn)
                 Mpn9 = splitAndApplyPrecisionToFormula(Mpn)
                 Vpn = elemGrps[i][EGSidxBTS]
@@ -381,7 +383,7 @@ def combineExpressions():
             Sp = "(" +Sp +")/(h*w)"
 
             ### Combine all available expressions with each other      
-            symbols = ['densc','denss','rho','Vpn','Mpn','fsu','elu','pi','fs','fc','Sp',
+            symbols = ['densc','denss','dens','rho','Vpn','Mpn','fsu','elu','pi','fs','fc','Sp',
                        'ds','dl','e1','Nn','Np','c','s','n','k','h','w','d','e','y','a']  # sorted by length
             cnt = 0; cntLast = -1
             while cnt != cntLast:
@@ -432,8 +434,8 @@ def combineExpressions():
                     except: dens = dens.replace(symbol, eval(symbol))
                     cnt += len(dens)
 
+            # Simplify formulas when SymPy module is available
             if qSymPy:
-                # Simplify formulas when SymPy module is available
                 try: Nn = str(sympy.simplify(Nn))
                 except: Nn = ""
                 try: Np = str(sympy.simplify(Np))
@@ -444,16 +446,18 @@ def combineExpressions():
                 except: Mpn = ""
                 try: Sp = str(sympy.simplify(Sp))
                 except: Sp = ""
-                try: dens = sympy.simplify(dens)
-                except: dens = 0
+                try: dens = str(sympy.simplify(dens))
+                except: dens = "0"
                 
             ### Output main results into BCB settings
             if not qHWswapped:
+                # Strings
                 elemGrps[i][EGSidxBTC] = splitAndApplyPrecisionToFormula(Nn)
                 elemGrps[i][EGSidxBTT] = splitAndApplyPrecisionToFormula(Np)
                 elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
                 elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
                 elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
+                # Floats
                 elemGrps[i][EGSidxDens] = eval(splitAndApplyPrecisionToFormula(dens))
                 elemGrps[i][EGSidxBTPL] = 0  # 0 means calculation will be postponed to setConstraint() function
                 elemGrps[i][EGSidxTl2D] = 0  # Unlike Tl2R we could do this calculation here but for consistency reasons we postpone this as well
@@ -463,6 +467,7 @@ def combineExpressions():
                 #elemGrps[i][EGSidxTl1R] = .2
                 #elemGrps[i][EGSidxScal] = 1
             else:
+                # Strings
                 Vpn9 = splitAndApplyPrecisionToFormula(Vpn)
                 Mpn9 = splitAndApplyPrecisionToFormula(Mpn)
                 Vpn = elemGrps[i][EGSidxBTS]
