@@ -192,6 +192,11 @@ def build_fm(use_handler=0):
 
     ob.select = 0
     
+    ###### Preparing air drag simulation
+    air(scene)
+
+    ### Building FM object
+
     if not use_handler:
         md.fracture_mode = 'EXTERNAL'
         ###### Shards
@@ -245,6 +250,43 @@ def build_fm(use_handler=0):
     print('-- Time total: %0.2f s' %(time.time()-time_start))
     print('Done.')
     print()
+    
+########################################
+
+def air(scene):
+
+    ### Storing geometry data for air drag simulation
+    try: grp = bpy.data.groups["Air_Enabled"]
+    except: return
+    else: objs = grp.objects
+    try: grp = bpy.data.groups["Pressure_Enabled"]
+    except: presObjs = None
+    else: presObjs = grp.objects
+   
+    areas = []; normals = []
+    for obj in objs:
+        # Cross sectional area
+        dim = obj.dimensions; dimAxis = [0, 1, 2]
+        dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
+        areaMax = dim[1] *dim[2]  # Maximum approx. cross sectional area
+        areaMin = dim[0] *dim[1]  # Minimum approx. cross sectional area
+
+        ### Derive average normal for element from mesh faces
+        me = obj.data
+        areaTot = 0
+        normal = Vector((0, 0, 0)) 
+        for face in me.polygons:
+            normal += face.normal *face.area
+            areaTot += face.area
+        normal /= areaTot
+
+        areas.append([areaMax, areaMin])
+        normals.append(normal)
+
+    scene["air_objsname"] = [ob.name for ob in objs]
+    if presObjs != None: scene["air_presobjsname"] = [ob.name for ob in presObjs]
+    scene["air_areas"] = areas
+    scene["air_normals"] = normals
 
 ########################################
 

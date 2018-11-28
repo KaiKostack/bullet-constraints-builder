@@ -672,29 +672,26 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         #print("geoContactArea final", geoContactArea)
         #print("qVolCorrect", qVolCorrect)
 
-        # Check if both boundary boxes are intersecting considering also search distance
-        if overlapXneg > -halfSize[0] and overlapYneg > -halfSize[1] and overlapZneg > -halfSize[2]:
-                    
-            ### Find out element thickness to be used for bending threshold calculation 
-            geo = [overlapX, overlapY, overlapZ]
-            geoAxis = [1, 2, 3]
-            geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
-            geoHeight = geo[1]  # First item = mostly 0, second item = thickness/height, third item = width 
-            geoWidth = geo[2]
+        ### Find out element thickness to be used for bending threshold calculation 
+        geo = [overlapX, overlapY, overlapZ]
+        geoAxis = [1, 2, 3]
+        geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
+        geoHeight = geo[1]  # First item = mostly 0, second item = thickness/height, third item = width 
+        geoWidth = geo[2]
 
-            # Add custom thickness to contact area (only for manifolds as it is already included in non-manifolds)
-            if not qNonManifold:
-                geoContactArea += geoWidth *props.surfaceThickness
-            
-            ### Use center of contact area boundary box as constraints location
-            centerX = (max(bbAMin[0],bbBMin[0]) + min(bbAMax[0],bbBMax[0])) /2
-            centerY = (max(bbAMin[1],bbBMin[1]) + min(bbAMax[1],bbBMax[1])) /2
-            centerZ = (max(bbAMin[2],bbBMin[2]) + min(bbAMax[2],bbBMax[2])) /2
-            
-            center = Vector((centerX, centerY, centerZ))
-            #center = (bbACenter +bbBCenter) /2     # Debug: Place constraints at the center of both elements like in bashi's addon
+        # Add custom thickness to contact area (only for manifolds as it is already included in non-manifolds)
+        if not qNonManifold:
+            geoContactArea += geoWidth *props.surfaceThickness
+        
+        ### Use center of contact area boundary box as constraints location
+        centerX = (max(bbAMin[0],bbBMin[0]) + min(bbAMax[0],bbBMax[0])) /2
+        centerY = (max(bbAMin[1],bbBMin[1]) + min(bbAMax[1],bbBMax[1])) /2
+        centerZ = (max(bbAMin[2],bbBMin[2]) + min(bbAMax[2],bbBMax[2])) /2
+        
+        center = Vector((centerX, centerY, centerZ))
+        #center = (bbACenter +bbBCenter) /2     # Debug: Place constraints at the center of both elements like in bashi's addon
 
-            return geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect
+        return geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect
 
     return 0, 0, 0, [0,0,0], [1,2,3], 0  # Dummy data, connection will be remove later because of zero area anyway
 

@@ -38,6 +38,8 @@ mem = bpy.app.driver_namespace
 
 ########################################
 
+qSymPy = 0
+
 ###### SymPy detection and import code
 from pkgutil import iter_modules
 def module_exists(module_name):
@@ -116,7 +118,6 @@ if module_exists("sympy"):
     qSymPy = 1
 else:
     print("No SymPy module found, continuing without formula simplification feature...")
-    qSymPy = 0
 
 ########################################
 

@@ -36,6 +36,10 @@ mem = bpy.app.driver_namespace
 ### Import submodules
 from global_vars import *      # Contains global variables
 
+########################################
+
+qSymPy = 0
+
 ###### SymPy detection and import code
 from pkgutil import iter_modules
 def module_exists(module_name):
@@ -114,7 +118,7 @@ if module_exists("sympy"):
     qSymPy = 1
 else:
     #print("No SymPy module found, continuing without formula simplification feature...")
-    qSymPy = 0
+    pass
 
 ################################################################################
 
@@ -134,6 +138,10 @@ def convertFloatToStr(value, precision):
 ########################################
 
 def splitAndApplyPrecisionToFormula(formulaIn):
+
+    if not isinstance(formulaIn, str):
+        print("ERROR: Input formula is not a string, got:", formulaIn)
+        return 0
 
     ### Split formula at predefined splitting strings and add spaces
     splitter = ['**', '+', '-', '*', '/', '(', ')', '[', ']', '!=', '>=', '<=', '==', '=']
@@ -301,7 +309,7 @@ def combineExpressions():
                 elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
                 elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
                 elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
-                elemGrps[i][EGSidxDens] = dens
+                elemGrps[i][EGSidxDens] = eval(splitAndApplyPrecisionToFormula(dens))
                 elemGrps[i][EGSidxBTPL] = 0  # 0 means calculation will be postponed to setConstraint() function
                 elemGrps[i][EGSidxTl2D] = 0  # Unlike Tl2R we could do this calculation here but for consistency reasons we postpone this as well
                 elemGrps[i][EGSidxTl2R] = 0  # 0 means calculation will be postponed to setConstraint() function
@@ -446,7 +454,7 @@ def combineExpressions():
                 elemGrps[i][EGSidxBTS] = splitAndApplyPrecisionToFormula(Vpn)
                 elemGrps[i][EGSidxBTB] = splitAndApplyPrecisionToFormula(Mpn)
                 elemGrps[i][EGSidxBTP] = splitAndApplyPrecisionToFormula(Sp)
-                elemGrps[i][EGSidxDens] = dens
+                elemGrps[i][EGSidxDens] = eval(splitAndApplyPrecisionToFormula(dens))
                 elemGrps[i][EGSidxBTPL] = 0  # 0 means calculation will be postponed to setConstraint() function
                 elemGrps[i][EGSidxTl2D] = 0  # Unlike Tl2R we could do this calculation here but for consistency reasons we postpone this as well
                 elemGrps[i][EGSidxTl2R] = 0  # 0 means calculation will be postponed to setConstraint() function

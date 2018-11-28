@@ -2088,7 +2088,6 @@ def tool_forcesVisualization_eventHandler(scene):
     ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
     if not bpy.context.screen.is_animation_playing:
 
-
         ###### First calculate the sum of a specified ID property for all selected objects for console output
 
         keyVal = "#Fmax N"       # Name of the ID property to be summarized
