@@ -256,7 +256,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 CT_B = elemGrps_elemGrpB[EGSidxCTyp]
                 Prio_A = elemGrps_elemGrpA[EGSidxPrio]
                 Prio_B = elemGrps_elemGrpB[EGSidxPrio]
-                
+
                 # A is active group
                 if CT_A != 0:
                     ### Prepare expression strings
@@ -365,7 +365,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
                     ### Use the connection type with the smaller count of constraints for connection between different element groups
                     ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-                    if connectTypes[elemGrps_elemGrpA[EGSidxCTyp]][1] <= connectTypes[elemGrps_elemGrpB[EGSidxCTyp]][1]:
+                    if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
                         CT = CT_A
                         elemGrp = elemGrpA
                     else:
@@ -482,9 +482,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
                 ###### CT is now known and we can prepare further settings accordingly
                 
-                if CT > 0:
-                    elemGrps_elemGrp = elemGrps[elemGrp]
+                elemGrps_elemGrp = elemGrps[elemGrp]
+                disColPerm = elemGrps_elemGrp[EGSidxDClP]
 
+                if CT > 0:
                     ### Get spring length to be used later for stiffness calculation
                     if brkThresValuePL > 0: springLength = brkThresValuePL
                     else:                   springLength = geoLengthApprox
@@ -532,7 +533,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     ### Other settings
                     so = bool(elemGrps_elemGrp[EGSidxIter])
                     si = elemGrps_elemGrp[EGSidxIter]
-                    
+
                     ### Check if full update is necessary (optimization)
                     if not props.asciiExport:
                         objConst0 = emptyObjs[consts[0]]
@@ -783,7 +784,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             elif brkThresValueB9 == -1:  # Only use btRatio if neither shear nor bend have a 90° value
-                if geoHeight > 0 and geoWidth > 0:
+                if geoHeight > props.searchDistance and geoWidth > props.searchDistance:
                       btRatio = geoHeight /geoWidth
                 else: btRatio = 1
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
@@ -847,7 +848,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             elif brkThresValueS9 == -1:  # Only use btRatio if neither shear nor bend have a 90° value
-                if geoHeight > 0 and geoWidth > 0:
+                if geoHeight > props.searchDistance and geoWidth > props.searchDistance:
                       btRatio = geoHeight /geoWidth
                 else: btRatio = 1
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
@@ -911,7 +912,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
             elif brkThresValueS9 == -1:  # Only use btRatio if neither shear nor bend have a 90° value
-                if geoHeight > 0 and geoWidth > 0:
+                if geoHeight > props.searchDistance and geoWidth > props.searchDistance:
                       btRatio = geoHeight /geoWidth
                 else: btRatio = 1
             brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
@@ -973,7 +974,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 #                values.sort()
 #                value = values[0]  # Find and use smaller value (to be used along h axis)
 #            elif brkThresValueB9 == -1:  # Only use btRatio if neither shear nor bend have a 90° value
-#                if geoHeight > 0 and geoWidth > 0:
+#                if geoHeight > props.searchDistance and geoWidth > props.searchDistance:
 #                      btRatio = geoHeight /geoWidth
 #                else: btRatio = 1
             value *= .5  # Use 50% of the bending thresholds for torsion (we really need a formula for that)
@@ -1293,10 +1294,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         ###### Special CTs
         
         ### 1x GENERIC; Constraint for permanent collision suppression and no influence otherwise
-        if CT != 0 and props.disableCollisionPerm:
+        if CT != 0 and (props.disableCollisionPerm or disColPerm):
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             constCount = 1; correction = 1  # No correction required for this constraint type
-            setConstParams(cData,cDatb,cDef, loc=loc, bt=-1, ub=0, dc=props.disableCollision, ct='GENERIC')
+            setConstParams(cData,cDatb,cDef, loc=loc, bt=-1, ub=0, dc=1, ct='GENERIC')
             constsData.append([cData, cDatb])
 
     print()

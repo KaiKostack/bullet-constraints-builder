@@ -49,6 +49,8 @@ def initGeneralRigidBodyWorldSettings(scene):
     scene.render.fps_base = 1
     # Set Steps Per Second for rigid body simulation
     scene.rigidbody_world.steps_per_second = props.stepsPerSecond
+    # Set the length of the point cache to match the scene length
+    scene.rigidbody_world.point_cache.frame_end = scene.frame_end
     # Set Split Impulse for rigid body simulation
     #scene.rigidbody_world.use_split_impulse = True
 
@@ -1036,7 +1038,6 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
         geoContactArea = connectsGeo[i][0]
         
         ### Count constraints by connection type preset
-        constCnt = 0
         # Initially check for valid contact area (zero check can invalidate connections for collision suppression instead of removing them)
         if geoContactArea > 0:
             pair = connectsPair[i]
@@ -1057,39 +1058,9 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
             NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
             NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
 
-            ### Check for passive groups and decide which group settings should be used
-            if CT_A != 0:  # A is active group
-                try: constCntA = connectTypes[CT_A][1]  # Check if CT is valid
-                except: constCntA = 0
-            if CT_B != 0:  # B is active group
-                try: constCntB = connectTypes[CT_B][1]  # Check if CT is valid
-                except: constCntB = 0
-            # Both A and B are active groups and priority is the same
-            if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
-                ### Use the connection type with the smaller count of constraints for connection between different element groups
-                ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-                if constCntA <= constCntB:
-                      constCnt = constCntA
-                else: constCnt = constCntB
-            # Only A is active and B is passive group or priority is higher for A
-            elif CT_A != 0 and CT_B == 0 or (CT_A != 0 and CT_B != 0 and Prio_A > Prio_B):
-                constCnt = constCntA
-            # Only B is active and A is passive group or priority is higher for B
-            elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
-                constCnt = constCntB
-            # Both A and B are in passive group but either one is actually an active RB (a xor b)
-            elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
-                constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
-            else:  # Both A and B are in passive group and both are passive RBs
-                constCnt = 0
-            # For unbreakable passive connections above settings can be overwritten
-            if not props.passiveUseBreaking:
-                # Both A and B are in passive group but either one is actually an active RB (a xor b)
-                if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
-                    constCnt = 1  # Only one fixed constraint is used to connect these (buffer special case)
-
             ### Check if connection between different groups is not allowed and remove them
-            if (NoCoA or NoCoB) and elemGrpA != elemGrpB: constCnt = 0
+            CT = -1
+            if (NoCoA or NoCoB) and elemGrpA != elemGrpB: CT = 0
             else:
                 ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
                 ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py        if (:
@@ -1101,18 +1072,57 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
                 dirVecBN = dirVecB.normalized()
                 if abs(dirVecBN[2]) > 0.7: qB = 1
                 else: qB = 0
-                if qA == 0 and qB == 0 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
+                if qA == 0 and qB == 0 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: CT = 0
                 ### Old code
                 #dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
                 #dirVecN = dirVec.normalized()
-                #if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: constCnt = 0
+                #if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: CT = 0
+
+            ### Decision on which material settings from both groups will be used for connection
+            # Both A and B are active groups and priority is the same
+            if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
+                ### Use the connection type with the smaller count of constraints for connection between different element groups
+                ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+                if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
+                      CT = CT_A; elemGrp = elemGrpA
+                else: CT = CT_B; elemGrp = elemGrpB
+            # Only A is active and B is passive group or priority is higher for A
+            elif CT_A != 0 and CT_B == 0 or (CT_A != 0 and CT_B != 0 and Prio_A > Prio_B):
+                CT = CT_A; elemGrp = elemGrpA
+            # Only B is active and A is passive group or priority is higher for B
+            elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
+                CT = CT_B; elemGrp = elemGrpB
+            # Both A and B are in passive group but either one is actually an active RB (a xor b)
+            elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
+            else:  # Both A and B are in passive group and both are passive RBs
+                CT = 0
+            # For unbreakable passive connections above settings can be overwritten
+            if not props.passiveUseBreaking:
+                # Both A and B are in passive group but either one is actually an active RB (a xor b)
+                if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                    CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
+
+            ### CT is now known and we can prepare further settings accordingly
+
+            if CT > 0: constCnt = connectTypes[CT][1]
+            elif CT == 0: constCnt = 0
+            elif CT == -1: constCnt = 1
+
+            elemGrps_elemGrp = elemGrps[elemGrp]
+            disColPerm = elemGrps_elemGrp[EGSidxDClP]
+        
+        ### If invalid contact area
+        else:
+            constCnt = 0
+            disColPerm = 0
         
         # In case the connection type is passive or unknown reserve no space for constraints
         if constCnt == 0 and geoContactArea > 0: connectsConsts.append([])
         # Otherwise reserve space for the predefined constraints count
         else:
             # Add one extra slot for a possible constraint for permanent collision suppression
-            if props.disableCollisionPerm: constCnt += 1
+            if props.disableCollisionPerm or disColPerm: constCnt += 1
             # Reserve constraint slots
             items = []
             for j in range(constCnt):

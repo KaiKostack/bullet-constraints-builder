@@ -159,7 +159,7 @@ class bcb_props(bpy.types.PropertyGroup):
     progrWeakStartFact    = float_(name="Start Weakness",         default=1, min=0.0, max=1.0,     description="Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update")
     snapToAreaOrient      = bool_(name="90° Axis Snapping for Const. Orient.", default=1,          description="Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method)")
     disableCollision      = bool_(name="Disable Collisions",      default=1,                       description="Disables collisions between connected elements until breach")
-    disableCollisionPerm  = bool_(name="Dis. Col. Permanently",   default=0,                       description="For use with Disable Collisions: Disables collisions between initially connected elements permanently. This can help to make simulations with intersecting geometry more stable at the cost of accuracy")
+    disableCollisionPerm  = bool_(name="Dis. Col. Permanently",   default=0,                       description="Disables collisions between initially connected elements permanently. This can help to make simulations with intersecting geometry more stable at the cost of accuracy")
     lowerBrkThresPriority = bool_(name="Lower Strength Priority", default=1,                       description="Gives priority to the weaker breaking threshold of two elements with same Priority value to be connected, if disabled the stronger value is used for the connection")
     detonatorObj          = string_(name="Detonator Object",      default="Detonator",             description="Enter name of an object to be used to simulate the effects of an explosion. This feature replicates the damage caused by such an event by weakening the constraints within range of the object. It is recommended to use an Empty object with a sphere shape for this. The damage is calculated as gradient of the distance mapped to the size, from 200% weakening at center to 0% at boundary")
     
@@ -199,6 +199,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxFacg" %i +" = bool_(name='Facing', default=presets[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation)')")
         exec("elemGrp_%d_EGSidxCyln" %i +" = bool_(name='Cylindric Shape', default=presets[j][EGSidxCyln], description='Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns')")
         exec("elemGrp_%d_EGSidxIter" %i +" = int_(name='Constraint Solver Iterations Override', default=presets[j][EGSidxIter], min=0, max=100000, description='Overrides the Constraint Solver Iterations value of the scene for constraints of this element group if set to a value greater 0. Higher numbers can help to reduce solver induced deformation on elements bearing extreme loads')")
+        exec("elemGrp_%d_EGSidxDClP" %i +" = bool_(name='Dis. Col. Permanently', default=presets[j][EGSidxDClP], description='Disables collisions between initially connected elements of this element group permanently (overrides global setting)')")
 
         # Update fromula assistant submenu according to the chosen element group
         exec("assistant_menu = enum_(name='Type of Building Material', items=assistant_menu_data, default=presets[j][EGSidxAsst]['ID'])")
@@ -239,6 +240,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxFacg" %i +" = elemGrps[i][EGSidxFacg]")
                 exec("self.elemGrp_%d_EGSidxCyln" %i +" = elemGrps[i][EGSidxCyln]")
                 exec("self.elemGrp_%d_EGSidxIter" %i +" = elemGrps[i][EGSidxIter]")
+                exec("self.elemGrp_%d_EGSidxDClP" %i +" = elemGrps[i][EGSidxDClP]")
             
             # Update fromula assistant submenu according to the chosen element group
             i = self.menu_selectedElemGrp
@@ -290,6 +292,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxFacg] = eval("self.elemGrp_%d_EGSidxFacg" %i)
                 elemGrps[i][EGSidxCyln] = eval("self.elemGrp_%d_EGSidxCyln" %i)
                 elemGrps[i][EGSidxIter] = eval("self.elemGrp_%d_EGSidxIter" %i)
+                elemGrps[i][EGSidxDClP] = eval("self.elemGrp_%d_EGSidxDClP" %i)
                 # Remove surface variable if existing (will be added in setConstraintSettings()
                 elemGrps[i][EGSidxBTC] = elemGrps[i][EGSidxBTC].replace('*a','')
                 elemGrps[i][EGSidxBTT] = elemGrps[i][EGSidxBTT].replace('*a','')
