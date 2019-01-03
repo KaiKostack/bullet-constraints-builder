@@ -1342,7 +1342,7 @@ def tool_exportLocationHistory_eventHandler(scene):
                 print('Error: Defined object not found. Removing event handler.')
                 stopPlaybackAndReturnToStart(scene); return
             else:
-                data = ob.centroid.copy()  # Get actual Bullet object's position as .location only returns its simulation starting position
+                data = ob.rigidbody.location.copy()  # Get actual Bullet object's position as .location only returns its simulation starting position
     
     # If filepath is empty then print data into console
     if len(filenamePath) == 0:
@@ -1373,7 +1373,7 @@ def tool_exportLocationHistory_eventHandler(scene):
                     print('Error: Could not open file.')
                     stopPlaybackAndReturnToStart(scene); return
                 else:
-                    line = "# Time; X; Y; Z; Name: %s\n" %objName
+                    line = "# Time; X; Y; Z; Name: %s\n" %objName.encode("CP850","replace").decode("CP850")
                     f.write(line)
                     files.append(f)
             bpy.app.driver_namespace["log_files_open"] = files
@@ -1576,7 +1576,7 @@ def tool_exportForceHistory_eventHandler(scene):
                         print('Error: Could not open file.')
                         stopPlaybackAndReturnToStart(scene); return
                     else:
-                        line = "# Time; 1,2,3..: Fmax for connection and F for individual constraints; Name: %s\n" %objName
+                        line = "# Time; 1,2,3..: Fmax for connection and F for individual constraints; Name: %s\n" %objName.encode("CP850","replace").decode("CP850")
                         f.write(line)
                         files.append(f)
                 bpy.app.driver_namespace["log_files_open"] = files
@@ -1864,12 +1864,12 @@ def tool_forcesVisualization_eventHandler(scene):
                 qUse = 1
                 if 0:  # Experimental and thus disabled
                     if not qFM: dirVecA = objConst.location -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-                    else: dirVecA = objConst.location -objA.centroid
+                    else: dirVecA = objConst.location -objA.rigidbody.location
                     dirVecAN = dirVecA.normalized()
                     if abs(dirVecAN[2]) > 0.7: qA = 1
                     else: qA = 0
                     if not qFM: dirVecB = objConst.location -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-                    else: dirVecB = objConst.location -objB.centroid
+                    else: dirVecB = objConst.location -objB.rigidbody.location
                     dirVecBN = dirVecB.normalized()
                     if abs(dirVecBN[2]) > 0.7: qB = 1
                     else: qB = 0
@@ -1961,9 +1961,9 @@ def tool_forcesVisualization_eventHandler(scene):
             
 #            ### Set location to center of (possibly moving) element pair (comment out for original connection position)
 #            try: locA = objA.matrix_world.to_translation()  # Get actual Bullet object's position as .location only returns its simulation starting position
-#            except: locA = objA.centroid  # If the above fails it's an FM object, so we have to derive the location differently
+#            except: locA = objA.rigidbody.location  # If the above fails it's an FM object, so we have to derive the location differently
 #            try: locB = objB.matrix_world.to_translation()
-#            except: locB = objB.centroid
+#            except: locB = objB.rigidbody.location
 #            loc = (locA +locB) /2 
             
             result = tool_constraintForce_getData(scene, name)
@@ -2023,10 +2023,10 @@ def tool_forcesVisualization_eventHandler(scene):
 #                    fl = (flx**2 +fly**2 +flz**2)**0.5
 #                    # Convert moments to forces by using the elements distances to the pivot point
 #                    if not qFM: dirVec = objConst.location -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-#                    else: dirVec = objConst.location -objA.centroid
+#                    else: dirVec = objConst.location -objA.rigidbody.location
 #                    distA = dirVec.length
 #                    if not qFM: dirVec = objConst.location -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-#                    else: dirVec = objConst.location -objB.centroid
+#                    else: dirVec = objConst.location -objB.rigidbody.location
 #                    distB = dirVec.length
 #                    dist = (distA +distB) /2  # Use average distance
 #                    fa = (fax +fay +faz) #/dist  # Angular forces (moments) are added up and divided by the distance (lever) to get a linear force

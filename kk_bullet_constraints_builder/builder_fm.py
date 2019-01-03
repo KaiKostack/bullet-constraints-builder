@@ -30,7 +30,7 @@
 
 ################################################################################
 
-import bpy, mathutils, time, pickle, zlib, base64
+import bpy, bmesh, mathutils, time, pickle, zlib, base64
 from mathutils import Vector
 from bpy.app.handlers import persistent
 mem = bpy.app.driver_namespace
@@ -259,9 +259,12 @@ def air(scene):
     try: grp = bpy.data.groups["Air_Enabled"]
     except: return
     else: objs = grp.objects
-    try: grp = bpy.data.groups["Pressure_Enabled"]
-    except: presObjs = None
-    else: presObjs = grp.objects
+    try: grp = bpy.data.groups["Air_Pressure"]
+    except: objsPres = []
+    else: objsPres = grp.objects
+    try: grp = bpy.data.groups["Air_Fixed"]
+    except: objsFixed = []
+    else: objsFixed = grp.objects
    
     areas = []; normals = []
     for obj in objs:
@@ -280,11 +283,25 @@ def air(scene):
             areaTot += face.area
         normal /= areaTot
 
+        ### If no valid normal could be found then generate one from dimensions
+        if normal.length == 0:
+            smallestAxis = dimAxis[0]
+            if smallestAxis == 0:   vecAxis = Vector((1, 0, 0))
+            elif smallestAxis == 1: vecAxis = Vector((0, 1, 0))
+            else:                   vecAxis = Vector((0, 0, 1))
+            if obj.rotation_mode == 'EULER':
+                  matInv = obj.rotation_euler.to_matrix().inverted()
+            else: matInv = obj.rotation_quaternion.to_matrix().inverted()
+            normal = vecAxis *matInv
+
+        normal = normal.normalized()
+
         areas.append([areaMax, areaMin])
         normals.append(normal)
 
-    scene["air_objsname"] = [ob.name for ob in objs]
-    if presObjs != None: scene["air_presobjsname"] = [ob.name for ob in presObjs]
+    scene["air_objsName"] = [ob.name for ob in objs]
+    scene["air_objsPresName"] = [ob.name for ob in objsPres]
+    scene["air_objsFixedName"] = [ob.name for ob in objsFixed]
     scene["air_areas"] = areas
     scene["air_normals"] = normals
 

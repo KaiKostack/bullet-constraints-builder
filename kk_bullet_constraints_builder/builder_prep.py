@@ -1059,6 +1059,7 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
             NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
 
             ### Check if connection between different groups is not allowed and remove them
+            elemGrp = None
             CT = -1
             if (NoCoA or NoCoB) and elemGrpA != elemGrpB: CT = 0
             else:
@@ -1109,11 +1110,12 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
             elif CT == 0: constCnt = 0
             elif CT == -1: constCnt = 1
 
-            elemGrps_elemGrp = elemGrps[elemGrp]
-            disColPerm = elemGrps_elemGrp[EGSidxDClP]
+            if elemGrp != None:
+                elemGrps_elemGrp = elemGrps[elemGrp]
+                disColPerm = elemGrps_elemGrp[EGSidxDClP]
         
         ### If invalid contact area
-        else:
+        if geoContactArea == 0 or elemGrp == None:
             constCnt = 0
             disColPerm = 0
         

@@ -738,11 +738,16 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
         print("(Doing not so can cause problems on immediate rebuild and simulation.)")
         ### Quick and dirty delete function (faster but can cause problems on immediate rebuilding, requires saving and reloading first)
         # Delete (unlink) modified elements from scene 
-        for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
+        for parentObj in parentTmpObjs:
+            try: scene.objects.unlink(parentObj)
+            except: pass
         # Delete (unlink) constraint empty objects from scene
-        for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
+        for emptyObj in emptyObjs:
+            try: scene.objects.unlink(emptyObj)
+            except: pass
         # Unlink 'RigidBodyConstraints' group from scene so that the unlinked empties have no more users and will be discarted on saving
-        bpy.data.groups.remove(bpy.data.groups["RigidBodyConstraints"], do_unlink=True)
+        try: bpy.data.groups.remove(bpy.data.groups["RigidBodyConstraints"], do_unlink=True)
+        except: pass
             
     # Set layers as in original scene
     scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)

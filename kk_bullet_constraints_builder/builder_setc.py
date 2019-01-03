@@ -184,7 +184,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         objA = objs[pair[0]]
         objB = objs[pair[1]]
         # If objects are missing fill in empty data and skip rest
-        if objA == None or objB == None:
+        if objA == None or objB == None or len(consts) == 0:
             cData = {}; cDatb = []
             for cIdx in consts:
                 setConstParams(cData,cDatb,cDef)
@@ -235,6 +235,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             geoLengthApprox = dirVec.length
 
             ### Check if connection between different groups is not allowed and remove them
+            elemGrp = None
             CT = -1
             if (NoCoA or NoCoB) and elemGrpA != elemGrpB: CT = 0
             else:
@@ -482,8 +483,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
                 ###### CT is now known and we can prepare further settings accordingly
                 
-                elemGrps_elemGrp = elemGrps[elemGrp]
-                disColPerm = elemGrps_elemGrp[EGSidxDClP]
+                if elemGrp != None:
+                    elemGrps_elemGrp = elemGrps[elemGrp]
+                    disColPerm = elemGrps_elemGrp[EGSidxDClP]
+                else:
+                    disColPerm = 0
 
                 if CT > 0:
                     ### Get spring length to be used later for stiffness calculation
