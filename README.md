@@ -1,4 +1,4 @@
-# bullet-constraints-builder
+# Bullet Constraints Builder for Blender
 Short description:
 Add-on for Blender to connect rigid bodies via constraints in a physical plausible way.
 
@@ -15,7 +15,7 @@ We expect, that we will be able to simulate failing building structures under ha
 
 Contact:
 Kai Kostack: 	info@kostackstudio.de;
-Oliver Walter: 	oliver.walter@laurea.fi 
+Oliver Walter: 	oliver.walter@kolumbus.fi
 
 Links:
 https://inachuslaurea.wordpress.com;
