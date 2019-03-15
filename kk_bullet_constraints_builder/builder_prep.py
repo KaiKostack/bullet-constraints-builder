@@ -138,6 +138,29 @@ def gatherObjects(scene):
 
 def prepareObjects(objs):
 
+    bpy.context.scene.objects.active = objs[0]
+
+    ### Create one main group for all objects
+    grpName = grpNameBuilding
+    try: grp = bpy.data.groups[grpName]
+    except: grp = bpy.data.groups.new(grpName)
+    for obj in objs:
+        try: grp.objects.link(obj)
+        except: pass
+
+    ### Backup scale factor depending on object's collision shape to make sure volume and mass calculation are correct (not all need this)
+    for obj in objs:
+        if obj.rigid_body != None:
+            if obj.rigid_body.collision_shape == 'CONVEX_HULL' or \
+               obj.rigid_body.collision_shape == 'BOX' or \
+               obj.rigid_body.collision_shape == 'MESH':  # Not needed: SPHERE, CAPSULE, CYLINDER, CONE
+                obj["Scale"] = obj.scale  # Backup original scale
+            obj.select = 0
+        else:
+            obj.select = 1
+    ### Add rigid body status if not already present
+    bpy.ops.rigidbody.objects_add()
+            
     ### Prepare objects (make unique, apply transforms etc.)
     # Select objects
     for obj in objs: obj.select = 1
@@ -145,21 +168,9 @@ def prepareObjects(objs):
     bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
     # Set object centers to geometry origin
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-    ### Apply scale factor depending on object's collision shape to make sure volume and mass calculation are correct (not all need this)
-    for obj in objs:
-        if obj.rigid_body != None:
-            if obj.rigid_body.collision_shape == 'CONVEX_HULL' or obj.rigid_body.collision_shape == 'MESH':  # Not needed: SPHERE, CAPSULE, CYLINDER, CONE
-                obj["Scale"] = obj.scale  # Backup original scale
-                obj.select = 1
-            else:
-                obj.select = 0
-        else:
-            # Add rigid body status if not already present
-            bpy.context.scene.objects.active = obj
-            bpy.ops.rigidbody.object_add()
-            obj.select = 1
+    ### Converting mesh scale to 1
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-
+    
 ################################################################################   
 
 def boundaryBox(obj, qGlobalSpace):
@@ -580,6 +591,8 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
     bbAMin, bbAMax, bbACenter = boundaryBox(objA, 1)
     bbBMin, bbBMax, bbBCenter = boundaryBox(objB, 1)
     halfSize = ((bbAMax-bbAMin) +(bbBMax-bbBMin)) /4
+    bbAMinBak, bbAMaxBak, bbACenterBak = bbAMin, bbAMax, bbACenter
+    bbBMinBak, bbBMaxBak, bbBCenterBak = bbBMin, bbBMax, bbBCenter
 
     ### Determine faces within search range of both objects and return their surface area
     geoContactAreaF = 0
@@ -593,7 +606,8 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         bbAMinSD = Vector((bbAMin[0]-searchDist, bbAMin[1]-searchDist, bbAMin[2]-searchDist))
         bbAMaxSD = Vector((bbAMax[0]+searchDist, bbAMax[1]+searchDist, bbAMax[2]+searchDist))
         bbBMinF, bbBMaxF, bbBCenterF, areaB = boundaryBoxFaces(objB, 1, selMin=bbAMinSD, selMax=bbAMaxSD)
-        # Check if detected contact area is implausible high compared to the total surface area of the objects
+
+        ### Check if detected contact area is implausible high compared to the total surface area of the objects
         areaAtot = 0; areaBtot = 0
         for face in objA.data.polygons: areaAtot += face.area
         for face in objB.data.polygons: areaBtot += face.area
@@ -617,37 +631,45 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             geoContactAreaF = areaB
             bbBMin, bbBMax, bbBCenter = bbBMinF, bbBMaxF, bbBCenterF
         else: qSkipConnect = 1
-        
-    ### Calculate contact surface area from boundary box projection
-    ### Project along all axis'
-    overlapXneg = min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0])
-    overlapYneg = min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1])
-    overlapZneg = min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2])
-    overlapX = max(0, overlapXneg)
-    overlapY = max(0, overlapYneg)
-    overlapZ = max(0, overlapZneg)
 
+        ### Calculate overlap of face based boundary boxes as alternative to simple boundary box overlap
+        if areaA > 0 and areaB > 0:
+            overlapXF = min(bbAMaxF[0],bbBMaxF[0]) -max(bbAMinF[0],bbBMinF[0])
+            overlapYF = min(bbAMaxF[1],bbBMaxF[1]) -max(bbAMinF[1],bbBMinF[1])
+            overlapZF = min(bbAMaxF[2],bbBMaxF[2]) -max(bbAMinF[2],bbBMinF[2])
+            # If two axis have no relevant overlap we can assume the faces are perpendicular to each other,
+            # in this case it's safer to fall back to simple boundary box based overlap (the else case)
+            if (overlapXF >= props.searchDistance and overlapYF >= props.searchDistance) or \
+               (overlapXF >= props.searchDistance and overlapZF >= props.searchDistance) or \
+               (overlapYF >= props.searchDistance and overlapZF >= props.searchDistance):
+                  overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+                  qOverlapSimple = 0
+            else: qOverlapSimple = 1
+        else: qOverlapSimple = 1
+        if qOverlapSimple:
+            bbAMin, bbAMax, bbACenter = bbAMinBak, bbAMaxBak, bbACenterBak
+            bbBMin, bbBMax, bbBCenter = bbBMinBak, bbBMaxBak, bbBCenterBak
+        
+    if not qAccurate or qOverlapSimple:
+        ### Calculate simple overlap of boundary boxes for contact area calculation (project along all axis')
+        overlapX = min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0])
+        overlapY = min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1])
+        overlapZ = min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2])
+            
     if not qSkipConnect or props.surfaceForced:
 
-        # Formula only valid if we have overlap for all 3 axis
-        # (This line is commented out because of the earlier connection pair check which ensured contact including a margin.)
-        #if overlapX > 0 and overlapY > 0 and overlapZ > 0:  
-        if 1:
-            
-            ### Calculate area based on either the sum of all axis surfaces...
-            if not qNonManifold:
-                overlapAreaX = overlapY *overlapZ
-                overlapAreaY = overlapX *overlapZ
-                overlapAreaZ = overlapX *overlapY
-                # Add up all contact areas
-                geoContactArea = overlapAreaX +overlapAreaY +overlapAreaZ
-                    
-            ### Or calculate contact area based on predefined custom thickness
-            else:
-                geoContactArea = (overlapX +overlapY +overlapZ) *props.surfaceThickness
-
-        else: geoContactArea = 0
+        ### Calculate area based on either the sum of all axis surfaces...
+        if not qNonManifold:
+            overlapAreaX = overlapY *overlapZ
+            overlapAreaY = overlapX *overlapZ
+            overlapAreaZ = overlapX *overlapY
+            # Add up all contact areas
+            geoContactArea = overlapAreaX +overlapAreaY +overlapAreaZ
                 
+        ### Or calculate contact area based on predefined custom thickness
+        else:
+            geoContactArea = (overlapX +overlapY +overlapZ) *props.surfaceThickness
+
         ### Calculate alternative contact area from object dimensions
         dimA = objA.dimensions
         dimB = objB.dimensions
@@ -1200,10 +1222,8 @@ def backupLayerSettingsAndActivateAllLayers(scene):
     
     ### Backup layer settings
     layersBak = []
-    layersNew = []
     for i in range(20):
         layersBak.append(int(scene.layers[i]))
-        layersNew.append(0)
     # Activate all layers
     scene.layers = [True for q in scene.layers]
        

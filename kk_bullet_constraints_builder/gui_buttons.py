@@ -181,6 +181,9 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
         if props.automaticMode and props.preprocTools_aut:
             OBJECT_OT_bcb_preprocess_do_all_steps_at_once.execute(self, context)
         OBJECT_OT_bcb_build.execute(self, context)
+        if props.menu_gotData:
+            if props.automaticMode and props.postprocTools_aut:
+                OBJECT_OT_bcb_postprocess_do_all_steps_at_once.execute(self, context)
         props.asciiExport = 0
         return{'FINISHED'}
     
@@ -208,16 +211,22 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
                     except: bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"])
                 ### Free previous bake data
                 contextFix = bpy.context.copy()
-                contextFix['point_cache'] = scene.rigidbody_world.point_cache
+                if scene.rigidbody_world != None:
+                    contextFix['point_cache'] = scene.rigidbody_world.point_cache
+                else:
+                    print("Error: No 'Rigid Body World' found, please create one in the Scene buttons.")
+                    return{'CANCELLED'} 
                 bpy.ops.ptcache.free_bake(contextFix)
                 if props.automaticMode:
                     # Prepare event handler
                     bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
                     # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
                     #bpy.ops.ptcache.bake(contextFix, bake=True)
-                    # Start animation playback and by that the baking process
-                    if not bpy.context.screen.is_animation_playing:
-                        bpy.ops.screen.animation_play()
+                    if props.automaticMode and props.postprocTools_aut: pass
+                    else:
+                        # Start animation playback and by that the baking process
+                        if not bpy.context.screen.is_animation_playing:
+                            bpy.ops.screen.animation_play()
         self.use_handler = 0
         return{'FINISHED'} 
 
@@ -236,7 +245,11 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
             bpy.context.screen.scene = scene  # Hack to update scene completely (scene.update() is not enough causing the monitor not work correctly when invoking at a frame > 1)
         ### Free previous bake data
         contextFix = bpy.context.copy()
-        contextFix['point_cache'] = scene.rigidbody_world.point_cache
+        if scene.rigidbody_world != None:
+            contextFix['point_cache'] = scene.rigidbody_world.point_cache
+        else:
+            print("Error: No 'Rigid Body World' found, please create one in the Scene buttons.")
+            return{'CANCELLED'} 
         bpy.ops.ptcache.free_bake(contextFix)
         ### Invalidate point cache to enforce a full bake without using previous cache data
         if "RigidBodyWorld" in bpy.data.groups:
@@ -250,7 +263,10 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
             if props.automaticMode and props.preprocTools_aut:
                 OBJECT_OT_bcb_preprocess_do_all_steps_at_once.execute(self, context)
             OBJECT_OT_bcb_build.execute(self, context)
-            if props.menu_gotData: OBJECT_OT_bcb_bake.execute(self, context)
+            if props.menu_gotData:
+                if props.automaticMode and props.postprocTools_aut:
+                    OBJECT_OT_bcb_postprocess_do_all_steps_at_once.execute(self, context)
+                OBJECT_OT_bcb_bake.execute(self, context)
         ### Start baking when we have constraints set
         else:
             # Prepare event handlers
@@ -259,9 +275,11 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
             monitor_eventHandler(scene)  # Init at current frame before starting simulation
             # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
             #bpy.ops.ptcache.bake(contextFix, bake=True)
-            # Start animation playback and by that the baking process
-            if not bpy.context.screen.is_animation_playing:
-                bpy.ops.screen.animation_play()
+            if props.automaticMode and props.postprocTools_aut: pass
+            else:
+                # Start animation playback and by that the baking process
+                if not bpy.context.screen.is_animation_playing:
+                    bpy.ops.screen.animation_play()
         return{'FINISHED'} 
 
 ########################################

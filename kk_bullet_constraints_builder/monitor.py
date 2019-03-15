@@ -335,20 +335,25 @@ def monitor_initBuffers(scene):
             for const in conConsts:
                 emptyObj = emptyObjs[const]
                 consts.append(emptyObj)
-                if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
-                    # Backup original settings
-                    constsEnabled.append(emptyObj.rigid_body_constraint.enabled)
-                    constsUseBrk.append(emptyObj.rigid_body_constraint.use_breaking)
-                    constsBrkThres.append(emptyObj.rigid_body_constraint.breaking_threshold)
-                    # Disable breakability for warm up time
-                    #if props.warmUpPeriod: emptyObj.rigid_body_constraint.use_breaking = 0
-                    # Set initial mode state if plastic or not (activate plastic mode only if the connection constists exclusively of springs)
-                    if emptyObj.rigid_body_constraint.type != 'GENERIC_SPRING': mode = 0
+                if emptyObj != None:
+                    if emptyObj.rigid_body_constraint != None and emptyObj.rigid_body_constraint.object1 != None:
+                        # Backup original settings
+                        constsEnabled.append(emptyObj.rigid_body_constraint.enabled)
+                        constsUseBrk.append(emptyObj.rigid_body_constraint.use_breaking)
+                        constsBrkThres.append(emptyObj.rigid_body_constraint.breaking_threshold)
+                        # Disable breakability for warm up time
+                        #if props.warmUpPeriod: emptyObj.rigid_body_constraint.use_breaking = 0
+                        # Set initial mode state if plastic or not (activate plastic mode only if the connection constists exclusively of springs)
+                        if emptyObj.rigid_body_constraint.type != 'GENERIC_SPRING': mode = 0
+                    else:
+                        if not qWarning:
+                            qWarning = 1
+                            print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
+                        print("(%s)" %emptyObj.name)
+                        constsEnabled.append(0)
+                        constsUseBrk.append(0)
+                        constsBrkThres.append(0)
                 else:
-                    if not qWarning:
-                        qWarning = 1
-                        print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
-                    print("(%s)" %emptyObj.name)
                     constsEnabled.append(0)
                     constsUseBrk.append(0)
                     constsBrkThres.append(0)
