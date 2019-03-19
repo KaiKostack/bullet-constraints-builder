@@ -119,7 +119,55 @@ def gatherObjects(scene):
 
     ### Create object lists of selected objects
     print("Creating object lists of selected objects...")
+
+    props = bpy.context.window_manager.bcb
+    elemGrps = mem["elemGrps"]
+
+    ### Check if unspecified (empty name) element group is present, only then consider user selection
+    qUserSelection = 0
+    for i in range(len(elemGrps)):
+        grpName = elemGrps[i][EGSidxName]
+        if grpName == "": qUserSelection = 1; break
+    if not qUserSelection:
+        # Deselect all objects.
+        bpy.ops.object.select_all(action='DESELECT')
+
+    ### Check which element group names correspond to scene groups and select those
+    for i in range(len(elemGrps)):
+        grpName = elemGrps[i][EGSidxName]
+        try: grp = bpy.data.groups[grpName]
+        except: continue
+        # Select all objects from that group       
+        for obj in grp.objects:
+            if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
+                obj.select = 1
+
+    ### Deselect possible ground objects
+    try: objGnd = scene.objects[props.preprocTools_gnd_obj]
+    except: pass
+    else: objGnd.select = 0
+    try: objMot = scene.objects[props.preprocTools_gnd_obm]
+    except: pass
+    else: objGnd.select = 0
     
+    ### Prepare scene object dictionary for empties to be used for faster item search (optimization)
+    scnObjs = {}
+    scnEmptyObjs = {}
+    for obj in scene.objects:
+        if obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
+    ### Get previous constraint objects list from BCB data
+    try: names = scene["bcb_emptyObjs"]
+    except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
+    emptyObjs = []
+    for name in names:
+        if len(name):
+            try: emptyObjs.append(scnEmptyObjs[name])
+            except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+        else: emptyObjs.append(None)
+    # Select constraint (empty) objects that might exist from earlier simulations
+    for obj in emptyObjs: obj.select = 1
+    
+    ### Create main object lists from selection
     objs = []
     emptyObjs = []
     for obj in scene.objects:
