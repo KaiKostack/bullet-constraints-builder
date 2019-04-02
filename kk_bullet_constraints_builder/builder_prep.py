@@ -157,15 +157,17 @@ def gatherObjects(scene):
         if obj.type == 'EMPTY': scnEmptyObjs[obj.name] = obj
     ### Get previous constraint objects list from BCB data
     try: names = scene["bcb_emptyObjs"]
-    except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
-    emptyObjs = []
-    for name in names:
-        if len(name):
-            try: emptyObjs.append(scnEmptyObjs[name])
-            except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
-        else: emptyObjs.append(None)
-    # Select constraint (empty) objects that might exist from earlier simulations
-    for obj in emptyObjs: obj.select = 1
+    except: pass
+    else:
+        emptyObjs = []
+        for name in names:
+            if len(name):
+                try: emptyObjs.append(scnEmptyObjs[name])
+                except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+            else: emptyObjs.append(None)
+        # Select constraint (empty) objects that might exist from earlier simulations
+        for obj in emptyObjs:
+            if obj != None: obj.select = 1
     
     ### Create main object lists from selection
     objs = []

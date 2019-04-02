@@ -205,10 +205,11 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             OBJECT_OT_bcb_export_ascii.execute(self, context)
             if props.menu_gotData:
                 ###### Fracture Modifier export
-                build_fm(use_handler=self.use_handler)
-                if not self.use_handler and asciiExportName +".txt" in bpy.data.texts:
-                    try:    bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"], do_unlink=1)
-                    except: bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"])
+                if not "bcb_ext_noBuild" in scene.keys():  # Option for external scripts to prevent building and keep export data
+                    build_fm(use_handler=self.use_handler)
+                    if not self.use_handler and asciiExportName +".txt" in bpy.data.texts:
+                        try:    bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"], do_unlink=1)
+                        except: bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"])
                 ### Free previous bake data
                 contextFix = bpy.context.copy()
                 if scene.rigidbody_world != None:
