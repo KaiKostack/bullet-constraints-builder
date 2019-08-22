@@ -123,24 +123,24 @@ def gatherObjects(scene):
     props = bpy.context.window_manager.bcb
     elemGrps = mem["elemGrps"]
 
-    ### Check if unspecified (empty name) element group is present, only then consider user selection
-    qUserSelection = 0
-    for i in range(len(elemGrps)):
-        grpName = elemGrps[i][EGSidxName]
-        if grpName == "": qUserSelection = 1; break
-    if not qUserSelection:
-        # Deselect all objects.
-        bpy.ops.object.select_all(action='DESELECT')
-
-    ### Check which element group names correspond to scene groups and select those
-    for i in range(len(elemGrps)):
-        grpName = elemGrps[i][EGSidxName]
-        try: grp = bpy.data.groups[grpName]
-        except: continue
-        # Select all objects from that group       
-        for obj in grp.objects:
-            if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
-                obj.select = 1
+#    ### Check if unspecified (empty name) element group is present, only then consider user selection
+#    qUserSelection = 0
+#    for i in range(len(elemGrps)):
+#        grpName = elemGrps[i][EGSidxName]
+#        if grpName == "": qUserSelection = 1; break
+#    if not qUserSelection:
+#        # Deselect all objects.
+#        bpy.ops.object.select_all(action='DESELECT')
+#
+#    ### Check which element group names correspond to scene groups and select those
+#    for i in range(len(elemGrps)):
+#        grpName = elemGrps[i][EGSidxName]
+#        try: grp = bpy.data.groups[grpName]
+#        except: continue
+#        # Select all objects from that group       
+#        for obj in grp.objects:
+#            if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
+#                obj.select = 1
 
     ### Deselect possible ground objects
     try: objGnd = scene.objects[props.preprocTools_gnd_obj]
@@ -702,9 +702,9 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         
     if not qAccurate or qOverlapSimple:
         ### Calculate simple overlap of boundary boxes for contact area calculation (project along all axis')
-        overlapX = min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0])
-        overlapY = min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1])
-        overlapZ = min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2])
+        overlapX = abs(min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]))
+        overlapY = abs(min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]))
+        overlapZ = abs(min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
             
     if not qSkipConnect or props.surfaceForced:
 
@@ -1108,50 +1108,48 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
     constCntOfs = 0
     for i in range(len(connectsPair)):
         geoContactArea = connectsGeo[i][0]
+        elemGrp = None
         
         ### Count constraints by connection type preset
-        # Initially check for valid contact area (zero check can invalidate connections for collision suppression instead of removing them)
-        if geoContactArea > 0:
-            pair = connectsPair[i]
-            loc = connectsLoc[i]
 
-            elemGrpA = objsEGrp[pair[0]]
-            elemGrpB = objsEGrp[pair[1]]
-            objA = objs[pair[0]]
-            objB = objs[pair[1]]
-            elemGrps_elemGrpA = elemGrps[elemGrpA]
-            elemGrps_elemGrpB = elemGrps[elemGrpB]
-            CT_A = elemGrps_elemGrpA[EGSidxCTyp]
-            CT_B = elemGrps_elemGrpB[EGSidxCTyp]
-            Prio_A = elemGrps_elemGrpA[EGSidxPrio]
-            Prio_B = elemGrps_elemGrpB[EGSidxPrio]
-            NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
-            NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
-            NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
-            NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
+        pair = connectsPair[i]
+        loc = connectsLoc[i]
 
-            ### Check if connection between different groups is not allowed and remove them
-            elemGrp = None
-            CT = -1
-            if (NoCoA or NoCoB) and elemGrpA != elemGrpB: CT = 0
-            else:
-                ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
-                ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py        if (:
-                dirVecA = loc -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+        elemGrpA = objsEGrp[pair[0]]
+        elemGrpB = objsEGrp[pair[1]]
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
+        elemGrps_elemGrpA = elemGrps[elemGrpA]
+        elemGrps_elemGrpB = elemGrps[elemGrpB]
+        CT_A = elemGrps_elemGrpA[EGSidxCTyp]
+        CT_B = elemGrps_elemGrpB[EGSidxCTyp]
+        Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+        Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+        NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
+        NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
+        NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
+        NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
+
+        ### Check if connection between different groups is not allowed and remove them
+        qNoCon = 0
+        if elemGrpA != elemGrpB:
+            if NoCoA or NoCoB:
+                qNoCon = 1
+            ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
+            ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py        if (:
+            elif NoHoA or NoHoB:
+                dirVecA = Vector(loc) -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
                 dirVecAN = dirVecA.normalized()
                 if abs(dirVecAN[2]) > 0.7: qA = 1
                 else: qA = 0
-                dirVecB = loc -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                dirVecB = Vector(loc) -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
                 dirVecBN = dirVecB.normalized()
                 if abs(dirVecBN[2]) > 0.7: qB = 1
                 else: qB = 0
-                if qA == 0 and qB == 0 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: CT = 0
-                ### Old code
-                #dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-                #dirVecN = dirVec.normalized()
-                #if abs(dirVecN[2]) < 0.7 and (NoHoA or NoHoB) and elemGrpA != elemGrpB: CT = 0
+                if qA == 0 and qB == 0: qNoCon = 1
 
-            ### Decision on which material settings from both groups will be used for connection
+        ### Decision on which material settings from both groups will be used for connection
+        if not qNoCon:
             # Both A and B are active groups and priority is the same
             if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
                 ### Use the connection type with the smaller count of constraints for connection between different element groups
@@ -1176,27 +1174,33 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
                 if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                     CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
 
-            ### CT is now known and we can prepare further settings accordingly
+        ### CT is now known and we can prepare further settings accordingly
 
-            if CT > 0: constCnt = connectTypes[CT][1]
-            elif CT == 0: constCnt = 0
-            elif CT == -1: constCnt = 1
+        if CT > 0: constCnt = connectTypes[CT][1]
+        elif CT == 0: constCnt = 0
+        elif CT < 0: constCnt = 1
 
-            if elemGrp != None:
-                elemGrps_elemGrp = elemGrps[elemGrp]
-                disColPerm = elemGrps_elemGrp[EGSidxDClP]
+        if elemGrp != None:
+            elemGrps_elemGrp = elemGrps[elemGrp]
+            disColPerm = elemGrps_elemGrp[EGSidxDClP]
         
         ### If invalid contact area
         if geoContactArea == 0 or elemGrp == None:
             constCnt = 0
             disColPerm = 0
+
+        # Add one extra slot for a possible constraint for permanent collision suppression
+        if props.disableCollisionPerm or disColPerm: constCnt += 1
+        # Alternative: Only suppress for valid connections - however, it is more user friendly to suppress always
+        #if (props.disableCollisionPerm or disColPerm) and not qNoCon: constCnt += 1
+
+        #if objA.name == "asset Bearing B3 pCylinder100" or objB.name == "asset Bearing B3 pCylinder100":
+        #   print(" PRE", constCnt, CT)
         
-        # In case the connection type is passive or unknown reserve no space for constraints
-        if constCnt == 0 and geoContactArea > 0: connectsConsts.append([])
+        # In case the connection type is passive or unknown reserve no space for constraints (connectsConsts needs to stay in sync with connectsPair)
+        if constCnt == 0: connectsConsts.append([])
         # Otherwise reserve space for the predefined constraints count
         else:
-            # Add one extra slot for a possible constraint for permanent collision suppression
-            if props.disableCollisionPerm or disColPerm: constCnt += 1
             # Reserve constraint slots
             items = []
             for j in range(constCnt):
@@ -1883,7 +1887,7 @@ def correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo):
                         sectionArea *= scale**3  # Cubic instead of square because dimLength is included as well
 
                 ### Determine contact area correction factor
-                if dimHeight *dimWidth != 0:
+                if dimHeight *dimWidth != 0 and mass != materialDensity:  # Special case: mass = materialDensity only for foundation elements
                     corFac = sectionArea / (dimHeight *dimWidth)
                 else: corFac = 1
 

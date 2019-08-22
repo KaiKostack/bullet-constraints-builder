@@ -399,9 +399,10 @@ def monitor_checkForChange(scene):
                 else: distDif = 1
 
                 # Calculate angle between two elements
-                quatA = objA.matrix_world.to_quaternion()
-                quatB = objB.matrix_world.to_quaternion()
-                anglDif = math.asin(math.sin( abs(anglOrig -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+                vecA = Vector((0,0,1)); vecB = Vector((0,0,1))
+                vecA.rotate(objA.matrix_world.to_quaternion())  # Rotate Z vector according to object orientation
+                vecB.rotate(objB.matrix_world.to_quaternion())
+                anglDif = abs(anglOrig -vecA.angle(vecB))
 
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
                 if (tolDist != -1 and distDif > tolDist +(anglDif /pi)) \

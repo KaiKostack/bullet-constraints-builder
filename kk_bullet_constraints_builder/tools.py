@@ -1474,22 +1474,23 @@ def tool_constraintForce_getData(scene, name):
         ### Try to find first constraint for the connection
         try: ob = scene.objects[name +'.1']
         except:
-            print('Error: Defined object not found. Removing event handler.')
+            try: ob = scene.objects[name]
+            except:
+                print('Error: Defined object not found. Removing event handler.')
+                stopPlaybackAndReturnToStart(scene); return None
+        try: cons = [ob.rigid_body_constraint]
+        except:
+            print('Error: Defined object no constraint. Removing event handler.')
             stopPlaybackAndReturnToStart(scene); return None
         else:
-            try: cons = [ob.rigid_body_constraint]
-            except:
-                print('Error: Defined object no constraint. Removing event handler.')
-                stopPlaybackAndReturnToStart(scene); return None
-            else:
-                ### Try to find more constraints for the connection
-                i = 1; qEnd = 0
-                while not qEnd:
-                    i += 1
-                    nameNew = name +'.%d' %i
-                    try: ob = scene.objects[nameNew]
-                    except: qEnd = 1
-                    else: cons.append(ob.rigid_body_constraint)
+            ### Try to find more constraints for the connection
+            i = 1; qEnd = 0
+            while not qEnd:
+                i += 1
+                nameNew = name +'.%d' %i
+                try: ob = scene.objects[nameNew]
+                except: qEnd = 1
+                else: cons.append(ob.rigid_body_constraint)
 
     ### Fracture Modifier
     else:
@@ -1502,16 +1503,17 @@ def tool_constraintForce_getData(scene, name):
             md = ob.modifiers["Fracture"]
             try: cons = [md.mesh_constraints[name +'.1']]
             except:
-                print('Error: Defined object not found. Removing event handler.')
-                stopPlaybackAndReturnToStart(scene); return None
-            else:
-                ### Try to find more constraints for the connection
-                i = 1; qEnd = 0
-                while not qEnd:
-                    i += 1
-                    nameNew = name +'.%d' %i
-                    try: cons.append(md.mesh_constraints[nameNew])
-                    except: qEnd = 1
+                try: cons = [md.mesh_constraints[name]]
+                except:
+                    print('Error: Defined object not found. Removing event handler.')
+                    stopPlaybackAndReturnToStart(scene); return None
+            ### Try to find more constraints for the connection
+            i = 1; qEnd = 0
+            while not qEnd:
+                i += 1
+                nameNew = name +'.%d' %i
+                try: cons.append(md.mesh_constraints[nameNew])
+                except: qEnd = 1
 
     try: data = [con.appliedImpulse() for con in cons]
     except:
@@ -1576,7 +1578,7 @@ def tool_exportForceHistory_eventHandler(scene):
                         print('Error: Could not open file.')
                         stopPlaybackAndReturnToStart(scene); return
                     else:
-                        line = "# Time; 1,2,3..: Fmax for connection and F for individual constraints; Name: %s\n" %objName.encode("CP850","replace").decode("CP850")
+                        line = "#Time Fmax Const1 C2 C3 C4 C5 C6 C7 C8 C9 C10 C11; Values in N; Name: %s\n" %objName.encode("CP850","replace").decode("CP850")
                         f.write(line)
                         files.append(f)
                 bpy.app.driver_namespace["log_files_open"] = files

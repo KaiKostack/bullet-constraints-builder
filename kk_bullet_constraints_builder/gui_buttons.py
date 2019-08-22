@@ -552,6 +552,7 @@ class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
         if props.preprocTools_ctr: tool_centerModel(scene); props.preprocTools_ctr = 0
         if props.preprocTools_sep: tool_separateLoose(scene); props.preprocTools_sep = 0
         if props.preprocTools_dis: tool_discretize(scene); props.preprocTools_dis = 0
+        if props.preprocTools_mod2: tool_applyAllModifiers(scene); props.preprocTools_mod2 = 0
         if props.preprocTools_rbs: tool_enableRigidBodies(scene); props.preprocTools_rbs = 0
         if props.preprocTools_int: tool_removeIntersections(scene); props.preprocTools_int = 0
         if props.preprocTools_fix: tool_fixFoundation(scene); props.preprocTools_fix = 0
@@ -632,6 +633,19 @@ class OBJECT_OT_bcb_preproc_tool_apply_all_modifiers(bpy.types.Operator):
         scene = bpy.context.scene
         tool_applyAllModifiers(scene)
         props.preprocTools_mod = 0
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_preproc_tool_apply_all_modifiers_2(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_apply_all_modifiers_2"
+    bl_label = "Apply All Modifiers"
+    bl_description = "Applies all modifiers on all selected objects (use this second 'Apply All' tool instead of the first one in case you are using presubdivided non-manifold meshes with Solidify modifiers, that way they can be discretized as non-manifolds)"
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_applyAllModifiers(scene)
+        props.preprocTools_mod2 = 0
         return{'FINISHED'}
 
 ########################################

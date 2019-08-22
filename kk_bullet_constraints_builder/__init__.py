@@ -233,6 +233,7 @@ classes = [ \
     OBJECT_OT_bcb_preproc_tool_center_model,
     OBJECT_OT_bcb_preproc_tool_separate_loose,
     OBJECT_OT_bcb_preproc_tool_discretize,
+    OBJECT_OT_bcb_preproc_tool_apply_all_modifiers_2,
     OBJECT_OT_bcb_preproc_tool_enable_rigid_bodies,
     OBJECT_OT_bcb_preproc_tool_remove_intersections,
     OBJECT_OT_bcb_preproc_tool_fix_foundation,

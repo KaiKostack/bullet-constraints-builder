@@ -86,6 +86,8 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_dis_cel = bool_(name="Use Voxel Method (Faster)", default=0, description="Enables the voxel based discretizaton method and geometry is converted into cuboid-shaped cells. While this method has the disadvantage that it can't keep mesh details such as curved surfaces, round columns or mural reliefs, it is extremely fast compared to the default boolean based method and can create thousands of new elements within seconds. Also note that this method is limited to odd subdivision level numbers [1,3,5,7..], so you basically can't split an element into two for instance but only into three, five and so on")
     preprocTools_dis_jus = bool_(name="Enable Junction Search",    default=1, description="Tries to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes")
 
+    preprocTools_mod2 = bool_(default=0)
+
     preprocTools_rbs = bool_(default=1)
 
     preprocTools_int = bool_(default=1)

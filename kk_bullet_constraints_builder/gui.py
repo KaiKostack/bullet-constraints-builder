@@ -222,6 +222,11 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
         #if not props.preprocTools_dis_cel: row3.enabled = 0; 
         
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
+        split.prop(props, "preprocTools_mod2", text="")
+        box = split.box()
+        box.operator("bcb.preproc_tool_apply_all_modifiers_2", icon="DOT")
+
+        row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_rbs", text="")
         box = split.box()
         box.operator("bcb.preproc_tool_enable_rigid_bodies", icon="DOT")
