@@ -702,9 +702,9 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         
     if not qAccurate or qOverlapSimple:
         ### Calculate simple overlap of boundary boxes for contact area calculation (project along all axis')
-        overlapX = abs(min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]))
-        overlapY = abs(min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]))
-        overlapZ = abs(min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
+        overlapX = min( min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]) ,0)
+        overlapY = min( min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]) ,0)
+        overlapZ = min( min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]) ,0)
             
     if not qSkipConnect or props.surfaceForced:
 
