@@ -597,7 +597,7 @@ def boundaryBoxFaces(obj, qGlobalSpace, selMin=None, selMax=None):
             vertsNew.append(verts[idx])
         verts = vertsNew
 
-#        # Debug code
+        # Debug code
 #        for idx in range(len(me.vertices)):
 #            if idx in selVerts:
 #                  me.vertices[idx].select = 1
@@ -728,9 +728,10 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         areaB = min(min(dimB[0]*dimB[1], dimB[0]*dimB[2]), dimB[1]*dimB[2])
         geoContactAreaD = min(areaA, areaB)
 
-        #print("geoContactAreaB", geoContactArea)
-        #print("geoContactAreaD", geoContactAreaD)
-        #print("geoContactAreaF", geoContactAreaF)
+        # Debug code
+#        print("geoContactAreaB", geoContactArea)
+#        print("geoContactAreaD", geoContactAreaD)
+#        print("geoContactAreaF", geoContactAreaF)
             
         ### Sanity check: in case no boundary box intersection is found use element dimensions based contact area as fallback 
         if geoContactArea == 0:
@@ -1909,5 +1910,5 @@ def correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo):
             objB = objs[pair[1]]
             corFacA = objA["CA Corr.Fac."]
             corFacB = objB["CA Corr.Fac."]
-            geo[0] *= corFacA *corFacB  # = geoContactArea
+            geo[0] *= min(corFacA, corFacB)  # = geoContactArea
             
