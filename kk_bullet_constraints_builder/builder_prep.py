@@ -199,6 +199,8 @@ def prepareObjects(objs):
         except: pass
 
     ### Backup scale factor depending on object's collision shape to make sure volume and mass calculation are correct (not all need this)
+    # Deselect all objects.
+    bpy.ops.object.select_all(action='DESELECT')
     for obj in objs:
         if obj.rigid_body != None:
             if obj.rigid_body.collision_shape == 'CONVEX_HULL' or \

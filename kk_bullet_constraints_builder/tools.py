@@ -1373,7 +1373,7 @@ def tool_exportLocationHistory_eventHandler(scene):
                     print('Error: Could not open file.')
                     stopPlaybackAndReturnToStart(scene); return
                 else:
-                    line = "# Time; X; Y; Z; Name: %s\n" %objName.encode("CP850","replace").decode("CP850")
+                    line = "Time; X; Y; Z; Name: %s\n" %objName.encode("CP850","replace").decode("CP850")
                     f.write(line)
                     files.append(f)
             bpy.app.driver_namespace["log_files_open"] = files
@@ -1442,7 +1442,7 @@ def tool_exportLocationHistory_eventHandler(scene):
                         bpy.app.driver_namespace["log_vel_" +objName] = vel
                     data = accel
 
-                line = "%0.4f, %0.6f, %0.6f, %0.6f\n" %(time, data[0], data[1], data[2])
+                line = "%0.4f; %0.6f; %0.6f; %0.6f\n" %(time, data[0], data[1], data[2])
                 files[k].write(line)
 
 ########################################
@@ -1578,7 +1578,7 @@ def tool_exportForceHistory_eventHandler(scene):
                         print('Error: Could not open file.')
                         stopPlaybackAndReturnToStart(scene); return
                     else:
-                        line = "#Time Fmax Const1 C2 C3 C4 C5 C6 C7 C8 C9 C10 C11; Values in N; Name: %s\n" %objName.encode("CP850","replace").decode("CP850")
+                        line = "Time; Fmax; C1; C2; C3; C4; C5; C6; C7; C8; C9; C10; C11; Values in N, Name: %s\n" %objName.encode("CP850","replace").decode("CP850")
                         f.write(line)
                         files.append(f)
                 bpy.app.driver_namespace["log_files_open"] = files
@@ -1619,10 +1619,10 @@ def tool_exportForceHistory_eventHandler(scene):
 
                 fmax = data[0]
                 for val in data: fmax = max(fmax, abs(val))  # Evaluate maximum force
-                line += " %0.6f" %fmax
+                line += "; %0.6f" %fmax
 
                 for val in data:
-                    line += " %0.6f" %val
+                    line += "; %0.6f" %val
                 line += "\n"
 
                 files[k].write(line)
