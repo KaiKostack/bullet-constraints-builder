@@ -778,7 +778,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             
             ### Shearing constraint #1
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-            btRatio = 1
             value = brkThresValueS
             if brkThresValueS9 != -1:
                 value1 = value
@@ -787,11 +786,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 values = [value1, value2]
                 values.sort()
                 value = values[0]  # Find and use smaller value (to be used along h axis)
-            elif brkThresValueB9 == -1:  # Only use btRatio if neither shear nor bend have a 90° value
-                if geoHeight > props.searchDistance and geoWidth > props.searchDistance:
-                      btRatio = geoHeight /geoWidth
-                else: btRatio = 1
-            brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
@@ -824,8 +819,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             if brkThresValueS9 != -1:
                 value = values[1]  # Find and use larger value (to be used along w axis)
-            if btRatio != 1: btRatio = 1 /btRatio
-            brkThres = value *btRatio *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
+            brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             setConstParams(cData,cDatb,cDef, bt=brkThres, ub=props.constraintUseBreaking, dc=props.disableCollision, rot=rotN, so=so,si=si)
             if qUpdateComplete:
                 rotm = 'QUATERNION'
