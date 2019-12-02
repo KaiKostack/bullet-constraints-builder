@@ -108,7 +108,7 @@ else:
             p.wait()
     #do('pip', '--version')
     do('ensurepip')
-    do('pip', 'install', '--upgrade', 'pip')
+    #do('pip', 'install', '--upgrade', 'pip')
     do('pip', 'install', 'sympy')
 
 ### Ultimate attempt to import SymPy
