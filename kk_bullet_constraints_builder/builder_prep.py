@@ -62,7 +62,6 @@ def createElementGroupIndex(objs):
     elemGrps = mem["elemGrps"]
     objsEGrps = []
     errorsShown = 1
-    cnt = 0
     for obj in objs:
         objGrpsTmp = []
         for elemGrp in elemGrps:
@@ -88,20 +87,20 @@ def createElementGroupIndex(objs):
                 elemGrpName = elemGrps[k][EGSidxName]
                 if elemGrpName == '':
                     objGrpsTmp.append(k)
-            objsEGrps.append(objGrpsTmp)
         # Assign all found groups to object
         if len(objGrpsTmp) > 0:
             objsEGrps.append(objGrpsTmp)
         # If not even a default group is available then use element group 0 as fallback
         # (Todo: flag the group as -1 and deal with it later, but that's also complex)
         else: objsEGrps.append([0])
-
+        
     ### Taking only first item of the element group lists per object into account (the BCB can only manage one element group per object)
     ### Earlier idea was to expand objs array for objects being member of multiple element groups (item duplication allowed)
     ### but this is not feasible since all the other functions within the BCB would need to respect these.
     #objsNew = []
     objsEGrp = []
     objsEGrps_iter = iter(objsEGrps)
+    cnt = 0
     for obj in objs:
         eGrps = next(objsEGrps_iter)
         #for eGrp in eGrps:
