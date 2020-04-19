@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2018 Kai Kostack
+# Copyright (C) 2015-2020 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -170,6 +170,11 @@ def build_fm(use_handler=0):
     md.fracture_mode = 'PREFRACTURED'
     md.use_constraint_collision = not props.disableCollision
     md.fracture_mode = 'EXTERNAL'
+    
+    # Enable Dynamic Paint brush settings for FM object to make it interact with dynamic surfaces like water
+    bpy.ops.object.modifier_add(type='DYNAMIC_PAINT')
+    bpy.context.object.modifiers["Dynamic Paint"].ui_type = 'BRUSH'
+    bpy.ops.dpaint.type_toggle(type='BRUSH')
 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')

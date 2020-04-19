@@ -203,8 +203,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         ax = [geoAxisNormal, geoAxisHeight, geoAxisWidth]
 
         # Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
-        if detonatorObj != None and detonatorObj.scale[0] > 0:
-            btMultiplier = min(1, max(0, 2 *((loc -detonatorObj.location).length /detonatorObj.scale[0]) -1))
+        if detonatorObj != None and detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
+            dist = loc -detonatorObj.location
+            btMultiplier = (abs(dist[0]) /abs(detonatorObj.scale[0]))**2
+            btMultiplier += (abs(dist[1]) /abs(detonatorObj.scale[1]))**2
+            btMultiplier += (abs(dist[2]) /abs(detonatorObj.scale[2]))**2
+            btMultiplier = min(1, max(0, 2**.5*2 *btMultiplier -2**.5/2))
         else: btMultiplier = 1
 
         ### Prepare expression variables and convert m to mm

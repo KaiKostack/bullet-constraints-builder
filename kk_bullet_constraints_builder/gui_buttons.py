@@ -219,6 +219,7 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
                     return{'CANCELLED'} 
                 bpy.ops.ptcache.free_bake(contextFix)
                 if props.automaticMode:
+                    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('.blend')[0] +'_bake.blend')
                     # Prepare event handler
                     bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
                     # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
@@ -270,6 +271,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
                 OBJECT_OT_bcb_bake.execute(self, context)
         ### Start baking when we have constraints set
         else:
+            if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('.blend')[0] +'_bake.blend')
             # Prepare event handlers
             bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
             bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
@@ -571,6 +573,7 @@ class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
         ###### Store menu config data in scene
         storeConfigDataInScene(scene)
         props.menu_gotConfig = 1
+        if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('.blend')[0] +'_prep.blend')
         return{'FINISHED'}
 
 ########################################

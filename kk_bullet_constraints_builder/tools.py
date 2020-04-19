@@ -2042,10 +2042,12 @@ def tool_forcesVisualization_eventHandler(scene):
                     
                     ### Write forces properties into visualization objects for user review
                     vizObjs[i]['#Fmax N'] = fmax
-                    vizObjs[i]['#Fmax N/mm²'] = fmax /a
+                    if a > 0: vizObjs[i]['#Fmax N/mm²'] = fmax /a
+                    else:     vizObjs[i]['#Fmax N/mm²'] = 0
                     for k in range(len(cons)):
                         vizObjs[i][name +'.%d N' %k] = data[k]
-                        vizObjs[i][name +'.%d N/mm²' %k] = data[k] /a
+                        if a > 0: vizObjs[i][name +'.%d N/mm²' %k] = data[k] /a
+                        else:     vizObjs[i][name +'.%d N/mm²' %k] = 0
 
                     ### Normalization to maximum force defined by user
                     dataNorm = []
@@ -2055,7 +2057,8 @@ def tool_forcesVisualization_eventHandler(scene):
                         if props.postprocTools_fcv_nbt:
                             val = impulse /brkThres  # Visualize force normalized to breaking threshold
                         else:
-                            val = impulse /a /props.postprocTools_fcv_max  # Visualize relative force per connection 
+                            if a > 0: val = impulse /a /props.postprocTools_fcv_max  # Visualize relative force per connection 
+                            else: val = 0
                             #val = impulse /props.postprocTools_fcv_max  # Visualize absolute force per connection 
                         #if val <= 1.25:  # Skip values over the threshold for cases connection is not breakable, then we don't want to include them
                         #    if a >= 70000: # Skip values with a too small contact area (mm²)

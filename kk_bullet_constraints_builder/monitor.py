@@ -199,14 +199,14 @@ def automaticModeAfterStop():
 
     props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
-    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('.blend')[0] +'_BCB.blend')
+    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
     ###### Clear all data from scene and delete also constraint empty objects
     if "bcb_prop_elemGrps" in scene.keys(): clearAllDataFromScene(scene, qKeepBuildData=1)
     props.menu_gotData = 0
     ###### Store menu config data in scene (again)
     storeConfigDataInScene(scene)
     props.menu_gotConfig = 1
-    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_BCB.blend')[0].split('_BCB-bake.blend')[0].split('.blend')[0] +'_BCB-bake.blend')
+    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
         
 ########################################
 
@@ -239,6 +239,14 @@ def monitor_stop_eventHandler(scene):
         contextFix = bpy.context.copy()
         contextFix['point_cache'] = scene.rigidbody_world.point_cache
         bpy.ops.ptcache.bake_from_cache(contextFix)
+        # Convert dynamic paint caches to fixed bake data 
+        contextFix = bpy.context.copy()
+        for obj in scene.objects:
+            for mod in obj.modifiers:
+                if mod.type=='DYNAMIC_PAINT' and mod.canvas_settings != None:
+                    for canvas_surface in mod.canvas_settings.canvas_surfaces:
+                        contextFix['active_object'] = obj; contextFix['point_cache'] = canvas_surface.point_cache
+                        bpy.ops.ptcache.bake_from_cache(contextFix)
         # Free all monitor related data
         monitor_freeBuffers(scene)
         # Go back to start frame
