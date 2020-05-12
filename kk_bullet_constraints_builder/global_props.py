@@ -75,6 +75,8 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_grp_sep = string_(name="Separator",               default=':', description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names")
     preprocTools_grp_occ = bool_(name="First Occurrence",          default=1, description="Enables first occurrence search of the separator within an element name for cases when there are more than one separator included, if disabled the last occurrence is used")
 
+    preprocTools_sep2 = bool_(default=1)
+
     preprocTools_mod = bool_(default=1)
 
     preprocTools_ctr = bool_(default=1)

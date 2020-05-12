@@ -229,6 +229,7 @@ classes = [ \
     OBJECT_OT_bcb_preproc_tool_run_python_script,
     OBJECT_OT_bcb_tool_select_py_file,
     OBJECT_OT_bcb_preproc_tool_create_groups_from_names,
+    OBJECT_OT_bcb_preproc_tool_separate_loose_2,
     OBJECT_OT_bcb_preproc_tool_apply_all_modifiers,
     OBJECT_OT_bcb_preproc_tool_center_model,
     OBJECT_OT_bcb_preproc_tool_separate_loose,

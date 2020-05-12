@@ -219,7 +219,7 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
                     return{'CANCELLED'} 
                 bpy.ops.ptcache.free_bake(contextFix)
                 if props.automaticMode:
-                    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('.blend')[0] +'_bake.blend')
+                    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
                     # Prepare event handler
                     bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
                     # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
@@ -271,7 +271,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
                 OBJECT_OT_bcb_bake.execute(self, context)
         ### Start baking when we have constraints set
         else:
-            if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('.blend')[0] +'_bake.blend')
+            if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
             # Prepare event handlers
             bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
             bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
@@ -550,9 +550,10 @@ class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
         time_start = time.time()
         if props.preprocTools_rps: tool_runPythonScript(scene, props.preprocTools_rps_nam); props.preprocTools_rps = 0
         if props.preprocTools_grp: tool_createGroupsFromNames(scene); props.preprocTools_grp = 0
+        if props.preprocTools_sep: tool_separateLoose(scene); props.preprocTools_sep = 0
         if props.preprocTools_mod: tool_applyAllModifiers(scene); props.preprocTools_mod = 0
         if props.preprocTools_ctr: tool_centerModel(scene); props.preprocTools_ctr = 0
-        if props.preprocTools_sep: tool_separateLoose(scene); props.preprocTools_sep = 0
+        if props.preprocTools_sep2: tool_separateLoose(scene); props.preprocTools_sep2 = 0
         if props.preprocTools_dis: tool_discretize(scene); props.preprocTools_dis = 0
         if props.preprocTools_mod2: tool_applyAllModifiers(scene); props.preprocTools_mod2 = 0
         if props.preprocTools_rbs: tool_enableRigidBodies(scene); props.preprocTools_rbs = 0
@@ -675,6 +676,19 @@ class OBJECT_OT_bcb_preproc_tool_separate_loose(bpy.types.Operator):
         scene = bpy.context.scene
         tool_separateLoose(scene)
         props.preprocTools_sep = 0
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_preproc_tool_separate_loose_2(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_separate_loose_2"
+    bl_label = "Separate Loose"
+    bl_description = "Separates all loose (not connected) mesh elements within an object into separate objects, this is done for all selected objects"
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_separateLoose(scene)
+        props.preprocTools_sep2 = 0
         return{'FINISHED'}
 
 ########################################

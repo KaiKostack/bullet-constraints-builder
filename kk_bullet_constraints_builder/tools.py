@@ -316,6 +316,9 @@ def tool_applyAllModifiers(scene):
         bpy.context.scene.objects.active = objsM[0]
         bpy.ops.object.convert(target='MESH')
     
+    # Set object centers to geometry origin
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+
     # Revert to start selection
     for obj in selection: obj.select = 1
     bpy.context.scene.objects.active = selectionActive
@@ -402,6 +405,12 @@ def tool_separateLoose(scene):
     ###### External function
     kk_mesh_separate_loose.run()
 
+    # Update selection list
+    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    
+    # Deselect objects with modifiers (in case they have not been applied yet) 
+    for obj in selection:
+        if len(obj.modifiers) > 0: obj.select = 0
     # Set object centers to geometry origin
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
