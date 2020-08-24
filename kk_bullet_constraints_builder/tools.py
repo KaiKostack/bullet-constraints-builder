@@ -2061,14 +2061,14 @@ def tool_forcesVisualization_eventHandler(scene):
                     ### Normalization to maximum force defined by user
                     dataNorm = []
                     for k in range(len(cons)):
-                        brkThres = cons[k].breaking_threshold /rbw_time_scale *rbw_steps_per_second  # Conversion from impulse to force
-                        impulse = data[k]
+                        fBrkThres = cons[k].breaking_threshold /rbw_time_scale *rbw_steps_per_second  # Conversion from impulse to force
+                        force = data[k]
                         if props.postprocTools_fcv_nbt:
-                            val = impulse /brkThres  # Visualize force normalized to breaking threshold
+                            val = force /fBrkThres  # Visualize force normalized to breaking threshold
                         else:
-                            if a > 0: val = impulse /a /props.postprocTools_fcv_max  # Visualize relative force per connection 
+                            if a > 0: val = force /a /props.postprocTools_fcv_max  # Visualize relative force per connection 
                             else: val = 0
-                            #val = impulse /props.postprocTools_fcv_max  # Visualize absolute force per connection 
+                            #val = force /props.postprocTools_fcv_max  # Visualize absolute force per connection 
                         #if val <= 1.25:  # Skip values over the threshold for cases connection is not breakable, then we don't want to include them
                         #    if a >= 70000: # Skip values with a too small contact area (mm²)
                         dataNorm.append(val)
