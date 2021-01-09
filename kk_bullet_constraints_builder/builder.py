@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2018 Kai Kostack
+# Copyright (C) 2015-2020 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -168,10 +168,12 @@ def build():
                 calculateMass(scene, objs, objsEGrp, childObjs)
                 ###### Correct bbox based contact area by volume
                 correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo)
+                ###### Create detonator force fields and data
+                connectsBtMul = generateDetonator(objs, connectsPair)
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
                 if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
-                connectsTol, exData = setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect)
+                connectsTol, exData = setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect, connectsBtMul)
                 ###### Store new build data in scene
                 storeBuildDataInScene(scene, None, None, emptyObjs, None, None, None, None, None, None, connectsTol, None)
                 ### Restore old layers state

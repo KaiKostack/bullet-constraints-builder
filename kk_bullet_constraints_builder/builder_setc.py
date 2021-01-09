@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2018 Kai Kostack
+# Copyright (C) 2015-2020 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -122,10 +122,7 @@ def setConstParams(cData,cDatb,cDef, name=None,loc=None,obj1=None,obj2=None,tol1
 
 ########################################
     
-def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect):
-    
-    ### Set constraint settings
-    print("Generating main constraint settings... (%d)" %len(connectsPair))
+def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect, connectsBtMul):
     
     props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
@@ -156,11 +153,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     scene.objects.unlink(objConst)
     
     ### Get detonator object
-    if len(props.detonatorObj):
-        try: detonatorObj = scene.objects[props.detonatorObj]
-        except: detonatorObj = None
+    detonatorObj = None
+    if not props.detonAdvanced:
+        if len(props.detonatorObj):
+            try: detonatorObj = scene.objects[props.detonatorObj]
+            except: pass
 
     ### Generate settings and prepare the attributes but only store those which are different from the defaults
+    print("Generating main constraint settings... (%d)" %len(connectsPair))
     llxl=-.000; llxu=.000; llyl=-.000; llyu=.000; llzl=-.000; llzu=.000  # Limits constraint room linear (x = normal direction)
     laxl=-.000; laxu=.000; layl=-.000; layu=.000; lazl=-.000; lazu=.000  # Limits constraint room angular
     constsData = []
@@ -168,6 +168,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     connectsLoc_iter = iter(connectsLoc)
     connectsGeo_iter = iter(connectsGeo)
     connectsPair_iter = iter(connectsPair)
+    connectsBtMul_iter = iter(connectsBtMul)
     for k in range(len(connectsPair)):
         sys.stdout.write('\r' +"%d" %k)
         # Update progress bar
@@ -177,6 +178,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         consts = next(connectsConsts_iter)
         loc = Vector(next(connectsLoc_iter))
         geo = next(connectsGeo_iter)
+        btMultiplier = next(connectsBtMul_iter)
+        
         connectsTol.append([0, 0, 0, 0])
         if version_spring == 1: springDamp = 1   # Later versions use "spring2" which need
         else:                   springDamp = 20  # different values to achieve the same behavior
@@ -201,15 +204,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         geoAxisHeight = geo[4]
         geoAxisWidth = geo[5]
         ax = [geoAxisNormal, geoAxisHeight, geoAxisWidth]
-
-        # Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
+        
+        ### Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
         if detonatorObj != None and detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
             dist = loc -detonatorObj.location
-            btMultiplier = (abs(dist[0]) /abs(detonatorObj.scale[0]))**2
-            btMultiplier += (abs(dist[1]) /abs(detonatorObj.scale[1]))**2
-            btMultiplier += (abs(dist[2]) /abs(detonatorObj.scale[2]))**2
-            btMultiplier = min(1, max(0, 2**.5*2 *btMultiplier -2**.5/2))
-        else: btMultiplier = 1
+            btMultiplierK = (abs(dist[0]) /abs(detonatorObj.scale[0]))**2
+            btMultiplierK += (abs(dist[1]) /abs(detonatorObj.scale[1]))**2
+            btMultiplierK += (abs(dist[2]) /abs(detonatorObj.scale[2]))**2
+            btMultiplier *= min(1, max(0, 2**.5*2 *btMultiplierK -2**.5/2))
 
         ### Prepare expression variables and convert m to mm
         a = geoContactArea *1000000
@@ -239,7 +241,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if NoCoA or NoCoB:
                 qNoCon = 1
             ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
-            ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py        if (:
+            ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
             elif NoHoA or NoHoB:
                 dirVecA = Vector(loc) -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
                 dirVecAN = dirVecA.normalized()
@@ -481,6 +483,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                     CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
 
+        elif qNoCon: CT = 0
+
         ###### CT is now known and we can prepare further settings accordingly
         
         if elemGrp != None:
@@ -490,7 +494,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         ### If invalid contact area
         if geoContactArea == 0 or elemGrp == None:
             disColPerm = 0
-        
             if props.disableCollisionPerm or disColPerm: CT = -2
         
         if CT > 0:

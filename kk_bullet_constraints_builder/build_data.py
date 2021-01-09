@@ -148,6 +148,13 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_disableCollisionPerm"] = props.disableCollisionPerm
     scene["bcb_prop_lowerBrkThresPriority"] = props.lowerBrkThresPriority
     scene["bcb_prop_detonatorObj"] = props.detonatorObj
+    scene["bcb_prop_detonAdvanced"] = props.detonAdvanced
+    scene["bcb_prop_detonRayDist"] = props.detonRayDist
+    scene["bcb_prop_detonDeflection"] = props.detonDeflection
+    scene["bcb_prop_detonExplosiveMass"] = props.detonExplosiveMass
+    scene["bcb_prop_detonBlastWaveVel"] = props.detonBlastWaveVel
+    scene["bcb_prop_detonPullBackDelay"] = props.detonPullBackDelay
+    scene["bcb_prop_detonGroundReflect"] = props.detonGroundReflect
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     elemGrps = mem["elemGrps"]
@@ -362,6 +369,20 @@ def getConfigDataFromScene(scene):
         props.lowerBrkThresPriority = scene["bcb_prop_lowerBrkThresPriority"]
     if "bcb_prop_detonatorObj" in scene.keys():
         props.detonatorObj = scene["bcb_prop_detonatorObj"]
+    if "bcb_prop_detonAdvanced" in scene.keys():
+        props.detonAdvanced = scene["bcb_prop_detonAdvanced"]
+    if "bcb_prop_detonRayDist" in scene.keys():
+        props.detonRayDist = scene["bcb_prop_detonRayDist"]
+    if "bcb_prop_detonDeflection" in scene.keys():
+        props.detonDeflection = scene["bcb_prop_detonDeflection"]
+    if "bcb_prop_detonExplosiveMass" in scene.keys():
+        props.detonExplosiveMass = scene["bcb_prop_detonExplosiveMass"]
+    if "bcb_prop_detonBlastWaveVel" in scene.keys():
+        props.detonBlastWaveVel = scene["bcb_prop_detonBlastWaveVel"]
+    if "bcb_prop_detonPullBackDelay" in scene.keys():
+        props.detonPullBackDelay = scene["bcb_prop_detonPullBackDelay"]
+    if "bcb_prop_detonGroundReflect" in scene.keys():
+        props.detonGroundReflect = scene["bcb_prop_detonGroundReflect"]
         
     #if len(warning): return warning
             

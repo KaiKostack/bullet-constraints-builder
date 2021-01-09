@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2018 Kai Kostack
+# Copyright (C) 2015-2020 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -145,6 +145,13 @@ def exportConfigData(scene):
     configData.append(props.disableCollisionPerm)
     configData.append(props.lowerBrkThresPriority)
     configData.append(props.detonatorObj)
+    configData.append(props.detonAdvanced)
+    configData.append(props.detonRayDist)
+    configData.append(props.detonDeflection)
+    configData.append(props.detonExplosiveMass)
+    configData.append(props.detonBlastWaveVel)
+    configData.append(props.detonPullBackDelay)
+    configData.append(props.detonGroundReflect)
     configData.append(mem["elemGrps"])
     dataToFile(configData, logPath +r"\bcb.cfg")
     
@@ -189,6 +196,13 @@ def importConfigData(scene):
         props.disableCollisionPerm = configData[i]; i += 1
         props.lowerBrkThresPriority = configData[i]; i += 1
         props.detonatorObj = configData[i]; i += 1
+        props.detonAdvanced = configData[i]; i += 1
+        props.detonRayDist = configData[i]; i += 1
+        props.detonDeflection = configData[i]; i += 1
+        props.detonExplosiveMass = configData[i]; i += 1
+        props.detonBlastWaveVel = configData[i]; i += 1
+        props.detonPullBackDelay = configData[i]; i += 1
+        props.detonGroundReflect = configData[i]; i += 1
         mem["elemGrps"] = configData[i]; i += 1
         return 0
 

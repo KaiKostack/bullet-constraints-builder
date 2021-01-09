@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2018 Kai Kostack
+# Copyright (C) 2015-2020 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -433,7 +433,29 @@ class bcb_panel_triggers(bpy.types.Panel):
         col = layout.column(align=1)
 
         row = col.row(align=1); row.prop(props, "detonatorObj")
-
+        
+        row = col.row(align=1); 
+        if props.detonAdvanced and props.timeScalePeriod == 0: row.alert = 1
+        row.prop(props, "detonAdvanced")
+        if props.detonAdvanced and props.timeScalePeriod == 0:
+            row = col.row(align=1); row.label(text="Warning: Time Scale Period > 0 required!")
+        
+        row = col.row(align=1)
+        if not props.detonAdvanced: row.enabled = 0
+        split = row.split(align=1);
+        split.prop(props, "detonExplosiveMass")
+        split.prop(props, "detonBlastWaveVel")
+        row = col.row(align=1)
+        if not props.detonAdvanced: row.enabled = 0
+        split = row.split(align=1);
+        split.prop(props, "detonDeflection")
+        split.prop(props, "detonRayDist")
+        row = col.row(align=1)
+        if not props.detonAdvanced: row.enabled = 0
+        split = row.split(align=1);
+        split.prop(props, "detonPullBackDelay")
+        split.prop(props, "detonGroundReflect")
+        
         col.separator()
         row = col.row(align=1); row.prop(props, "progrWeak")
         row = col.row(align=1); row.prop(props, "progrWeakLimit")
@@ -876,8 +898,7 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
             row.prop(props, "elemGrp_%d_EGSidxFacg" %i)
             
             if prop_EGSidxBevl and not prop_EGSidxFacg:
-                row = col.row(align=1); row.label(text="Warning: Disabled facing")
-                row = col.row(align=1); row.label(text="makes bevel permanent!")
+                row = col.row(align=1); row.label(text="Warning: Disabled facing makes bevel permanent!")
 
             row = col.row(align=1)
             row.prop(props, "elemGrp_%d_EGSidxIter" %i)

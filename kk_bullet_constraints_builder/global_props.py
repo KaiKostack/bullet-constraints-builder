@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2018 Kai Kostack
+# Copyright (C) 2015-2020 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -145,8 +145,8 @@ class bcb_props(bpy.types.PropertyGroup):
     constraintUseBreaking = bool_(name="Enable Breaking",         default=1,                       description="Enables breaking for all constraints")
     passiveUseBreaking    = bool_(name="Enbl. Brk. Passive",      default=1,                       description="Enables breaking for active to passive connections. Usually this should stay enabled but in some cases the evaluation of forces in active-passive connections can be more inaccurate than those of active-active connections, then it may help to disable breaking of such connections altogether")
     connectionCountLimit  = int_(name="Con. Count Limit",         default=100, min=0, max=10000,   description="Maximum count of connections per object pair (0 = disabled)")
-    searchDistance        = float_(name="Search Distance",        default=0.02, min=0.0, max=1000, description="Search distance to neighbor geometry")
-    clusterRadius         = float_(name="Cluster Radius",         default=0, min=0.0, max=1000,    description="Radius for bundling close constraints into clusters (0 = clusters disabled)")
+    searchDistance        = float_(name="Search Distance",        default=0.02, min=0.0, max=1000, description="Search distance to neighbor geometry in m")
+    clusterRadius         = float_(name="Cluster Radius",         default=0, min=0.0, max=1000,    description="Radius for bundling close constraints into clusters in m (0 = clusters disabled)")
     alignVertical         = float_(name="Vertical Alignment",     default=0, min=0.0, max=1.0,     description="Enables a vertical alignment multiplier for connection type 4 or above instead of using unweighted center to center orientation (0 = disabled, 1 = fully vertical)")
     useAccurateArea       = bool_(name="Accur. Contact Area Calculation", default=1,               description="Enables accurate contact area calculation. It is derived indirectly by dividing the calculated geometry volume divided by the element length")
     rebarMesh             = bool_(name="Rebar Mesh",              default=0,                       description="Enables creation of a rebar mesh on build or export execution using the settings from the Formula Assistant. This mesh is meant for diagnostic purposes only, it is not required nor used for the simulation. It is also not very accurate for very small elements as the rebar count is converted from the definition to the actual element size with a minimum limit of 4 bars per element")
@@ -166,6 +166,13 @@ class bcb_props(bpy.types.PropertyGroup):
     disableCollisionPerm  = bool_(name="Dis. Col. Permanently",   default=0,                       description="Disables collisions between initially connected elements permanently. This can help to make simulations with intersecting geometry more stable at the cost of accuracy")
     lowerBrkThresPriority = bool_(name="Lower Strength Priority", default=1,                       description="Gives priority to the weaker breaking threshold of two elements from different element groups with same Priority value to be connected, if disabled the stronger value is used for the connection")
     detonatorObj          = string_(name="Detonator Object",      default="Detonator",             description="Enter name of an object to be used to simulate the effects of an explosion. This feature replicates the damage caused by such an event by weakening the constraints within range of the object. It is recommended to use an Empty object with a sphere shape for this. The damage is calculated as gradient of the distance mapped to the size, from 200% weakening at center to 0% at boundary")
+    detonAdvanced         = bool_(name="Advanced Detonator",      default=0,                       description="Enables advanced detonation blast wave simulation using animated force fields and the Time Scale Period functionality. If enabled the detonator object will be used as origin to place the force fields but is ignored otherwise")
+    detonRayDist          = float_(name="Max. Ray Distance",      default=10, min=0.0, max=10000,  description="Maximum distance in m for ray casting for confined space detection")
+    detonDeflection       = float_(name="Deflection Multiplier",  default=1, min=0.0, max=1000,    description="Detonation deflection multiplier for open/confined spaces. Larger values will increase the blast wave impact on revealed structures such as outside walls compared to protected elements inside of buildings (0 = no difference)")
+    detonExplosiveMass    = float_(name="Explosive Mass",         default=250, min=0.0, max=1000000000000, description="Mass of the explosive in kg TNT equivalent")
+    detonBlastWaveVel     = float_(name="Blast Wave Velocity",    default=6900, min=0.0, max=1000000, description="Velocity with which the blast wave is traveling in m/s (depends on frame rate)")
+    detonPullBackDelay    = int_(name="Pull Back Delay",          default=2, min=0, max=10000,    description="Delay in frames until the negative pressure wave follows the positive one (pressure will be divided by this value to keep overall pressure consistent)")
+    detonGroundReflect    = bool_(name="Ground Reflection",       default=0,                      description="Enables reflection of the blast wave from the ground by adding duplicate force fields beneath the surface")
     
     ### Element group properties
     # Create element groups properties for all possible future entries (maxMenuElementGroupItems)
