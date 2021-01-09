@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2020 Kai Kostack
+# Copyright (C) 2015-2021 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -141,7 +141,8 @@ class bcb_props(bpy.types.PropertyGroup):
     postprocTools_rps_nam = string_(name="Script File",   default='', description="Enter the filename of an existing Python script")
 
     ### General
-    stepsPerSecond        = int_(name="Steps Per Second",         default=300, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable)")
+    stepsPerSecond        = int_(name="Steps Per Second",         default=200, min=1, max=32767,   description="Number of simulation steps taken per second (higher values are more accurate but slower and can also be more instable)")
+    solverIterations      = int_(name="Solver Iterations",        default=100, min=1, max=32767,   description="Number of constraint solver iterations per simulation step (higher values are more accurate but slower)")
     constraintUseBreaking = bool_(name="Enable Breaking",         default=1,                       description="Enables breaking for all constraints")
     passiveUseBreaking    = bool_(name="Enbl. Brk. Passive",      default=1,                       description="Enables breaking for active to passive connections. Usually this should stay enabled but in some cases the evaluation of forces in active-passive connections can be more inaccurate than those of active-active connections, then it may help to disable breaking of such connections altogether")
     connectionCountLimit  = int_(name="Con. Count Limit",         default=100, min=0, max=10000,   description="Maximum count of connections per object pair (0 = disabled)")
@@ -209,7 +210,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxBevl" %i +" = bool_(name='Bevel', default=presets[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (undesired stability increase caused by incompressible rigid bodies). This uses hidden collision meshes and has no influence on breaking threshold and mass calculations')")
         exec("elemGrp_%d_EGSidxFacg" %i +" = bool_(name='Facing', default=presets[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation)')")
         exec("elemGrp_%d_EGSidxCyln" %i +" = bool_(name='Cylindric Shape', default=presets[j][EGSidxCyln], description='Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns')")
-        exec("elemGrp_%d_EGSidxIter" %i +" = int_(name='Constraint Solver Iterations Override', default=presets[j][EGSidxIter], min=0, max=100000, description='Overrides the Constraint Solver Iterations value of the scene for constraints of this element group if set to a value greater 0. Higher numbers can help to reduce solver induced deformation on elements bearing extreme loads')")
+        exec("elemGrp_%d_EGSidxIter" %i +" = int_(name='Solver Iterations Override', default=presets[j][EGSidxIter], min=0, max=100000, description='Overrides the Constraint Solver Iterations value of the scene for constraints of this element group if set to a value greater 0. Higher numbers can help to reduce solver induced deformation on elements bearing extreme loads')")
         exec("elemGrp_%d_EGSidxDClP" %i +" = bool_(name='Dis. Col. Permanently', default=presets[j][EGSidxDClP], description='Disables collisions between initially connected elements of this element group permanently (overrides global setting)')")
 
         # Update fromula assistant submenu according to the chosen element group

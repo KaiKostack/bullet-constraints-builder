@@ -129,7 +129,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
     elemGrps = mem["elemGrps"]
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
-
+    dirAxis = [1, 2, 3]
+                    
     # Blender version handling
     if bpy.app.version <= (2, 79, 0) or hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'): version_spring = 1
     else:                                                                                 version_spring = 2
@@ -517,6 +518,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 if geoAxisNormal == 1:   dirVecNew = Vector((1, 0, 0))
                 elif geoAxisNormal == 2: dirVecNew = Vector((0, 1, 0))
                 elif geoAxisNormal == 3: dirVecNew = Vector((0, 0, 1))
+                else:  # If there could be no orientation detected then basically snap vector to its closest 90-degree angle
+                    dirVecTmp = Vector((abs(dirVec[0]), abs(dirVec[1]), abs(dirVec[2])))
+                    dirVecSorted, dirAxisSorted = zip(*sorted(zip(dirVecTmp, dirAxis)))
+                    if dirAxisSorted[2] == 1:   dirVecNew = Vector((1, 0, 0))
+                    elif dirAxisSorted[2] == 2: dirVecNew = Vector((0, 1, 0))
+                    elif dirAxisSorted[2] == 3: dirVecNew = Vector((0, 0, 1))
                 # Take direction into account too and negate axis if necessary
                 if dirVec[0] < 0: dirVecNew[0] = -dirVecNew[0]
                 if dirVec[1] < 0: dirVecNew[1] = -dirVecNew[1]
@@ -631,7 +638,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         ### 1x FIXED; Indestructible buffer between passive and active foundation elements
         if CT == -1:
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-            solvIter = max(1, int(scene.rigidbody_world.solver_iterations /10))
+            solvIter = max(1, int(props.solverIterations /10))
             setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=props.passiveUseBreaking,si=solvIter)
             constsData.append([cData, cDatb])
 

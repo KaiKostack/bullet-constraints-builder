@@ -49,6 +49,7 @@ def initGeneralRigidBodyWorldSettings(scene):
     scene.render.fps_base = 1
     # Set Steps Per Second for rigid body simulation
     scene.rigidbody_world.steps_per_second = props.stepsPerSecond
+    scene.rigidbody_world.solver_iterations = props.solverIterations
     # Set the length of the point cache to match the scene length
     scene.rigidbody_world.point_cache.frame_end = scene.frame_end
     # Set Split Impulse for rigid body simulation
@@ -715,11 +716,11 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             overlapAreaY = overlapX *overlapZ
             overlapAreaZ = overlapX *overlapY
             # Add up all contact areas
-            geoContactArea = overlapAreaX +overlapAreaY +overlapAreaZ
+            geoContactAreaB = overlapAreaX +overlapAreaY +overlapAreaZ
                 
         ### Or calculate contact area based on predefined custom thickness
         else:
-            geoContactArea = (overlapX +overlapY +overlapZ) *props.surfaceThickness
+            geoContactAreaB = (overlapX +overlapY +overlapZ) *props.surfaceThickness
 
         ### Calculate alternative contact area from object dimensions
         dimA = objA.dimensions
@@ -729,14 +730,9 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         areaB = min(min(dimB[0]*dimB[1], dimB[0]*dimB[2]), dimB[1]*dimB[2])
         geoContactAreaD = min(areaA, areaB)
 
-        # Debug code
-#        print("geoContactAreaB", geoContactArea)
-#        print("geoContactAreaD", geoContactAreaD)
-#        print("geoContactAreaF", geoContactAreaF)
-            
         ### Sanity check: in case no boundary box intersection is found use element dimensions based contact area as fallback 
-        if geoContactArea == 0:
-            geoContactArea = geoContactAreaD
+        if geoContactAreaB > 0: geoContactArea = geoContactAreaB
+        else:                   geoContactArea = geoContactAreaD
 
         # Sanity check: contact area based on faces is expected to be smaller than boundary box and dimensions contact area, only then use face based contact area
         qVolCorrect = 0
@@ -745,16 +741,18 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         elif not qNonManifold:
             qVolCorrect = 1
 
-        #print("geoContactArea final", geoContactArea)
-        #print("qVolCorrect", qVolCorrect)
-
         ### Find out element thickness to be used for bending threshold calculation 
-        geo = [overlapX, overlapY, overlapZ]
-        geoAxis = [1, 2, 3]
-        geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
-        geoHeight = geo[1]  # First item = mostly 0, second item = thickness/height, third item = width 
-        geoWidth = geo[2]
-
+        if geoContactAreaB > 0:
+            geo = [overlapX, overlapY, overlapZ]
+            geoAxis = [1, 2, 3]
+            geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
+            geoHeight = geo[1]  # First item = mostly 0, second item = thickness/height, third item = width 
+            geoWidth = geo[2]
+        else:
+            geoAxis = [0, 0, 0]
+            geoHeight = geoContactArea**0.5
+            geoWidth = geoHeight
+        
         # Add custom thickness to contact area (only for manifolds as it is already included in non-manifolds)
         if not qNonManifold:
             geoContactArea += geoWidth *props.surfaceThickness

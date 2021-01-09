@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2020 Kai Kostack
+# Copyright (C) 2015-2021 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -121,6 +121,7 @@ def exportConfigData(scene):
     configData = []
     configData.append(bcb_version)
     configData.append(props.stepsPerSecond)
+    configData.append(props.solverIterations)
     configData.append(props.constraintUseBreaking)
     configData.append(props.passiveUseBreaking)
     configData.append(props.connectionCountLimit)
@@ -174,6 +175,7 @@ def importConfigData(scene):
         props = bpy.context.window_manager.bcb
         i += 1
         props.stepsPerSecond = configData[i]; i += 1
+        props.solverIterations = configData[i]; i += 1
         props.constraintUseBreaking = configData[i]; i += 1
         props.passiveUseBreaking = configData[i]; i += 1
         props.connectionCountLimit = configData[i]; i += 1

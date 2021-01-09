@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2020 Kai Kostack
+# Copyright (C) 2015-2021 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -327,7 +327,9 @@ class bcb_panel_global_settings(bpy.types.Panel):
 
         row = col.row(align=1)
         split = row.split(percentage=.85, align=1)
-        split.prop(props, "stepsPerSecond")
+        split2 = split.split(percentage=.5, align=1)
+        split2.prop(props, "stepsPerSecond")
+        split2.prop(props, "solverIterations")
         split.operator("bcb.export_config", icon="NEW")
 
         row = col.row(align=1)

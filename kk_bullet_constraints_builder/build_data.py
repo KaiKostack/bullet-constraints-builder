@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2018 Kai Kostack
+# Copyright (C) 2015-2021 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -124,6 +124,7 @@ def storeConfigDataInScene(scene):
     
     ### General
     scene["bcb_prop_stepsPerSecond"] = props.stepsPerSecond
+    scene["bcb_prop_solverIterations"] = props.solverIterations
     scene["bcb_prop_constraintUseBreaking"] = props.constraintUseBreaking
     scene["bcb_prop_passiveUseBreaking"] = props.passiveUseBreaking
     scene["bcb_prop_connectionCountLimit"] = props.connectionCountLimit
@@ -321,6 +322,8 @@ def getConfigDataFromScene(scene):
 
     if "bcb_prop_stepsPerSecond" in scene.keys():
         props.stepsPerSecond = scene["bcb_prop_stepsPerSecond"]
+    if "bcb_prop_solverIterations" in scene.keys():
+        props.solverIterations = scene["bcb_prop_solverIterations"]
     if "bcb_prop_constraintUseBreaking" in scene.keys():
         props.constraintUseBreaking = scene["bcb_prop_constraintUseBreaking"]
     if "bcb_prop_passiveUseBreaking" in scene.keys():
