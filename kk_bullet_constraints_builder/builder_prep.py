@@ -1135,8 +1135,7 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
         ### Check if connection between different groups is not allowed and remove them
         qNoCon = 0
         if elemGrpA != elemGrpB:
-            if NoCoA or NoCoB:
-                qNoCon = 1
+            if (NoCoA or NoCoB) and Prio_A == Prio_B: qNoCon = 1
             ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
             ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
             elif NoHoA or NoHoB:
@@ -1911,23 +1910,7 @@ def correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo):
                 obj["CA Corr.Fac."] = corFac
                 obj["Density"] = materialDensity
                 obj["Volume"] = volume
-        
-    ### Apply corrections to geometry lists  
-    connectsPair_iter = iter(connectsPair)
-    connectsGeo_iter = iter(connectsGeo)
-    for k in range(len(connectsGeo)):
-        pair = next(connectsPair_iter)   
-        geo = next(connectsGeo_iter)
-        qVolCorrect = geo[6]
-
-        if not qVolCorrect: continue  # No correction needed in valid polygon based contact area cases 
-        else:
-            objA = objs[pair[0]]
-            objB = objs[pair[1]]
-            corFacA = objA["CA Corr.Fac."]
-            corFacB = objB["CA Corr.Fac."]
-            geo[0] *= min(corFacA, corFacB)  # = geoContactArea
-            
+                    
 ################################################################################   
 
 def generateDetonator(objs, connectsPair):

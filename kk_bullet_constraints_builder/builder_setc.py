@@ -196,294 +196,304 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         
         geoContactArea = geo[0]
 
-        # Geometry array: [area, height, width, surfThick, axisNormal, axisHeight, axisWidth]
-        # Height is always smaller than width
-        geoHeight = geo[1]
-        geoWidth = geo[2]
-        geoAxisNormal = geo[3]
-        geoAxisHeight = geo[4]
-        geoAxisWidth = geo[5]
-        ax = [geoAxisNormal, geoAxisHeight, geoAxisWidth]
-        
-        ### Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
-        if detonatorObj != None and detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
-            dist = loc -detonatorObj.location
-            btMultiplierK = (abs(dist[0]) /abs(detonatorObj.scale[0]))**2
-            btMultiplierK += (abs(dist[1]) /abs(detonatorObj.scale[1]))**2
-            btMultiplierK += (abs(dist[2]) /abs(detonatorObj.scale[2]))**2
-            btMultiplier *= min(1, max(0, 2**.5*2 *btMultiplierK -2**.5/2))
+        ### Apply corrections to geometry lists  
+        qVolCorrect = geo[6]
 
-        ### Prepare expression variables and convert m to mm
-        a = geoContactArea *1000000
-        h = geoHeight *1000
-        w = geoWidth *1000
-        
-        x = loc[0]; y = loc[1]; z = loc[2]
-        
+        if qVolCorrect:  # No correction needed in valid polygon based contact area cases 
+            corFacA = objA["CA Corr.Fac."]
+            corFacB = objB["CA Corr.Fac."]
+            geoContactArea *= min(corFacA, corFacB)
+
+        ### Prepare connection data
         elemGrp = None
-        elemGrpA = objsEGrp[objsDict[objA]] 
-        elemGrpB = objsEGrp[objsDict[objB]]
-        elemGrps_elemGrpA = elemGrps[elemGrpA]
-        elemGrps_elemGrpB = elemGrps[elemGrpB]
-        NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
-        NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
-        NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
-        NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
+        if geoContactArea > 0:  # Only if contact area is valid then prepare connection data
+            
+            # Geometry array: [area, height, width, surfThick, axisNormal, axisHeight, axisWidth]
+            # Height is always smaller than width
+            geoHeight = geo[1]
+            geoWidth = geo[2]
+            geoAxisNormal = geo[3]
+            geoAxisHeight = geo[4]
+            geoAxisWidth = geo[5]
+            ax = [geoAxisNormal, geoAxisHeight, geoAxisWidth]
+            
+            ### Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
+            if detonatorObj != None and detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
+                dist = loc -detonatorObj.location
+                btMultiplierK = (abs(dist[0]) /abs(detonatorObj.scale[0]))**2
+                btMultiplierK += (abs(dist[1]) /abs(detonatorObj.scale[1]))**2
+                btMultiplierK += (abs(dist[2]) /abs(detonatorObj.scale[2]))**2
+                btMultiplier *= min(1, max(0, 2**.5*2 *btMultiplierK -2**.5/2))
 
-        ### Element length approximation (center to center vector)
-        dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-        dirVecN = dirVec.normalized()
-        geoLengthApprox = dirVec.length
-
-        ### Check if connection between different groups is not allowed and remove them
-        qNoCon = 0
-        if elemGrpA != elemGrpB:
-            if NoCoA or NoCoB:
-                qNoCon = 1
-            ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
-            ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
-            elif NoHoA or NoHoB:
-                dirVecA = Vector(loc) -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-                dirVecAN = dirVecA.normalized()
-                if abs(dirVecAN[2]) > 0.7: qA = 1
-                else: qA = 0
-                dirVecB = Vector(loc) -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-                dirVecBN = dirVecB.normalized()
-                if abs(dirVecBN[2]) > 0.7: qB = 1
-                else: qB = 0
-                if qA == 0 and qB == 0: qNoCon = 1
+            ### Prepare expression variables and convert m to mm
+            a = geoContactArea *1000000
+            h = geoHeight *1000
+            w = geoWidth *1000
+            
+            x = loc[0]; y = loc[1]; z = loc[2]
         
-        ###### Decision on which material settings from both groups will be used for connection
-        if not qNoCon:
-            CT_A = elemGrps_elemGrpA[EGSidxCTyp]
-            CT_B = elemGrps_elemGrpB[EGSidxCTyp]
+            elemGrpA = objsEGrp[objsDict[objA]] 
+            elemGrpB = objsEGrp[objsDict[objB]]
+            elemGrps_elemGrpA = elemGrps[elemGrpA]
+            elemGrps_elemGrpB = elemGrps[elemGrpB]
             Prio_A = elemGrps_elemGrpA[EGSidxPrio]
             Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+            NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
+            NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
+            NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
+            NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
 
-            # A is active group
-            if CT_A != 0:
-                ### Prepare expression strings
-                brkThresExprC_A = elemGrps_elemGrpA[EGSidxBTC]
-                brkThresExprT_A = elemGrps_elemGrpA[EGSidxBTT]
-                brkThresExprS_A = elemGrps_elemGrpA[EGSidxBTS]
-                brkThresExprS9_A = elemGrps_elemGrpA[EGSidxBTS9]
-                brkThresExprB_A = elemGrps_elemGrpA[EGSidxBTB]
-                brkThresExprB9_A = elemGrps_elemGrpA[EGSidxBTB9]
-                brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
-                brkThresValuePL_A = elemGrps_elemGrpA[EGSidxBTPL]
-                mul = elemGrps_elemGrpA[EGSidxBTX]
-                # Area correction calculation for cylinders (*pi/4)
-                if elemGrps_elemGrpA[EGSidxCyln]: mulCyl = 0.7854
-                else:                             mulCyl = 1
-                # Increase threshold for boundary condition case
-                if CT_B == 0: mul *= 2
-                ### Add surface variable and multipliers
-                if len(brkThresExprC_A): brkThresExprC_A += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprT_A): brkThresExprT_A += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprS_A): brkThresExprS_A += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprS9_A): brkThresExprS9_A += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprB_A): brkThresExprB_A += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprB9_A): brkThresExprB9_A += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprP_A): brkThresExprP_A += "*a" +"*%f"%mul +"*%f"%mulCyl
-                
-                ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
-                try: brkThresValueC_A = eval(brkThresExprC_A)
-                except: print("\rError: Expression could not be evaluated:", brkThresExprC_A); brkThresValueC_A = 0
-                try: brkThresValueT_A = eval(brkThresExprT_A)
-                except: print("\rError: Expression could not be evaluated:", brkThresExprT_A); brkThresValueT_A = 0
-                try: brkThresValueS_A = eval(brkThresExprS_A)
-                except: print("\rError: Expression could not be evaluated:", brkThresExprS_A); brkThresValueS_A = 0
+            ### Element length approximation (center to center vector)
+            dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+            dirVecN = dirVec.normalized()
+            geoLengthApprox = dirVec.length
 
-                if len(brkThresExprS9_A):  # Can also have zero-size string if not used
-                    try: brkThresValueS9_A = eval(brkThresExprS9_A)
-                    except: print("\rError: Expression could not be evaluated:", brkThresExprS9_A); brkThresValueS9_A = 0
-                else: brkThresValueS9_A = -1
+            ### Check if connection between different groups is not allowed and remove them
+            qNoCon = 0
+            if elemGrpA != elemGrpB:
+                if (NoCoA or NoCoB) and Prio_A == Prio_B: qNoCon = 1
+                ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
+                ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
+                elif NoHoA or NoHoB:
+                    dirVecA = Vector(loc) -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                    dirVecAN = dirVecA.normalized()
+                    if abs(dirVecAN[2]) > 0.7: qA = 1
+                    else: qA = 0
+                    dirVecB = Vector(loc) -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                    dirVecBN = dirVecB.normalized()
+                    if abs(dirVecBN[2]) > 0.7: qB = 1
+                    else: qB = 0
+                    if qA == 0 and qB == 0: qNoCon = 1
+            
+            ###### Decision on which material settings from both groups will be used for connection
+            if not qNoCon:
+                CT_A = elemGrps_elemGrpA[EGSidxCTyp]
+                CT_B = elemGrps_elemGrpB[EGSidxCTyp]
 
-                try: brkThresValueB_A = eval(brkThresExprB_A)
-                except: print("\rError: Expression could not be evaluated:", brkThresExprB_A); brkThresValueB_A = 0
+                # A is active group
+                if CT_A != 0:
+                    ### Prepare expression strings
+                    brkThresExprC_A = elemGrps_elemGrpA[EGSidxBTC]
+                    brkThresExprT_A = elemGrps_elemGrpA[EGSidxBTT]
+                    brkThresExprS_A = elemGrps_elemGrpA[EGSidxBTS]
+                    brkThresExprS9_A = elemGrps_elemGrpA[EGSidxBTS9]
+                    brkThresExprB_A = elemGrps_elemGrpA[EGSidxBTB]
+                    brkThresExprB9_A = elemGrps_elemGrpA[EGSidxBTB9]
+                    brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
+                    brkThresValuePL_A = elemGrps_elemGrpA[EGSidxBTPL]
+                    mul = elemGrps_elemGrpA[EGSidxBTX]
+                    # Area correction calculation for cylinders (*pi/4)
+                    if elemGrps_elemGrpA[EGSidxCyln]: mulCyl = 0.7854
+                    else:                             mulCyl = 1
+                    # Increase threshold for boundary condition case
+                    if CT_B == 0: mul *= 2
+                    ### Add surface variable and multipliers
+                    if len(brkThresExprC_A): brkThresExprC_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprT_A): brkThresExprT_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprS_A): brkThresExprS_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprS9_A): brkThresExprS9_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprB_A): brkThresExprB_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprB9_A): brkThresExprB9_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprP_A): brkThresExprP_A += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    
+                    ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
+                    try: brkThresValueC_A = eval(brkThresExprC_A)
+                    except: print("\rError: Expression could not be evaluated:", brkThresExprC_A, objA.name, objB.name, a); brkThresValueC_A = 0
+                    try: brkThresValueT_A = eval(brkThresExprT_A)
+                    except: print("\rError: Expression could not be evaluated:", brkThresExprT_A); brkThresValueT_A = 0
+                    try: brkThresValueS_A = eval(brkThresExprS_A)
+                    except: print("\rError: Expression could not be evaluated:", brkThresExprS_A); brkThresValueS_A = 0
 
-                if len(brkThresExprB9_A):  # Can also have zero-size string if not used
-                    try: brkThresValueB9_A = eval(brkThresExprB9_A)
-                    except: print("\rError: Expression could not be evaluated:", brkThresExprB9_A); brkThresValueB9_A = 0
-                else: brkThresValueB9_A = -1
+                    if len(brkThresExprS9_A):  # Can also have zero-size string if not used
+                        try: brkThresValueS9_A = eval(brkThresExprS9_A)
+                        except: print("\rError: Expression could not be evaluated:", brkThresExprS9_A); brkThresValueS9_A = 0
+                    else: brkThresValueS9_A = -1
 
-                if len(brkThresExprP_A):  # Can also have zero-size string if not used
-                    try: brkThresValueP_A = eval(brkThresExprP_A)
-                    except: print("\rError: Expression could not be evaluated:", brkThresExprP_A); brkThresValueP_A = 0
-                else: brkThresValueP_A = -1
+                    try: brkThresValueB_A = eval(brkThresExprB_A)
+                    except: print("\rError: Expression could not be evaluated:", brkThresExprB_A); brkThresValueB_A = 0
 
-            # B is active group
-            if CT_B != 0:
-                ### Prepare expression strings
-                brkThresExprC_B = elemGrps_elemGrpB[EGSidxBTC]
-                brkThresExprT_B = elemGrps_elemGrpB[EGSidxBTT]
-                brkThresExprS_B = elemGrps_elemGrpB[EGSidxBTS]
-                brkThresExprS9_B = elemGrps_elemGrpB[EGSidxBTS9]
-                brkThresExprB_B = elemGrps_elemGrpB[EGSidxBTB]
-                brkThresExprB9_B = elemGrps_elemGrpB[EGSidxBTB9]
-                brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
-                brkThresValuePL_B = elemGrps_elemGrpB[EGSidxBTPL]
-                mul = elemGrps_elemGrpB[EGSidxBTX]
-                # Area correction calculation for cylinders (*pi/4)
-                if elemGrps_elemGrpB[EGSidxCyln]: mulCyl = 0.7854
-                else:                             mulCyl = 1
-                # Increase threshold for boundary condition case
-                if CT_A == 0: mul *= 2
-                ### Add surface variable and multipliers
-                if len(brkThresExprC_B): brkThresExprC_B += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprT_B): brkThresExprT_B += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprS_B): brkThresExprS_B += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprS9_B): brkThresExprS9_B += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprB_B): brkThresExprB_B += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprB9_B): brkThresExprB9_B += "*a" +"*%f"%mul +"*%f"%mulCyl
-                if len(brkThresExprP_B): brkThresExprP_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprB9_A):  # Can also have zero-size string if not used
+                        try: brkThresValueB9_A = eval(brkThresExprB9_A)
+                        except: print("\rError: Expression could not be evaluated:", brkThresExprB9_A); brkThresValueB9_A = 0
+                    else: brkThresValueB9_A = -1
 
-                ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
-                try: brkThresValueC_B = eval(brkThresExprC_B)
-                except: print("\rError: Expression could not be evaluated:", brkThresExprC_B); brkThresValueC_B = 0
-                try: brkThresValueT_B = eval(brkThresExprT_B)
-                except: print("\rError: Expression could not be evaluated:", brkThresExprT_B); brkThresValueT_B = 0
-                try: brkThresValueS_B = eval(brkThresExprS_B)
-                except: print("\rError: Expression could not be evaluated:", brkThresExprS_B); brkThresValueS_B = 0
+                    if len(brkThresExprP_A):  # Can also have zero-size string if not used
+                        try: brkThresValueP_A = eval(brkThresExprP_A)
+                        except: print("\rError: Expression could not be evaluated:", brkThresExprP_A); brkThresValueP_A = 0
+                    else: brkThresValueP_A = -1
 
-                if len(brkThresExprS9_B):  # Can also have zero-size string if not used
-                    try: brkThresValueS9_B = eval(brkThresExprS9_B)
-                    except: print("\rError: Expression could not be evaluated:", brkThresExprS9_B); brkThresValueS9_B = 0
-                else: brkThresValueS9_B = -1
+                # B is active group
+                if CT_B != 0:
+                    ### Prepare expression strings
+                    brkThresExprC_B = elemGrps_elemGrpB[EGSidxBTC]
+                    brkThresExprT_B = elemGrps_elemGrpB[EGSidxBTT]
+                    brkThresExprS_B = elemGrps_elemGrpB[EGSidxBTS]
+                    brkThresExprS9_B = elemGrps_elemGrpB[EGSidxBTS9]
+                    brkThresExprB_B = elemGrps_elemGrpB[EGSidxBTB]
+                    brkThresExprB9_B = elemGrps_elemGrpB[EGSidxBTB9]
+                    brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
+                    brkThresValuePL_B = elemGrps_elemGrpB[EGSidxBTPL]
+                    mul = elemGrps_elemGrpB[EGSidxBTX]
+                    # Area correction calculation for cylinders (*pi/4)
+                    if elemGrps_elemGrpB[EGSidxCyln]: mulCyl = 0.7854
+                    else:                             mulCyl = 1
+                    # Increase threshold for boundary condition case
+                    if CT_A == 0: mul *= 2
+                    ### Add surface variable and multipliers
+                    if len(brkThresExprC_B): brkThresExprC_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprT_B): brkThresExprT_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprS_B): brkThresExprS_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprS9_B): brkThresExprS9_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprB_B): brkThresExprB_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprB9_B): brkThresExprB9_B += "*a" +"*%f"%mul +"*%f"%mulCyl
+                    if len(brkThresExprP_B): brkThresExprP_B += "*a" +"*%f"%mul +"*%f"%mulCyl
 
-                try: brkThresValueB_B = eval(brkThresExprB_B)
-                except: print("\rError: Expression could not be evaluated:", brkThresExprB_B); brkThresValueB_B = 0
+                    ### Evaluate the breaking thresholds expressions of both elements for every degree of freedom
+                    try: brkThresValueC_B = eval(brkThresExprC_B)
+                    except: print("\rError: Expression could not be evaluated:", brkThresExprC_B); brkThresValueC_B = 0
+                    try: brkThresValueT_B = eval(brkThresExprT_B)
+                    except: print("\rError: Expression could not be evaluated:", brkThresExprT_B); brkThresValueT_B = 0
+                    try: brkThresValueS_B = eval(brkThresExprS_B)
+                    except: print("\rError: Expression could not be evaluated:", brkThresExprS_B); brkThresValueS_B = 0
 
-                if len(brkThresExprB9_B):  # Can also have zero-size string if not used
-                    try: brkThresValueB9_B = eval(brkThresExprB9_B)
-                    except: print("\rError: Expression could not be evaluated:", brkThresExprB9_B); brkThresValueB9_B = 0
-                else: brkThresValueB9_B = -1
+                    if len(brkThresExprS9_B):  # Can also have zero-size string if not used
+                        try: brkThresValueS9_B = eval(brkThresExprS9_B)
+                        except: print("\rError: Expression could not be evaluated:", brkThresExprS9_B); brkThresValueS9_B = 0
+                    else: brkThresValueS9_B = -1
 
-                if len(brkThresExprP_B):  # Can also have zero-size string if not used
-                    try: brkThresValueP_B = eval(brkThresExprP_B)
-                    except: print("\rError: Expression could not be evaluated:", brkThresExprP_B); brkThresValueP_B = 0
-                else: brkThresValueP_B = -1
+                    try: brkThresValueB_B = eval(brkThresExprB_B)
+                    except: print("\rError: Expression could not be evaluated:", brkThresExprB_B); brkThresValueB_B = 0
 
-            # Both A and B are active groups and priority is the same
-            if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
-                ### Use the connection type with the smaller count of constraints for connection between different element groups
-                ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-                if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
+                    if len(brkThresExprB9_B):  # Can also have zero-size string if not used
+                        try: brkThresValueB9_B = eval(brkThresExprB9_B)
+                        except: print("\rError: Expression could not be evaluated:", brkThresExprB9_B); brkThresValueB9_B = 0
+                    else: brkThresValueB9_B = -1
+
+                    if len(brkThresExprP_B):  # Can also have zero-size string if not used
+                        try: brkThresValueP_B = eval(brkThresExprP_B)
+                        except: print("\rError: Expression could not be evaluated:", brkThresExprP_B); brkThresValueP_B = 0
+                    else: brkThresValueP_B = -1
+
+                # Both A and B are active groups and priority is the same
+                if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
+                    ### Use the connection type with the smaller count of constraints for connection between different element groups
+                    ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+                    if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
+                        CT = CT_A
+                        elemGrp = elemGrpA
+                    else:
+                        CT = CT_B
+                        elemGrp = elemGrpB
+                                
+                    if props.lowerBrkThresPriority:
+                        ### Use the weaker of both breaking thresholds for every degree of freedom
+                        if brkThresValueC_A <= brkThresValueC_B: brkThresValueC = brkThresValueC_A
+                        else:                                    brkThresValueC = brkThresValueC_B
+
+                        if brkThresValueT_A <= brkThresValueT_B: brkThresValueT = brkThresValueT_A
+                        else:                                    brkThresValueT = brkThresValueT_B
+
+                        if brkThresValueS_A <= brkThresValueS_B: brkThresValueS = brkThresValueS_A
+                        else:                                    brkThresValueS = brkThresValueS_B
+
+                        if brkThresValueS9_A == -1 or brkThresValueS9_B == -1: brkThresValueS9 = -1
+                        else:    
+                            if brkThresValueS9_A <= brkThresValueS9_B: brkThresValueS9 = brkThresValueS9_A
+                            else:                                      brkThresValueS9 = brkThresValueS9_B
+
+                        if brkThresValueB_A <= brkThresValueB_B: brkThresValueB = brkThresValueB_A
+                        else:                                    brkThresValueB = brkThresValueB_B
+
+                        if brkThresValueB9_A == -1 or brkThresValueB9_B == -1: brkThresValueB9 = -1
+                        else:    
+                            if brkThresValueB9_A <= brkThresValueB9_B: brkThresValueB9 = brkThresValueB9_A
+                            else:                                      brkThresValueB9 = brkThresValueB9_B
+
+                        if brkThresValueP_A == -1 or brkThresValueP_B == -1: brkThresValueP = -1
+                        else:    
+                            if brkThresValueP_A <= brkThresValueP_B: brkThresValueP = brkThresValueP_A
+                            else:                                    brkThresValueP = brkThresValueP_B
+
+                        if brkThresValuePL_A <= brkThresValuePL_B: brkThresValuePL = brkThresValuePL_A
+                        else:                                      brkThresValuePL = brkThresValuePL_B
+
+                    else:
+                        ### Use the stronger of both breaking thresholds for every degree of freedom
+                        if brkThresValueC_A > brkThresValueC_B: brkThresValueC = brkThresValueC_A
+                        else:                                   brkThresValueC = brkThresValueC_B
+
+                        if brkThresValueT_A > brkThresValueT_B: brkThresValueT = brkThresValueT_A
+                        else:                                   brkThresValueT = brkThresValueT_B
+
+                        if brkThresValueS_A > brkThresValueS_B: brkThresValueS = brkThresValueS_A
+                        else:                                   brkThresValueS = brkThresValueS_B
+
+                        if brkThresValueS9_A == -1 or brkThresValueS9_B == -1: brkThresValueS9 = -1
+                        else:    
+                            if brkThresValueS9_A > brkThresValueS9_B: brkThresValueS9 = brkThresValueS9_A
+                            else:                                     brkThresValueS9 = brkThresValueS9_B
+
+                        if brkThresValueB_A > brkThresValueB_B: brkThresValueB = brkThresValueB_A
+                        else:                                   brkThresValueB = brkThresValueB_B
+
+                        if brkThresValueB9_A == -1 or brkThresValueB9_B == -1: brkThresValueB9 = -1
+                        else:    
+                            if brkThresValueB9_A > brkThresValueB9_B: brkThresValueB9 = brkThresValueB9_A
+                            else:                                     brkThresValueB9 = brkThresValueB9_B
+
+                        if brkThresValueP_A == -1 or brkThresValueP_B == -1: brkThresValueP = -1
+                        else:    
+                            if brkThresValueP_A > brkThresValueP_B: brkThresValueP = brkThresValueP_A
+                            else:                                   brkThresValueP = brkThresValueP_B
+
+                        if brkThresValuePL_A > brkThresValuePL_B: brkThresValuePL = brkThresValuePL_A
+                        else:                                     brkThresValuePL = brkThresValuePL_B
+                    
+                # Only A is active and B is passive group or priority is higher for A
+                elif CT_A != 0 and CT_B == 0 or (CT_A != 0 and CT_B != 0 and Prio_A > Prio_B):
                     CT = CT_A
                     elemGrp = elemGrpA
-                else:
+                    brkThresValueC = brkThresValueC_A
+                    brkThresValueT = brkThresValueT_A
+                    brkThresValueS = brkThresValueS_A
+                    if brkThresValueS9_A == -1: brkThresValueS9 = -1
+                    else: brkThresValueS9 = brkThresValueS9_A
+                    brkThresValueB = brkThresValueB_A
+                    if brkThresValueB9_A == -1: brkThresValueB9 = -1
+                    else: brkThresValueB9 = brkThresValueB9_A
+                    brkThresValueP = brkThresValueP_A
+                    brkThresValuePL = brkThresValuePL_A
+         
+                # Only B is active and A is passive group or priority is higher for B
+                elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
                     CT = CT_B
                     elemGrp = elemGrpB
-                            
-                if props.lowerBrkThresPriority:
-                    ### Use the weaker of both breaking thresholds for every degree of freedom
-                    if brkThresValueC_A <= brkThresValueC_B: brkThresValueC = brkThresValueC_A
-                    else:                                    brkThresValueC = brkThresValueC_B
+                    brkThresValueC = brkThresValueC_B
+                    brkThresValueT = brkThresValueT_B
+                    brkThresValueS = brkThresValueS_B
+                    if brkThresValueS9_B == -1: brkThresValueS9 = -1
+                    else: brkThresValueS9 = brkThresValueS9_B
+                    brkThresValueB = brkThresValueB_B
+                    if brkThresValueB9_B == -1: brkThresValueB9 = -1
+                    else: brkThresValueB9 = brkThresValueB9_B
+                    brkThresValueP = brkThresValueP_B
+                    brkThresValuePL = brkThresValuePL_B
 
-                    if brkThresValueT_A <= brkThresValueT_B: brkThresValueT = brkThresValueT_A
-                    else:                                    brkThresValueT = brkThresValueT_B
-
-                    if brkThresValueS_A <= brkThresValueS_B: brkThresValueS = brkThresValueS_A
-                    else:                                    brkThresValueS = brkThresValueS_B
-
-                    if brkThresValueS9_A == -1 or brkThresValueS9_B == -1: brkThresValueS9 = -1
-                    else:    
-                        if brkThresValueS9_A <= brkThresValueS9_B: brkThresValueS9 = brkThresValueS9_A
-                        else:                                      brkThresValueS9 = brkThresValueS9_B
-
-                    if brkThresValueB_A <= brkThresValueB_B: brkThresValueB = brkThresValueB_A
-                    else:                                    brkThresValueB = brkThresValueB_B
-
-                    if brkThresValueB9_A == -1 or brkThresValueB9_B == -1: brkThresValueB9 = -1
-                    else:    
-                        if brkThresValueB9_A <= brkThresValueB9_B: brkThresValueB9 = brkThresValueB9_A
-                        else:                                      brkThresValueB9 = brkThresValueB9_B
-
-                    if brkThresValueP_A == -1 or brkThresValueP_B == -1: brkThresValueP = -1
-                    else:    
-                        if brkThresValueP_A <= brkThresValueP_B: brkThresValueP = brkThresValueP_A
-                        else:                                    brkThresValueP = brkThresValueP_B
-
-                    if brkThresValuePL_A <= brkThresValuePL_B: brkThresValuePL = brkThresValuePL_A
-                    else:                                      brkThresValuePL = brkThresValuePL_B
-
-                else:
-                    ### Use the stronger of both breaking thresholds for every degree of freedom
-                    if brkThresValueC_A > brkThresValueC_B: brkThresValueC = brkThresValueC_A
-                    else:                                   brkThresValueC = brkThresValueC_B
-
-                    if brkThresValueT_A > brkThresValueT_B: brkThresValueT = brkThresValueT_A
-                    else:                                   brkThresValueT = brkThresValueT_B
-
-                    if brkThresValueS_A > brkThresValueS_B: brkThresValueS = brkThresValueS_A
-                    else:                                   brkThresValueS = brkThresValueS_B
-
-                    if brkThresValueS9_A == -1 or brkThresValueS9_B == -1: brkThresValueS9 = -1
-                    else:    
-                        if brkThresValueS9_A > brkThresValueS9_B: brkThresValueS9 = brkThresValueS9_A
-                        else:                                     brkThresValueS9 = brkThresValueS9_B
-
-                    if brkThresValueB_A > brkThresValueB_B: brkThresValueB = brkThresValueB_A
-                    else:                                   brkThresValueB = brkThresValueB_B
-
-                    if brkThresValueB9_A == -1 or brkThresValueB9_B == -1: brkThresValueB9 = -1
-                    else:    
-                        if brkThresValueB9_A > brkThresValueB9_B: brkThresValueB9 = brkThresValueB9_A
-                        else:                                     brkThresValueB9 = brkThresValueB9_B
-
-                    if brkThresValueP_A == -1 or brkThresValueP_B == -1: brkThresValueP = -1
-                    else:    
-                        if brkThresValueP_A > brkThresValueP_B: brkThresValueP = brkThresValueP_A
-                        else:                                   brkThresValueP = brkThresValueP_B
-
-                    if brkThresValuePL_A > brkThresValuePL_B: brkThresValuePL = brkThresValuePL_A
-                    else:                                     brkThresValuePL = brkThresValuePL_B
-                
-            # Only A is active and B is passive group or priority is higher for A
-            elif CT_A != 0 and CT_B == 0 or (CT_A != 0 and CT_B != 0 and Prio_A > Prio_B):
-                CT = CT_A
-                elemGrp = elemGrpA
-                brkThresValueC = brkThresValueC_A
-                brkThresValueT = brkThresValueT_A
-                brkThresValueS = brkThresValueS_A
-                if brkThresValueS9_A == -1: brkThresValueS9 = -1
-                else: brkThresValueS9 = brkThresValueS9_A
-                brkThresValueB = brkThresValueB_A
-                if brkThresValueB9_A == -1: brkThresValueB9 = -1
-                else: brkThresValueB9 = brkThresValueB9_A
-                brkThresValueP = brkThresValueP_A
-                brkThresValuePL = brkThresValuePL_A
-     
-            # Only B is active and A is passive group or priority is higher for B
-            elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
-                CT = CT_B
-                elemGrp = elemGrpB
-                brkThresValueC = brkThresValueC_B
-                brkThresValueT = brkThresValueT_B
-                brkThresValueS = brkThresValueS_B
-                if brkThresValueS9_B == -1: brkThresValueS9 = -1
-                else: brkThresValueS9 = brkThresValueS9_B
-                brkThresValueB = brkThresValueB_B
-                if brkThresValueB9_B == -1: brkThresValueB9 = -1
-                else: brkThresValueB9 = brkThresValueB9_B
-                brkThresValueP = brkThresValueP_B
-                brkThresValuePL = brkThresValuePL_B
-
-            # Both A and B are in passive group but either one is actually an active RB (A xor B)
-            elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
-                CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
-
-            # Both A and B are in passive group and both are passive RBs
-            else:
-                CT = 0            
-
-            # For unbreakable passive connections above settings can be overwritten
-            if not props.passiveUseBreaking:
                 # Both A and B are in passive group but either one is actually an active RB (A xor B)
-                if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                     CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
 
-        elif qNoCon: CT = 0
+                # Both A and B are in passive group and both are passive RBs
+                else:
+                    CT = 0            
+
+                # For unbreakable passive connections above settings can be overwritten
+                if not props.passiveUseBreaking:
+                    # Both A and B are in passive group but either one is actually an active RB (A xor B)
+                    if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                        CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
+
+            elif qNoCon: CT = 0
 
         ###### CT is now known and we can prepare further settings accordingly
         
@@ -492,7 +502,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             disColPerm = elemGrps_elemGrp[EGSidxDClP]
         
         ### If invalid contact area
-        if geoContactArea == 0 or elemGrp == None:
+        elif elemGrp == None:
             disColPerm = 0
             if props.disableCollisionPerm or disColPerm: CT = -2
         

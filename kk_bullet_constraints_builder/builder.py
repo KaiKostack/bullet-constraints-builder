@@ -95,7 +95,7 @@ def build():
                     connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithReferences(objs, emptyObjs, connectsPair, connectsGeo, connectsLoc)
                     ###### Create connection data
                     connectsConsts, constsConnect = createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
-                    
+                
                     print('-- Time: %0.2f s\n' %(time.time()-time_start_connections))
                     
                     #########################                        
