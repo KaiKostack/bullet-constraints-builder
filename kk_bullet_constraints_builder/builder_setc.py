@@ -236,6 +236,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             elemGrpB = objsEGrp[objsDict[objB]]
             elemGrps_elemGrpA = elemGrps[elemGrpA]
             elemGrps_elemGrpB = elemGrps[elemGrpB]
+            CT_A = elemGrps_elemGrpA[EGSidxCTyp]
+            CT_B = elemGrps_elemGrpB[EGSidxCTyp]
             Prio_A = elemGrps_elemGrpA[EGSidxPrio]
             Prio_B = elemGrps_elemGrpB[EGSidxPrio]
             NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
@@ -251,7 +253,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             ### Check if connection between different groups is not allowed and remove them
             qNoCon = 0
             if elemGrpA != elemGrpB:
-                if (NoCoA or NoCoB) and Prio_A == Prio_B: qNoCon = 1
+                if (NoCoA or NoCoB) and CT_A != 0 and CT_B != 0 and Prio_A == Prio_B: qNoCon = 1
                 ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
                 ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
                 elif NoHoA or NoHoB:
@@ -267,9 +269,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             
             ###### Decision on which material settings from both groups will be used for connection
             if not qNoCon:
-                CT_A = elemGrps_elemGrpA[EGSidxCTyp]
-                CT_B = elemGrps_elemGrpB[EGSidxCTyp]
-
                 # A is active group
                 if CT_A != 0:
                     ### Prepare expression strings
@@ -480,8 +479,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     brkThresValuePL = brkThresValuePL_B
 
                 # Both A and B are in passive group but either one is actually an active RB (A xor B)
-                elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
-                    CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
+                elif CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                    CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
 
                 # Both A and B are in passive group and both are passive RBs
                 else:
@@ -490,8 +489,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                 # For unbreakable passive connections above settings can be overwritten
                 if not props.passiveUseBreaking:
                     # Both A and B are in passive group but either one is actually an active RB (A xor B)
-                    if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
-                        CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
+                    if CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                        CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
 
             elif qNoCon: CT = 0
 
@@ -632,7 +631,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
         ### 1x FIXED; Indestructible buffer between passive and active foundation elements
         if CT == -1:
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-            setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=props.passiveUseBreaking,si=1)
+            solvIter = max(1, int(scene.rigidbody_world.solver_iterations /10))
+            setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=props.passiveUseBreaking,si=solvIter)
             constsData.append([cData, cDatb])
 
         ### 1x FIXED; Linear omni-directional + bending breaking threshold

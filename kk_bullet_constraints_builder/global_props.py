@@ -172,7 +172,7 @@ class bcb_props(bpy.types.PropertyGroup):
     detonExplosiveMass    = float_(name="Explosive Mass",         default=250, min=0.0, max=1000000000000, description="Mass of the explosive in kg TNT equivalent")
     detonBlastWaveVel     = float_(name="Blast Wave Velocity",    default=6900, min=0.0, max=1000000, description="Velocity with which the blast wave is traveling in m/s (depends on frame rate)")
     detonPullBackDelay    = int_(name="Pull Back Delay",          default=2, min=0, max=10000,    description="Delay in frames until the negative pressure wave follows the positive one (pressure will be divided by this value to keep overall pressure consistent)")
-    detonGroundReflect    = bool_(name="Ground Reflection",       default=0,                      description="Enables reflection of the blast wave from the ground by adding duplicate force fields beneath the surface")
+    detonGroundReflect    = bool_(name="Ground Reflection",       default=0,                      description="Enables reflection of the blast wave from the ground by adding duplicate force fields beneath the ground level")
     
     ### Element group properties
     # Create element groups properties for all possible future entries (maxMenuElementGroupItems)

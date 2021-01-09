@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2020 Kai Kostack
+# Copyright (C) 2015-2021 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -1135,7 +1135,7 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
         ### Check if connection between different groups is not allowed and remove them
         qNoCon = 0
         if elemGrpA != elemGrpB:
-            if (NoCoA or NoCoB) and Prio_A == Prio_B: qNoCon = 1
+            if (NoCoA or NoCoB) and CT_A != 0 and CT_B != 0 and Prio_A == Prio_B: qNoCon = 1
             ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
             ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
             elif NoHoA or NoHoB:
@@ -1165,15 +1165,15 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
             elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
                 CT = CT_B; elemGrp = elemGrpB
             # Both A and B are in passive group but either one is actually an active RB (a xor b)
-            elif bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
-                CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
+            elif CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
             else:  # Both A and B are in passive group and both are passive RBs
                 CT = 0
             # For unbreakable passive connections above settings can be overwritten
             if not props.passiveUseBreaking:
                 # Both A and B are in passive group but either one is actually an active RB (a xor b)
-                if bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
-                    CT = -1  # Only one fixed constraint is used to connect these (buffer special case)
+                if CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                    CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
 
         elif qNoCon: CT = 0
 
@@ -1197,9 +1197,6 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
         # Alternative: Only suppress for valid connections - however, it is more user friendly to suppress always
         #if (props.disableCollisionPerm or disColPerm) and not qNoCon: constCnt += 1
 
-        #if objA.name == "asset Bearing B3 pCylinder100" or objB.name == "asset Bearing B3 pCylinder100":
-        #   print(" PRE", constCnt, CT)
-        
         # In case the connection type is passive or unknown reserve no space for constraints (connectsConsts needs to stay in sync with connectsPair)
         if constCnt == 0: connectsConsts.append([])
         # Otherwise reserve space for the predefined constraints count
@@ -2055,17 +2052,21 @@ def generateDetonator(objs, connectsPair):
         if btMultiplier < 1:
             btMultiplierAver += btMultiplier
             btMultiplierAverCnt += 1
-    openSpaceCorrect = btMultiplierAver /btMultiplierAverCnt
-    print("Blast wave correction: %0.3f" %openSpaceCorrect)    
 
-    ### Clamp lowest outliers to ensure simulation stability using a non-linear gradient
-    if qClampLowest:
-        for idx in range(len(connectsBtMul)):
-            correctRef = openSpaceCorrect /2
-            if connectsBtMul[idx] < correctRef:
-                x = correctRef -connectsBtMul[idx]
-                connectsBtMul[idx] = correctRef -(1-1/(x+1))
-        
+    if btMultiplierAverCnt > 0:
+        openSpaceCorrect = btMultiplierAver /btMultiplierAverCnt
+        print("Blast wave correction: %0.3f" %openSpaceCorrect)    
+
+        ### Clamp lowest outliers to ensure simulation stability using a non-linear gradient
+        if qClampLowest:
+            for idx in range(len(connectsBtMul)):
+                correctRef = openSpaceCorrect /2
+                if connectsBtMul[idx] < correctRef:
+                    x = correctRef -connectsBtMul[idx]
+                    connectsBtMul[idx] = correctRef -(1-1/(x+1))
+
+    else: openSpaceCorrect = 1
+            
     ### Vars
     explosiveMass = props.detonExplosiveMass  # Mass of the explosive in kg
     blastWaveVel  = props.detonBlastWaveVel   # Velocity with which the blast wave is traveling in m/s (depends on frame rate)
