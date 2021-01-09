@@ -144,7 +144,7 @@ class OBJECT_OT_bcb_update(bpy.types.Operator):
 class OBJECT_OT_bcb_export_config(bpy.types.Operator):
     bl_idname = "bcb.export_config"
     bl_label = ""
-    bl_description = 'Exports BCB config data to an external file. Location: %s' %logPath
+    bl_description = 'Exports BCB config data to an external file located in the render output folder'
     def execute(self, context):
         scene = bpy.context.scene
         exportConfigData(scene)
@@ -155,7 +155,7 @@ class OBJECT_OT_bcb_export_config(bpy.types.Operator):
 class OBJECT_OT_bcb_import_config(bpy.types.Operator):
     bl_idname = "bcb.import_config"
     bl_label = ""
-    bl_description = 'Imports BCB config data from an external file. Location: %s' %logPath
+    bl_description = 'Imports BCB config data from an external file located in the render output folder'
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene

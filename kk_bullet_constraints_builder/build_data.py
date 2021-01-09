@@ -552,10 +552,11 @@ def getBuildDataFromScene(scene):
         log.append(makeListsPickleFriendly(connectsConsts))
         log.append(makeListsPickleFriendly(connectsTol))
         log.append(makeListsPickleFriendly(constsConnect))
-        dataToFile(log, logPath +r"\log_bcb_keys.txt")
+        logPath = os.path.split(bpy.context.scene.render.filepath)[0]
+        dataToFile(log, os.path.join(logPath, "log_bcb_keys.txt"))
         log = []
         log.append([obj.name for obj in bpy.context.scene.objects])
-        dataToFile(log, logPath +r"\log_bcb_scene.txt")
+        dataToFile(log, os.path.join(logPath, "log_bcb_scene.txt"))
         
     return objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect
 

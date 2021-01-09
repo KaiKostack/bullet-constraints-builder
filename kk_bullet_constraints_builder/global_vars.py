@@ -30,7 +30,7 @@
 
 ################################################################################
 
-import bpy
+import bpy, os
 mem = bpy.app.driver_namespace
 
 ################################################################################
@@ -261,7 +261,7 @@ materialPresets = {
 ### Vars for developers
 debug = 0                            # 0     | Enables verbose console output for debugging purposes
 logPath = r"/tmp"                    #       | Path to log files if debugging is enabled
-commandStop = r"/tmp/bcb-stop"       #       | For very large simulations Blender can become unresponsive on baking, in this case you can create this file to make the BCB aware you want to stop
+commandStop = os.path.join(logPath, "bcb-stop")  # For very large simulations Blender can become unresponsive on baking, in this case you can create this file to make the BCB aware you want to stop
 maxMenuElementGroupItems = 300       # 300   | Maximum allowed element group entries in menu 
 emptyDrawSize = 0.25                 # 0.25  | Display size of constraint empty objects as radius in meters
 visualizerDrawSize = 1.0             # 1     | Maximum radius the visualizer will be scaled to when reaching maximum force

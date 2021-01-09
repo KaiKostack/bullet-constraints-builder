@@ -30,7 +30,7 @@
 
 ################################################################################
 
-import bpy, mathutils, pickle, zlib, base64
+import bpy, mathutils, pickle, zlib, base64, os
 from mathutils import Vector
 
 ### Import submodules
@@ -153,7 +153,8 @@ def exportConfigData(scene):
     configData.append(props.detonPullBackDelay)
     configData.append(props.detonGroundReflect)
     configData.append(mem["elemGrps"])
-    dataToFile(configData, logPath +r"\bcb.cfg")
+    logPath = os.path.split(bpy.context.scene.render.filepath)[0]
+    dataToFile(configData, os.path.join(logPath, "bcb.cfg"))
     
 ################################################################################
 
@@ -162,7 +163,8 @@ def importConfigData(scene):
     ### Importing menu config data from file
     print("Importing config data from external file...")
     
-    configData = dataFromFile(logPath +r"\bcb.cfg")
+    logPath = os.path.split(bpy.context.scene.render.filepath)[0]
+    configData = dataFromFile(os.path.join(logPath, "bcb.cfg"))
     if configData == 1: return 1  # Error
     i = 0
     if bcb_version != configData[i]:
