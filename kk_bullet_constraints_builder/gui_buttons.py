@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2018 Kai Kostack
+# Copyright (C) 2015-2021 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -106,17 +106,24 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
         # Go to start frame for cache data removal
         if scene.frame_current != scene.frame_start:
             scene.frame_current = scene.frame_start
+            bpy.context.screen.scene = scene  # Hack to update scene completely (scene.update() is not enough causing the monitor not work correctly when invoking at a frame > 1)
         ### Free previous bake data
         contextFix = bpy.context.copy()
-        try: contextFix['point_cache'] = scene.rigidbody_world.point_cache
+        if scene.rigidbody_world != None:
+            contextFix['point_cache'] = scene.rigidbody_world.point_cache
+            bpy.ops.ptcache.free_bake(contextFix)
+            # Invalidate point cache to enforce a full bake without using previous cache data
+            if "RigidBodyWorld" in bpy.data.groups:
+                try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
+                except: pass
+                else: obj.location = obj.location
+        else:  # Create new RB world
+            bpy.ops.rigidbody.world_add()
+        try: bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
         except: pass
-        try: bpy.ops.ptcache.free_bake(contextFix)
+        try: bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
         except: pass
-        ### Invalidate point cache to enforce a full bake without using previous cache data
-        if "RigidBodyWorld" in bpy.data.groups:
-            try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
-            except: pass
-            else: obj.location = obj.location
+
         ###### Execute main building process from scratch
         # Display progress bar
         bpy.context.window_manager.progress_begin(0, 100)
@@ -214,10 +221,14 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
                 contextFix = bpy.context.copy()
                 if scene.rigidbody_world != None:
                     contextFix['point_cache'] = scene.rigidbody_world.point_cache
-                else:
-                    print("Error: No 'Rigid Body World' found, please create one in the Scene buttons.")
-                    return{'CANCELLED'} 
-                bpy.ops.ptcache.free_bake(contextFix)
+                    bpy.ops.ptcache.free_bake(contextFix)
+                else:  # Create new RB world
+                    bpy.ops.rigidbody.world_add()
+                try: bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
+                except: pass
+                try: bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
+                except: pass
+                    
                 if props.automaticMode:
                     if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
                     # Prepare event handler
@@ -249,15 +260,18 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         contextFix = bpy.context.copy()
         if scene.rigidbody_world != None:
             contextFix['point_cache'] = scene.rigidbody_world.point_cache
-        else:
-            print("Error: No 'Rigid Body World' found, please create one in the Scene buttons.")
-            return{'CANCELLED'} 
-        bpy.ops.ptcache.free_bake(contextFix)
-        ### Invalidate point cache to enforce a full bake without using previous cache data
-        if "RigidBodyWorld" in bpy.data.groups:
-            try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
-            except: pass
-            else: obj.location = obj.location
+            bpy.ops.ptcache.free_bake(contextFix)
+            # Invalidate point cache to enforce a full bake without using previous cache data
+            if "RigidBodyWorld" in bpy.data.groups:
+                try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
+                except: pass
+                else: obj.location = obj.location
+        else:  # Create new RB world
+            bpy.ops.rigidbody.world_add()
+        try: bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
+        except: pass
+        try: bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
+        except: pass
 
         ### Build constraints if required (menu_gotData will be set afterwards and this operator restarted)
         ### If asciiExportName exists then the use of Fracture Modifier is assumed and building is skipped

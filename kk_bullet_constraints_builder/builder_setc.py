@@ -562,7 +562,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             si = elemGrps_elemGrp[EGSidxIter]
 
             ### Check if full update is necessary (optimization)
-            if not props.asciiExport:
+            if not props.asciiExport and not props.rebarMesh:
                 objConst0 = emptyObjs[consts[0]]
                 if 'ConnectType' in objConst0.keys() and objConst0['ConnectType'] == CT: qUpdateComplete = 0
                 else: objConst0['ConnectType'] = CT; qUpdateComplete = 1

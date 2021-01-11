@@ -505,7 +505,7 @@ def monitor_checkForChange(scene):
         if conMode == 1:
             e += 1
             consts = connect[4]
-            if len(consts) and consts[0].rigid_body_constraint.use_breaking:
+            if len(consts) and consts[0] != None and consts[0].rigid_body_constraint.use_breaking:
                 objA = connect[0][0]
                 objB = connect[1][0]
                 distOrig = connect[2]
@@ -585,16 +585,17 @@ def monitor_freeBuffers(scene):
             constsBrkThres = connect[13]
             for i in range(len(consts)):
                 const = consts[i]
-                if const.rigid_body_constraint != None and const.rigid_body_constraint.object1 != None:
-                    # Restore original settings
-                    const.rigid_body_constraint.enabled = constsEnabled[i]
-                    const.rigid_body_constraint.use_breaking = constsUseBrk[i]
-                    const.rigid_body_constraint.breaking_threshold = constsBrkThres[i]
-                else:
-                    if not qWarning:
-                        qWarning = 1
-                        print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
-                    print("(%s)" %const.name)
+                if const != None:
+                    if const.rigid_body_constraint != None and const.rigid_body_constraint.object1 != None:
+                        # Restore original settings
+                        const.rigid_body_constraint.enabled = constsEnabled[i]
+                        const.rigid_body_constraint.use_breaking = constsUseBrk[i]
+                        const.rigid_body_constraint.breaking_threshold = constsBrkThres[i]
+                    else:
+                        if not qWarning:
+                            qWarning = 1
+                            print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
+                        print("(%s)" %const.name)
                 
         if props.timeScalePeriod:
             # Set original time scale

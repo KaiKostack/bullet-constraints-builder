@@ -112,10 +112,10 @@ def build():
                         ###### Find and activate first empty layer
                         layersBak = backupLayerSettingsAndActivateNextEmptyLayer(scene)
                         ###### Create empty objects (without any data)
-                        if not props.asciiExport:
+                        if not props.asciiExport and not props.rebarMesh:
                             emptyObjs = createEmptyObjs(scene, len(constsConnect))
                         else:  # If FM is used the emptyObjs list is filled with just the names later
-                            emptyObjs = [0 for i in range(len(constsConnect))]
+                            emptyObjs = ["" for i in range(len(constsConnect))]
                         ###### Bundling close empties into clusters, merge locations and count connections per cluster
                         if props.clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
                         # Restore old layers state
