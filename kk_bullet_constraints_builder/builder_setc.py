@@ -1626,6 +1626,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                             corner2[w[1]] = 0
                             corner2[l[1]] = l[0]
                             createBoxData(verts, edges, faces, corner1, corner2)
+                            if step == 0: break
                             if not qReverse:
                                 pos += step
                                 if pos > h[0]-c:  # Reverse direction and start again from center after reaching edge of element
@@ -1642,6 +1643,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                             corner2[w[1]] = dl
                             corner2[l[1]] = pos +dl/2
                             createBoxData(verts, edges, faces, corner1, corner2)
+                            if step == 0: break
                             if not qReverse:
                                 pos += step
                                 if pos > l[0]-c:  # Reverse direction and start again from center after reaching edge of element
