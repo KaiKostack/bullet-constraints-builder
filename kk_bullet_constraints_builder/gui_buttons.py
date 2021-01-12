@@ -204,7 +204,7 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
     use_handler = int_(default = 0)
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
-            self.report({'ERROR'}, "Fracture Modifier not available in this Blender version. Visit graphicall.org/1148 for the FM-enabled Blender version.")  # Create popup message
+            self.report({'ERROR'}, "Fracture Modifier not available in this Blender version. Visit kaikostack.com/fracture for the FM-enabled Blender version.")  # Create popup message
         else:
             ###### Execute main building process from scratch
             scene = bpy.context.scene
@@ -231,8 +231,10 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
                     
                 if props.automaticMode:
                     if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
-                    # Prepare event handler
+                    # Prepare event handlers
+                    bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
                     bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
+                    monitor_eventHandler(scene)  # Init at current frame before starting simulation
                     # Invoke baking (old method, appears not to work together with the event handler past Blender v2.76 anymore)
                     #bpy.ops.ptcache.bake(contextFix, bake=True)
                     if props.automaticMode and props.postprocTools_aut: pass
@@ -842,7 +844,7 @@ class OBJECT_OT_bcb_postproc_tool_export_force_history(bpy.types.Operator):
     bl_description = "Exports the force time history for a constraint into a .csv file"
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
-            self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit graphicall.org/1148 for the FM-enabled Blender version.")  # Create popup message
+            self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit kaikostack.com/fracture for the FM-enabled Blender version.")  # Create popup message
         else:
             OBJECT_OT_bcb_bake.execute(self, context)
             props = context.window_manager.bcb
@@ -859,7 +861,7 @@ class OBJECT_OT_bcb_postproc_tool_visualize_forces(bpy.types.Operator):
     bl_description = "Visualizes forces for constraints as spheres to be created in the scene whereby each sphere's radius is normalized to the predefined maximum force. Accurate values can be found in each sphere's properties"
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
-            self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit graphicall.org/1148 for the FM-enabled Blender version.")  # Create popup message
+            self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit kaikostack.com/fracture for the FM-enabled Blender version.")  # Create popup message
         else:
             OBJECT_OT_bcb_bake.execute(self, context)
             props = context.window_manager.bcb

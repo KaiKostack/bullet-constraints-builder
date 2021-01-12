@@ -150,18 +150,16 @@ def monitor_eventHandler(scene):
         ### What to do AFTER start frame
         elif "bcb_monitor" in bpy.app.driver_namespace.keys() and scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
             time_last = bpy.app.driver_namespace["bcb_time"]
-            sys.stdout.write("Frm: %d - T: %0.2f s" %(scene.frame_current, time.time() -time_last))
             bpy.app.driver_namespace["bcb_time"] = time.time()
             if props.progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"]:
                 progrWeakCurrent = bpy.app.driver_namespace["bcb_progrWeakCurrent"]
-                sys.stdout.write(" - Wk: %0.3fx" %(progrWeakCurrent *props.progrWeakStartFact))
+                print("Frame: %d | Time: %0.2f s | Weakness: %0.3fx" %(scene.frame_current, time.time() -time_last, progrWeakCurrent *props.progrWeakStartFact))
+            else:
+                print("Frame: %d | Time: %0.2f s" %(scene.frame_current, time.time() -time_last))
         
             ###### Function
             cntBroken = monitor_checkForChange(scene)
             
-            # Debug: Stop on first broken connection
-            #if cntBroken > 0: bpy.ops.screen.animation_play()
-                
             ### Apply progressive weakening factor
             if props.progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"] \
             and (not props.timeScalePeriod or (props.timeScalePeriod and scene.frame_current > scene.frame_start +props.timeScalePeriod)) \
@@ -192,6 +190,63 @@ def monitor_eventHandler(scene):
                         for obj in bpy.data.groups["Detonator"].objects:
                             obj["Layers_BCB"] = obj.layers
                             obj.layers = [False,False,False,False,False, False,False,False,False,False, False,False,False,False,False, False,False,False,False,True]
+     
+    # When Fracture Modifier is in use
+    else:
+             
+        #############################
+        ### What to do on start frame
+        if not "bcb_monitor" in bpy.app.driver_namespace.keys():
+            print('Init BCB monitor event handler for Fracture Modifier.')
+            
+            # Store frame time
+            bpy.app.driver_namespace["bcb_time"] = time.time()
+            
+            # Dummy data init (not needed for FM)
+            bpy.app.driver_namespace["bcb_monitor"] = None
+            
+            ### Init weakening
+            if props.progrWeak:
+                bpy.app.driver_namespace["bcb_progrWeakCurrent"] = 1
+                bpy.app.driver_namespace["bcb_progrWeakTmp"] = props.progrWeak
+            if props.progrWeakStartFact != 1:
+                progressiveWeakening_fm(scene, props.progrWeakStartFact)
+                                                
+        ################################
+        ### What to do AFTER start frame
+        elif "bcb_monitor" in bpy.app.driver_namespace.keys() and scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
+            time_last = bpy.app.driver_namespace["bcb_time"]
+            bpy.app.driver_namespace["bcb_time"] = time.time()
+            if props.progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"]:
+                progrWeakCurrent = bpy.app.driver_namespace["bcb_progrWeakCurrent"]
+                print("Frame: %d | Time: %0.2f s | Weakness: %0.3fx" %(scene.frame_current, time.time() -time_last, progrWeakCurrent *props.progrWeakStartFact))
+            else:
+                print("Frame: %d | Time: %0.2f s" %(scene.frame_current, time.time() -time_last))
+        
+            ###### Function
+            cntBrokenAbs = monitor_checkForChange_fm(scene)
+            
+            # Find difference to last frame
+            try: cntBrokenAbsLast = bpy.app.driver_namespace["bcb_progrWeakBroken"]
+            except: cntBrokenAbsLast = cntBrokenAbs
+            bpy.app.driver_namespace["bcb_progrWeakBroken"] = cntBrokenAbs
+            cntBroken = cntBrokenAbs -cntBrokenAbsLast
+            
+            ### Apply progressive weakening factor
+            if props.progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"] \
+            and (not props.timeScalePeriod or (props.timeScalePeriod and scene.frame_current > scene.frame_start +props.timeScalePeriod)) \
+            and (not props.warmUpPeriod or (props.warmUpPeriod and scene.frame_current > scene.frame_start +props.warmUpPeriod)):
+                if cntBroken < props.progrWeakLimit:
+                    # Weaken further only if no new connections are broken
+                    if cntBroken == 0:
+                        progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
+                        ###### Weakening function
+                        progressiveWeakening_fm(scene, 1 -progrWeakTmp)
+                        progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
+                        bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
+                else:
+                    print("Weakening limit exceeded, weakening disabled from now on.")
+                    bpy.app.driver_namespace["bcb_progrWeakTmp"] = 0
                 
 ################################################################################
 
@@ -543,12 +598,41 @@ def monitor_checkForChange(scene):
 #                    const = consts[i]
 #                    const.rigid_body_constraint.use_breaking = constsUseBrk[i]
            
-    sys.stdout.write(" - Con: %di & %dp" %(d, e))
-    if cntP > 0: sys.stdout.write(" | Plst: %d" %cntP)
-    if cntB > 0: sys.stdout.write(" | Brk: %d" %cntB)
+    sys.stdout.write("Connections: %d Intact & %d Plastic" %(d, e))
+    if cntP > 0: sys.stdout.write(" | Deformed: %d" %cntP)
+    if cntB > 0: sys.stdout.write(" | Broken: %d" %cntB)
     print()
 
     return cntB
+                
+################################################################################
+
+def monitor_checkForChange_fm(scene):
+
+    if debug: print("Calling checkForDistanceChange_fm")
+    
+    elemGrps = mem["elemGrps"]
+    try: ob = scene.objects[asciiExportName]
+    except: print("Error: Fracture Modifier object expected but not found."); return
+    md = ob.modifiers["Fracture"]
+
+    # Find average constraint number per connection from element groups to estimate the broken
+    # connections number from broken constraints number to make results consistent to non-FM simulations.
+    elemGrpCnt = 0; constCnt = 0
+    for elemGrp in elemGrps:
+        CT = elemGrp[EGSidxCTyp]
+        if CT > 0:
+            constCnt += connectTypes[CT][1]
+            elemGrpCnt += 1
+    if elemGrpCnt > 0: constsPerConnect = constCnt /elemGrpCnt
+    else:              constsPerConnect = 1
+            
+    cntBabs = 0
+    for const in md.mesh_constraints:
+        if not const.isIntact(): cntBabs += 1
+    cntBabs = int(cntBabs /constsPerConnect)
+    
+    return cntBabs
                 
 ################################################################################
 
@@ -566,6 +650,21 @@ def progressiveWeakening(scene, progrWeakVar):
         i += 1
     sys.stdout.write("\r")
             
+########################################
+
+def progressiveWeakening_fm(scene, progrWeakVar):
+
+    if debug: print("Calling progressiveWeakening_fm")
+
+    try: ob = scene.objects[asciiExportName]
+    except: print("Error: Fracture Modifier object expected but not found."); return
+    md = ob.modifiers["Fracture"]
+
+    i = 0
+    for const in md.mesh_constraints:
+        const.breaking_threshold *= progrWeakVar
+        i += 1
+            
 ################################################################################
 
 def monitor_freeBuffers(scene):
@@ -575,7 +674,8 @@ def monitor_freeBuffers(scene):
     if "bcb_monitor" in bpy.app.driver_namespace.keys():
         props = bpy.context.window_manager.bcb
         connects = bpy.app.driver_namespace["bcb_monitor"]
-
+        if connects == None: return
+        
         ### Restore original constraint and element data
         qWarning = 0
         for connect in connects:
@@ -616,3 +716,8 @@ def monitor_freeBuffers(scene):
         if props.timeScalePeriod:
             del bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
             del bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
+
+        # When Fracture Modifier is in use
+        if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
+
+            del bpy.app.driver_namespace["bcb_progrWeakBroken"]
