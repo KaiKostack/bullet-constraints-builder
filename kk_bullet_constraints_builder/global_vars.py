@@ -102,34 +102,34 @@ EGSidxDClP = 29   # Dis. Col. Permanently    | Disables collisions between initi
 # Aside from creating a corresponding UI property in global_props.py and gui.py no extra storage handling is needed like for global settings.
 
 ### Connection Types:
-connectTypes = [           # Cnt C T S B S T T T T      CT
-[ "PASSIVE",                 0, [0,0,0,0,0,0,0,0,0]], # 0. Passive (all other connection types will have priority over it)
-[ "1x FIXED",                1, [1,0,0,0,0,1,1,0,0]], # 1. Linear omni-directional + bending breaking threshold
-[ "1x POINT",                1, [1,0,0,0,0,1,1,0,0]], # 2. Linear omni-directional breaking threshold
-[ "1x POINT + 1x FIXED",     2, [1,0,0,1,0,1,1,0,0]], # 3. Linear omni-directional and bending breaking thresholds
-[ "2x GENERIC",              2, [1,1,0,0,0,1,1,0,0]], # 4. Compressive and tensile breaking thresholds
-[ "3x GENERIC",              3, [1,1,0,1,0,1,1,0,0]], # 5. Compressive, tensile + shearing and bending breaking thresholds
-[ "4x GENERIC",              4, [1,1,1,1,0,1,1,0,0]], # 6. Compressive, tensile, shearing and bending breaking thresholds
-[ "3x SPRING",               3, [1,0,0,0,1,0,0,1,1]], # 7. Linear omni-directional breaking threshold with plastic deformability
-[ "4x SPRING",               4, [1,0,0,0,1,0,0,1,1]], # 8. Linear omni-directional breaking threshold with plastic deformability
-[ "1x FIXED + 3x SPRING",    4, [1,0,0,0,1,1,1,1,1]], # 9. Linear omni-directional + bending breaking threshold with plastic deformability (2nd mode)
-[ "1x FIXED + 4x SPRING",    5, [1,0,0,0,1,1,1,1,1]], # 10. Linear omni-directional + bending breaking threshold with plastic deformability (2nd mode)
-[ "4x GENERIC + 3x SPRING",  7, [1,1,1,1,1,1,1,1,1]], # 11. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability (2nd mode)
-[ "4x GENERIC + 4x SPRING",  8, [1,1,1,1,1,1,1,1,1]], # 12. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability (2nd mode)
-[ "3 x 3x SPRING",           9, [1,1,1,0,1,0,0,1,1]], # 13. Compressive, tensile and shearing breaking thresholds with plastic deformability
-[ "3 x 4x SPRING",          12, [1,1,1,0,1,0,0,1,1]], # 14. Compressive, tensile and shearing breaking thresholds with plastic deformability
-[ "6x GENERIC",              6, [1,1,1,1,0,1,1,0,0]], # 15. Compressive, tensile, shearing XY and bending XY breaking thresholds
-[ "7x GENERIC",              7, [1,1,1,1,0,1,1,0,0]], # 16. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds
-[ "6x GENERIC + 3x SPRING",  9, [1,1,1,1,1,1,1,1,1]], # 17. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability (2nd mode)
-[ "7x GENERIC + 3x SPRING", 10, [1,1,1,1,1,1,1,1,1]], # 18. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability (2nd mode)
-[ "1x FIXED + 1x SPRING",    2, [1,0,0,0,1,1,1,1,1]], # 19. Linear omni-directional + bending breaking threshold with plastic deformability (2nd mode)
-[ "1x PNT + 1x FXD + 1x SPR",3, [1,0,0,1,1,1,1,1,1]], # 20. Linear omni-directional and bending breaking thresholds with plastic deformability (2nd mode)
-[ "4x GENERIC + 1x SPRING",  5, [1,1,1,1,1,1,1,1,1]], # 21. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability (2nd mode)
-[ "6x GENERIC + 1x SPRING",  7, [1,1,1,1,1,1,1,1,1]], # 22. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability (2nd mode)
-[ "7x GENERIC + 1x SPRING",  8, [1,1,1,1,1,1,1,1,1]], # 23. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability (2nd mode)
-[ "1x SPRING",               1, [1,0,0,0,0,0,0,1,1]], # 24. Linear omni-directional + bending breaking threshold with plastic deformability
-[ "1x POINT + 1x SPRING",    2, [1,0,0,0,1,1,1,0,0]], # 25. Linear omni-directional and bending breaking threshold with plastic deformability
-[ "1x HINGE",                1, [1,0,0,0,0,1,1,0,0]]  # 26. Linear omni-directional + bending XY breaking threshold
+connectTypes = [           # Cnt C T S B P L T T T T      CT
+[ "PASSIVE",                 0, [0,0,0,0,0,0,0,0,0,0]], # 0. Passive (all other connection types will have priority over it)
+[ "1x FIXED",                1, [1,0,0,0,0,0,1,1,0,0]], # 1. Linear omni-directional + bending breaking threshold
+[ "1x POINT",                1, [1,0,0,0,0,0,1,1,0,0]], # 2. Linear omni-directional breaking threshold
+[ "1x POINT + 1x FIXED",     2, [1,0,0,1,0,0,1,1,0,0]], # 3. Linear omni-directional and bending breaking thresholds
+[ "2x GENERIC",              2, [1,1,0,0,0,0,1,1,0,0]], # 4. Compressive and tensile breaking thresholds
+[ "3x GENERIC",              3, [1,1,0,1,0,0,1,1,0,0]], # 5. Compressive, tensile + shearing and bending breaking thresholds
+[ "4x GENERIC",              4, [1,1,1,1,0,0,1,1,0,0]], # 6. Compressive, tensile, shearing and bending breaking thresholds
+[ "3x SPRING",               3, [1,0,0,0,1,1,0,0,1,1]], # 7. Linear omni-directional breaking threshold with plastic deformability
+[ "4x SPRING",               4, [1,0,0,0,1,1,0,0,1,1]], # 8. Linear omni-directional breaking threshold with plastic deformability
+[ "1x FIXED + 3x SPRING",    4, [1,0,0,0,1,1,1,1,1,1]], # 9. Linear omni-directional + bending breaking threshold with plastic deformability (2nd mode)
+[ "1x FIXED + 4x SPRING",    5, [1,0,0,0,1,1,1,1,1,1]], # 10. Linear omni-directional + bending breaking threshold with plastic deformability (2nd mode)
+[ "4x GENERIC + 3x SPRING",  7, [1,1,1,1,1,1,1,1,1,1]], # 11. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability (2nd mode)
+[ "4x GENERIC + 4x SPRING",  8, [1,1,1,1,1,1,1,1,1,1]], # 12. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability (2nd mode)
+[ "3 x 3x SPRING",           9, [1,1,1,0,1,1,0,0,1,1]], # 13. Compressive, tensile and shearing breaking thresholds with plastic deformability
+[ "3 x 4x SPRING",          12, [1,1,1,0,1,1,0,0,1,1]], # 14. Compressive, tensile and shearing breaking thresholds with plastic deformability
+[ "6x GENERIC",              6, [1,1,1,1,0,0,1,1,0,0]], # 15. Compressive, tensile, shearing XY and bending XY breaking thresholds
+[ "7x GENERIC",              7, [1,1,1,1,0,0,1,1,0,0]], # 16. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds
+[ "6x GENERIC + 3x SPRING",  9, [1,1,1,1,1,1,1,1,1,1]], # 17. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability (2nd mode)
+[ "7x GENERIC + 3x SPRING", 10, [1,1,1,1,1,1,1,1,1,1]], # 18. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability (2nd mode)
+[ "1x FIXED + 1x SPRING",    2, [1,0,0,0,1,1,1,1,1,1]], # 19. Linear omni-directional + bending breaking threshold with plastic deformability (2nd mode)
+[ "1x PNT + 1x FXD + 1x SPR",3, [1,0,0,1,1,1,1,1,1,1]], # 20. Linear omni-directional and bending breaking thresholds with plastic deformability (2nd mode)
+[ "4x GENERIC + 1x SPRING",  5, [1,1,1,1,1,1,1,1,1,1]], # 21. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability (2nd mode)
+[ "6x GENERIC + 1x SPRING",  7, [1,1,1,1,1,1,1,1,1,1]], # 22. Compressive, tensile, shearing XY and bending XY breaking thresholds with plastic deformability (2nd mode)
+[ "7x GENERIC + 1x SPRING",  8, [1,1,1,1,1,1,1,1,1,1]], # 23. Compressive, tensile, shearing XY and bending XY and torsion breaking thresholds with plastic deformability (2nd mode)
+[ "1x SPRING",               1, [1,0,0,0,0,1,0,0,1,1]], # 24. Linear omni-directional + bending breaking threshold with plastic deformability
+[ "1x POINT + 1x SPRING",    2, [1,0,0,0,1,1,1,1,0,0]], # 25. Linear omni-directional and bending breaking threshold with plastic deformability
+[ "1x HINGE",                1, [1,0,0,0,0,0,1,1,0,0]]  # 26. Linear omni-directional + bending XY breaking threshold
 ]
 # To add further connection types changes to following functions are necessary:
 # setConstraintSettings() and bcb_panel() for the UI
@@ -267,6 +267,7 @@ emptyDrawSize = 0.25                 # 0.25  | Display size of constraint empty 
 visualizerDrawSize = 1.0             # 1     | Maximum radius the visualizer will be scaled to when reaching maximum force
 minimumContactArea = 0.000001        # 1 mm² | Zero limit for a detected contact area to be considered for connection in m²
 asciiExportName = "BCB_export"       #       | Name of ASCII text file to be exported
+asciiTriggersName = "BCB_triggers"   #       | Name of ASCII text file to contain a list of connections to trigger during simulation (Syntax per line: frame number, "objA name", "objB name")
 grpNameBuilding = "BCB_Building"
 grpNameVisualization = "BCB_Visualization"
 grpNameFoundation = "Foundation"

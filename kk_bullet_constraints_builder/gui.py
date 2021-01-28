@@ -815,7 +815,7 @@ class bcb_panel_element_group_settings(bpy.types.Panel):
             if value != 0 or props.submenu_assistant_advanced:
                 row = col.row(align=1)
                 row.prop(props, "elemGrp_%d_EGSidxBTPL" %i)
-                if not connectType[2][4]: row.active = 0
+                if not connectType[2][5]: row.active = 0
 
             col.separator()
             value = eval("props.elemGrp_%d_EGSidxBTX" %i)
@@ -864,12 +864,12 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
             split = row.split(align=1);
             split.prop(props, "elemGrp_%d_EGSidxTl1D" %i)
             split.prop(props, "elemGrp_%d_EGSidxTl1R" %i)
-            if not connectType[2][5]: split.active = 0
+            if not connectType[2][6]: split.active = 0
             row = col.row(align=1)
             split = row.split(align=1);
             split.prop(props, "elemGrp_%d_EGSidxTl2D" %i)
             split.prop(props, "elemGrp_%d_EGSidxTl2R" %i)
-            if not connectType[2][7]: split.active = 0
+            if not connectType[2][8]: split.active = 0
             value1 = eval("props.elemGrp_%d_EGSidxTl2D" %i)
             value2 = eval("props.elemGrp_%d_EGSidxTl2R" %i)
             if value1 == 0 or value2 == 0: split.active = 0

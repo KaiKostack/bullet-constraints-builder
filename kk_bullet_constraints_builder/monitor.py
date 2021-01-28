@@ -84,6 +84,9 @@ def monitor_eventHandler(scene):
             ###### Function
             monitor_initBuffers(scene)
 
+            ###### Function
+            monitor_initTriggers()
+
             ### Create new animation data and action if necessary
             if scene.animation_data == None:
                 scene.animation_data_create()
@@ -144,7 +147,7 @@ def monitor_eventHandler(scene):
                 bpy.app.driver_namespace["bcb_progrWeakCurrent"] = 1
                 bpy.app.driver_namespace["bcb_progrWeakTmp"] = props.progrWeak
             if props.progrWeakStartFact != 1:
-                progressiveWeakening(scene, props.progrWeakStartFact)
+                monitor_progressiveWeakening(scene, props.progrWeakStartFact)
                                                 
         ################################
         ### What to do AFTER start frame
@@ -160,6 +163,9 @@ def monitor_eventHandler(scene):
             ###### Function
             cntBroken = monitor_checkForChange(scene)
             
+            ###### Function
+            monitor_checkForTriggers(scene)
+            
             ### Apply progressive weakening factor
             if props.progrWeak and bpy.app.driver_namespace["bcb_progrWeakTmp"] \
             and (not props.timeScalePeriod or (props.timeScalePeriod and scene.frame_current > scene.frame_start +props.timeScalePeriod)) \
@@ -169,7 +175,7 @@ def monitor_eventHandler(scene):
                     if cntBroken == 0:
                         progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
                         ###### Weakening function
-                        progressiveWeakening(scene, 1 -progrWeakTmp)
+                        monitor_progressiveWeakening(scene, 1 -progrWeakTmp)
                         progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
                         bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
                 else:
@@ -204,13 +210,16 @@ def monitor_eventHandler(scene):
             
             # Dummy data init (not needed for FM)
             bpy.app.driver_namespace["bcb_monitor"] = None
-            
+                            
+            ###### Function
+            monitor_initTriggers()
+
             ### Init weakening
             if props.progrWeak:
                 bpy.app.driver_namespace["bcb_progrWeakCurrent"] = 1
                 bpy.app.driver_namespace["bcb_progrWeakTmp"] = props.progrWeak
             if props.progrWeakStartFact != 1:
-                progressiveWeakening_fm(scene, props.progrWeakStartFact)
+                monitor_progressiveWeakening_fm(scene, props.progrWeakStartFact)
                                                 
         ################################
         ### What to do AFTER start frame
@@ -226,6 +235,9 @@ def monitor_eventHandler(scene):
             ###### Function
             cntBrokenAbs = monitor_checkForChange_fm(scene)
             
+            ###### Function
+            monitor_checkForTriggers_fm(scene)
+
             # Find difference to last frame
             try: cntBrokenAbsLast = bpy.app.driver_namespace["bcb_progrWeakBroken"]
             except: cntBrokenAbsLast = cntBrokenAbs
@@ -241,7 +253,7 @@ def monitor_eventHandler(scene):
                     if cntBroken == 0:
                         progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
                         ###### Weakening function
-                        progressiveWeakening_fm(scene, 1 -progrWeakTmp)
+                        monitor_progressiveWeakening_fm(scene, 1 -progrWeakTmp)
                         progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
                         bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
                 else:
@@ -586,7 +598,7 @@ def monitor_checkForChange(scene):
                         if const.rigid_body_constraint.type == 'GENERIC_SPRING':
                             const.rigid_body_constraint.enabled = 0
                     # Flag connection as being disconnected
-                    connect[12] += 1
+                    connect[12] += 1  # conMode
                     cntB += 1
 
         ### Enable original breakability for all constraints when warm up time is over
@@ -636,7 +648,77 @@ def monitor_checkForChange_fm(scene):
                 
 ################################################################################
 
-def progressiveWeakening(scene, progrWeakVar):
+def monitor_initTriggers():
+    
+    ### Get trigger data from text file
+    try: triggers = bpy.data.texts[asciiTriggersName +".txt"].as_string()
+    except: pass
+    else:
+        print("Triggers text file found and used:")
+        triggersSplit = triggers.split('\n')
+        triggers = []
+        for trigger in triggersSplit:
+            try: trigger = list(eval(trigger))
+            except: pass
+            else:
+                print(trigger)
+                triggers.append(trigger)
+        bpy.app.driver_namespace["bcb_triggers"] = triggers
+        print()
+
+################################################################################
+
+def monitor_checkForTriggers(scene):
+
+    if debug: print("Calling checkForTriggers")
+
+    try: triggers = bpy.app.driver_namespace["bcb_triggers"]
+    except: return
+    connects = bpy.app.driver_namespace["bcb_monitor"]
+
+    for trigger in triggers:
+        if trigger[0] == scene.frame_current:
+            objAt = trigger[1]
+            objBt = trigger[2]
+            for connect in connects:
+                objAn = connect[0][0].name
+                objBn = connect[1][0].name
+                if (objAn == objAt and objBn == objBt) or (objAn == objBt and objBn == objAt):
+                    print("Triggered connection: %s, %s" %(objAt, objBt))
+                    consts = connect[4]
+                    for const in consts:
+                        const.rigid_body_constraint.enabled = 0
+                    connect[12] = 2  # conMode
+                    
+################################################################################
+
+def monitor_checkForTriggers_fm(scene):
+
+    if debug: print("Calling checkForTriggers_fm")
+
+    try: triggers = bpy.app.driver_namespace["bcb_triggers"]
+    except: return
+
+    try: ob = scene.objects[asciiExportName]
+    except: print("Error: Fracture Modifier object expected but not found."); return
+    md = ob.modifiers["Fracture"]
+
+    for trigger in triggers:
+        if trigger[0] == scene.frame_current:
+            objAt = trigger[1]
+            objBt = trigger[2]
+            qPrintOnce = 1
+            for const in md.mesh_constraints:
+                objAn = const.island1.name
+                objBn = const.island2.name
+                if (objAn == objAt and objBn == objBt) or (objAn == objBt and objBn == objAt):
+                    if qPrintOnce: print("Triggered connection: %s, %s" %(objAt, objBt)); qPrintOnce = 0
+                    const.enabled = 0
+                    const.breaking_threshold = 0  # FM will switch to plastic mode if 1st tolerance is exceeded, so we also need to reset BT
+
+################################################################################
+
+def monitor_progressiveWeakening(scene, progrWeakVar):
 
     if debug: print("Calling progressiveWeakening")
 
@@ -652,7 +734,7 @@ def progressiveWeakening(scene, progrWeakVar):
             
 ########################################
 
-def progressiveWeakening_fm(scene, progrWeakVar):
+def monitor_progressiveWeakening_fm(scene, progrWeakVar):
 
     if debug: print("Calling progressiveWeakening_fm")
 
@@ -660,10 +742,8 @@ def progressiveWeakening_fm(scene, progrWeakVar):
     except: print("Error: Fracture Modifier object expected but not found."); return
     md = ob.modifiers["Fracture"]
 
-    i = 0
     for const in md.mesh_constraints:
         const.breaking_threshold *= progrWeakVar
-        i += 1
             
 ################################################################################
 
@@ -716,6 +796,10 @@ def monitor_freeBuffers(scene):
         if props.timeScalePeriod:
             del bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
             del bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
+
+        # Clear trigger properties
+        try: del bpy.app.driver_namespace["bcb_triggers"]
+        except: pass
 
         # When Fracture Modifier is in use
         if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
