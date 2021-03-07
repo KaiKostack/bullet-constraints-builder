@@ -185,12 +185,7 @@ class OBJECT_OT_bcb_export_ascii(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         props.asciiExport = 1
-        if props.automaticMode and props.preprocTools_aut:
-            OBJECT_OT_bcb_preprocess_do_all_steps_at_once.execute(self, context)
         OBJECT_OT_bcb_build.execute(self, context)
-        if props.menu_gotData:
-            if props.automaticMode and props.postprocTools_aut:
-                OBJECT_OT_bcb_postprocess_do_all_steps_at_once.execute(self, context)
         props.asciiExport = 0
         return{'FINISHED'}
     
@@ -209,27 +204,40 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             ###### Execute main building process from scratch
             scene = bpy.context.scene
             props = context.window_manager.bcb
-            OBJECT_OT_bcb_export_ascii.execute(self, context)
-            if props.menu_gotData:
-                ###### Fracture Modifier export
+            ### Free previous bake data
+            contextFix = bpy.context.copy()
+            if scene.rigidbody_world != None:
+                contextFix['point_cache'] = scene.rigidbody_world.point_cache
+                bpy.ops.ptcache.free_bake(contextFix)
+            else:  # Create new RB world
+                bpy.ops.rigidbody.world_add()
+            try: bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
+            except: pass
+            try: bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
+            except: pass
+
+            if not props.menu_gotData:
                 if not "bcb_ext_noBuild" in scene.keys():  # Option for external scripts to prevent building and keep export data
+                    if props.automaticMode and props.preprocTools_aut:
+                        OBJECT_OT_bcb_preprocess_do_all_steps_at_once.execute(self, context)
+
+                    ###### ASCII text export
+                    OBJECT_OT_bcb_export_ascii.execute(self, context)
+                    
+                    ###### Building FM
                     build_fm(use_handler=self.use_handler)
+                    
                     if not self.use_handler and asciiExportName +".txt" in bpy.data.texts:
                         try:    bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"], do_unlink=1)
                         except: bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"])
-                ### Free previous bake data
-                contextFix = bpy.context.copy()
-                if scene.rigidbody_world != None:
-                    contextFix['point_cache'] = scene.rigidbody_world.point_cache
-                    bpy.ops.ptcache.free_bake(contextFix)
-                else:  # Create new RB world
-                    bpy.ops.rigidbody.world_add()
-                try: bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
-                except: pass
-                try: bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
-                except: pass
+                
+                    if props.menu_gotData:
+                        if props.automaticMode and props.postprocTools_aut:
+                            OBJECT_OT_bcb_postprocess_do_all_steps_at_once.execute(self, context)
                     
-                if props.automaticMode:
+            ### Start baking when building is completed
+            if props.menu_gotData:
+                if props.automaticMode and not "bcb_ext_noSimulation" in scene.keys():  # Option for external scripts to prevent simulation
                     if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
                     # Prepare event handlers
                     bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
@@ -280,12 +288,16 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         if not props.menu_gotData and not asciiExportName in scene.objects:
             if props.automaticMode and props.preprocTools_aut:
                 OBJECT_OT_bcb_preprocess_do_all_steps_at_once.execute(self, context)
+
+            ###### Building
             OBJECT_OT_bcb_build.execute(self, context)
+
             if props.menu_gotData:
                 if props.automaticMode and props.postprocTools_aut:
                     OBJECT_OT_bcb_postprocess_do_all_steps_at_once.execute(self, context)
                 OBJECT_OT_bcb_bake.execute(self, context)
-        ### Start baking when we have constraints set
+
+        ### Start baking when building is completed
         else:
             if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
             # Prepare event handlers

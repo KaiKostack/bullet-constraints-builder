@@ -131,10 +131,10 @@ def tool_runPythonScript(scene, filename=""):
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
 
-    result = exec(s)
+    exec(s)
     if f != None: f.close()
     
-    print("Finished and returned:", result)
+    print("User-defined Python script finished and returned to BCB.")
     
 ################################################################################
 

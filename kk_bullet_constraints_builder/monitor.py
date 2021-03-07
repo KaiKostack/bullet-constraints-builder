@@ -85,7 +85,7 @@ def monitor_eventHandler(scene):
             monitor_initBuffers(scene)
 
             ###### Function
-            monitor_initTriggers()
+            monitor_initTriggers(scene)
 
             ### Create new animation data and action if necessary
             if scene.animation_data == None:
@@ -212,7 +212,7 @@ def monitor_eventHandler(scene):
             bpy.app.driver_namespace["bcb_monitor"] = None
                             
             ###### Function
-            monitor_initTriggers()
+            monitor_initTriggers(scene)
 
             ### Init weakening
             if props.progrWeak:
@@ -648,7 +648,7 @@ def monitor_checkForChange_fm(scene):
                 
 ################################################################################
 
-def monitor_initTriggers():
+def monitor_initTriggers(scene):
     
     ### Get trigger data from text file
     try: triggers = bpy.data.texts[asciiTriggersName +".txt"].as_string()
@@ -665,6 +665,18 @@ def monitor_initTriggers():
                 triggers.append(trigger)
         bpy.app.driver_namespace["bcb_triggers"] = triggers
         print()
+        
+        # When Fracture Modifier is in use
+        if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
+
+            ### Backup original FM data as it will be modified during simulation
+            try: ob = scene.objects[asciiExportName]
+            except: print("Error: Fracture Modifier object expected but not found."); return
+            md = ob.modifiers["Fracture"]
+            
+            connects = bpy.app.driver_namespace["bcb_monitor_fm"] = []
+            for const in md.mesh_constraints:
+                connects.append([bool(const.enabled), float(const.breaking_threshold)])
 
 ################################################################################
 
@@ -754,35 +766,40 @@ def monitor_freeBuffers(scene):
     if "bcb_monitor" in bpy.app.driver_namespace.keys():
         props = bpy.context.window_manager.bcb
         connects = bpy.app.driver_namespace["bcb_monitor"]
-        if connects == None: return
-        
-        ### Restore original constraint and element data
-        qWarning = 0
-        for connect in connects:
-            consts = connect[4]
-            constsEnabled = connect[5]
-            constsUseBrk = connect[6]
-            constsBrkThres = connect[13]
-            for i in range(len(consts)):
-                const = consts[i]
-                if const != None:
-                    if const.rigid_body_constraint != None and const.rigid_body_constraint.object1 != None:
-                        # Restore original settings
-                        const.rigid_body_constraint.enabled = constsEnabled[i]
-                        const.rigid_body_constraint.use_breaking = constsUseBrk[i]
-                        const.rigid_body_constraint.breaking_threshold = constsBrkThres[i]
-                    else:
-                        if not qWarning:
-                            qWarning = 1
-                            print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
-                        print("(%s)" %const.name)
-                
-        if props.timeScalePeriod:
-            # Set original time scale
-            scene.rigidbody_world.time_scale = bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
-            # Set original solver precision
-            scene.rigidbody_world.solver_iterations = bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
-                
+
+        # Settings to be restored for official Blender version monitor
+        if connects != None:
+
+            ### Restore original constraint and element data
+            qWarning = 0
+            for connect in connects:
+                consts = connect[4]
+                constsEnabled = connect[5]
+                constsUseBrk = connect[6]
+                constsBrkThres = connect[13]
+                for i in range(len(consts)):
+                    const = consts[i]
+                    if const != None:
+                        if const.rigid_body_constraint != None and const.rigid_body_constraint.object1 != None:
+                            # Restore original settings
+                            const.rigid_body_constraint.enabled = constsEnabled[i]
+                            const.rigid_body_constraint.use_breaking = constsUseBrk[i]
+                            const.rigid_body_constraint.breaking_threshold = constsBrkThres[i]
+                        else:
+                            if not qWarning:
+                                qWarning = 1
+                                print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
+                            print("(%s)" %const.name)
+                    
+            if props.timeScalePeriod:
+                # Set original time scale
+                scene.rigidbody_world.time_scale = bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
+                # Set original solver precision
+                scene.rigidbody_world.solver_iterations = bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
+
+                del bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
+                del bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
+                    
         ### Move detonator force fields back to original layer(s) (Todo: Detonator not yet part of BCB)
         if "Detonator" in bpy.data.groups:
             for obj in bpy.data.groups["Detonator"].objects:
@@ -793,9 +810,6 @@ def monitor_freeBuffers(scene):
 
         # Clear monitor properties
         del bpy.app.driver_namespace["bcb_monitor"]
-        if props.timeScalePeriod:
-            del bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
-            del bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
 
         # Clear trigger properties
         try: del bpy.app.driver_namespace["bcb_triggers"]
@@ -803,5 +817,22 @@ def monitor_freeBuffers(scene):
 
         # When Fracture Modifier is in use
         if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
+
+            ### Restore original constraint data
+            try: connects = bpy.app.driver_namespace["bcb_monitor_fm"]
+            except: pass
+            else:
+                
+                try: ob = scene.objects[asciiExportName]
+                except: print("Error: Fracture Modifier object expected but not found."); return
+                md = ob.modifiers["Fracture"]
+
+                i = 0
+                for const in md.mesh_constraints:
+                    connect = connects[i]; i += 1
+                    const.enabled = connect[0]
+                    const.breaking_threshold = connect[1]
+
+                del bpy.app.driver_namespace["bcb_monitor_fm"]
 
             del bpy.app.driver_namespace["bcb_progrWeakBroken"]
