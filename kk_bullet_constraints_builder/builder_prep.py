@@ -2163,13 +2163,16 @@ def generateDetonator(objs, connectsPair):
 
             ### Add points to empty animation curves of minimum and maximum ranges
             pIndex = 0
-            for keyframe in range(2):
+            for keyframe in range(3):
                 if keyframe == 0:
                     frame = startFr
                     pos = 0
-                else:
+                elif keyframe == 1:
                     frame = endFr
                     pos = ((endFr -startFr) /scene.render.fps) *blastWaveVel *timeScale
+                elif keyframe == 2:
+                    frame = endFr +(endFr -startFr)
+                    pos += ((endFr -startFr) /scene.render.fps) *blastWaveVel
                 
                 ### Add keyframe
                 curveMin.keyframe_points.add(1)
