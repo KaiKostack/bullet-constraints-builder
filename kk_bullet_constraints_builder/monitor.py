@@ -197,6 +197,12 @@ def monitor_eventHandler(scene):
                             obj["Layers_BCB"] = obj.layers
                             obj.layers = [False,False,False,False,False, False,False,False,False,False, False,False,False,False,False, False,False,False,False,True]
      
+            ### Convert springs to fixed constraints on time scale change (workaround for extreme time scale changes when springs tend to liquify)
+            if "bcb_ext_fixSprings" in scene.keys():  # Option for external scripts to be set
+                if props.timeScalePeriod and scene.frame_current == scene.frame_start +props.timeScalePeriod:
+                    ###### Function
+                    monitor_fixSprings(scene)
+
     # When Fracture Modifier is in use
     else:
              
@@ -238,7 +244,7 @@ def monitor_eventHandler(scene):
             ###### Function
             monitor_checkForTriggers_fm(scene)
 
-            # Find difference to last frame
+            ### Find difference to last frame
             try: cntBrokenAbsLast = bpy.app.driver_namespace["bcb_progrWeakBroken"]
             except: cntBrokenAbsLast = cntBrokenAbs
             bpy.app.driver_namespace["bcb_progrWeakBroken"] = cntBrokenAbs
@@ -260,6 +266,12 @@ def monitor_eventHandler(scene):
                     print("Weakening limit exceeded, weakening disabled from now on.")
                     bpy.app.driver_namespace["bcb_progrWeakTmp"] = 0
                 
+            ### Convert springs to fixed constraints on time scale change (workaround for extreme time scale changes when springs tend to liquify)
+            if "bcb_ext_fixSprings" in scene.keys():  # Option for external scripts to be set
+                if props.timeScalePeriod and scene.frame_current == scene.frame_start +props.timeScalePeriod:
+                    ###### Function
+                    monitor_fixSprings_fm(scene)
+
 ################################################################################
 
 def automaticModeAfterStop():
@@ -728,6 +740,61 @@ def monitor_checkForTriggers_fm(scene):
                     const.enabled = 0
                     const.breaking_threshold = 0  # FM will switch to plastic mode if 1st tolerance is exceeded, so we also need to reset BT
 
+################################################################################
+
+def monitor_fixSprings(scene):
+    
+    if debug: print("Calling fixSprings")
+
+    connects = bpy.app.driver_namespace["bcb_monitor"]
+
+    fixSprCnt = 0
+    for connect in connects:
+        consts = connect[4]
+        for const in consts:
+            if const.rigid_body_constraint.type == "GENERIC_SPRING" and const.rigid_body_constraint.enabled:
+                objA = connect[0][0]
+                objB = connect[1][0]
+
+                ### Create new constraint (Todo: Triggers are ignored for now)
+                objConst = bpy.data.objects.new('Con', None)
+                bpy.context.scene.objects.link(objConst)
+                bpy.context.scene.objects.active = objConst
+                objConst.location = (objA.rigid_body.location + objA.rigid_body.location) /2
+                bpy.ops.rigidbody.constraint_add()
+                objConst.rigid_body_constraint.breaking_threshold = const.rigid_body_constraint.breaking_threshold
+                objConst.rigid_body_constraint.use_breaking = const.rigid_body_constraint.use_breaking
+                objConst.rigid_body_constraint.object1 = objA
+                objConst.rigid_body_constraint.object2 = objB
+
+                fixSprCnt += 1
+    print("Fixed springs: %d" %fixSprCnt)
+
+################################################################################
+
+def monitor_fixSprings_fm(scene):
+    
+    if debug: print("Calling fixSprings_fm")
+
+    try: ob = scene.objects[asciiExportName]
+    except: print("Error: Fracture Modifier object expected but not found."); return
+    md = ob.modifiers["Fracture"]
+
+    fixSprCnt = 0
+    for const in md.mesh_constraints:
+        if const.type == "GENERIC_SPRING" and const.enabled:
+            objAn = const.island1.name
+            objBn = const.island2.name
+            
+            ### Create new constraint
+            con = md.mesh_constraints.new(md.mesh_islands[objAn], md.mesh_islands[objBn], "FIXED")
+            con.location = (const.island1.rigidbody.location + const.island2.rigidbody.location) /2
+            con.breaking_threshold = const.breaking_threshold
+            con.use_breaking = const.use_breaking
+
+            fixSprCnt += 1
+    print("Fixed springs: %d" %fixSprCnt)
+    
 ################################################################################
 
 def monitor_progressiveWeakening(scene, progrWeakVar):
