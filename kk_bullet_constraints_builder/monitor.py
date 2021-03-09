@@ -747,12 +747,13 @@ def monitor_fixSprings(scene):
     if debug: print("Calling fixSprings")
 
     connects = bpy.app.driver_namespace["bcb_monitor"]
-
+    
+    qFM = hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE')
     fixSprCnt = 0
     for connect in connects:
         consts = connect[4]
         for const in consts:
-            if const.rigid_body_constraint.type == "GENERIC_SPRING" and const.rigid_body_constraint.enabled:
+            if const.rigid_body_constraint.type == "GENERIC_SPRING" and const.rigid_body_constraint.enabled and (not qFM or (qFM and const.rigid_body_constraint.isIntact())):
                 objA = connect[0][0]
                 objB = connect[1][0]
 
@@ -760,7 +761,7 @@ def monitor_fixSprings(scene):
                 objConst = bpy.data.objects.new('Con', None)
                 bpy.context.scene.objects.link(objConst)
                 bpy.context.scene.objects.active = objConst
-                objConst.location = (objA.rigid_body.location + objA.rigid_body.location) /2
+                objConst.location = (objA.matrix_world.to_translation() + objA.matrix_world.to_translation()) /2
                 bpy.ops.rigidbody.constraint_add()
                 objConst.rigid_body_constraint.breaking_threshold = const.rigid_body_constraint.breaking_threshold
                 objConst.rigid_body_constraint.use_breaking = const.rigid_body_constraint.use_breaking
@@ -782,7 +783,7 @@ def monitor_fixSprings_fm(scene):
 
     fixSprCnt = 0
     for const in md.mesh_constraints:
-        if const.type == "GENERIC_SPRING" and const.enabled:
+        if const.type == "GENERIC_SPRING" and const.isIntact():  # isIntact() is also only true for active constraints
             objAn = const.island1.name
             objBn = const.island2.name
             
@@ -894,9 +895,9 @@ def monitor_freeBuffers(scene):
                 except: print("Error: Fracture Modifier object expected but not found."); return
                 md = ob.modifiers["Fracture"]
 
-                i = 0
-                for const in md.mesh_constraints:
-                    connect = connects[i]; i += 1
+                for i in range(len(connects)):
+                    const = md.mesh_constraints[i]
+                    connect = connects[i]
                     const.enabled = connect[0]
                     const.breaking_threshold = connect[1]
 
