@@ -724,7 +724,7 @@ class OBJECT_OT_bcb_preproc_tool_separate_loose_2(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_discretize(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_discretize"
     bl_label = "Discretize"
-    bl_description = "Discretizes (subdivides) all selected objects into smaller segments by splitting them into halves as long as a specified minimum size is reached"
+    bl_description = "Discretizes (subdivides) all selected objects into smaller segments by splitting them into halves as long as a specified minimum size is reached. Members of an object group 'bcb_noDiscretization' will be skipped if present"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene

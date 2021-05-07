@@ -466,6 +466,16 @@ def tool_discretize(scene):
     if len(objs) == 0:
         print("No mesh objects changed because of attached constraints.")
         return
+
+    ### Sort out user-defined objects (members of a specific group)
+    grpName = "bcb_noDiscretization"
+    if grpName in bpy.data.groups:
+        objsNew = []
+        for obj in objs:
+            if obj.name not in bpy.data.groups[grpName].objects:
+                objsNew.append(obj)
+        if len(objs) -len(objsNew): print("Elements skipped by '%s' group:" %grpName, len(objs) -len(objsNew))
+        objs = objsNew
             
     ### Sort out non-manifold meshes (not water tight and thus not suited for boolean operations)
     objsNew = []

@@ -162,8 +162,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
 
     ### Generate settings and prepare the attributes but only store those which are different from the defaults
     print("Generating main constraint settings... (%d)" %len(connectsPair))
-    llxl=-.000; llxu=.000; llyl=-.000; llyu=.000; llzl=-.000; llzu=.000  # Limits constraint room linear (x = normal direction)
-    laxl=-.000; laxu=.000; layl=-.000; layu=.000; lazl=-.000; lazu=.000  # Limits constraint room angular
     constsData = []
     connectsConsts_iter = iter(connectsConsts)
     connectsLoc_iter = iter(connectsLoc)
@@ -507,6 +505,17 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             if props.disableCollisionPerm or disColPerm: CT = -2
         
         if CT > 0:
+            ### Get backlash values
+            bcklshC = elemGrps_elemGrpA[EGSidxBLC]
+            bcklshT = elemGrps_elemGrpA[EGSidxBLT]
+            bcklshS = elemGrps_elemGrpA[EGSidxBLS]
+            bcklshS9 = elemGrps_elemGrpA[EGSidxBLS9]
+            bcklshB = elemGrps_elemGrpA[EGSidxBLB]
+            bcklshB9 = elemGrps_elemGrpA[EGSidxBLB9]
+            # Limits constraint room linear (x = normal direction)
+            llxl = -bcklshC; llxu = bcklshT; llyl = -bcklshS; llyu = bcklshS; llzl = -bcklshS9; llzu = bcklshS9
+            # Limits constraint room angular
+            laxl = -.0; laxu = .0; layl = -bcklshB9; layu = bcklshB9; lazl = -bcklshB; lazu = bcklshB
             ### Get spring length to be used later for stiffness calculation
             if brkThresValuePL > 0: springLength = brkThresValuePL
             else:                   springLength = geoLengthApprox
@@ -554,6 +563,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                       tol2rot = math.atan(((asst['elu']/100) *geoLengthApprox) /(geoHeight/2))
                       #tol2rot = math.atan(((asst['elu']/100) *((asst['w']/1000)/asst['n'])) /(geoHeight/2))
                 else: tol2rot = presets[0][EGSidxTl2R]  # Use tolerance from preset #0 as last resort
+            # Take backlash values into account for tolerances
+            tol1dist += sorted([bcklshC, bcklshT, bcklshS, bcklshS9])[-1]  # Add largest linear value
+            tol1rot += max(bcklshB, bcklshB9)  # Add largest angular value
+            tol2dist += sorted([bcklshC, bcklshT, bcklshS, bcklshS9])[-1]  # Add largest linear value
+            tol2rot += max(bcklshB, bcklshB9)  # Add largest angular value
             # Add new tolerances to build data array
             connectsTol[-1] = [tol1dist, tol1rot, tol2dist, tol2rot]
             

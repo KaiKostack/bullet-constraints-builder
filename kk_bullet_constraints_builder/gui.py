@@ -733,7 +733,7 @@ class bcb_panel_element_group_settings(bpy.types.Panel):
             box = col.box()
             box.label(text=connectType[0])
 
-            row = col.row(align=1); row.label(text="Breaking Thresholds in [N or Nm] / mm²:")
+            row = col.row(align=1); row.label(text="Breaking Threshold in [N or Nm] / mm²:")
 
             # Prepare possible expression variables
             a = h = w = b = s = 1   
@@ -821,6 +821,23 @@ class bcb_panel_element_group_settings(bpy.types.Panel):
             value = eval("props.elemGrp_%d_EGSidxBTX" %i)
             row = col.row(align=1)
             row.prop(props, "elemGrp_%d_EGSidxBTX" %i)
+
+            if props.submenu_assistant_advanced:
+                col.separator()
+                row = col.row(align=1); row.label(text="Backlash in m or rad:")
+
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxBLC" %i)
+                if not connectType[2][0]: row.active = 0
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxBLT" %i)
+                if not connectType[2][1]: row.active = 0
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxBLS" %i)
+                if not connectType[2][2]: row.active = 0
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxBLS9" %i)
+                if not connectType[2][2]: row.active = 0
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxBLB" %i)
+                if not connectType[2][3]: row.active = 0
+                row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxBLB9" %i)
+                if not connectType[2][3]: row.active = 0
 
             col.separator()
             #row = col.row(align=1); row.prop(props, "elemGrp_%d_EGSidxRqVP" %i)
