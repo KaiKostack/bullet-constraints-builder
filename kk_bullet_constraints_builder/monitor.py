@@ -171,8 +171,6 @@ def monitor_eventHandler(scene):
             and (not props.timeScalePeriod or (props.timeScalePeriod and scene.frame_current > scene.frame_start +props.timeScalePeriod)) \
             and (not props.warmUpPeriod or (props.warmUpPeriod and scene.frame_current > scene.frame_start +props.warmUpPeriod)):
                 if cntBroken < props.progrWeakLimit:
-                    # Weaken further only if no new connections are broken
-                    #if cntBroken == 0:
                     progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
                     ###### Weakening function
                     monitor_progressiveWeakening(scene, 1 -progrWeakTmp)
@@ -255,13 +253,11 @@ def monitor_eventHandler(scene):
             and (not props.timeScalePeriod or (props.timeScalePeriod and scene.frame_current > scene.frame_start +props.timeScalePeriod)) \
             and (not props.warmUpPeriod or (props.warmUpPeriod and scene.frame_current > scene.frame_start +props.warmUpPeriod)):
                 if cntBroken < props.progrWeakLimit:
-                    # Weaken further only if no new connections are broken
-                    if cntBroken == 0:
-                        progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
-                        ###### Weakening function
-                        monitor_progressiveWeakening_fm(scene, 1 -progrWeakTmp)
-                        progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
-                        bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
+                    progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
+                    ###### Weakening function
+                    monitor_progressiveWeakening_fm(scene, 1 -progrWeakTmp)
+                    progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
+                    bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
                 else:
                     print("Weakening limit exceeded, weakening disabled from now on.")
                     bpy.app.driver_namespace["bcb_progrWeakTmp"] = 0
