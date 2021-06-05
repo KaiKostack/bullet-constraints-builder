@@ -172,12 +172,12 @@ def monitor_eventHandler(scene):
             and (not props.warmUpPeriod or (props.warmUpPeriod and scene.frame_current > scene.frame_start +props.warmUpPeriod)):
                 if cntBroken < props.progrWeakLimit:
                     # Weaken further only if no new connections are broken
-                    if cntBroken == 0:
-                        progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
-                        ###### Weakening function
-                        monitor_progressiveWeakening(scene, 1 -progrWeakTmp)
-                        progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
-                        bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
+                    #if cntBroken == 0:
+                    progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
+                    ###### Weakening function
+                    monitor_progressiveWeakening(scene, 1 -progrWeakTmp)
+                    progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
+                    bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
                 else:
                     print("Weakening limit exceeded, weakening disabled from now on.")
                     bpy.app.driver_namespace["bcb_progrWeakTmp"] = 0
@@ -662,6 +662,29 @@ def monitor_checkForChange_fm(scene):
 
 def monitor_initTriggers(scene):
     
+
+    props = bpy.context.window_manager.bcb
+    elemGrps = mem["elemGrps"]
+    ### Get data from scene
+    try: objs = scene["bcb_objs"]
+    except: objs = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+    try: objsEGrp = scene["bcb_objsEGrp"]
+    except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
+    ### Prepare dictionary of element indices for faster item search (optimization)
+    objsDict = {}
+    for i in range(len(objs)):
+        objsDict[objs[i]] = i
+    
+    ### Create group index with their respective objects
+    grpsObjs = {}
+    for elemGrp in elemGrps:
+        grpName = elemGrp[EGSidxName]
+        grpObjs = []
+        for obj in objs:
+            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
+                grpObjs.append(obj)
+        grpsObjs[grpName] = grpObjs
+    
     ### Get trigger data from text file
     try: triggers = bpy.data.texts[asciiTriggersName +".txt"].as_string()
     except: pass
@@ -675,8 +698,35 @@ def monitor_initTriggers(scene):
             else:
                 print(trigger)
                 triggers.append(trigger)
-        bpy.app.driver_namespace["bcb_triggers"] = triggers
+        
+        ### Check if names are groups and add objects from found groups
+        qGroups = 0
+        triggersNew = []
+        for trigger in triggers:
+            if trigger[1] in grpsObjs and trigger[2] in grpsObjs:
+                for objA in grpsObjs[trigger[1]]:
+                    for objB in grpsObjs[trigger[2]]:
+                        triggerNew = [trigger[0], objA, objB]
+                        triggersNew.append(triggerNew)
+                qGroups = 1
+            elif trigger[1] in grpsObjs:
+                for objA in grpsObjs[trigger[1]]:
+                    triggerNew = [trigger[0], objA, trigger[2]]
+                    triggersNew.append(triggerNew)
+                qGroups = 1
+            elif trigger[2] in grpsObjs:
+                for objB in grpsObjs[trigger[2]]:
+                    triggerNew = [trigger[0], trigger[1], objB]
+                    triggersNew.append(triggerNew)
+                qGroups = 1
+            else:
+                triggersNew.append(trigger)
+        if qGroups:
+            triggers = triggersNew
+            print("One of more names can be interpreted as group, trigger list will be extended with their members.")
         print()
+        
+        bpy.app.driver_namespace["bcb_triggers"] = triggers
         
         # When Fracture Modifier is in use
         if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
@@ -700,6 +750,7 @@ def monitor_checkForTriggers(scene):
     except: return
     connects = bpy.app.driver_namespace["bcb_monitor"]
 
+    triggerCnt = 1    
     for trigger in triggers:
         if trigger[0] == scene.frame_current:
             objAt = trigger[1]
@@ -708,11 +759,14 @@ def monitor_checkForTriggers(scene):
                 objAn = connect[0][0].name
                 objBn = connect[1][0].name
                 if (objAn == objAt and objBn == objBt) or (objAn == objBt and objBn == objAt):
-                    print("Triggered connection: %s, %s" %(objAt, objBt))
+                    if triggerCnt <= 3: print("Triggered connection: %s, %s" %(objAt, objBt))
                     consts = connect[4]
                     for const in consts:
                         const.rigid_body_constraint.enabled = 0
                     connect[12] = 2  # conMode
+                    triggerCnt += 1
+    if triggerCnt > 4:
+        print("Triggered further %d connection(s)." %(triggerCnt -4))
                     
 ################################################################################
 
@@ -727,6 +781,7 @@ def monitor_checkForTriggers_fm(scene):
     except: print("Error: Fracture Modifier object expected but not found."); return
     md = ob.modifiers["Fracture"]
 
+    triggerCnt = 1    
     for trigger in triggers:
         if trigger[0] == scene.frame_current:
             objAt = trigger[1]
@@ -736,9 +791,12 @@ def monitor_checkForTriggers_fm(scene):
                 objAn = const.island1.name
                 objBn = const.island2.name
                 if (objAn == objAt and objBn == objBt) or (objAn == objBt and objBn == objAt):
-                    if qPrintOnce: print("Triggered connection: %s, %s" %(objAt, objBt)); qPrintOnce = 0
+                    if triggerCnt <= 3: print("Triggered constraint: %s, %s" %(objAt, objBt))
                     const.enabled = 0
                     const.breaking_threshold = 0  # FM will switch to plastic mode if 1st tolerance is exceeded, so we also need to reset BT
+                    triggerCnt += 1
+    if triggerCnt > 4:
+        print("Triggered further %d constraint(s)." %(triggerCnt -4))
 
 ################################################################################
 
