@@ -220,6 +220,19 @@ def prepareObjects(objs):
     bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
     # Set object centers to geometry origin
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+    ### Flip face normals for objects with negative scaling (will be reverted again when scaling is applied)
+    bpy.context.tool_settings.mesh_select_mode = False, False, True
+    for obj in objs:
+        if obj.scale[0] < 0 or obj.scale[1] < 0 or obj.scale[2] < 0:
+            bpy.context.scene.objects.active = obj
+            # Enter edit mode              
+            bpy.ops.object.mode_set(mode='EDIT')
+            # Select all elements
+            bpy.ops.mesh.select_all(action='SELECT')
+            # Flip normals
+            bpy.ops.mesh.flip_normals()
+            # Leave edit mode
+            bpy.ops.object.mode_set(mode='OBJECT')
     ### Converting mesh scale to 1
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     
