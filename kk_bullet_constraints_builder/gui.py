@@ -197,9 +197,9 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
         row2.prop(props, "preprocTools_grp_occ")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
-        split.prop(props, "preprocTools_sep2", text="")
+        split.prop(props, "preprocTools_sep", text="")
         box = split.box()
-        box.operator("bcb.preproc_tool_separate_loose_2", icon="DOT")
+        box.operator("bcb.preproc_tool_separate_loose", icon="DOT")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_mod", text="")
@@ -212,9 +212,9 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
         box.operator("bcb.preproc_tool_center_model", icon="DOT")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
-        split.prop(props, "preprocTools_sep", text="")
+        split.prop(props, "preprocTools_sep2", text="")
         box = split.box()
-        box.operator("bcb.preproc_tool_separate_loose", icon="DOT")
+        box.operator("bcb.preproc_tool_separate_loose_2", icon="DOT")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_dis", text="")
