@@ -151,7 +151,7 @@ formulaAssistants = [
  "Exp:rho": "(dl/2)**2*pi*n/(h*w)",
  "Exp:y":   "((ds/2)**2*pi*2/100*1000/s)*10/d",
  "Exp:e1":  "(h-2*c-dl)/h",
- "Exp:N-":  "fc*((h*w)-rho*(h*w))+fs*rho*(h*w)",
+ "Exp:N-":  "(fc*(1-rho)+fs*rho)*(h*w)",
  "Exp:N+":  "fs*rho*(h*w)",
  "Exp:V+/-":"fs*y*e1*h**2*1.2",
  "Exp:M+/-":"(fc*(1-rho)+fs*rho*e1*4.5)*h*h*w/12/1000"
@@ -164,7 +164,7 @@ formulaAssistants = [
  "Exp:rho": "(dl/2)**2*pi*n/(h*w)",
  "Exp:y":   "((ds/2)**2*pi*2/100*1000/s)*10/d",
  "Exp:e1":  "(h-2*c-dl)/h",
- "Exp:N-":  "fc*((h*w)-rho*(h*w))+fs*rho*(h*w)",
+ "Exp:N-":  "(fc*(1-rho)+fs*rho)*(h*w)",
  "Exp:N+":  "fs*rho*(h*w)",
  "Exp:V+/-":"(0.15*k*(100*rho*fc)**(1/3))*(h*w)",
  "Exp:M+/-":"(fc*(1-rho)+fs*rho*e1*4.5)*h*h*w/12/1000"
