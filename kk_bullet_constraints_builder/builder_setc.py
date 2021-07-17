@@ -218,11 +218,12 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             
             ### Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
             if detonatorObj != None and detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
-                dist = loc -detonatorObj.location
-                btMultiplierK = (abs(dist[0]) /abs(detonatorObj.scale[0]))**2
-                btMultiplierK += (abs(dist[1]) /abs(detonatorObj.scale[1]))**2
-                btMultiplierK += (abs(dist[2]) /abs(detonatorObj.scale[2]))**2
-                btMultiplier *= min(1, max(0, 2**.5*2 *btMultiplierK -2**.5/2))
+                distVec = loc -detonatorObj.location
+                dist = (abs(distVec[0]) /abs(detonatorObj.scale[0]))**2
+                dist += (abs(distVec[1]) /abs(detonatorObj.scale[1]))**2
+                dist += (abs(distVec[2]) /abs(detonatorObj.scale[2]))**2
+                dist = dist**.5
+                btMultiplier *= min(1, max(1 -props.detonatorMax, (dist -1) *2 *props.detonatorMul +1))
 
             ### Prepare expression variables and convert m to mm
             a = geoContactArea *1000000
@@ -280,6 +281,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
                     brkThresValuePL_A = elemGrps_elemGrpA[EGSidxBTPL]
                     mul = elemGrps_elemGrpA[EGSidxBTX]
+                    # Make sure that user expressions are evaluated first to prevent invisible order of operation issues
+                    if len(brkThresExprC_A): brkThresExprC_A = "(" +brkThresExprC_A +")"
+                    if len(brkThresExprT_A): brkThresExprT_A = "(" +brkThresExprT_A +")"
+                    if len(brkThresExprS_A): brkThresExprS_A = "(" +brkThresExprS_A +")"
+                    if len(brkThresExprS9_A): brkThresExprS9_A = "(" +brkThresExprS9_A +")"
+                    if len(brkThresExprB_A): brkThresExprB_A = "(" +brkThresExprB_A +")"
+                    if len(brkThresExprB9_A): brkThresExprB9_A = "(" +brkThresExprB9_A +")"
+                    if len(brkThresExprP_A): brkThresExprP_A = "(" +brkThresExprP_A +")"
                     # Area correction calculation for cylinders (*pi/4)
                     if elemGrps_elemGrpA[EGSidxCyln]: mulCyl = 0.7854
                     else:                             mulCyl = 1
@@ -332,6 +341,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
                     brkThresValuePL_B = elemGrps_elemGrpB[EGSidxBTPL]
                     mul = elemGrps_elemGrpB[EGSidxBTX]
+                    # Make sure that user expressions are evaluated first to prevent invisible order of operation issues
+                    if len(brkThresExprC_B): brkThresExprC_B = "(" +brkThresExprC_B +")"
+                    if len(brkThresExprT_B): brkThresExprT_B = "(" +brkThresExprT_B +")"
+                    if len(brkThresExprS_B): brkThresExprS_B = "(" +brkThresExprS_B +")"
+                    if len(brkThresExprS9_B): brkThresExprS9_B = "(" +brkThresExprS9_B +")"
+                    if len(brkThresExprB_B): brkThresExprB_B = "(" +brkThresExprB_B +")"
+                    if len(brkThresExprB9_B): brkThresExprB9_B = "(" +brkThresExprB9_B +")"
+                    if len(brkThresExprP_B): brkThresExprP_B = "(" +brkThresExprP_B +")"
                     # Area correction calculation for cylinders (*pi/4)
                     if elemGrps_elemGrpB[EGSidxCyln]: mulCyl = 0.7854
                     else:                             mulCyl = 1

@@ -146,6 +146,8 @@ def exportConfigData(scene):
     configData.append(props.disableCollisionPerm)
     configData.append(props.lowerBrkThresPriority)
     configData.append(props.detonatorObj)
+    configData.append(props.detonatorMul)
+    configData.append(props.detonatorMax)
     configData.append(props.detonAdvanced)
     configData.append(props.detonRayDist)
     configData.append(props.detonDeflection)
@@ -200,6 +202,8 @@ def importConfigData(scene):
         props.disableCollisionPerm = configData[i]; i += 1
         props.lowerBrkThresPriority = configData[i]; i += 1
         props.detonatorObj = configData[i]; i += 1
+        props.detonatorMul = configData[i]; i += 1
+        props.detonatorMax = configData[i]; i += 1
         props.detonAdvanced = configData[i]; i += 1
         props.detonRayDist = configData[i]; i += 1
         props.detonDeflection = configData[i]; i += 1

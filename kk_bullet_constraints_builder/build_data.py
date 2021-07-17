@@ -149,6 +149,8 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_disableCollisionPerm"] = props.disableCollisionPerm
     scene["bcb_prop_lowerBrkThresPriority"] = props.lowerBrkThresPriority
     scene["bcb_prop_detonatorObj"] = props.detonatorObj
+    scene["bcb_prop_detonatorMul"] = props.detonatorMul
+    scene["bcb_prop_detonatorMax"] = props.detonatorMax
     scene["bcb_prop_detonAdvanced"] = props.detonAdvanced
     scene["bcb_prop_detonRayDist"] = props.detonRayDist
     scene["bcb_prop_detonDeflection"] = props.detonDeflection
@@ -372,6 +374,10 @@ def getConfigDataFromScene(scene):
         props.lowerBrkThresPriority = scene["bcb_prop_lowerBrkThresPriority"]
     if "bcb_prop_detonatorObj" in scene.keys():
         props.detonatorObj = scene["bcb_prop_detonatorObj"]
+    if "bcb_prop_detonatorMul" in scene.keys():
+        props.detonatorMul = scene["bcb_prop_detonatorMul"]
+    if "bcb_prop_detonatorMax" in scene.keys():
+        props.detonatorMax = scene["bcb_prop_detonatorMax"]
     if "bcb_prop_detonAdvanced" in scene.keys():
         props.detonAdvanced = scene["bcb_prop_detonAdvanced"]
     if "bcb_prop_detonRayDist" in scene.keys():

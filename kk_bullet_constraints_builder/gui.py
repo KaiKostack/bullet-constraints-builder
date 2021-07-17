@@ -435,7 +435,12 @@ class bcb_panel_triggers(bpy.types.Panel):
         col = layout.column(align=1)
 
         row = col.row(align=1); row.prop(props, "detonatorObj")
-        
+        row = col.row(align=1); split = row.split(align=1);
+        split.prop(props, "detonatorMul")
+        split.prop(props, "detonatorMax")
+        if not len(props.detonatorObj) or props.detonatorObj not in bpy.context.scene.objects: row.enabled = 0
+                
+        col.separator()
         row = col.row(align=1); 
         if props.detonAdvanced and props.timeScalePeriod == 0: row.alert = 1
         row.prop(props, "detonAdvanced")
