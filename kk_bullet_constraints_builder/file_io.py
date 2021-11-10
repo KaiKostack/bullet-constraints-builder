@@ -126,6 +126,8 @@ def exportConfigData(scene):
     configData.append(props.passiveUseBreaking)
     configData.append(props.connectionCountLimit)
     configData.append(props.searchDistance)
+    configData.append(props.searchDistanceMesh)
+    configData.append(props.searchDistanceFallback)
     configData.append(props.clusterRadius)
     configData.append(props.alignVertical)
     configData.append(props.useAccurateArea)
@@ -182,6 +184,8 @@ def importConfigData(scene):
         props.passiveUseBreaking = configData[i]; i += 1
         props.connectionCountLimit = configData[i]; i += 1
         props.searchDistance = configData[i]; i += 1
+        props.searchDistanceMesh = configData[i]; i += 1
+        props.searchDistanceFallback = configData[i]; i += 1
         props.clusterRadius = configData[i]; i += 1
         props.alignVertical = configData[i]; i += 1
         props.useAccurateArea = configData[i]; i += 1

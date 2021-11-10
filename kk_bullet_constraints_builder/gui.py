@@ -351,8 +351,12 @@ class bcb_panel_global_settings(bpy.types.Panel):
         col.separator()
         row = col.row(align=1)
         if props.menu_gotData: row.enabled = 0
-        row.prop(props, "searchDistance")
-
+        split = row.split(percentage=.85, align=1)
+        split2 = split.split(percentage=.5, align=1)
+        split2.prop(props, "searchDistance")
+        split2.prop(props, "searchDistanceMesh")
+        split.prop(props, "searchDistanceFallback")
+                
         row = col.row(align=1)
         split = row.split(percentage=.85, align=1)
         if props.menu_gotData: split.enabled = 0

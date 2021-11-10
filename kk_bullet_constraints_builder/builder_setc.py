@@ -219,10 +219,17 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             ### Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
             if detonatorObj != None and detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
                 distVec = loc -detonatorObj.location
-                dist = (abs(distVec[0]) /abs(detonatorObj.scale[0]))**2
-                dist += (abs(distVec[1]) /abs(detonatorObj.scale[1]))**2
-                dist += (abs(distVec[2]) /abs(detonatorObj.scale[2]))**2
-                dist = dist**.5
+                if detonatorObj.type == 'EMPTY' and detonatorObj.empty_draw_type == 'CUBE':
+                    # When empty is in Cube mode then use a cubic shape
+                    dist =           abs(distVec[0]) /abs(detonatorObj.scale[0])
+                    dist = max(dist, abs(distVec[1]) /abs(detonatorObj.scale[1]))
+                    dist = max(dist, abs(distVec[2]) /abs(detonatorObj.scale[2]))
+                else:
+                    # Otherwise prefer spherical shape
+                    dist =  (abs(distVec[0]) /abs(detonatorObj.scale[0]))**2
+                    dist += (abs(distVec[1]) /abs(detonatorObj.scale[1]))**2
+                    dist += (abs(distVec[2]) /abs(detonatorObj.scale[2]))**2
+                    dist = dist**.5
                 btMultiplier *= min(1, max(1 -props.detonatorMax, (dist -1) *2 *props.detonatorMul +1))
 
             ### Prepare expression variables and convert m to mm
@@ -1427,7 +1434,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
             a = geoContactArea *1000000
             h = geoHeight *1000
             w = geoWidth *1000
-
+            
             ### Gather values from constraints
             yl = 0; zl = 0; ya = 0; za = 0
             for cIdx in consts:

@@ -129,6 +129,8 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_passiveUseBreaking"] = props.passiveUseBreaking
     scene["bcb_prop_connectionCountLimit"] = props.connectionCountLimit
     scene["bcb_prop_searchDistance"] = props.searchDistance
+    scene["bcb_prop_searchDistanceMesh"] = props.searchDistanceMesh
+    scene["bcb_prop_searchDistanceFallback"] = props.searchDistanceFallback
     scene["bcb_prop_clusterRadius"] = props.clusterRadius
     scene["bcb_prop_alignVertical"] = props.alignVertical
     scene["bcb_prop_useAccurateArea"] = props.useAccurateArea 
@@ -334,6 +336,10 @@ def getConfigDataFromScene(scene):
         props.connectionCountLimit = scene["bcb_prop_connectionCountLimit"]
     if "bcb_prop_searchDistance" in scene.keys():
         props.searchDistance = scene["bcb_prop_searchDistance"]
+    if "bcb_prop_searchDistanceMesh" in scene.keys():
+        props.searchDistanceMesh = scene["bcb_prop_searchDistanceMesh"]
+    if "bcb_prop_searchDistanceFallback" in scene.keys():
+        props.searchDistanceFallback = scene["bcb_prop_searchDistanceFallback"]
     if "bcb_prop_clusterRadius" in scene.keys():
         props.clusterRadius = scene["bcb_prop_clusterRadius"]
     if "bcb_prop_alignVertical" in scene.keys():

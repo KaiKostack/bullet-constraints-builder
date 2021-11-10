@@ -650,7 +650,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
 
     ###### Calculate contact area for a single pair of objects
     props = bpy.context.window_manager.bcb
-    searchDist = props.searchDistance
+    searchDistMesh = props.searchDistanceMesh
 
     ### Calculate boundary box corners
     bbAMin, bbAMax, bbACenter = boundaryBox(objA, 1)
@@ -664,12 +664,12 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
     qSkipConnect = 0
     if qAccurate:
         # Create new faces bbox for A for faces within search range of bbox B
-        bbBMinSD = Vector((bbBMin[0]-searchDist, bbBMin[1]-searchDist, bbBMin[2]-searchDist))
-        bbBMaxSD = Vector((bbBMax[0]+searchDist, bbBMax[1]+searchDist, bbBMax[2]+searchDist))
+        bbBMinSD = Vector((bbBMin[0]-searchDistMesh, bbBMin[1]-searchDistMesh, bbBMin[2]-searchDistMesh))
+        bbBMaxSD = Vector((bbBMax[0]+searchDistMesh, bbBMax[1]+searchDistMesh, bbBMax[2]+searchDistMesh))
         bbAMinF, bbAMaxF, bbACenterF, areaA = boundaryBoxFaces(objA, 1, selMin=bbBMinSD, selMax=bbBMaxSD)
         # Create new faces bbox for B for faces within search range of bbox A
-        bbAMinSD = Vector((bbAMin[0]-searchDist, bbAMin[1]-searchDist, bbAMin[2]-searchDist))
-        bbAMaxSD = Vector((bbAMax[0]+searchDist, bbAMax[1]+searchDist, bbAMax[2]+searchDist))
+        bbAMinSD = Vector((bbAMin[0]-searchDistMesh, bbAMin[1]-searchDistMesh, bbAMin[2]-searchDistMesh))
+        bbAMaxSD = Vector((bbAMax[0]+searchDistMesh, bbAMax[1]+searchDistMesh, bbAMax[2]+searchDistMesh))
         bbBMinF, bbBMaxF, bbBCenterF, areaB = boundaryBoxFaces(objB, 1, selMin=bbAMinSD, selMax=bbAMaxSD)
 
         ### Check if detected contact area is implausible high compared to the total surface area of the objects
@@ -717,11 +717,11 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         
     if not qAccurate or qOverlapSimple:
         ### Calculate simple overlap of boundary boxes for contact area calculation (project along all axis')
-        overlapX = min( min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]) ,0)
-        overlapY = min( min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]) ,0)
-        overlapZ = min( min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]) ,0)
-            
-    if not qSkipConnect or props.surfaceForced:
+        overlapX = max(0, min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]))
+        overlapY = max(0, min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]))
+        overlapZ = max(0, min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
+    
+    if not qSkipConnect or props.searchDistanceFallback or props.surfaceForced:
 
         ### Calculate area based on either the sum of all axis surfaces...
         if not qNonManifold:
@@ -753,7 +753,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             geoContactArea = geoContactAreaF
         elif not qNonManifold:
             qVolCorrect = 1
-
+        
         ### Find out element thickness to be used for bending threshold calculation 
         if geoContactAreaB > 0:
             geo = [overlapX, overlapY, overlapZ]
@@ -1904,7 +1904,8 @@ def correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo):
                 dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
 
                 # Derive contact area correction factor from geometry section area divided by bbox section area
-                sectionArea = volume /dimLength  # Full geometry section area of element
+                if dimLength != 0: sectionArea = volume /dimLength  # Full geometry section area of element
+                else:              sectionArea = volume**.5         # Assume cube as fallback if length is zero
 
                 ### Compensate section area for rescaling
                 try: scale = elemGrp[EGSidxScal]  # Try in case elemGrps is from an old BCB version

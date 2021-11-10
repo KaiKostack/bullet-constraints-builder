@@ -51,6 +51,7 @@ def run(source=None, parameters=None):
     qRemoveOpen = 0                  # Removes surroundings of (filled) open space to reveal only inside cavities (use it together with qInvertOutput=1 to visualize cavities)
     qRemoveOpenBottom = 1            # Removes also open spaces pointing downwards (assuming there would be no ground)
     qRemoveOriginal = 1              # Delete original objects
+    qReuseName = 1                   # Enables reusing the name of the original objects for new objects
     
     ### Vars internal
     qTriangulate = 1                 # Enables automatic mesh triangulation
@@ -78,6 +79,7 @@ def run(source=None, parameters=None):
         qRemoveOpen = 1
         qRemoveOpenBottom = 0
         qRemoveOriginal = 0
+        qReuseName = 0
          
     ###
 
@@ -468,7 +470,7 @@ def run(source=None, parameters=None):
                         if cellsToObjectsMode == 3:
                             objN = createMeshObjectFromData(vertsN, [], facesN)
                             scene.objects.link(objN)
-                            objN.name = obj.name
+                            if qReuseName: objN.name = obj.name
                             copyCustomData(objN, obj)
                             if gridRes > 0: objN.matrix_world = obj.matrix_world
                             elif not qUseUnifiedSpace:
@@ -483,7 +485,7 @@ def run(source=None, parameters=None):
             if cellsToObjectsMode == 2:
                 objN = createMeshObjectFromData(vertsN, [], facesN)
                 scene.objects.link(objN)
-                objN.name = obj.name
+                if qReuseName: objN.name = obj.name
                 copyCustomData(objN, obj)
                 if gridRes > 0: objN.matrix_world = obj.matrix_world
                 elif not qUseUnifiedSpace:
@@ -641,7 +643,7 @@ def run(source=None, parameters=None):
     if cellsToObjectsMode == 1:
         objN = createMeshObjectFromData(vertsN, [], facesN)
         scene.objects.link(objN)
-        objN.name = obj.name
+        if qReuseName: objN.name = obj.name
         copyCustomData(objN, obj)
         objsN.append(objN)
 
