@@ -650,27 +650,36 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
 
     ###### Calculate contact area for a single pair of objects
     props = bpy.context.window_manager.bcb
+    searchDist = props.searchDistance
     searchDistMesh = props.searchDistanceMesh
 
     ### Calculate boundary box corners
     bbAMin, bbAMax, bbACenter = boundaryBox(objA, 1)
     bbBMin, bbBMax, bbBCenter = boundaryBox(objB, 1)
     halfSize = ((bbAMax-bbAMin) +(bbBMax-bbBMin)) /4
-    bbAMinBak, bbAMaxBak, bbACenterBak = bbAMin, bbAMax, bbACenter
-    bbBMinBak, bbBMaxBak, bbBCenterBak = bbBMin, bbBMax, bbBCenter
+    bbAMinOrig, bbAMaxOrig, bbACenterOrig = bbAMin, bbAMax, bbACenter
+    bbBMinOrig, bbBMaxOrig, bbBCenterOrig = bbBMin, bbBMax, bbBCenter
 
     ### Determine faces within search range of both objects and return their surface area
     geoContactAreaF = 0
     qSkipConnect = 0
     if qAccurate:
-        # Create new faces bbox for A for faces within search range of bbox B
-        bbBMinSD = Vector((bbBMin[0]-searchDistMesh, bbBMin[1]-searchDistMesh, bbBMin[2]-searchDistMesh))
-        bbBMaxSD = Vector((bbBMax[0]+searchDistMesh, bbBMax[1]+searchDistMesh, bbBMax[2]+searchDistMesh))
-        bbAMinF, bbAMaxF, bbACenterF, areaA = boundaryBoxFaces(objA, 1, selMin=bbBMinSD, selMax=bbBMaxSD)
-        # Create new faces bbox for B for faces within search range of bbox A
-        bbAMinSD = Vector((bbAMin[0]-searchDistMesh, bbAMin[1]-searchDistMesh, bbAMin[2]-searchDistMesh))
-        bbAMaxSD = Vector((bbAMax[0]+searchDistMesh, bbAMax[1]+searchDistMesh, bbAMax[2]+searchDistMesh))
-        bbBMinF, bbBMaxF, bbBCenterF, areaB = boundaryBoxFaces(objB, 1, selMin=bbAMinSD, selMax=bbAMaxSD)
+        # Create new faces bbox for A for faces within searchDistMesh range of bbox B
+        bbBMinSDM = Vector((bbBMin[0]-searchDistMesh, bbBMin[1]-searchDistMesh, bbBMin[2]-searchDistMesh))
+        bbBMaxSDM = Vector((bbBMax[0]+searchDistMesh, bbBMax[1]+searchDistMesh, bbBMax[2]+searchDistMesh))
+        bbAMinF, bbAMaxF, bbACenterF, areaA = boundaryBoxFaces(objA, 1, selMin=bbBMinSDM, selMax=bbBMaxSDM)
+        # Create new faces bbox for B for faces within searchDistMesh range of bbox A
+        bbAMinSDM = Vector((bbAMin[0]-searchDistMesh, bbAMin[1]-searchDistMesh, bbAMin[2]-searchDistMesh))
+        bbAMaxSDM = Vector((bbAMax[0]+searchDistMesh, bbAMax[1]+searchDistMesh, bbAMax[2]+searchDistMesh))
+        bbBMinF, bbBMaxF, bbBCenterF, areaB = boundaryBoxFaces(objB, 1, selMin=bbAMinSDM, selMax=bbAMaxSDM)
+        # Create new faces bbox for A for faces within searchDist range of bbox B
+        bbBMinSD = Vector((bbBMin[0]-searchDist, bbBMin[1]-searchDist, bbBMin[2]-searchDist))
+        bbBMaxSD = Vector((bbBMax[0]+searchDist, bbBMax[1]+searchDist, bbBMax[2]+searchDist))
+        bbAMinF2, bbAMaxF2, bbACenterF2, areaA2 = boundaryBoxFaces(objA, 1, selMin=bbBMinSD, selMax=bbBMaxSD)
+        # Create new faces bbox for B for faces within searchDist range of bbox A
+        bbAMinSD = Vector((bbAMin[0]-searchDist, bbAMin[1]-searchDist, bbAMin[2]-searchDist))
+        bbAMaxSD = Vector((bbAMax[0]+searchDist, bbAMax[1]+searchDist, bbAMax[2]+searchDist))
+        bbBMinF2, bbBMaxF2, bbBCenterF2, areaB2 = boundaryBoxFaces(objB, 1, selMin=bbAMinSD, selMax=bbAMaxSD)
 
         ### Check if detected contact area is implausible high compared to the total surface area of the objects
         areaAtot = 0; areaBtot = 0
@@ -695,33 +704,77 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         elif areaB > 0:
             geoContactAreaF = areaB
             bbBMin, bbBMax, bbBCenter = bbBMinF, bbBMaxF, bbBCenterF
-        else: qSkipConnect = 1
+        ### Alternatively use regular search distance face areas to derive locations from (but not for contact area as it may be too inaccurate)
+        # Use the smallest detected area of both objects as contact area
+        elif props.searchDistanceFallback and areaA2 > 0 and areaB2 > 0:
+            bbAMin, bbAMax, bbACenter = bbAMinF2, bbAMaxF2, bbACenterF2
+            bbBMin, bbBMax, bbBCenter = bbBMinF2, bbBMaxF2, bbBCenterF2
+        # Or if only one area is greater zero then use that one
+        elif props.searchDistanceFallback and areaA2 > 0:
+            bbAMin, bbAMax, bbACenter = bbAMinF2, bbAMaxF2, bbACenterF2
+        elif props.searchDistanceFallback and areaB2 > 0:
+            bbBMin, bbBMax, bbBCenter = bbBMinF2, bbBMaxF2, bbBCenterF2
+        elif not props.searchDistanceFallback: qSkipConnect = 1
 
-        ### Calculate overlap of face based boundary boxes as alternative to simple boundary box overlap
+        ### Calculate overlap of face based boundary boxes rather than simple boundary box overlap
         if areaA > 0 and areaB > 0:
             overlapXF = min(bbAMaxF[0],bbBMaxF[0]) -max(bbAMinF[0],bbBMinF[0])
             overlapYF = min(bbAMaxF[1],bbBMaxF[1]) -max(bbAMinF[1],bbBMinF[1])
             overlapZF = min(bbAMaxF[2],bbBMaxF[2]) -max(bbAMinF[2],bbBMinF[2])
-            # If two axis have no relevant overlap we can assume the faces are perpendicular to each other,
-            # in this case it's safer to fall back to simple boundary box based overlap (the else case)
-            if (overlapXF >= props.searchDistance and overlapYF >= props.searchDistance) or \
-               (overlapXF >= props.searchDistance and overlapZF >= props.searchDistance) or \
-               (overlapYF >= props.searchDistance and overlapZF >= props.searchDistance):
-                  overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
-                  qOverlapSimple = 0
-            else: qOverlapSimple = 1
-        else: qOverlapSimple = 1
-        if qOverlapSimple:
-            bbAMin, bbAMax, bbACenter = bbAMinBak, bbAMaxBak, bbACenterBak
-            bbBMin, bbBMax, bbBCenter = bbBMinBak, bbBMaxBak, bbBCenterBak
-        
-    if not qAccurate or qOverlapSimple:
+            # If one axis is out of search distance range then fall back to simple boundary box based overlap
+            if overlapXF < -searchDistMesh or overlapYF < -searchDistMesh or overlapZF < -searchDistMesh:
+                  qSkipConnect = 1
+            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+        if areaA > 0:
+            overlapXF = min(bbAMaxF[0],bbBMax[0]) -max(bbAMinF[0],bbBMin[0])
+            overlapYF = min(bbAMaxF[1],bbBMax[1]) -max(bbAMinF[1],bbBMin[1])
+            overlapZF = min(bbAMaxF[2],bbBMax[2]) -max(bbAMinF[2],bbBMin[2])
+            # If one axis is out of search distance range then fall back to simple boundary box based overlap
+            if overlapXF < -searchDistMesh or overlapYF < -searchDistMesh or overlapZF < -searchDistMesh:
+                  qSkipConnect = 1
+            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+        if areaB > 0:
+            overlapXF = min(bbAMax[0],bbBMaxF[0]) -max(bbAMin[0],bbBMinF[0])
+            overlapYF = min(bbAMax[1],bbBMaxF[1]) -max(bbAMin[1],bbBMinF[1])
+            overlapZF = min(bbAMax[2],bbBMaxF[2]) -max(bbAMin[2],bbBMinF[2])
+            # If one axis is out of search distance range then fall back to simple boundary box based overlap
+            if overlapXF < -searchDistMesh or overlapYF < -searchDistMesh or overlapZF < -searchDistMesh:
+                  qSkipConnect = 1
+            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+        ### Alternatively use overlap of face based boundary boxes based on regular search distance
+        elif props.searchDistanceFallback and areaA2 > 0 and areaB2 > 0:
+            overlapXF = min(bbAMaxF2[0],bbBMaxF2[0]) -max(bbAMinF2[0],bbBMinF2[0])
+            overlapYF = min(bbAMaxF2[1],bbBMaxF2[1]) -max(bbAMinF2[1],bbBMinF2[1])
+            overlapZF = min(bbAMaxF2[2],bbBMaxF2[2]) -max(bbAMinF2[2],bbBMinF2[2])
+            # If one axis is out of search distance range then fall back to simple boundary box based overlap
+            if overlapXF < -searchDist or overlapYF < -searchDist or overlapZF < -searchDist:
+                  qSkipConnect = 1
+            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+        elif props.searchDistanceFallback and areaA2 > 0:
+            overlapXF = min(bbAMaxF2[0],bbBMax[0]) -max(bbAMinF2[0],bbBMin[0])
+            overlapYF = min(bbAMaxF2[1],bbBMax[1]) -max(bbAMinF2[1],bbBMin[1])
+            overlapZF = min(bbAMaxF2[2],bbBMax[2]) -max(bbAMinF2[2],bbBMin[2])
+            # If one axis is out of search distance range then fall back to simple boundary box based overlap
+            if overlapXF < -searchDist or overlapYF < -searchDist or overlapZF < -searchDist:
+                  qSkipConnect = 1
+            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+        elif props.searchDistanceFallback and areaB2 > 0:
+            overlapXF = min(bbAMax[0],bbBMaxF2[0]) -max(bbAMin[0],bbBMinF2[0])
+            overlapYF = min(bbAMax[1],bbBMaxF2[1]) -max(bbAMin[1],bbBMinF2[1])
+            overlapZF = min(bbAMax[2],bbBMaxF2[2]) -max(bbAMin[2],bbBMinF2[2])
+            # If one axis is out of search distance range then fall back to simple boundary box based overlap
+            if overlapXF < -searchDist or overlapYF < -searchDist or overlapZF < -searchDist:
+                  qSkipConnect = 1
+            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+        else: qSkipConnect = 1
+                
+    if not qAccurate or qSkipConnect:
         ### Calculate simple overlap of boundary boxes for contact area calculation (project along all axis')
         overlapX = max(0, min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]))
         overlapY = max(0, min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]))
         overlapZ = max(0, min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
-    
-    if not qSkipConnect or props.searchDistanceFallback or props.surfaceForced:
+        
+    if not qSkipConnect or props.surfaceForced:
 
         ### Calculate area based on either the sum of all axis surfaces...
         if not qNonManifold:
