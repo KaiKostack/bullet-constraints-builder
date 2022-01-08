@@ -394,7 +394,9 @@ def tool_separateLoose(scene):
         for i in range(2):
             if i == 0: obj = objC.rigid_body_constraint.object1
             else:      obj = objC.rigid_body_constraint.object2
-            if obj.select: obj.select = 0
+            if obj != None and obj.select:
+                obj.select = 0
+                objsConst.add(obj)
 
     # Remove rigid body settings because of the unlinking optimization in the external module they will be lost anyway (while the RBW group remains)
     bpy.ops.rigidbody.objects_remove()
@@ -417,6 +419,10 @@ def tool_separateLoose(scene):
     # Revert to start selection
     for obj in selection: obj.select = 1
     bpy.context.scene.objects.active = selectionActive
+
+    # Revert empties and constrained objects to start selection
+    for obj in emptyObjs: obj.select = 1
+    for obj in objsConst: obj.select = 1
 
 ################################################################################
 
@@ -458,7 +464,9 @@ def tool_discretize(scene):
         for i in range(2):
             if i == 0: obj = objC.rigid_body_constraint.object1
             else:      obj = objC.rigid_body_constraint.object2
-            objsConst.add(obj)
+            if obj != None and obj.select:
+                obj.select = 0
+                objsConst.add(obj)
     objsNew = []
     for obj in objs:
         if obj not in objsConst: objsNew.append(obj)
@@ -686,6 +694,10 @@ def tool_discretize(scene):
         # Revert to start selection
         for obj in selection: obj.select = 1
         bpy.context.scene.objects.active = selectionActive
+        
+    # Revert empties and constrained objects to start selection
+    for obj in emptyObjs: obj.select = 1
+    for obj in objsConst: obj.select = 1
 
     # Set object centers to geometry origin
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
