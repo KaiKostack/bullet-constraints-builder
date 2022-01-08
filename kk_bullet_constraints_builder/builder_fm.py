@@ -56,16 +56,16 @@ def build_fm(use_handler=0):
         scene.animation_data.action = bpy.data.actions.new(name="BCB")
     
     ### Set up warm up timer via gravity
-    dna_animation_path = "gravity"; animation_index = 2
-    curve = scene.animation_data.action.fcurves.find(data_path=dna_animation_path, index=animation_index)
-    ### Delete previous animation while preserving the end value
-    if curve != None:
-        if len(curve.keyframe_points) > 0:
-            curveP = curve.keyframe_points[-1]
-            frame, value = curveP.co
-            scene.animation_data.action.fcurves.remove(curve)  # Delete curve
-            bpy.context.scene.gravity[2] = value  # Restore original value
     if props.warmUpPeriod:
+        dna_animation_path = "gravity"; animation_index = 2
+        curve = scene.animation_data.action.fcurves.find(data_path=dna_animation_path, index=animation_index)
+        ### Delete previous animation while preserving the end value
+        if curve != None:
+            if len(curve.keyframe_points) > 0:
+                curveP = curve.keyframe_points[-1]
+                frame, value = curveP.co
+                scene.animation_data.action.fcurves.remove(curve)  # Delete curve
+                bpy.context.scene.gravity[2] = value  # Restore original value
         # Create new curve
         curve = scene.animation_data.action.fcurves.new(data_path=dna_animation_path, index=animation_index)  # Recreate curve  
         ### Create curve points
