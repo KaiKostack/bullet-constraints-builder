@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2020 Kai Kostack
+# Copyright (C) 2015-2021 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -62,7 +62,7 @@ def build():
                 
             ###### Create object lists of selected objects
             childObjs = []
-            objs, emptyObjs = gatherObjects(scene)
+            objs, emptyObjs, objsID = gatherObjects(scene)
             objsEGrp, objCntInEGrps = createElementGroupIndex(objs)
             
             #############################
@@ -123,7 +123,7 @@ def build():
                         scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
                         ###### Store build data in scene
                         #if not props.asciiExport:  # Commented out b/c: Postprocessing Tools need some data so we keep it also for FM export, object references are converted to names
-                        storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, None, constsConnect)
+                        storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, objsID, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, None, constsConnect)
                         
                         scene["bcb_valid"] = 1
                         
@@ -155,11 +155,11 @@ def build():
             storeConfigDataInScene(scene)
             ###### Get temp data from scene
             if not props.asciiExport:
-                objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect = getBuildDataFromScene(scene)
+                objs, emptyObjs, childObjs, objsID, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect = getBuildDataFromScene(scene)
             ###### Create fresh element group index to make sure the data is still valid (reordering in menu invalidates it for instance)
             objsEGrp, objCntInEGrps = createElementGroupIndex(objs)
             ###### Store updated build data in scene
-            storeBuildDataInScene(scene, None, objsEGrp, None, None, None, None, None, None, None, None, None)
+            storeBuildDataInScene(scene, None, objsEGrp, None, None, None, None, None, None, None, None, None, None)
                             
             if len(emptyObjs) > 0 and objCntInEGrps > 1:
                 ###### Set general rigid body world settings
@@ -173,9 +173,9 @@ def build():
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
                 if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
-                connectsTol, exData = setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect, connectsBtMul)
+                connectsTol, exData = setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect, connectsBtMul)
                 ###### Store new build data in scene
-                storeBuildDataInScene(scene, None, None, emptyObjs, None, None, None, None, None, None, connectsTol, None)
+                storeBuildDataInScene(scene, None, None, emptyObjs, None, None, None, None, None, None, None, connectsTol, None)
                 ### Restore old layers state
                 if not props.asciiExport:
                     scene.update()  # Required to update empty locations before layer switching

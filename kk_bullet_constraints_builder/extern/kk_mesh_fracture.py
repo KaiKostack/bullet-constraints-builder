@@ -117,6 +117,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         ### Create object list of selected objects
         ### (because we add more objects with following function we need a separate list)
         objs = []
+        objsKeys = []
         for obj in scene.objects:
             if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
                 objs.append(obj)
@@ -387,6 +388,8 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objA.scale = obj.scale.copy()
                         objA.location = obj.location.copy()
                         objA.rotation_euler = obj.rotation_euler.copy()
+                        # Copy ID properties
+                        for key in obj.keys(): objA[key] = obj[key]
                         
                         ### Prepare second object
                         if qDebugVerbose: print("## MF: Prepare second object")
@@ -427,6 +430,8 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objB.scale = obj.scale.copy()
                         objB.location = obj.location.copy()
                         objB.rotation_euler = obj.rotation_euler.copy()
+                        # Copy ID properties
+                        for key in obj.keys(): objB[key] = obj[key]
 
                         ### Check mesh results for sanity (evaluation)
                         if qDebugVerbose: print("## MF: Check mesh results for sanity (evaluation)")
@@ -680,6 +685,8 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objA.scale = obj.scale.copy()
                         objA.location = obj.location.copy()
                         objA.rotation_euler = obj.rotation_euler.copy()
+                        # Copy ID properties
+                        for key in obj.keys(): objA[key] = obj[key]
                         
                         ### Prepare second object
                         if qDebugVerbose: print("## MF: Prepare second object")
@@ -709,6 +716,8 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
                         objB.scale = obj.scale.copy()
                         objB.location = obj.location.copy()
                         objB.rotation_euler = obj.rotation_euler.copy()
+                        # Copy ID properties
+                        for key in obj.keys(): objB[key] = obj[key]
                                                                 
                         ### Check mesh results for sanity (preparation)
                         if qDebugVerbose: print("## MF: Check mesh results for sanity (preparation)")
@@ -936,8 +945,6 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     for obj in objsHistoryList:
         try: obj.select = 1
         except: pass
-    # Deselect all objects
-    #bpy.ops.object.select_all(action='DESELECT')
                                                             
     print('Done. -- Time: %0.2f s' %(time.time() -time_start))
     

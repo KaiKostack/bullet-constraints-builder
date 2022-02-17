@@ -397,6 +397,8 @@ def tool_separateLoose(scene):
             if obj != None and obj.select:
                 obj.select = 0
                 objsConst.add(obj)
+                
+    # Code to generate a component ID per object would belong here but for now it will be used only for discretization
 
     # Remove rigid body settings because of the unlinking optimization in the external module they will be lost anyway (while the RBW group remains)
     bpy.ops.rigidbody.objects_remove()
@@ -474,6 +476,17 @@ def tool_discretize(scene):
     if len(objs) == 0:
         print("No mesh objects changed because of attached constraints.")
         return
+
+    # Generate a component ID per object as property
+    ID = 1
+    for obj in selection:
+        try: IDcur = obj["ID"]  # Check for existing IDs and take them into account
+        except: pass
+        else:
+            if IDcur > ID: ID = IDcur +1
+    for obj in selection:
+        if "ID" not in obj.keys():
+            obj["ID"] = ID; ID += 1
 
     ### Sort out user-defined objects (members of a specific group)
     grpName = "bcb_noDiscretization"

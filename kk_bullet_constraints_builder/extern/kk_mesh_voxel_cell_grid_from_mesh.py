@@ -701,6 +701,9 @@ def copyCustomData(obj, objSrc):
     for slot in objSrc.material_slots:
         bpy.ops.object.material_slot_add() 
         obj.material_slots[-1].material = slot.material
+        
+    # Copy ID properties
+    for key in objSrc.keys(): obj[key] = objSrc[key]
 
 ################################################################################
 

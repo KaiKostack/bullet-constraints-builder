@@ -957,4 +957,5 @@ def monitor_freeBuffers(scene):
 
                 del bpy.app.driver_namespace["bcb_monitor_fm"]
 
-            del bpy.app.driver_namespace["bcb_progrWeakBroken"]
+            try: del bpy.app.driver_namespace["bcb_progrWeakBroken"]
+            except: pass

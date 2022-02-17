@@ -122,7 +122,7 @@ def setConstParams(cData,cDatb,cDef, name=None,loc=None,obj1=None,obj2=None,tol1
 
 ########################################
     
-def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect, connectsBtMul):
+def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect, connectsBtMul):
     
     props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
@@ -288,6 +288,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     brkThresExprP_A = elemGrps_elemGrpA[EGSidxBTP]
                     brkThresValuePL_A = elemGrps_elemGrpA[EGSidxBTPL]
                     mul = elemGrps_elemGrpA[EGSidxBTX]
+                    if objsID[pair[0]] != objsID[pair[1]]:
+                        mul *= elemGrps_elemGrpA[EGSidxBTI]
                     # Make sure that user expressions are evaluated first to prevent invisible order of operation issues
                     if len(brkThresExprC_A): brkThresExprC_A = "(" +brkThresExprC_A +")"
                     if len(brkThresExprT_A): brkThresExprT_A = "(" +brkThresExprT_A +")"
@@ -348,6 +350,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, connectsPair, connectsLoc, 
                     brkThresExprP_B = elemGrps_elemGrpB[EGSidxBTP]
                     brkThresValuePL_B = elemGrps_elemGrpB[EGSidxBTPL]
                     mul = elemGrps_elemGrpB[EGSidxBTX]
+                    if objsID[pair[0]] != objsID[pair[1]]:
+                        mul *= elemGrps_elemGrpA[EGSidxBTI]
                     # Make sure that user expressions are evaluated first to prevent invisible order of operation issues
                     if len(brkThresExprC_B): brkThresExprC_B = "(" +brkThresExprC_B +")"
                     if len(brkThresExprT_B): brkThresExprT_B = "(" +brkThresExprT_B +")"

@@ -172,8 +172,13 @@ def gatherObjects(scene):
     ### Create main object lists from selection
     objs = []
     emptyObjs = []
+    objsID = []
     for obj in scene.objects:
         if obj.select and not obj.hide and obj.is_visible(scene):
+            # Look for a component ID property
+            try: ID = obj["ID"]
+            except: objsID.append(0)
+            else: objsID.append(ID)
             # Clear object properties
             #for key in obj.keys(): del obj[key]
             # Detect if mesh or empty (constraint)
@@ -182,7 +187,7 @@ def gatherObjects(scene):
             elif obj.type == 'EMPTY' and obj.rigid_body_constraint != None:
                 emptyObjs.append(obj)
     
-    return objs, emptyObjs
+    return objs, emptyObjs, objsID
 
 ################################################################################   
 

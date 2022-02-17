@@ -452,7 +452,7 @@ def getConfigDataFromScene(scene):
                 
 ################################################################################   
 
-def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect):
+def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, objsID, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect):
     
     ### Store build data in scene
     print("Storing build data in scene...")
@@ -471,6 +471,8 @@ def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, connectsP
         scene["bcb_emptyObjs"] = data
     if childObjs != None:
         scene["bcb_childObjs"] = [obj.name for obj in childObjs]
+    if objsID != None:
+        scene["bcb_objsID"] = [ID for ID in objsID]
     if connectsPair != None:
         scene["bcb_connectsPair"] = connectsPair
     if connectsPairParent != None:
@@ -532,6 +534,9 @@ def getBuildDataFromScene(scene):
             except: childObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
         else: childObjs.append(None)
         
+    try: objsID = scene["bcb_objsID"]
+    except: objsID = []; print("Error: bcb_objsID property not found, rebuilding constraints is required.")
+
     try: connectsPair = scene["bcb_connectsPair"]
     except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
 
@@ -560,6 +565,7 @@ def getBuildDataFromScene(scene):
         log.append([obj.name for obj in objs])
         log.append([obj.name for obj in emptyObjs])
         log.append([obj.name for obj in childObjs])
+        log.append([ID for ID in objsID])
         log.append(makeListsPickleFriendly(connectsPair))
         log.append(makeListsPickleFriendly(connectsPairParent))
         log.append(makeListsPickleFriendly(connectsLoc))
@@ -573,7 +579,7 @@ def getBuildDataFromScene(scene):
         log.append([obj.name for obj in bpy.context.scene.objects])
         dataToFile(log, os.path.join(logPath, "log_bcb_scene.txt"))
         
-    return objs, emptyObjs, childObjs, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect
+    return objs, emptyObjs, childObjs, objsID, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect
 
 ################################################################################   
 
