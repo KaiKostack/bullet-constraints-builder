@@ -254,7 +254,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
 
             ### Element length approximation (center to center vector)
             dirVec = objB.matrix_world.to_translation() -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-            dirVecN = dirVec.normalized()
             geoLengthApprox = dirVec.length
 
             ### Check if connection between different groups is not allowed and remove them

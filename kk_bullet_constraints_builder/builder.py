@@ -74,14 +74,12 @@ def build():
                     ###### Prepare objects (make unique, apply transforms etc.)
                     prepareObjects(objs)
                     ###### Find connections by vertex pairs
-                    #connectsPair, connectsPairDist = findConnectionsByVertexPairs(objs, objsEGrp)
+                    #connectsPair, connectsPairDist, connectsLoc = findConnectionsByVertexPairs(objs, objsEGrp)
                     ###### Find connections by boundary box intersection and skip connections whose elements are too small and store them for later parenting
                     connectsPair, connectsPairDist = findConnectionsByBoundaryBoxIntersection(objs)
                     ###### Delete connections whose elements are too small and make them parents instead
                     if props.minimumElementSize: connectsPair, connectsPairParent = deleteConnectionsWithTooSmallElementsAndParentThemInstead(objs, connectsPair, connectsPairDist)
                     else: connectsPairParent = []
-                    ###### Delete connections with too few connected vertices
-                    #connectsPair = deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair)
                     ###### Calculate contact area for all connections
                     ### For now this is not used anymore as it is less safe than to derive an accurate contact area indirectly by using: volume /length
                     if props.useAccurateArea:

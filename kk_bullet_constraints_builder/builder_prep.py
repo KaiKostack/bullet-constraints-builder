@@ -301,12 +301,14 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
     ### Find connections by vertex pairs
     connectsPair = []          # Stores both connected objects indices per connection
     connectsPairDist = []      # Stores distance between both elements
+    connectsVpairCnt = []      # Stores vertex pair count per connection
+    connectsLoc = []           # Stores connection locations
+    objsConnectCnt = [0]*len(objs)   # Stores the connection count per object
     for k in range(len(objs)):
         sys.stdout.write('\r' +"%d" %k)
         # Update progress bar
         bpy.context.window_manager.progress_update(k /len(objs))
         
-        qNextObj = 0
         obj = objs[k]
         mat = obj.matrix_world
         me = obj.data
@@ -314,12 +316,8 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
         ### Find closest objects via kd-tree
         co_find = obj.location
         aIndex = []; aDist = []  #; aCo = [] 
-        if props.connectionCountLimit:
-            for (co, index, dist) in kdObjs.find_n(co_find, props.connectionCountLimit +1):  # +1 because the first item will be removed
-                aIndex.append(index); aDist.append(dist)  #; aCo.append(co)
-        else:
-            for (co, index, dist) in kdObjs.find_range(co_find, 999999):
-                aIndex.append(index); aDist.append(dist)  #; aCo.append(co) 
+        for (co, index, dist) in kdObjs.find_range(co_find, 999999):
+            aIndex.append(index); aDist.append(dist)  #; aCo.append(co) 
         aIndex = aIndex[1:]; aDist = aDist[1:]  # Remove first item because it's the same as co_find (zero distance)
         
         ### Walk through current object vertices
@@ -327,8 +325,7 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
             vert = me.vertices[m]
             co_find = mat *vert.co     # Multiply matrix by vertex coordinates to get global coordinates
                         
-            # Loop through comparison object found
-            connectCnt = 0
+            # Loop through comparison objects found
             for j in range(len(aIndex)):
                 l = aIndex[j]
                 
@@ -348,16 +345,74 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
                         if pair not in connectsPair:
                             connectsPair.append(pair)
                             connectsPairDist.append(aDist[j])
-                            connectCnt += 1
-                            if connectCnt == props.connectionCountLimit:
-                                if elemGrps[objsEGrp[k]][EGSidxRqVP] <= 1:
-                                    qNextObj = 1
-                                    break
-                            
-            if qNextObj: break
-        
+                            objsConnectCnt[k] += 1
+                            objsConnectCnt[l] += 1
+                            connectsVpairCnt.append(1)
+                            connectsLoc.append(co)
+                        else:
+                            idx = connectsPair.index(pair)
+                            connectsVpairCnt[idx] += 1
+                            connectsLoc[idx] = connectsLoc[idx] *(1 -(1 /connectsVpairCnt[idx])) +co *(1 /connectsVpairCnt[idx])  # Average all locs
     print()
-    return connectsPair, connectsPairDist
+                            
+    # Vertex pair count correction because we counted every pair twice 
+    connectsVpairCnt = [int(cnt /2) for cnt in connectsVpairCnt]
+    
+    ### Filter for vertex pair count condition
+    connectsPairNew = []
+    connectsPairDistNew = []
+    connectsLocNew = []
+    connectsPair_iter = iter(connectsPair)
+    connectsPairDist_iter = iter(connectsPairDist)
+    connectsLoc_iter = iter(connectsLoc)
+    connectsVpairCnt_iter = iter(connectsVpairCnt)
+    for k in range(len(connectsPair)):
+        pair = next(connectsPair_iter)
+        vPairCnt = next(connectsVpairCnt_iter)
+        pairDist = next(connectsPairDist_iter)   
+        loc = next(connectsLoc_iter)
+        Prio_A = elemGrps[objsEGrp[objs.index(objs[pair[0]])]][EGSidxPrio]
+        Prio_B = elemGrps[objsEGrp[objs.index(objs[pair[1]])]][EGSidxPrio]
+        reqVertexPairsObjA = elemGrps[objsEGrp[objs.index(objs[pair[0]])]][EGSidxRqVP]
+        reqVertexPairsObjB = elemGrps[objsEGrp[objs.index(objs[pair[1]])]][EGSidxRqVP]
+        if vertPairCnt >= reqVertexPairsObjA and vertPairCnt >= reqVertexPairsObjB and Prio_A == Prio_B \
+        or vertPairCnt >= reqVertexPairsObjA and Prio_A > Prio_B \
+        or vertPairCnt >= reqVertexPairsObjB and Prio_A < Prio_B:
+            connectsPairNew.append(pair)
+            connectsPairDistNew.append(pairDist)
+            connectsLocNew.append(loc)
+        else:
+            # Connections count correction
+            objsConnectCnt[pair[0]] -= 1
+            objsConnectCnt[pair[1]] -= 1
+    connectsPair = connectsPairNew
+    connectsPairDist = connectsPairDistNew
+    connectsLoc = connectsLocNew
+
+    ### Filter for connection count condition
+    connectsPairNew = []
+    connectsPairDistNew = []
+    connectsLocNew = []
+    connectsPair_iter = iter(connectsPair)
+    connectsPairDist_iter = iter(connectsPairDist)
+    connectsLoc_iter = iter(connectsLoc)
+    for k in range(len(connectsPair)):
+        pair = next(connectsPair_iter)
+        pairDist = next(connectsPairDist_iter)   
+        loc = next(connectsLoc_iter)
+        if max(objsConnectCnt[pair[0]], objsConnectCnt[pair[1]]) <= props.connectionCountLimit:
+            connectsPairNew.append(pair)
+            connectsPairDistNew.append(pairDist)
+            connectsLocNew.append(loc)
+        else:
+            # Connections count correction
+            objsConnectCnt[pair[0]] -= 1
+            objsConnectCnt[pair[1]] -= 1
+    connectsPair = connectsPairNew
+    connectsPairDist = connectsPairDistNew
+    connectsLoc = connectsLocNew
+
+    return connectsPair, connectsPairDist, connectsLoc
 
 ################################################################################   
 
@@ -560,31 +615,7 @@ def makeParentsForTooSmallElementsReal(objs, connectsPairParent):
     bpy.ops.rigidbody.objects_remove()
         
     print()
-
-################################################################################   
-
-def deleteConnectionsWithTooFewConnectedVertices(objs, objsEGrp, connectsPair):
     
-    ### Delete connections with too few connected vertices
-    if debug: print("Deleting connections with too few connected vertices...")
-    
-    elemGrps = mem["elemGrps"]
-    connectsPairTmp = []
-    connectCntOld = len(connectsPair)
-    connectCnt = 0
-    for i in range(len(connectsPair)):
-        pair = connectsPair[i]
-        vertPairCnt = len(connectsPair[i]) /2
-        reqVertexPairsObjA = elemGrps[objsEGrp[objs.index(objs[pair[0]])]][EGSidxRqVP]
-        reqVertexPairsObjB = elemGrps[objsEGrp[objs.index(objs[pair[1]])]][EGSidxRqVP]
-        if vertPairCnt >= reqVertexPairsObjA and vertPairCnt >= reqVertexPairsObjB:
-            connectsPairTmp.append(pair)
-            connectCnt += 1
-    connectsPair = connectsPairTmp
-    
-    print("Connections skipped due to too few connecting vertices:", connectCntOld -connectCnt)
-    return connectsPair
-        
 ################################################################################   
 
 def boundaryBoxFaces(obj, qGlobalSpace, selMin=None, selMax=None):
