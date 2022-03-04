@@ -522,7 +522,10 @@ def tool_discretize(scene):
         objC = bpy.context.scene.objects.active
         objC.name = "BCB_CuttingPlane"
         objC.select = 0
-
+        # Add Solidify modifier because Bmesh booleans in the official Blender version require a closed volume to work correctly
+        bpy.ops.object.modifier_add(type='SOLIDIFY')
+        objC.modifiers["Solidify"].thickness = 200
+        
         # Select mesh objects
         for obj in objs: obj.select = 1
         bpy.context.scene.objects.active = selectionActive

@@ -114,7 +114,7 @@ def build_fm(use_handler=0):
         #bpy.ops.graph.handle_type(type='AUTO_CLAMPED')
         # Alternative: bpy.ops.graph.clean(channels=True)
         #bpy.context.area.type = areaType_bak
-    
+
     ### Create object to use the Fracture Modifier on
     bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), rotation=(0, 0, 0))
     ob = bpy.context.scene.objects.active
@@ -139,14 +139,6 @@ def build_fm(use_handler=0):
             print("Error: No export data found, couldn't build Fracture Modifier object.")
             return
         cDef, exData, exPairs, objNames = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
-
-        ### Prepare objects list from names (using dictionary for faster item search)
-        scnObjs = {}
-        for obj in scene.objects: scnObjs[obj.name] = obj
-        objs = []
-        for name in objNames:
-            try: objs.append(scnObjs[name])
-            except: objs.append(None)
 
         for obj in objs:
             if obj.parent: objParent = obj.parent; break
@@ -197,6 +189,9 @@ def build_fm(use_handler=0):
 
     ob.select = 0
     
+    ###### Add vertex group to passive objects to mark them for later use (as for rediscretization of a debris heap)
+    markPassiveVerts(scene)
+
     ###### Preparing air drag simulation
     air(scene)
 
@@ -256,6 +251,42 @@ def build_fm(use_handler=0):
     print('Done.')
     print()
     
+########################################
+
+def markPassiveVerts(scene):
+    
+    ### Unpack BCB data from text file
+    try: s = bpy.data.texts[asciiExportName +".txt"].as_string()
+    except:
+        print("Error: No export data found, couldn't build Fracture Modifier object.")
+        return
+    cDef, exData, exPairs, objNames = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
+    
+    ### Prepare objects list (using dictionaries for faster item search)
+    scnObjs = {}
+    for obj in scene.objects: scnObjs[obj.name] = obj
+    objs = []
+    for name in objNames:
+        try: objs.append(scnObjs[name])
+        except: objs.append(None)
+
+    ### Add vertex group to passive objects to mark them for later use (as for rediscretization of a debris heap)
+    passiveGrpName = "Passive"
+    for obj in objs:
+        if "256" in obj.name: print(obj.name)
+        if obj.rigid_body.type == 'PASSIVE':
+            if "256" in obj.name: print("PASSIVE")
+            ### Create vertex group
+            bpy.context.scene.objects.active = obj
+            if passiveGrpName not in obj.vertex_groups:
+                bpy.ops.object.vertex_group_add()
+                vGrp = obj.vertex_groups[-1:][0]
+                vGrp.name = passiveGrpName
+                # Set vertex weights to 1
+                vGrp.add(list(range(len(obj.data.vertices))), 1.0, 'REPLACE')
+
+    scene.update()
+
 ########################################
 
 def air(scene):
