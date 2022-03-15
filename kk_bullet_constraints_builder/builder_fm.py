@@ -273,9 +273,7 @@ def markPassiveVerts(scene):
     ### Add vertex group to passive objects to mark them for later use (as for rediscretization of a debris heap)
     passiveGrpName = "Passive"
     for obj in objs:
-        if "256" in obj.name: print(obj.name)
         if obj.rigid_body.type == 'PASSIVE':
-            if "256" in obj.name: print("PASSIVE")
             ### Create vertex group
             bpy.context.scene.objects.active = obj
             if passiveGrpName not in obj.vertex_groups:

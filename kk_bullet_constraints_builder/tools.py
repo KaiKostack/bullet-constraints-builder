@@ -42,6 +42,7 @@ from file_io import *          # Contains file input & output functions
 
 import kk_import_motion_from_text_file    # Contains earthquake motion import function
 import kk_mesh_fracture                   # Contains boolean based discretization function
+import kk_mesh_fracture_bisect            # Contains bisect based discretization function
 import kk_mesh_separate_less_loose        # Contains polygon based discretization function for non-manifolds
 import kk_mesh_separate_loose             # Contains speed-optimized mesh island separation function
 import kk_mesh_subdiv_to_level            # Contains edge length based subdivision function for non-manifolds
@@ -477,6 +478,24 @@ def tool_discretize(scene):
         print("No mesh objects changed because of attached constraints.")
         return
 
+    ### Flip face normals for objects with negative scaling to avoid problems with booleans (will be reverted again when scaling is applied)
+    bpy.context.tool_settings.mesh_select_mode = False, False, True
+    # Remove instancing from objects
+    bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=False, obdata=True, material=False, texture=False, animation=False)
+    for obj in objs:
+        if obj.scale[0] < 0 or obj.scale[1] < 0 or obj.scale[2] < 0:
+            bpy.context.scene.objects.active = obj
+            # Enter edit mode              
+            bpy.ops.object.mode_set(mode='EDIT')
+            # Select all elements
+            bpy.ops.mesh.select_all(action='SELECT')
+            # Flip normals
+            bpy.ops.mesh.flip_normals()
+            # Leave edit mode
+            bpy.ops.object.mode_set(mode='OBJECT')
+    # Converting mesh scale to 1
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
     # Generate a component ID per object as property
     ID = 1
     for obj in selection:
@@ -499,20 +518,21 @@ def tool_discretize(scene):
         objs = objsNew
             
     ### Sort out non-manifold meshes (not water tight and thus not suited for boolean operations)
-    objsNew = []
     objsNonMan = []
-    for obj in objs:
-        bpy.context.scene.objects.active = obj
-        me = obj.data
-        # Find non-manifold elements
-        bm = bmesh.new()
-        bm.from_mesh(me)
-        nonManifolds = [i for i, ele in enumerate(bm.edges) if not ele.is_manifold]
-        bm.free()
-        if len(nonManifolds) or props.surfaceForced: objsNonMan.append(obj)
-        else:                                        objsNew.append(obj)
-    objs = objsNew
-    print("Non-manifold elements found:", len(objsNonMan))
+    if not props.preprocTools_dis_bis:  # Only required if not bisect method
+        objsNew = []
+        for obj in objs:
+            bpy.context.scene.objects.active = obj
+            me = obj.data
+            # Find non-manifold elements
+            bm = bmesh.new()
+            bm.from_mesh(me)
+            nonManifolds = [i for i, ele in enumerate(bm.edges) if not ele.is_manifold]
+            bm.free()
+            if len(nonManifolds) or props.surfaceForced: objsNonMan.append(obj)
+            else:                                        objsNew.append(obj)
+        objs = objsNew
+        print("Non-manifold elements found:", len(objsNonMan))
 
     ###### Junction splitting and preparation for boolean halving
     
@@ -541,7 +561,8 @@ def tool_discretize(scene):
         # Parameters: [qSplitAtJunctions, minimumSizeLimit, qTriangulate, halvingCutter]
         if props.preprocTools_dis_jus:
             print("\nDiscretization - Junction pass:")
-            kk_mesh_fracture.run('BCB', ['JUNCTION', 0, 1, 'BCB_CuttingPlane'], None)
+            if not props.preprocTools_dis_bis: kk_mesh_fracture.run(scene, 'BCB', ['JUNCTION', 0, 1, 'BCB_CuttingPlane'], None)
+            else:                       kk_mesh_fracture_bisect.run(scene, 'BCB', ['JUNCTION', 0, 1, 'BCB_CuttingPlane'], None)
             
     ###### Voxel cell based discretization
 
@@ -557,11 +578,12 @@ def tool_discretize(scene):
 
     elif not props.preprocTools_dis_cel:
 
-        ###### Boolean based discretization
+        ###### Boolean or bisect based discretization
     
         print("\nDiscretization - Halving pass:")
         ###### External function
-        kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+        if not props.preprocTools_dis_bis: kk_mesh_fracture.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+        else:                       kk_mesh_fracture_bisect.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
         ### Add new objects to the object list and remove deleted ones
         updateObjList(scene, selection)
         updateObjList(scene, objs)
@@ -663,7 +685,8 @@ def tool_discretize(scene):
                 # Set object centers to geometry origin
                 bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
                 ###### External function
-                kk_mesh_fracture.run('BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+                if not props.preprocTools_dis_bis: kk_mesh_fracture.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+                else:                       kk_mesh_fracture_bisect.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
                 ### Add new objects to the object list and remove deleted ones
                 updateObjList(scene, selection)
                 updateObjList(scene, objs)
@@ -681,8 +704,6 @@ def tool_discretize(scene):
         
         if len(objsNonMan):
             print("\nDiscretization - Non-manifold pass:")
-            # Deselect all objects.
-            #bpy.ops.object.select_all(action='DESELECT')
             for obj in bpy.data.objects:  # We need to clear the entire database because the subdiv module sees deleted objects
                 if obj.select: obj.select = 0
             # Select non-manifold mesh objects

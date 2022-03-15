@@ -1,5 +1,5 @@
 ######################################
-# Mesh Fracture v1.72 by Kai Kostack #
+# Mesh Fracture v1.73 by Kai Kostack #
 ######################################
 
 # ##### BEGIN GPL LICENSE BLOCK #####
@@ -25,8 +25,8 @@ from mathutils import *
 
 ################################################################################   
 
-def run(objsSource, crackOrigin, qDynSecondScnOpt):
-    """"""
+def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
+
     ### Vars
     cookyCutterPlane = 'Plane'      #      | The "knife" object, can be arbitrary geometry like a subdivided plane with displacement
     objectCountLimit = 5            # 10   | Shard count to be generated per selected object (might be less because of other limits)
@@ -45,7 +45,7 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     qSeparateLooseStep = 1          # 1    | Perform Separate Loose on shards after each fracture step
 
     ### Vars for halving
-    qUseHalving = 0                 # 0    | Enables special mode for subdividing meshes into halves until either minimumSizeLimit or objectCountLimit is reached (sets boolErrorRetryLimit = 0)
+    qUseHalving = 1                 # 0    | Enables special mode for subdividing meshes into halves until either minimumSizeLimit or objectCountLimit is reached (sets boolErrorRetryLimit = 0)
                                     #      | It's recommended to set the latter to a very high count to get a universal shard size. This is incompatible with Dynamic Fracture because object centers are changed.
     qSplitAtJunctions = 0           # 1    | Try to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes
     junctionTol = .001              # .001 | Tolerance for junction detection to avoid cutting off of very thin geometry slices (requires normals consistently pointing outside)
@@ -117,7 +117,6 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
         ### Create object list of selected objects
         ### (because we add more objects with following function we need a separate list)
         objs = []
-        objsKeys = []
         for obj in scene.objects:
             if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
                 objs.append(obj)
@@ -125,12 +124,6 @@ def run(objsSource, crackOrigin, qDynSecondScnOpt):
     else:
         ### This part allows to fracture objects from database even from a different empty scene (optimization for Dynamic Fracture)
         if qDynSecondScnOpt:
-            # Remember scene where cookyCutterPlane is linked to
-            for scn in bpy.data.scenes:
-                for obj in scn.objects:
-                    if cookyCutterPlane == obj.name:
-                        sceneOriginal = scn
-                        break
             # Link cookyCutterPlane to current scene
             try: bpy.context.screen.scene.objects.link(bpy.data.objects[cookyCutterPlane])
             except: pass
@@ -986,5 +979,4 @@ def boundaryBox(obj, qGlobalSpace):
 ################################################################################   
                    
 if __name__ == "__main__":
-    """"""
-    run(None, None, None)
+    run(None, None, None, None)

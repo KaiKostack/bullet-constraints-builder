@@ -38,6 +38,8 @@ kk_import_motion_from_text_file.py    # Contains earthquake motion import functi
 
 kk_mesh_fracture.py                   # Contains boolean based discretization function
 
+kk_mesh_fracture_bisect.py            # Contains bisect based discretization function
+
 kk_mesh_separate_less_loose.py        # Contains polygon based discretization function for non-manifolds
 
 kk_mesh_separate_loose.py             # Contains speed-optimized mesh island separation function
