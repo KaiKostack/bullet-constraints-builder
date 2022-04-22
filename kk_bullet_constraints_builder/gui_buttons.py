@@ -238,7 +238,7 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             ### Start baking when building is completed
             if props.menu_gotData:
                 if props.automaticMode and not "bcb_ext_noSimulation" in scene.keys():  # Option for external scripts to prevent simulation
-                    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
+                    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend', compress=True)
                     # Prepare event handlers
                     bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
                     bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
@@ -299,7 +299,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
 
         ### Start baking when building is completed
         else:
-            if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
+            if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend', compress=True)
             # Prepare event handlers
             bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
             bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
@@ -602,7 +602,7 @@ class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
         ###### Store menu config data in scene
         storeConfigDataInScene(scene)
         props.menu_gotConfig = 1
-        if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('.blend')[0] +'_prep.blend')
+        if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('.blend')[0] +'_prep.blend', compress=True)
         return{'FINISHED'}
 
 ########################################

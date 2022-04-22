@@ -274,14 +274,14 @@ def automaticModeAfterStop():
 
     props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
-    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
+    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend', compress=True)
     ###### Clear all data from scene and delete also constraint empty objects
     if "bcb_prop_elemGrps" in scene.keys(): clearAllDataFromScene(scene, qKeepBuildData=1)
     props.menu_gotData = 0
     ###### Store menu config data in scene (again)
     storeConfigDataInScene(scene)
     props.menu_gotConfig = 1
-    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend')
+    if props.saveBackups: bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend', compress=True)
         
 ########################################
 

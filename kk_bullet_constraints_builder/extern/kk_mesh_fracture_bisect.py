@@ -247,6 +247,7 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             # Remove scale from face normal to avoid malformed vector
                             normal = face.normal *obj.matrix_world.inverted()
                             normal = normal.normalized()
+                            objC_normal = normal
                             if normal.length > 0 and (not junctionTolRect or (abs(normal.angle(Vector((1,0,0)))-pi2) > pi2-junctionTolRect \
                             or abs(normal.angle(Vector((0,1,0)))-pi2) > pi2-junctionTolRect or abs(normal.angle(Vector((0,0,1)))-pi2) > pi2-junctionTolRect)):
                                 ### Calculate boundary box including tolerance

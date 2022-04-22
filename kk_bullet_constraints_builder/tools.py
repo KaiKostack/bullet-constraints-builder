@@ -399,6 +399,16 @@ def tool_separateLoose(scene):
                 obj.select = 0
                 objsConst.add(obj)
                 
+    ### Sort out user-defined objects (members of a specific group)
+    grpName = "bcb_noSeparateLoose"
+    selectionSkip = []
+    if grpName in bpy.data.groups:
+        for obj in selection:
+            if obj.name in bpy.data.groups[grpName].objects:
+                obj.select = 0
+                selectionSkip.append(obj)
+        if len(selectionSkip): print("Elements skipped by '%s' group:" %grpName, len(selectionSkip))
+    
     # Code to generate a component ID per object would belong here but for now it will be used only for discretization
 
     # Remove rigid body settings because of the unlinking optimization in the external module they will be lost anyway (while the RBW group remains)
@@ -418,6 +428,9 @@ def tool_separateLoose(scene):
         if len(obj.modifiers) > 0: obj.select = 0
     # Set object centers to geometry origin
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+
+    # Reselect previously deselected objects
+    for obj in selectionSkip: obj.select = 1
 
     # Revert to start selection
     for obj in selection: obj.select = 1

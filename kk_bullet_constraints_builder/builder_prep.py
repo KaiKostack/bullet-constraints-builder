@@ -1156,8 +1156,8 @@ def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connec
         connectsPair = connectsPairTmp
         connectsGeo = connectsGeoTmp
         connectsLoc = connectsLocTmp
-    
-    print("Connections skipped due to zero contact area:", connectCntOld -connectCnt)
+        print("Connections skipped due to zero contact area:", connectCntOld -connectCnt)
+
     return connectsPair, connectsGeo, connectsLoc
 
 ################################################################################   
@@ -2014,10 +2014,22 @@ def correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo):
                     
 ################################################################################   
 
-def generateDetonator(objs, connectsPair):
+def generateDetonator(objs, connectsPair, objsEGrp):
             
     scene = bpy.context.scene
     props = bpy.context.window_manager.bcb
+    elemGrps = mem["elemGrps"]
+
+    print("\nPreprocessing detonation simulation...")
+
+    ### Sort out user-defined objects (members of a specific group)
+    grpName = "bcb_noDetonator"
+    objsSkip = []
+    if grpName in bpy.data.groups:
+        for obj in objs:
+            if obj.name in bpy.data.groups[grpName].objects:
+                objsSkip.append(obj)
+        if len(objsSkip): print("Elements skipped by '%s' group:" %grpName, len(objsSkip))
 
     ### Get detonator object
     detonatorObj = None
@@ -2031,11 +2043,41 @@ def generateDetonator(objs, connectsPair):
         connectsBtMul = [1 for i in connectsPair]
         return connectsBtMul
 
+    ### Count average element data per element for the entire structure
+    elemArea = 0
+    elemVolume = 0
+    elemMass = 0
+    for idx in range(len(objs)):
+        obj = objs[idx]
+        # Area
+        dim = obj.dimensions; dimAxis = [1, 2, 3]
+        dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
+        elemArea += dim[1] *dim[2]
+        # Volume
+        elemGrp = objsEGrp[idx]
+        elemGrps_elemGrp = elemGrps[elemGrp]
+        materialDensity = elemGrps_elemGrp[EGSidxDens]
+        if materialDensity > 0: elemVolume += obj.rigid_body.mass /materialDensity
+        # Mass
+        elemMass += obj.rigid_body.mass
+    objsCnt = len(objs)
+    if objsCnt:
+        elemArea /= objsCnt
+        elemVolume /= objsCnt
+        elemMass /= objsCnt
+    if elemVolume > 0: elemDensity = elemMass /elemVolume
+    else: elemDensity = 0
+    print("Average element stats for detonation simulation:")
+    print("  Area: %0.3f m^2 (%0.3f m)" %(elemArea, elemArea**0.5))  # Not used
+    print("  Volume: %0.3f m^3" %elemVolume)                         # Not used
+    print("  Mass: %0.3f kg" %elemMass)                              # Not used
+    print("  Density: %0.3f kg/m^3" %elemDensity)                    # Not used
+
     ###### Detect the confined/open space ratio at each element using ray casting
-    print("Searching confined spaces for detonation simulation... (%d)" %len(objs))
+    print("Searching confined spaces for detonation simulation... (%d)" %objsCnt)
 
     ### Vars
-    if len(objs) <= 4000: raySamples = 1      # Number of random rays per element to be used for ray casting
+    if objsCnt <= 4000: raySamples = 1      # Number of random rays per element to be used for ray casting
     else:                 raySamples = 1      # (1 = enables a faster normal estimation based method instead of brute force sampling)
     TNTequivalent = 1                         # TNT equivalent Qexplosive/Qtnt, where Q are energies of explosion
     qClampLowest  = 0                         # Enables clamping of the lowest outliers to ensure simulation stability using a non-linear gradient (experimental)
@@ -2049,9 +2091,9 @@ def generateDetonator(objs, connectsPair):
 
     random.seed(0)
     objsDetonRatio = []
-    objsCoLen = [0] *len(objs)
-    objsCoIdxs = [[]] *len(objs)
-    for i in range(len(objs)):
+    objsCoLen = [0] *objsCnt
+    objsCoIdxs = [[]] *objsCnt
+    for i in range(objsCnt):
         sys.stdout.write('\r' +"%d" %i)
         obj = objs[i]
         raySamplesOpen = 0
@@ -2065,7 +2107,7 @@ def generateDetonator(objs, connectsPair):
             qRayCast = 1
             if raySample == 0:
                 ### Build kd-tree for object locations
-                kdObjs = mathutils.kdtree.KDTree(len(objs))
+                kdObjs = mathutils.kdtree.KDTree(objsCnt)
                 for j, ob in enumerate(objs):
                     kdObjs.insert(ob.location, j)
                 kdObjs.balance()
@@ -2122,7 +2164,7 @@ def generateDetonator(objs, connectsPair):
 
     ### Merging of open space ratios for objects withing ray length distance to smooth out results
     if objsRatioMerge:
-        for i in range(len(objs)):
+        for i in range(objsCnt):
             co_len = objsCoLen[i]
             if co_len > 0:
                 obj = objs[i]
@@ -2144,14 +2186,19 @@ def generateDetonator(objs, connectsPair):
     connectsPair_iter = iter(connectsPair)
     btMultiplierAver = 0; btMultiplierAverCnt = 0
     for k in range(len(connectsPair)):
-        pair = next(connectsPair_iter)   
-        objAratio = objsDetonRatio[pair[0]]
-        objBratio = objsDetonRatio[pair[1]]
-        # Use average confined/open space ratio for connection
-        openSpaceRatio = (objAratio +objBratio) /2
-        # Value will be considered in breaking threshold multiplier as we only have homogenous strength force fields in Blender.
-        # The force field magnitude will be rescaled accordingly, so that the pressure wave won't produce more damage than to be expected.
-        btMultiplier = max(0, 1 -(openSpaceRatio *deflection))
+        pair = next(connectsPair_iter)
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
+        if objA not in objsSkip or objB not in objsSkip:
+            objAratio = objsDetonRatio[pair[0]]
+            objBratio = objsDetonRatio[pair[1]]
+            # Use average confined/open space ratio for connection
+            openSpaceRatio = (objAratio +objBratio) /2
+            # Value will be considered in breaking threshold multiplier as we only have homogenous strength force fields in Blender.
+            # The force field magnitude will be rescaled accordingly, so that the pressure wave won't produce more damage than to be expected.
+            btMultiplier = max(0, 1 -(openSpaceRatio *deflection))
+        else:
+            btMultiplier = 1
         connectsBtMul.append(btMultiplier)
         if btMultiplier < 1:
             btMultiplierAver += btMultiplier
@@ -2170,16 +2217,18 @@ def generateDetonator(objs, connectsPair):
                     connectsBtMul[idx] = correctRef -(1-1/(x+1))
 
     else: openSpaceCorrect = 1
-            
+    
     ### Vars
     explosiveMass = props.detonExplosiveMass  # Mass of the explosive in kg
     blastWaveVel  = props.detonBlastWaveVel   # Velocity with which the blast wave is traveling in m/s (depends on frame rate)
     pullBackDelay = props.detonPullBackDelay  # Delay in frames until the negative pressure wave follows the positive one (pressure will be divided by this value to keep overall pressure consistent)
     groundReflect = props.detonGroundReflect  # Enables reflection of the blast wave from the ground by adding duplicate force fields beneath the surface
-    elemArea = (props.preprocTools_dis_siz*.75*1000)**2  # Typical element area for your model in mm^2
-    timeScale = props.timeScalePeriodValue               # Pressure wave propagation time scale (depends on frame rate)
-    startFr = scene.frame_start                          # Startframe of the detonation
-    endFr = scene.frame_start +props.timeScalePeriod -1 -pullBackDelay  # Endframe of the effect
+    timeScale = props.timeScalePeriodValue    # Pressure wave propagation time scale (depends on frame rate)
+
+    if "bcb_startFrame" in detonatorObj.keys():
+          startFr = detonatorObj["bcb_startFrame"]  # Startframe of the detonation
+    else: startFr = scene.frame_start
+    endFr = props.timeScalePeriod -pullBackDelay  # Endframe of the effect
 
     # Create surface reflection by duplicating the entire emitter
     for isReflection in range(groundReflect +1):
@@ -2216,6 +2265,7 @@ def generateDetonator(objs, connectsPair):
             obj.empty_draw_type = 'SPHERE'
             obj.field.use_min_distance = True
             obj.field.use_max_distance = True
+            obj.field.flow = 0  # Flow needs to be disabled as it limits the acting force
             # These vars will be animated
             #obj.field.strength = 0
             #obj.field.distance_min = 0
@@ -2233,17 +2283,19 @@ def generateDetonator(objs, connectsPair):
             
             ### Add points to empty animation curves for strength
             pIndex = 0
-            for frame in range(startFr, endFr+1):
-                if frame != endFr:
+            for frame in range(startFr-1, endFr+1):
+                if frame >= startFr and frame < endFr:
                     ### TNT peak pressure formula (result in bar, standard formula by Kinney)
                     x = ((frame -startFr) /scene.render.fps) *blastWaveVel *timeScale
                     eq = TNTequivalent *explosiveMass
                     str = ((808*(1+((x /eq**(1/3))/4.5)**2)) / (((1+((x /eq**(1/3))/0.048)**2) *(1+((x /eq**(1/3))/0.32)**2) *(1+((x /eq**(1/3))/1.35)**2))**0.5))
-                    str /= 10  # Conversion bar to F/mm^2 (or MPa)
-                    # Conversion from force to impulse is not needed
-                    str *= 1000  # Not sure why but force fields seem to be in mN
-                    str *= elemArea *sign
-                    str /= pullBackDelay
+                    # str value in bar
+                    str /= 10               # Conversion bar to N/mm^2 (or MPa)
+                    str *= 1000000          # Conversion N/mm^2 to N/m^2
+                    str *= 2.358            # Conversion N into force field strength (forceFieldStr = f *elemMass *9.81 *correction; correction = 2.358)
+                    str /= timeScale
+                    # str value in force field strength
+                    str *= sign             # Consider if push or pull force field
                     str *= openSpaceCorrect
                     if groundReflect: str /= 2
                 else:

@@ -167,7 +167,7 @@ def build():
                 ###### Correct bbox based contact area by volume
                 correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo)
                 ###### Create detonator force fields and data
-                connectsBtMul = generateDetonator(objs, connectsPair)
+                connectsBtMul = generateDetonator(objs, connectsPair, objsEGrp)
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
                 if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
