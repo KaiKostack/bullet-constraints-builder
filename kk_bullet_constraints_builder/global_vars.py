@@ -36,7 +36,7 @@ mem = bpy.app.driver_namespace
 ################################################################################
 
 ### Vars:
-bcb_version = (3, 5, 4)
+bcb_version = (3, 5, 5)
 
 ### Customizable element group presets
 presets = [
@@ -117,8 +117,8 @@ connectTypes = [           # Cnt C T S B P L T T T T      CT
 [ "2x GENERIC",              2, [1,1,0,0,0,0,1,1,0,0]], # 4. Compressive and tensile breaking thresholds
 [ "3x GENERIC",              3, [1,1,0,1,0,0,1,1,0,0]], # 5. Compressive, tensile + shearing and bending breaking thresholds
 [ "4x GENERIC",              4, [1,1,1,1,0,0,1,1,0,0]], # 6. Compressive, tensile, shearing and bending breaking thresholds
-[ "3x SPRING",               3, [1,0,0,0,1,1,0,0,1,1]], # 7. Linear omni-directional breaking threshold with plastic deformability
-[ "4x SPRING",               4, [1,0,0,0,1,1,0,0,1,1]], # 8. Linear omni-directional breaking threshold with plastic deformability
+[ "3x SPRING",               3, [1,0,0,0,0,1,0,0,1,1]], # 7. Linear omni-directional breaking threshold with plastic deformability
+[ "4x SPRING",               4, [1,0,0,0,0,1,0,0,1,1]], # 8. Linear omni-directional breaking threshold with plastic deformability
 [ "1x FIXED + 3x SPRING",    4, [1,0,0,0,1,1,1,1,1,1]], # 9. Linear omni-directional + bending breaking threshold with plastic deformability (2nd mode)
 [ "1x FIXED + 4x SPRING",    5, [1,0,0,0,1,1,1,1,1,1]], # 10. Linear omni-directional + bending breaking threshold with plastic deformability (2nd mode)
 [ "4x GENERIC + 3x SPRING",  7, [1,1,1,1,1,1,1,1,1,1]], # 11. Compressive, tensile, shearing and bending breaking thresholds with plastic deformability (2nd mode)
@@ -170,7 +170,7 @@ formulaAssistants = [
  "Exp:V+/-":"(0.15*k*(100*rho*fc)**(1/3))*(h*w)",
  "Exp:M+/-":"(fc*(1-rho)+fs*rho*e1*4.5)*h*h*w/12/1000"
 }]
-# Material strength values (N/mm
+# Material strength values (N/mm^2):
 # fs = strength of steel
 # fc = strength of concrete
 # fsu = ultimate strength of steel
@@ -186,14 +186,14 @@ formulaAssistants = [
 # ds = Ø steel stirrup bar
 # dl = Ø steel longitudinal bar
 #
-# Areas (mm
+# Areas (mm^2):
 # A = cross area beam (h*b)
 # As = total cross area of the sum of all longitudinal steel bars [mm^2]
 # asw = total cross area steel stirrup per meter [cm^2/m]
 #
 # Coefficients:
 # rho = reinforcement ratio (As/A)
-# y = shear coefficient (asw*10/d) [%]
+# y = shear reinforcement ratio (asw*10/d) [%]
 # 1.2 = coefficient for shear carrying capacity
 # e1 = distance between longitudinal irons in relation to the beam height (e/h) [%]  (h-2*c-dl)/h
 # n = number of longitudinal steel bars

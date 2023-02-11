@@ -1994,7 +1994,7 @@ def tool_forcesVisualization_eventHandler(scene):
         except: grp = bpy.data.groups.new(grpName)
         vizObjs = []
         for i in range(len(connectsViz)):
-            sys.stdout.write('\r' +"%d" %i)
+            sys.stdout.write('\r' +"%d" %   i)
             connect = connectsViz[i]
             name = connect[1]
             nameViz = "Viz_" +name
@@ -2172,7 +2172,7 @@ def tool_forcesVisualization_eventHandler(scene):
             bpy.ops.screen.animation_play()  # Stop animation playback
 
     ### If animation playback has stopped (can also be done by user) then unload the event handler and free all monitor data
-    if not bpy.context.screen.is_animation_playing:
+    if not bpy.context.screen.is_animation_playing and "log_vizObjs"in bpy.app.driver_namespace:
 
         ###### First calculate the sum of a specified ID property for all selected objects for console output
 

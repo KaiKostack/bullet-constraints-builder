@@ -760,7 +760,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             # If one axis is out of search distance range then fall back to simple boundary box based overlap
             if overlapXF < -searchDistMesh or overlapYF < -searchDistMesh or overlapZF < -searchDistMesh:
                   qSkipConnect = 1
-            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+            else: overlapX, overlapY, overlapZ = max(0,overlapXF), max(0,overlapYF), max(0,overlapZF)
         if areaA > 0:
             overlapXF = min(bbAMaxF[0],bbBMax[0]) -max(bbAMinF[0],bbBMin[0])
             overlapYF = min(bbAMaxF[1],bbBMax[1]) -max(bbAMinF[1],bbBMin[1])
@@ -768,7 +768,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             # If one axis is out of search distance range then fall back to simple boundary box based overlap
             if overlapXF < -searchDistMesh or overlapYF < -searchDistMesh or overlapZF < -searchDistMesh:
                   qSkipConnect = 1
-            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+            else: overlapX, overlapY, overlapZ = max(0,overlapXF), max(0,overlapYF), max(0,overlapZF)
         if areaB > 0:
             overlapXF = min(bbAMax[0],bbBMaxF[0]) -max(bbAMin[0],bbBMinF[0])
             overlapYF = min(bbAMax[1],bbBMaxF[1]) -max(bbAMin[1],bbBMinF[1])
@@ -776,7 +776,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             # If one axis is out of search distance range then fall back to simple boundary box based overlap
             if overlapXF < -searchDistMesh or overlapYF < -searchDistMesh or overlapZF < -searchDistMesh:
                   qSkipConnect = 1
-            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+            else: overlapX, overlapY, overlapZ = max(0,overlapXF), max(0,overlapYF), max(0,overlapZF)
         ### Alternatively use overlap of face based boundary boxes based on regular search distance
         elif props.searchDistanceFallback and areaA2 > 0 and areaB2 > 0:
             overlapXF = min(bbAMaxF2[0],bbBMaxF2[0]) -max(bbAMinF2[0],bbBMinF2[0])
@@ -785,7 +785,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             # If one axis is out of search distance range then fall back to simple boundary box based overlap
             if overlapXF < -searchDist or overlapYF < -searchDist or overlapZF < -searchDist:
                   qSkipConnect = 1
-            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+            else: overlapX, overlapY, overlapZ = max(0,overlapXF), max(0,overlapYF), max(0,overlapZF)
         elif props.searchDistanceFallback and areaA2 > 0:
             overlapXF = min(bbAMaxF2[0],bbBMax[0]) -max(bbAMinF2[0],bbBMin[0])
             overlapYF = min(bbAMaxF2[1],bbBMax[1]) -max(bbAMinF2[1],bbBMin[1])
@@ -793,7 +793,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             # If one axis is out of search distance range then fall back to simple boundary box based overlap
             if overlapXF < -searchDist or overlapYF < -searchDist or overlapZF < -searchDist:
                   qSkipConnect = 1
-            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+            else: overlapX, overlapY, overlapZ = max(0,overlapXF), max(0,overlapYF), max(0,overlapZF)
         elif props.searchDistanceFallback and areaB2 > 0:
             overlapXF = min(bbAMax[0],bbBMaxF2[0]) -max(bbAMin[0],bbBMinF2[0])
             overlapYF = min(bbAMax[1],bbBMaxF2[1]) -max(bbAMin[1],bbBMinF2[1])
@@ -801,7 +801,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             # If one axis is out of search distance range then fall back to simple boundary box based overlap
             if overlapXF < -searchDist or overlapYF < -searchDist or overlapZF < -searchDist:
                   qSkipConnect = 1
-            else: overlapX, overlapY, overlapZ = overlapXF, overlapYF, overlapZF
+            else: overlapX, overlapY, overlapZ = max(0,overlapXF), max(0,overlapYF), max(0,overlapZF)
         else: qSkipConnect = 1
                 
     if not qAccurate or qSkipConnect:
@@ -809,7 +809,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
         overlapX = max(0, min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]))
         overlapY = max(0, min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]))
         overlapZ = max(0, min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
-        
+    
     if not qSkipConnect or props.surfaceForced:
 
         ### Calculate area based on either the sum of all axis surfaces...
@@ -2184,6 +2184,7 @@ def generateDetonator(objs, connectsPair, objsEGrp):
     ###### Transfer data to related constraints
     connectsBtMul = []
     connectsPair_iter = iter(connectsPair)
+    cntBtMulZero = 0
     btMultiplierAver = 0; btMultiplierAverCnt = 0
     for k in range(len(connectsPair)):
         pair = next(connectsPair_iter)
@@ -2199,10 +2200,15 @@ def generateDetonator(objs, connectsPair, objsEGrp):
             btMultiplier = max(0, 1 -(openSpaceRatio *deflection))
         else:
             btMultiplier = 1
+        if btMultiplier == 0:
+            btMultiplier = 0.001  # Minimum multiplier, could be a setting in UI but leaving it hard-coded for now 
+            cntBtMulZero += 1
         connectsBtMul.append(btMultiplier)
         if btMultiplier < 1:
             btMultiplierAver += btMultiplier
             btMultiplierAverCnt += 1
+    if cntBtMulZero:
+        print("Warning: Blast wave correction weakened %d connection(s) to very low strength! Deflection Multiplier likely too high." %cntBtMulZero)
 
     if btMultiplierAverCnt > 0:
         openSpaceCorrect = btMultiplierAver /btMultiplierAverCnt

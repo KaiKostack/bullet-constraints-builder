@@ -140,6 +140,14 @@ def build_fm(use_handler=0):
             return
         cDef, exData, exPairs, objNames = pickle.loads(zlib.decompress(base64.decodestring(s.encode())))
 
+        ### Prepare objects list (using dictionaries for faster item search)
+        scnObjs = {}
+        for obj in scene.objects: scnObjs[obj.name] = obj
+        objs = []
+        for name in objNames:
+            try: objs.append(scnObjs[name])
+            except: objs.append(None)
+
         for obj in objs:
             if obj.parent: objParent = obj.parent; break
 
@@ -212,7 +220,9 @@ def build_fm(use_handler=0):
         md.dynamic_percentage = 50
         md.shard_count = 2
         #md.point_source = set()
-        md.frac_algorithm = 'BOOLEAN_FRACTAL'
+        #md.frac_algorithm = 'BOOLEAN_FRACTAL'
+        md.frac_algorithm = 'BISECT_FAST_FILL'
+        #md.frac_algorithm = 'BISECT_FILL'
         md.fractal_iterations = 3
         md.limit_impact = True
         md.is_dynamic_external = True  # Special flag to notify the FM that the source of the data is external and that it should never be changed even for dynamic mode

@@ -230,7 +230,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                     dist += (abs(distVec[1]) /abs(detonatorObj.scale[1]))**2
                     dist += (abs(distVec[2]) /abs(detonatorObj.scale[2]))**2
                     dist = dist**.5
-                btMultiplier *= min(1, max(1 -props.detonatorMax, (dist -1) *2 *props.detonatorMul +1))
+                damageMul = min(1, max(1 -props.detonatorMax, (dist -1) *2 *props.detonatorMul +1))
+                btMultiplier *= damageMul
 
             ### Prepare expression variables and convert m to mm
             a = geoContactArea *1000000
@@ -577,6 +578,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             tol1rot = elemGrps_elemGrp[EGSidxTl1R]
             tol2dist = elemGrps_elemGrp[EGSidxTl2D]
             tol2rot = elemGrps_elemGrp[EGSidxTl2R]
+            tolOrig = [tol1dist, tol1rot, tol2dist, tol2rot]
             asst = elemGrps_elemGrp[EGSidxAsst]
             ### Calculate tolerance from Formula Assistant settings
             if tol2dist == 0:
@@ -597,6 +599,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             tol2rot += max(bcklshB, bcklshB9)  # Add largest angular value
             # Add new tolerances to build data array
             connectsTol[-1] = [tol1dist, tol1rot, tol2dist, tol2rot]
+            # Overwrite tolerances to be disabled by user (-1)
+            for tolIdx in range(4):
+                if tolOrig[tolIdx] < 0: connectsTol[-1][tolIdx] = 0
             
             ### Other settings
             so = bool(elemGrps_elemGrp[EGSidxIter])  # Override solver iterations
@@ -613,12 +618,13 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                 else: objConst0['ConnectType'] = CT; qUpdateComplete = 1
                 ### Store value as ID property for debug purposes
                 objConst0['Contact Area'] = geoContactArea
-                damage = (1 -btMultiplier) *100
-                if btMultiplier < 1:
-                    for idx in consts: emptyObjs[idx]['Damage %'] = damage
+                if detonatorObj != None:
+                    damage = (1 -damageMul) *100
+                    if damageMul < 1:
+                        for idx in consts: emptyObjs[idx]['Damage %'] = damage
             else:
                 qUpdateComplete = 1
-            
+                
         ### Set constraints by connection type preset
         ### Also convert real world breaking threshold to bullet breaking threshold and take simulation steps into account (Threshold = F / Steps)
         
@@ -1062,7 +1068,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
         if CT == 7 or CT == 9 or CT == 11 or CT == 17 or CT == 18:
             constCount = 3; correction = 2  # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
             radius = geoHeight /2
-            value = brkThresValueP
+            if CT == 7: value = brkThresValueC
+            else:       value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             if version_spring == 1:
                 springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
@@ -1096,7 +1103,8 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
         if CT == 8 or CT == 10 or CT == 12:
             constCount = 4; correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
             radius = geoHeight /2
-            value = brkThresValueP
+            if CT == 8: value = brkThresValueC
+            else:       value = brkThresValueP
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             if version_spring == 1:
                 springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
@@ -1296,7 +1304,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
         if CT == 24:
             constCount = 1; correction = 2   # Generic constraints detach already when less force than the breaking threshold is applied (the factor for springs without locks is 0.5) so we multiply our threshold by this correctional value
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-            value = brkThresValueP
+            value = brkThresValueC
             brkThres = value *btMultiplier /rbw_steps_per_second *rbw_time_scale *correction /constCount
             if version_spring == 1:
                 springStiff = value *btMultiplier /(springLength *tol2dist) *correction /constCount
