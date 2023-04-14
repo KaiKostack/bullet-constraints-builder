@@ -32,7 +32,7 @@
 
 import bpy, mathutils, math, sys, copy, random
 from mathutils import Vector
-mem = bpy.app.driver_namespace
+import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
@@ -126,7 +126,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
     
     props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
     dirAxis = [1, 2, 3]

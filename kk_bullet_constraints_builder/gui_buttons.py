@@ -31,7 +31,7 @@
 ################################################################################
 
 import bpy
-mem = bpy.app.driver_namespace
+import global_vars
 
 ### Import submodules
 from global_props import *     # Contains global properties
@@ -167,7 +167,7 @@ class OBJECT_OT_bcb_import_config(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         error = importConfigData(scene)
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         if props.menu_selectedElemGrp >= len(elemGrps) and len(elemGrps) > 0:
             props.menu_selectedElemGrp = len(elemGrps)-1
         if not error:
@@ -323,14 +323,14 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
     menuIdx = int_(default = -1)
     def execute(self, context):
         props = context.window_manager.bcb
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         if len(elemGrps) < maxMenuElementGroupItems:
             if self.menuIdx < 0:
                 # Call menu
                 bpy.ops.wm.call_menu(name="bcb.add_preset")
             else:
                 props = context.window_manager.bcb
-                elemGrps = mem["elemGrps"]
+                elemGrps = global_vars.elemGrps
                 # Add element group (syncing element group indices happens on execution)
                 elemGrps.append(presets[self.menuIdx].copy())
                 # Update menu selection
@@ -349,7 +349,7 @@ class OBJECT_OT_bcb_dup(bpy.types.Operator):
     bl_description = "Duplicates selected element group"
     def execute(self, context):
         props = context.window_manager.bcb
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         if len(elemGrps) > 0:
             if len(elemGrps) < maxMenuElementGroupItems:
                 # Add element group (syncing element group indices happens on execution)
@@ -370,7 +370,7 @@ class OBJECT_OT_bcb_del(bpy.types.Operator):
     bl_description = "Deletes element group from list"
     def execute(self, context):
         props = context.window_manager.bcb
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         scene = bpy.context.scene
         if len(elemGrps) > 0:
             # Remove element group (syncing element group indices happens on execution)
@@ -390,7 +390,7 @@ class OBJECT_OT_bcb_move_up(bpy.types.Operator):
     bl_description = "Moves element group in list"
     def execute(self, context):
         props = context.window_manager.bcb
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         scene = bpy.context.scene
         if props.menu_selectedElemGrp > 0:
             swapItem = props.menu_selectedElemGrp -1
@@ -410,7 +410,7 @@ class OBJECT_OT_bcb_move_down(bpy.types.Operator):
     bl_description = "Moves element group in list"
     def execute(self, context):
         props = context.window_manager.bcb
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         scene = bpy.context.scene
         if props.menu_selectedElemGrp < len(elemGrps) -1:
             swapItem = props.menu_selectedElemGrp +1
@@ -444,7 +444,7 @@ class OBJECT_OT_bcb_down(bpy.types.Operator):
     bl_description = "Selects next element group from list"
     def execute(self, context):
         props = context.window_manager.bcb
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         if props.menu_selectedElemGrp < len(elemGrps) -1:
             props.menu_selectedElemGrp += 1
             # Update menu related properties from global vars
@@ -475,7 +475,7 @@ class OBJECT_OT_bcb_down_more(bpy.types.Operator):
     bl_description = "Selects next element group from list. (x10)"
     def execute(self, context):
         props = context.window_manager.bcb
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         stepSize = 10
         if props.menu_selectedElemGrp < len(elemGrps) -1 -stepSize:
               props.menu_selectedElemGrp += stepSize
@@ -494,7 +494,7 @@ class OBJECT_OT_bcb_reset(bpy.types.Operator):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         # Overwrite element group with original backup (syncing element group indices happens on execution)
-        mem["elemGrps"] = elemGrpsBak.copy()
+        global_vars.elemGrps = elemGrpsBak.copy()
         # Update menu selection
         props.menu_selectedElemGrp = 0
         # Update menu related properties from global vars
@@ -523,7 +523,7 @@ class OBJECT_OT_bcb_asst_update_all(bpy.types.Operator):
     bl_description = "Combines and evaluates expressions for every element groups with active Formula Assistant. Warning: Use this with care as it will overwrite also manually changed breaking thresholds for these element groups"
     def execute(self, context):
         props = context.window_manager.bcb
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         selElemGrp_bak = props.menu_selectedElemGrp
         # Walk over all element groups and evaluate formula expressions
         for i in range(len(elemGrps)):

@@ -31,7 +31,7 @@
 ################################################################################
 
 import bpy
-mem = bpy.app.driver_namespace
+import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
@@ -183,7 +183,7 @@ class bcb_props(bpy.types.PropertyGroup):
     ### Element group properties
     # Create element groups properties for all possible future entries (maxMenuElementGroupItems)
     for i in range(maxMenuElementGroupItems):
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         j = 0  # Use preset 0 as dummy data 
         exec("elemGrp_%d_EGSidxName" %i +" = string_(name='Grp. Name', default=presets[j][EGSidxName], description='The name of the chosen element group')")
         exec("elemGrp_%d_EGSidxCTyp" %i +" = int_(name='Connection Type', default=presets[j][EGSidxCTyp], min=0, max=1000, description='Connection type ID for the constraint presets defined by this script, see docs or connection type list in code')")
@@ -233,7 +233,7 @@ class bcb_props(bpy.types.PropertyGroup):
     def props_update_menu(self):
 
         ### Update main class properties
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         if len(elemGrps) > 0:
             for i in range(len(elemGrps)):
                 exec("self.elemGrp_%d_EGSidxName" %i +" = elemGrps[i][EGSidxName]")
@@ -289,10 +289,10 @@ class bcb_props(bpy.types.PropertyGroup):
     def props_update_globals(self):
         ### On loading a new scene properties are lost, in this case reset element groups to defaults
         if self.menu_init:
-            elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+            elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
             self.menu_init = 0
 
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         if len(elemGrps) > 0:
             for i in range(len(elemGrps)):
                 elemGrps[i][EGSidxName] = eval("self.elemGrp_%d_EGSidxName" %i)

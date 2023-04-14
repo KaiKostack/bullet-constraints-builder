@@ -31,7 +31,6 @@
 ################################################################################
 
 import bpy, time
-mem = bpy.app.driver_namespace
 
 ### Import submodules
 from global_vars import *      # Contains global variables

@@ -31,12 +31,11 @@
 ################################################################################
 
 import bpy, os
-mem = bpy.app.driver_namespace
 
 ################################################################################
 
 ### Vars:
-bcb_version = (3, 5, 5)
+bcb_version = (3, 5, 4)
 
 ### Customizable element group presets
 presets = [
@@ -61,7 +60,7 @@ presets = [
 ] # Empty name means this group is to be used when element is not part of any element group
 
 # Actual element group list (for elements of different conflicting groups the weaker thresholds is used, also the type is changed accordingly)
-elemGrps = mem["elemGrps"] = []
+elemGrps = []
 
 ### Magic numbers / column descriptions for above element group settings (in order from left to right):
 EGSidxName = 0    # Group Name               | The name of the object group these settings will be used for

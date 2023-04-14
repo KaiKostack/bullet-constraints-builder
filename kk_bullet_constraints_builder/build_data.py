@@ -31,7 +31,7 @@
 ################################################################################
 
 import bpy, time
-mem = bpy.app.driver_namespace
+import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
@@ -163,7 +163,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_detonGroundReflect"] = props.detonGroundReflect
     
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
     elemGrpsInverted = []
     for i in range(len(presets[0])):
         column = []
@@ -406,7 +406,7 @@ def getConfigDataFromScene(scene):
             
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     if "bcb_prop_elemGrps" in scene.keys():
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         try: elemGrpsProp = scene["bcb_prop_elemGrps"]
         except: pass
         elemGrpsInverted = []
@@ -446,12 +446,12 @@ def getConfigDataFromScene(scene):
                 for j in range(missingColumns):
                     column.append(presets[0][ofs+j])
             elemGrpsInverted.append(column)
-        mem["elemGrps"] = elemGrpsInverted
+        global_vars.elemGrps = elemGrpsInverted
 
         if debug:
-            print("LOADED:", len(mem["elemGrps"]), len(mem["elemGrps"][0]))
+            print("LOADED:", len(elemGrps), len(elemGrps[0]))
             for i in range(grpPropCnt):
-                print(i, mem["elemGrps"][i][0], mem["elemGrps"][i][20])
+                print(i, elemGrps[i][0], elemGrps[i][20])
                 
 ################################################################################   
 
@@ -725,7 +725,7 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
         
     ### Revert element scaling
     for k in range(len(objs)):
-        try: scale = mem["elemGrps"][objsEGrp[k]][EGSidxScal]  # Try in case elemGrps is from an old BCB version
+        try: scale = global_vars.elemGrps[objsEGrp[k]][EGSidxScal]  # Try in case elemGrps is from an old BCB version
         except: pass
         else:
             obj = objs[k]

@@ -33,7 +33,6 @@
 import bpy, bmesh, mathutils, time, pickle, zlib, base64
 from mathutils import Vector
 from bpy.app.handlers import persistent
-mem = bpy.app.driver_namespace
 
 ### Import submodules
 from global_vars import *      # Contains global variables

@@ -31,7 +31,7 @@
 ################################################################################
 
 import bpy
-mem = bpy.app.driver_namespace
+import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
@@ -80,7 +80,7 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
     def props_update_menu(self):
         props = bpy.context.window_manager.bcb
         i = props.menu_selectedElemGrp
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         # Check if stored ID matches the correct assistant type otherwise return
         if elemGrps[i][EGSidxAsst]['ID'] != self.classID: return
 
@@ -114,7 +114,7 @@ class bcb_asst_con_rei_beam_props(bpy.types.PropertyGroup):
     def props_update_globals(self):
         props = bpy.context.window_manager.bcb
         i = props.menu_selectedElemGrp
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         # Check if stored ID matches the correct assistant type otherwise return
         if elemGrps[i][EGSidxAsst]['ID'] != self.classID: return
 
@@ -188,7 +188,7 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
         props = bpy.context.window_manager.bcb
         i = props.menu_selectedElemGrp
         # Check if stored ID matches the correct assistant type otherwise return
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         if elemGrps[i][EGSidxAsst]['ID'] != self.classID: return
 
         asst = elemGrps[i][EGSidxAsst]
@@ -221,7 +221,7 @@ class bcb_asst_con_rei_wall_props(bpy.types.PropertyGroup):
     def props_update_globals(self):
         props = bpy.context.window_manager.bcb
         i = props.menu_selectedElemGrp
-        elemGrps = mem["elemGrps"]
+        elemGrps = global_vars.elemGrps
         # Check if stored ID matches the correct assistant type otherwise return
         if elemGrps[i][EGSidxAsst]['ID'] != self.classID: return
 

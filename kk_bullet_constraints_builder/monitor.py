@@ -31,7 +31,7 @@
 ################################################################################
 
 import bpy, sys, time, os, math
-mem = bpy.app.driver_namespace
+import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
@@ -347,7 +347,7 @@ def monitor_initBuffers(scene):
     if debug: print("Calling initBuffers")
     
     props = bpy.context.window_manager.bcb
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
     connects = bpy.app.driver_namespace["bcb_monitor"] = []
     
     ### Prepare scene object dictionaries by type to be used for faster item search (optimization)
@@ -631,7 +631,7 @@ def monitor_checkForChange_fm(scene):
 
     if debug: print("Calling checkForDistanceChange_fm")
     
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
     try: ob = scene.objects[asciiExportName]
     except: print("Error: Fracture Modifier object expected but not found."); return
     md = ob.modifiers["Fracture"]
@@ -660,7 +660,7 @@ def monitor_initTriggers(scene):
     
 
     props = bpy.context.window_manager.bcb
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
     ### Get data from scene
     try: objs = scene["bcb_objs"]
     except: objs = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")

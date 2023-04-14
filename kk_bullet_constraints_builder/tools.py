@@ -33,7 +33,7 @@
 import bpy, bmesh, os, array
 from mathutils import Vector
 from mathutils import Color
-mem = bpy.app.driver_namespace
+import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
@@ -89,7 +89,7 @@ def tool_selectGroup(scene):
     
     ### Selects objects belonging to this element group in viewport.
     props = bpy.context.window_manager.bcb
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
 
     # Check if element group name corresponds to scene group
     grpName = elemGrps[props.menu_selectedElemGrp][EGSidxName]
@@ -143,7 +143,7 @@ def createElementGroup(grpName, presetNo=0):
     
     ### Create new element group
     props = bpy.context.window_manager.bcb
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
     # Check if group name is already in element group list
     qExists = 0
     for i in range(len(elemGrps)):
@@ -402,12 +402,13 @@ def tool_separateLoose(scene):
     ### Sort out user-defined objects (members of a specific group)
     grpName = "bcb_noSeparateLoose"
     selectionSkip = []
-    if grpName in bpy.data.groups:
-        for obj in selection:
-            if obj.name in bpy.data.groups[grpName].objects:
-                obj.select = 0
-                selectionSkip.append(obj)
-        if len(selectionSkip): print("Elements skipped by '%s' group:" %grpName, len(selectionSkip))
+    for grp in bpy.data.groups:
+        if grpName in grp.name:
+            for obj in selection:
+                if obj.name in grp.objects:
+                    obj.select = 0
+                    selectionSkip.append(obj)
+            if len(selectionSkip): print("Elements skipped by '%s' group:" %grp.name, len(selectionSkip))
     
     # Code to generate a component ID per object would belong here but for now it will be used only for discretization
 
@@ -522,13 +523,14 @@ def tool_discretize(scene):
 
     ### Sort out user-defined objects (members of a specific group)
     grpName = "bcb_noDiscretization"
-    if grpName in bpy.data.groups:
-        objsNew = []
-        for obj in objs:
-            if obj.name not in bpy.data.groups[grpName].objects:
-                objsNew.append(obj)
-        if len(objs) -len(objsNew): print("Elements skipped by '%s' group:" %grpName, len(objs) -len(objsNew))
-        objs = objsNew
+    for grp in bpy.data.groups:
+        if grpName in grp.name:
+            objsNew = []
+            for obj in objs:
+                if obj.name not in grp.objects:
+                    objsNew.append(obj)
+            if len(objs) -len(objsNew): print("Elements skipped by '%s' group:" %grp.name, len(objs) -len(objsNew))
+            objs = objsNew
             
     ### Sort out non-manifold meshes (not water tight and thus not suited for boolean operations)
     objsNonMan = []
@@ -1815,7 +1817,7 @@ def changeMaterials(obj, dif, qIntact=1):
 def tool_forcesVisualization_eventHandler(scene):
 
     props = bpy.context.window_manager.bcb
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
 
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale

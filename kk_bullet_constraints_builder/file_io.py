@@ -32,6 +32,7 @@
 
 import bpy, mathutils, pickle, zlib, base64, os
 from mathutils import Vector
+import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
@@ -157,7 +158,7 @@ def exportConfigData(scene):
     configData.append(props.detonBlastWaveVel)
     configData.append(props.detonPullBackDelay)
     configData.append(props.detonGroundReflect)
-    configData.append(mem["elemGrps"])
+    configData.append(global_vars.elemGrps)
     logPath = os.path.split(bpy.context.scene.render.filepath)[0]
     dataToFile(configData, os.path.join(logPath, "bcb.cfg"))
     
@@ -215,7 +216,7 @@ def importConfigData(scene):
         props.detonBlastWaveVel = configData[i]; i += 1
         props.detonPullBackDelay = configData[i]; i += 1
         props.detonGroundReflect = configData[i]; i += 1
-        mem["elemGrps"] = configData[i]; i += 1
+        global_vars.elemGrps = configData[i]; i += 1
         return 0
 
 ################################################################################   

@@ -31,7 +31,7 @@
 ################################################################################
 
 import bpy, platform, sys
-mem = bpy.app.driver_namespace
+import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
@@ -178,7 +178,7 @@ def combineExpressions():
 
     props = bpy.context.window_manager.bcb
     i = props.menu_selectedElemGrp
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
     asst = elemGrps[i][EGSidxAsst]
     
     ###### Reinforced Concrete (Beams & Columns)

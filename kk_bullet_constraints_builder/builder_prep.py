@@ -33,7 +33,7 @@
 import bpy, mathutils, sys, math, bmesh, array, random
 from mathutils import Vector
 from math import *
-mem = bpy.app.driver_namespace
+import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
@@ -60,7 +60,7 @@ def initGeneralRigidBodyWorldSettings(scene):
 def createElementGroupIndex(objs):
 
     ### Create a list about which object belongs to which element group
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
     objsEGrps = []
     errorsShown = 1
     for obj in objs:
@@ -121,7 +121,7 @@ def gatherObjects(scene):
     print("Creating object lists of selected objects...")
 
     props = bpy.context.window_manager.bcb
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
 
 #    ### Check if unspecified (empty name) element group is present, only then consider user selection
 #    qUserSelection = 0
@@ -277,7 +277,7 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
     print("Searching connections by vertex pairs... (%d)" %len(objs))
     
     props = bpy.context.window_manager.bcb
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
 
     ### Build kd-tree for object locations
     kdObjs = mathutils.kdtree.KDTree(len(objs))
@@ -1204,7 +1204,7 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
     if debug: print("Creating connection data...")
     
     props = bpy.context.window_manager.bcb    
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
     connectsConsts = []
     constsConnect = []
     constCntOfs = 0
@@ -1603,7 +1603,7 @@ def createParentsIfRequired(scene, objs, objsEGrp, childObjs):
     ### Create parents if required
     print("Creating invisible parent / visible child elements...")
     
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
 
     ### Store selection
     selectionOld = []
@@ -1669,7 +1669,7 @@ def applyScale(scene, objs, objsEGrp, childObjs):
     ### Scale elements by custom scale factor and make separate collision object for that
     print("Applying scale...")
     
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
@@ -1702,7 +1702,7 @@ def applyBevel(scene, objs, objsEGrp, childObjs):
     ### Bevel elements and make separate collision object for that
     print("Applying bevel...")
     
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
@@ -1742,7 +1742,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
     print("Calculating masses from preset materials... (Children: %d)" %len(childObjs))
      
     props = bpy.context.window_manager.bcb
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
 
     ### Prepare objects index lookup dictionary for faster access
     objsIndex = {}
@@ -1953,7 +1953,7 @@ def correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo):
 
     props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
 
     for j in range(len(elemGrps)):
         elemGrp = elemGrps[j]
@@ -2018,18 +2018,19 @@ def generateDetonator(objs, connectsPair, objsEGrp):
             
     scene = bpy.context.scene
     props = bpy.context.window_manager.bcb
-    elemGrps = mem["elemGrps"]
+    elemGrps = global_vars.elemGrps
 
     print("\nPreprocessing detonation simulation...")
 
     ### Sort out user-defined objects (members of a specific group)
     grpName = "bcb_noDetonator"
     objsSkip = []
-    if grpName in bpy.data.groups:
-        for obj in objs:
-            if obj.name in bpy.data.groups[grpName].objects:
-                objsSkip.append(obj)
-        if len(objsSkip): print("Elements skipped by '%s' group:" %grpName, len(objsSkip))
+    for grp in bpy.data.groups:
+        if grpName in grp.name:
+            for obj in objs:
+                if obj.name in grp.objects:
+                    objsSkip.append(obj)
+            if len(objsSkip): print("Elements skipped by '%s' group:" %grp.name, len(objsSkip))
 
     ### Get detonator object
     detonatorObj = None

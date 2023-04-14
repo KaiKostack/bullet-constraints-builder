@@ -31,7 +31,7 @@
 ################################################################################
 
 import bpy, sys
-mem = bpy.app.driver_namespace
+import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
@@ -115,8 +115,8 @@ class bcb_panel_execute(bpy.types.Panel):
         layout = self.layout
         props = context.window_manager.bcb
         scene = bpy.context.scene
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
 
         ###### Execute panel
         
@@ -163,8 +163,8 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
 
         ###### Preprocessing tools panel
         
@@ -311,8 +311,8 @@ class bcb_panel_global_settings(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
         
         ###### Global settings panel
 
@@ -379,8 +379,8 @@ class bcb_panel_advanced_global_settings(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
         
         ###### Advanced global settings panel
 
@@ -432,8 +432,8 @@ class bcb_panel_triggers(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
         
         ###### Triggers panel
 
@@ -488,8 +488,8 @@ class bcb_panel_element_group_list(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
 
         ###### Element group list panel
         
@@ -557,8 +557,8 @@ class bcb_panel_element_group_selector(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
 
         ###### Element group selector panel
 
@@ -603,8 +603,8 @@ class bcb_panel_formula_assistant(bpy.types.Panel):
         props = context.window_manager.bcb
         props_asst_con_rei_beam = context.window_manager.bcb_asst_con_rei_beam
         props_asst_con_rei_wall = context.window_manager.bcb_asst_con_rei_wall
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
 
         ### If at least one element group is existing
         if not (len(elemGrps) == 0 or props.menu_init):
@@ -722,8 +722,8 @@ class bcb_panel_element_group_settings(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
 
         ### If at least one element group is existing
         if not (len(elemGrps) == 0 or props.menu_init):
@@ -876,8 +876,8 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
 
         ### If at least one element group is existing
         if not (len(elemGrps) == 0 or props.menu_init):
@@ -954,8 +954,8 @@ class bcb_panel_postprocessing_tools(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.window_manager.bcb
-        try: elemGrps = mem["elemGrps"]
-        except: elemGrps = mem["elemGrps"] = elemGrpsBak.copy()
+        try: elemGrps = global_vars.elemGrps
+        except: elemGrps = global_vars.elemGrps = elemGrpsBak.copy()
 
         ###### Postprocessing tools panel
         

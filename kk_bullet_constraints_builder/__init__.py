@@ -32,7 +32,6 @@
 
 import bpy, sys, os, platform, mathutils, time, copy, math, pickle, base64, zlib, random, imp
 from mathutils import Vector
-mem = bpy.app.driver_namespace
 #import os
 #os.system("cls")
 
@@ -132,11 +131,11 @@ if subdir not in sys.path: sys.path.append(subdir)
 #print("BASEDIR:", basedir)
 
 ### Force all modules to reload (doesn't work as expected as UI elements aren't updated, you have to restart Blender)
-#if "bcb_init_modules" in mem.keys():
+#if "bcb_init_modules" in bpy.app.driver_namespace.keys():
 #    # Second or subsequent run: remove all but initially loaded modules
 #    del_modules = []
 #    for m in sys.modules.keys():
-#        if m not in mem["bcb_init_modules"]:
+#        if m not in bpy.app.driver_namespace["bcb_init_modules"]:
 #            del_modules.append(m)
 #    for m in del_modules:
 #        del sys.modules[m]
@@ -146,7 +145,7 @@ if subdir not in sys.path: sys.path.append(subdir)
 #    init_modules = []
 #    for m in sys.modules.keys():
 #        init_modules.append(m)
-#    mem["bcb_init_modules"] = init_modules     
+#    bpy.app.driver_namespace["bcb_init_modules"] = init_modules     
     
 ### Import submodules
 from build_data import *       # Contains build data access functions
