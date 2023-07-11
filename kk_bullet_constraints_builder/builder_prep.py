@@ -2022,16 +2022,6 @@ def generateDetonator(objs, connectsPair, objsEGrp):
 
     print("\nPreprocessing detonation simulation...")
 
-    ### Sort out user-defined objects (members of a specific group)
-    grpName = "bcb_noDetonator"
-    objsSkip = []
-    for grp in bpy.data.groups:
-        if grpName in grp.name:
-            for obj in objs:
-                if obj.name in grp.objects:
-                    objsSkip.append(obj)
-            if len(objsSkip): print("Elements skipped by '%s' group:" %grp.name, len(objsSkip))
-
     ### Get detonator object
     detonatorObj = None
     if props.detonAdvanced:
@@ -2043,6 +2033,16 @@ def generateDetonator(objs, connectsPair, objsEGrp):
             print("Warning: No detonator object found, skipping advanced blast wave simulation.")
         connectsBtMul = [1 for i in connectsPair]
         return connectsBtMul
+
+    ### Sort out user-defined objects (members of a specific group)
+    grpName = "bcb_noDetonator"
+    objsDetonSkip = []
+    for grp in bpy.data.groups:
+        if grpName in grp.name:
+            for obj in objs:
+                if obj.name in grp.objects:
+                    objsDetonSkip.append(obj)
+            if len(objsDetonSkip): print("Elements skipped by '%s' group:" %grp.name, len(objsDetonSkip))
 
     ### Count average element data per element for the entire structure
     elemArea = 0
@@ -2159,7 +2159,7 @@ def generateDetonator(objs, connectsPair, objsEGrp):
                     #openSpaceRatio *= min(1, 2 -(angle /3.14159) *1.5)   # 1, 1, 1, 0.5
                     #openSpaceRatio *= min(1, 2.5 -(angle /3.14159) *2)   # 1, 1, 1, 1, 0.5
 
-        obj['DetonRatio'] = openSpaceRatio
+        if obj not in objsDetonSkip: obj['DetonRatio'] = openSpaceRatio
         objsDetonRatio.append(openSpaceRatio)
     print()
 
@@ -2179,7 +2179,7 @@ def generateDetonator(objs, connectsPair, objsEGrp):
                     idxCnt += 1
                 #openSpaceRatio /= min(co_len, objsRatioMerge)        # Equally balanced samples
                 openSpaceRatio /= 2 -1 /min(co_len, objsRatioMerge)  # Balanced by importance
-                obj['DetonRatioMerge'] = openSpaceRatio
+                if obj not in objsDetonSkip: obj['DetonRatioMerge'] = openSpaceRatio
                 objsDetonRatio[i] = openSpaceRatio
         
     ###### Transfer data to related constraints
@@ -2191,7 +2191,7 @@ def generateDetonator(objs, connectsPair, objsEGrp):
         pair = next(connectsPair_iter)
         objA = objs[pair[0]]
         objB = objs[pair[1]]
-        if objA not in objsSkip or objB not in objsSkip:
+        if objA not in objsDetonSkip and objB not in objsDetonSkip:
             objAratio = objsDetonRatio[pair[0]]
             objBratio = objsDetonRatio[pair[1]]
             # Use average confined/open space ratio for connection
