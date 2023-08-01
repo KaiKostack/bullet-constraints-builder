@@ -229,7 +229,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             
             ### Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
             if detonatorObj != None and detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
-                if objA not in objsDetonSkip and objB not in objsDetonSkip:
+                if objA not in objsDetonSkip or objB not in objsDetonSkip:
                     distVec = loc -detonatorObj.location
                     if detonatorObj.type == 'EMPTY' and detonatorObj.empty_draw_type == 'CUBE':
                         # When empty is in Cube mode then use a cubic shape
@@ -521,6 +521,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                 # Both A and B are in passive group but either one is actually an active RB (A xor B)
                 elif CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                     CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
+                # Both A and B are in passive group and both are an active RB (connections for buffer elements)
+                elif CT_A == 0 and CT_B == 0 and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'):
+                    disColPerm = elemGrps[elemGrpA][EGSidxDClP]
+                    if disColPerm: CT = -1; elemGrp = elemGrpA  # Exception to enable collision suppression connections between buffer elements
 
                 # Both A and B are in passive group and both are passive RBs
                 else:
@@ -531,6 +535,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                     # Both A and B are in passive group but either one is actually an active RB (A xor B)
                     if CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                         CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
+                    # Both A and B are in passive group and both are an active RB (connections for buffer elements)
+                    elif CT_A == 0 and CT_B == 0 and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'):
+                        disColPerm = elemGrps[elemGrpA][EGSidxDClP]
+                        if disColPerm: CT = -1; elemGrp = elemGrpA  # Exception to enable collision suppression connections between buffer elements
 
             elif qNoCon: CT = 0
 

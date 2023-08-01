@@ -267,7 +267,7 @@ def tool_applyAllModifiers(scene):
                     selectionNew = [obj for obj in bpy.context.scene.objects if obj.select]
                     selection.extend(selectionNew)
                     # Find objects in selection
-                    objsNew = [obj for obj in selectionNew if (obj.type == 'MESH' or obj.type == 'CURVE')  and not obj.hide and obj.is_visible(bpy.context.scene)]
+                    objsNew = [obj for obj in selectionNew if (obj.type == 'MESH' or obj.type == 'CURVE') and not obj.hide and obj.is_visible(bpy.context.scene)]
                     objs.extend(objsNew)
 
                     ## Temporary workaround for triggered objects in FM (rotation is not initialized properly in FM when using triggers, needs to be fixed by Martin)

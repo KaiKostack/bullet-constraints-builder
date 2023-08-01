@@ -1267,6 +1267,10 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
             # Both A and B are in passive group but either one is actually an active RB (a xor b)
             elif CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                 CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
+            # Both A and B are in passive group and both are an active RB (connections for buffer elements)
+            elif CT_A == 0 and CT_B == 0 and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'):
+                disColPerm = elemGrps[elemGrpA][EGSidxDClP]
+                if disColPerm: CT = -1; elemGrp = elemGrpA  # Exception to enable collision suppression connections between buffer elements
             else:  # Both A and B are in passive group and both are passive RBs
                 CT = 0
             # For unbreakable passive connections above settings can be overwritten
@@ -1274,6 +1278,10 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
                 # Both A and B are in passive group but either one is actually an active RB (a xor b)
                 if CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                     CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
+                # Both A and B are in passive group and both are an active RB (connections for buffer elements)
+                elif CT_A == 0 and CT_B == 0 and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'):
+                    disColPerm = elemGrps[elemGrpA][EGSidxDClP]
+                    if disColPerm: CT = -1; elemGrp = elemGrpA  # Exception to enable collision suppression connections between buffer elements
 
         elif qNoCon: CT = 0
 
@@ -2191,7 +2199,7 @@ def generateDetonator(objs, connectsPair, objsEGrp):
         pair = next(connectsPair_iter)
         objA = objs[pair[0]]
         objB = objs[pair[1]]
-        if objA not in objsDetonSkip and objB not in objsDetonSkip:
+        if objA not in objsDetonSkip or objB not in objsDetonSkip:
             objAratio = objsDetonRatio[pair[0]]
             objBratio = objsDetonRatio[pair[1]]
             # Use average confined/open space ratio for connection
