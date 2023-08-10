@@ -1725,10 +1725,12 @@ def tool_exportForceHistory(scene):
     contextFix['point_cache'] = scene.rigidbody_world.point_cache
     bpy.ops.ptcache.free_bake(contextFix)
     ### Invalidate point cache to enforce a full bake without using previous cache data
-    if "RigidBodyWorld" in bpy.data.groups:
-        try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
-        except: pass
-        else: obj.location = obj.location
+    for grp in bpy.data.groups:
+        if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
+            try: obj = grp.objects[0]
+            except: pass
+            else: obj.location = obj.location
+            break
 
     print('Init constraint force export event handler.')
     bpy.app.handlers.frame_change_pre.append(tool_exportForceHistory_eventHandler)
@@ -2261,10 +2263,12 @@ def tool_forcesVisualization(scene):
     contextFix['point_cache'] = scene.rigidbody_world.point_cache
     bpy.ops.ptcache.free_bake(contextFix)
     ### Invalidate point cache to enforce a full bake without using previous cache data
-    if "RigidBodyWorld" in bpy.data.groups:
-        try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
-        except: pass
-        else: obj.location = obj.location
+    for grp in bpy.data.groups:
+        if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
+            try: obj = grp.objects[0]
+            except: pass
+            else: obj.location = obj.location
+            break
 
     # Go to start frame
     scene.frame_current = scene.frame_start

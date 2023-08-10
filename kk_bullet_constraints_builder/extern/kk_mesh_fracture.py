@@ -99,8 +99,10 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
     if bpy.app.version <= (2, 79, 0) or hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'): version_carve = 1
     else:                                                                                 version_carve = 0
 
-    try: grpRBWorld = bpy.data.groups["RigidBodyWorld"]
-    except: grpRBWorld = None
+    grpRBWorld = None
+    for grp in bpy.data.groups:
+        if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
+            grpRBWorld = grp; break
         
     objCP = bpy.data.objects[cookyCutterPlane]
     if qUseHoleCutter: objCH = bpy.data.objects[cookyCutterHole]

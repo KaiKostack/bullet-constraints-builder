@@ -1437,10 +1437,12 @@ def createEmptyObjs(scene, constCnt):
             # If using two scenes make sure both are using the same RigidBodyWorld and RigidBodyConstraints groups
             if sceneTemp.rigidbody_world == None:
                 bpy.ops.rigidbody.world_add()
-            try: bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
-            except: pass
-            try: bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
-            except: pass
+            for grp in bpy.data.groups:
+                if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
+                    bpy.context.scene.rigidbody_world.group = grp; break
+            for grp in bpy.data.groups:
+                if "RigidBodyConstraints" == grp.name and not grp.is_library_indirect:
+                    bpy.context.scene.rigidbody_world.constraints = grp; break
             # Link first empty into new scene
             bpy.context.scene.objects.link(objConst)
             

@@ -151,11 +151,15 @@ def build_fm(use_handler=0):
             if obj.parent: objParent = obj.parent; break
 
         ### Remove from RigidBodyWorld (if enabled)
-        grpRBWorld = bpy.data.groups["RigidBodyWorld"]
-        for obj in objs:
-            try: grpRBWorld.objects.unlink(obj)
-            except: pass
-        scene.update()  # Required to make RBs actually not participating in simulation anymore
+        grpRBWorld = None
+        for grp in bpy.data.groups:
+            if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
+                grpRBWorld = grp; break
+        if grpRBWorld != None:
+            for obj in objs:
+                try: grpRBWorld.objects.unlink(obj)
+                except: pass
+            scene.update()  # Required to make RBs actually not participating in simulation anymore
 
         # Move to last layer
         for obj in objs: obj.select = 1

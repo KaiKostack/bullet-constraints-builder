@@ -113,16 +113,20 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
             contextFix['point_cache'] = scene.rigidbody_world.point_cache
             bpy.ops.ptcache.free_bake(contextFix)
             # Invalidate point cache to enforce a full bake without using previous cache data
-            if "RigidBodyWorld" in bpy.data.groups:
-                try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
-                except: pass
-                else: obj.location = obj.location
+            for grp in bpy.data.groups:
+                if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
+                    try: obj = grp.objects[0]
+                    except: pass
+                    else: obj.location = obj.location
+                    break
         else:  # Create new RB world
             bpy.ops.rigidbody.world_add()
-        try: bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
-        except: pass
-        try: bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
-        except: pass
+        for grp in bpy.data.groups:
+            if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
+                bpy.context.scene.rigidbody_world.group = grp; break
+        for grp in bpy.data.groups:
+            if "RigidBodyConstraints" == grp.name and not grp.is_library_indirect:
+                bpy.context.scene.rigidbody_world.constraints = grp; break
 
         ###### Execute main building process from scratch
         # Display progress bar
@@ -211,10 +215,12 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
                 bpy.ops.ptcache.free_bake(contextFix)
             else:  # Create new RB world
                 bpy.ops.rigidbody.world_add()
-            try: bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
-            except: pass
-            try: bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
-            except: pass
+            for grp in bpy.data.groups:
+                if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
+                    bpy.context.scene.rigidbody_world.group = grp; break
+            for grp in bpy.data.groups:
+                if "RigidBodyConstraints" == grp.name and not grp.is_library_indirect:
+                    bpy.context.scene.rigidbody_world.constraints = grp; break
 
             if not props.menu_gotData:
                 if not "bcb_ext_noBuild" in scene.keys():  # Option for external scripts to prevent building and keep export data
@@ -278,10 +284,12 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
                 else: obj.location = obj.location
         else:  # Create new RB world
             bpy.ops.rigidbody.world_add()
-        try: bpy.context.scene.rigidbody_world.group = bpy.data.groups["RigidBodyWorld"]
-        except: pass
-        try: bpy.context.scene.rigidbody_world.constraints = bpy.data.groups["RigidBodyConstraints"]
-        except: pass
+        for grp in bpy.data.groups:
+            if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
+                bpy.context.scene.rigidbody_world.group = grp; break
+        for grp in bpy.data.groups:
+            if "RigidBodyConstraints" == grp.name and not grp.is_library_indirect:
+                bpy.context.scene.rigidbody_world.constraints = grp; break
 
         ### Build constraints if required (menu_gotData will be set afterwards and this operator restarted)
         ### If asciiExportName exists then the use of Fracture Modifier is assumed and building is skipped

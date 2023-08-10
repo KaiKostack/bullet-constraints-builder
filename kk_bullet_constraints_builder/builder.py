@@ -45,7 +45,13 @@ def build():
     print("\nStarting...\n")
     time_start = time.time()
 
-    if "RigidBodyWorld" in bpy.data.groups:
+    # Check if rigid body world group is available
+    grpRBWorld = None
+    for grp in bpy.data.groups:
+        if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
+            grpRBWorld = grp; break
+
+    if grpRBWorld != None:
     
         bpy.context.tool_settings.mesh_select_mode = True, False, False
         props = bpy.context.window_manager.bcb
