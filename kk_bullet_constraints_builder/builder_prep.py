@@ -200,8 +200,8 @@ def prepareObjects(objs):
     try: grp = bpy.data.groups[grpName]
     except: grp = bpy.data.groups.new(grpName)
     for obj in objs:
-        try: grp.objects.link(obj)
-        except: pass
+        if obj.name not in grp.objects:
+            grp.objects.link(obj)
 
     ### Backup scale factor depending on object's collision shape to make sure volume and mass calculation are correct (not all need this)
     # Deselect all objects.

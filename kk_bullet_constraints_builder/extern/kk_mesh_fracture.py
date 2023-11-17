@@ -530,8 +530,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             bpy.context.scene.objects.active = obj
                             try: bpy.ops.rigidbody.object_remove()
                             except: pass
-                            try: grpRBWorld.objects.unlink(obj)
-                            except: pass
+                            if obj.name in grpRBWorld.objects:
+                                grpRBWorld.objects.unlink(obj)
                         # Finally unlink original object from scenes
                         if qSecondScnOpt:
                             sceneCreate.objects.unlink(obj)
@@ -540,8 +540,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             bpy.context.scene.objects.unlink(obj)
                         # Remove object from all groups (so it won't stick in the .blend file forever)
                         for grp in bpy.data.groups:
-                            try: grp.objects.unlink(obj)
-                            except: pass
+                            if obj.name in grp.objects:
+                                grp.objects.unlink(obj)
                                                     
                         ### Add new objects to the list
                         objectCount -= 1   # Remove original object
@@ -854,8 +854,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             bpy.context.scene.objects.active = obj
                             try: bpy.ops.rigidbody.object_remove()
                             except: pass
-                            try: grpRBWorld.objects.unlink(obj)
-                            except: pass
+                            if obj.name in grpRBWorld.objects:
+                                grpRBWorld.objects.unlink(obj)
                         # Finally unlink original object from scenes
                         if qSecondScnOpt:
                             sceneCreate.objects.unlink(obj)
@@ -864,8 +864,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             bpy.context.scene.objects.unlink(obj)
                         # Remove object from all groups (so it won't stick in the .blend file forever)
                         for grp in bpy.data.groups:
-                            try: grp.objects.unlink(obj)
-                            except: pass
+                            if obj.name in grp.objects:
+                                grp.objects.unlink(obj)
                         
                         ### Add new objects to the list
                         objectCount -= 1   # Remove original object
