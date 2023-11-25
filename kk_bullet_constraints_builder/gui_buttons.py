@@ -849,7 +849,7 @@ class OBJECT_OT_bcb_postproc_tool_export_location_history(bpy.types.Operator):
     bl_label = "Export Location History"
     bl_description = "Exports the location time history of an element centroid into a .csv file"
     def execute(self, context):
-        OBJECT_OT_bcb_bake.execute(self, context)
+        #OBJECT_OT_bcb_bake.execute(self, context)  # Resimulate
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_exportLocationHistory(scene)

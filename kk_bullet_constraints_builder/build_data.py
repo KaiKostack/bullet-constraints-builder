@@ -406,11 +406,9 @@ def getConfigDataFromScene(scene):
             
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     if "bcb_prop_elemGrps" in scene.keys():
-        elemGrps = global_vars.elemGrps
         try: elemGrpsProp = scene["bcb_prop_elemGrps"]
         except: pass
         elemGrpsInverted = []
-        grpCnt = len(elemGrps)
         grpPropCnt = len(elemGrpsProp[0])
         for i in range(grpPropCnt):
             column = []
@@ -439,8 +437,8 @@ def getConfigDataFromScene(scene):
                 print("Warning: elemGrp property missing, BCB scene settings are probably outdated.")
                 # Find default group or use first one
                 k = 0
-                for l in range(grpCnt):
-                    if elemGrps[l][EGSidxName] == '': k = l
+                for l in range(grpPropCnt):
+                    if elemGrpsProp[l][EGSidxName] == '': k = l
                 # Fill in missing data from preset default data
                 ofs = len(column)
                 for j in range(missingColumns):
@@ -449,9 +447,10 @@ def getConfigDataFromScene(scene):
         global_vars.elemGrps = elemGrpsInverted
 
         if debug:
-            print("LOADED:", len(elemGrps), len(elemGrps[0]))
+            elemGrps = global_vars.elemGrps
+            print("LOADED:", len(elemGrps))
             for i in range(grpPropCnt):
-                print(i, elemGrps[i][0], elemGrps[i][20])
+                print(i, elemGrps[i][0])
                 
 ################################################################################   
 
