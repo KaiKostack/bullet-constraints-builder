@@ -1,5 +1,5 @@
 #################################################
-# Voxel Cell Grid From Mesh v1.3 by Kai Kostack #
+# Voxel Cell Grid From Mesh v1.4 by Kai Kostack #
 #################################################
 # Some code is based on Cells.py for Blender 2.4x by Michael Schardt released under the GPL.
 # - Triangulation is a requirement, this can be done by this script but also manually before
@@ -97,7 +97,7 @@ def run(source=None, parameters=None):
     # Set object centers to geometry origin
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
-    # create object list of selected objects
+    # Create object list of selected objects
     # (because we add more objects with following function we need a separate list)
     objs = []
     for obj in scene.objects:
@@ -130,26 +130,26 @@ def run(source=None, parameters=None):
             ### Add triangulate modifier to original object
             bpy.ops.object.modifier_add(type='TRIANGULATE')
             objMod = createOrReuseObjectAndMesh(bpy.context.scene, objName="$TempMesh$")
+            meOld = objMod.data
             objMod.data = obj.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
+            bpy.data.meshes.remove(meOld, do_unlink=1)
             objMod.matrix_world = obj.matrix_world
             me = objMod.data
             # Remove triangulate modifier (last) from original object
             obj.modifiers.remove(obj.modifiers[-1])
-            ### Apply scale and rotation if necessary
             bpy.context.scene.objects.active = objMod
             objMod.select = 1
-            if gridRes == 0:
-                if qUseUnifiedSpace:
-                    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-                else:
-                    if cellsToObjectsMode > 1: bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-                    else:                      bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-            elif cellsToObjectsMode == 1:
+            
+        ### Apply scale and rotation if necessary
+        if gridRes == 0:
+            if qUseUnifiedSpace:
                 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+            else:
+                if cellsToObjectsMode > 1: bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+                else:                      bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        elif cellsToObjectsMode == 1:
+            bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
-        # Unlink object (for speed optimization)
-        if qRemoveOriginal: scene.objects.unlink(obj)
-        
         if gridRes > 0:
             ### Find boundary borders
             x1=y1=z1 = 9999; x2=y2=z2 = -9999
@@ -174,70 +174,74 @@ def run(source=None, parameters=None):
             cellSizeX = cellSize[0]; cellSizeY = cellSize[1]; cellSizeZ = cellSize[2]
             if not qSilentVerbose: print("Custom cell size: %0.3f, %0.3f, %0.3f" %(cellSizeX, cellSizeY, cellSizeZ))
                    
-        ### add polys to corresponding cells (code mostly taken from cells.py for blender 2.4x)
+        ### Add geometry to corresponding cells (code mostly taken from cells.py for blender 2.4x)
         es = [Vector((1.0, 0.0, 0.0)), Vector((0.0, 1.0, 0.0)), Vector((0.0, 0.0, 1.0))]
         v_cells = {}		
         for vert in me.vertices:
             coords = vert.co
             v_cells[vert] = (int(round(coords[0] /cellSizeX)), int(round(coords[1] /cellSizeY)), int(round(coords[2] /cellSizeZ)))
         f_cells = {}
-        for face in me.polygons:
-            verts = [me.vertices[vertIdx] for vertIdx in face.vertices]
-            fidxs = [v_cells[vert][0] for vert in verts]; fidxs.sort()		
-            min_fidx = fidxs[0]; max_fidx = fidxs[-1]		
-            fidys = [v_cells[vert][1] for vert in verts]; fidys.sort()
-            min_fidy = fidys[0]; max_fidy = fidys[-1]
-            fidzs = [v_cells[vert][2] for vert in verts]; fidzs.sort()
-            min_fidz = fidzs[0]; max_fidz = fidzs[-1]
-            ### fast path for special cases (especially small faces spanning a single cell only)
-            category = 0
-            if (max_fidx > min_fidx): category |= 1
-            if (max_fidy > min_fidy): category |= 2
-            if (max_fidz > min_fidz): category |= 4
-            if category == 0: # single cell
-                f_cells.setdefault((min_fidx, min_fidy, min_fidz), set()).add(face)
-                continue
-            if category == 1: # multiple cells in x-, single cell in y- and z-direction
-                for fidx in range(min_fidx, max_fidx +1):
-                    f_cells.setdefault((fidx, min_fidy, min_fidz), set()).add(face)
-                continue
-            if category == 2: # multiple cells in y-, single cell in x- and z-direction
-                for fidy in range(min_fidy, max_fidy +1):
-                    f_cells.setdefault((min_fidx, fidy, min_fidz), set()).add(face)
-                continue
-            if category == 4: # multiple cells in z-, single cell in x- and y-direction
-                for fidz in range(min_fidz, max_fidz +1):
-                    f_cells.setdefault((min_fidx, min_fidy, fidz), set()).add(face)
-                continue
-
-            ### long path (face spans multiple cells in more than one direction)
-            a0 = face.normal
-            r0 =  0.5 *(math.fabs(a0[0]) *cellSizeX +math.fabs(a0[1]) *cellSizeY +math.fabs(a0[2]) *cellSizeZ)
-            cc = Vector((0.0, 0.0, 0.0))
-            for fidx in range(min_fidx, max_fidx +1):
-                cc[0] = fidx * cellSizeX
-                for fidy in range(min_fidy, max_fidy +1):
-                    cc[1] = fidy * cellSizeY
+        if len(me.polygons) == 0:  # Point cloud - only vertices are considered
+            for vert in me.vertices:
+                f_cells.setdefault(v_cells[vert], set()).add(vert)
+        else:  # Mesh - isolated vertices are ignored
+            for face in me.polygons:
+                verts = [me.vertices[vertIdx] for vertIdx in face.vertices]
+                fidxs = [v_cells[vert][0] for vert in verts]; fidxs.sort()		
+                min_fidx = fidxs[0]; max_fidx = fidxs[-1]		
+                fidys = [v_cells[vert][1] for vert in verts]; fidys.sort()
+                min_fidy = fidys[0]; max_fidy = fidys[-1]
+                fidzs = [v_cells[vert][2] for vert in verts]; fidzs.sort()
+                min_fidz = fidzs[0]; max_fidz = fidzs[-1]
+                ### fast path for special cases (especially small faces spanning a single cell only)
+                category = 0
+                if (max_fidx > min_fidx): category |= 1
+                if (max_fidy > min_fidy): category |= 2
+                if (max_fidz > min_fidz): category |= 4
+                if category == 0: # single cell
+                    f_cells.setdefault((min_fidx, min_fidy, min_fidz), set()).add(face)
+                    continue
+                if category == 1: # multiple cells in x-, single cell in y- and z-direction
+                    for fidx in range(min_fidx, max_fidx +1):
+                        f_cells.setdefault((fidx, min_fidy, min_fidz), set()).add(face)
+                    continue
+                if category == 2: # multiple cells in y-, single cell in x- and z-direction
+                    for fidy in range(min_fidy, max_fidy +1):
+                        f_cells.setdefault((min_fidx, fidy, min_fidz), set()).add(face)
+                    continue
+                if category == 4: # multiple cells in z-, single cell in x- and y-direction
                     for fidz in range(min_fidz, max_fidz +1):
-                        cc[2] = fidz * cellSizeZ
-                        if not qFillVolume and (fidx, fidy, fidz) in f_cells: continue  # cell already populated -> no further processing needed for hollow model
-                        vs = [vert.co -cc for vert in verts]
-                        if not (-r0 <= a0 * vs[0] <= r0): continue  # cell not intersecting face hyperplane
+                        f_cells.setdefault((min_fidx, min_fidy, fidz), set()).add(face)
+                    continue
 
-                        ### check overlap of cell with face (separating axis theorem)
-                        fs = [vs[1] -vs[0], vs[2] -vs[1], vs[0] -vs[2]]
-                        overlap = True
-                        for f in fs:
-                            if not overlap: break
-                            for e in es:
+                ### long path (face spans multiple cells in more than one direction)
+                a0 = face.normal
+                r0 =  0.5 *(math.fabs(a0[0]) *cellSizeX +math.fabs(a0[1]) *cellSizeY +math.fabs(a0[2]) *cellSizeZ)
+                cc = Vector((0.0, 0.0, 0.0))
+                for fidx in range(min_fidx, max_fidx +1):
+                    cc[0] = fidx * cellSizeX
+                    for fidy in range(min_fidy, max_fidy +1):
+                        cc[1] = fidy * cellSizeY
+                        for fidz in range(min_fidz, max_fidz +1):
+                            cc[2] = fidz * cellSizeZ
+                            if not qFillVolume and (fidx, fidy, fidz) in f_cells: continue  # cell already populated -> no further processing needed for hollow model
+                            vs = [vert.co -cc for vert in verts]
+                            if not (-r0 <= a0 * vs[0] <= r0): continue  # cell not intersecting face hyperplane
+
+                            ### check overlap of cell with face (separating axis theorem)
+                            fs = [vs[1] -vs[0], vs[2] -vs[1], vs[0] -vs[2]]
+                            overlap = True
+                            for f in fs:
                                 if not overlap: break
-                                a = e.copy()
-                                a = a.cross(f)
-                                r = 0.5 *(math.fabs(a[0]) *cellSizeX +math.fabs(a[1]) *cellSizeY +math.fabs(a[2]) *cellSizeZ)						
-                                ds = [a *v for v in vs]; ds.sort()
-                                if (ds[0] > r or ds[-1] < -r): overlap = False
-                        if overlap:
-                            f_cells.setdefault((fidx, fidy, fidz), set()).add(face)
+                                for e in es:
+                                    if not overlap: break
+                                    a = e.copy()
+                                    a = a.cross(f)
+                                    r = 0.5 *(math.fabs(a[0]) *cellSizeX +math.fabs(a[1]) *cellSizeY +math.fabs(a[2]) *cellSizeZ)						
+                                    ds = [a *v for v in vs]; ds.sort()
+                                    if (ds[0] > r or ds[-1] < -r): overlap = False
+                            if overlap:
+                                f_cells.setdefault((fidx, fidy, fidz), set()).add(face)
                             
         if qFillVolume:
             # find min, max cells in x, y, z
@@ -494,6 +498,12 @@ def run(source=None, parameters=None):
                     objN.rotation_quaternion = obj.rotation_quaternion
                     objN.dimensions = obj.dimensions
                 objsN.append(objN)
+
+        # Delete object from database
+        if qRemoveOriginal:
+            bpy.data.meshes.remove(obj.data, do_unlink=1)
+            bpy.data.objects.remove(obj, do_unlink=1)
+
     if qSilentVerbose: print()
         
     ### Mesh building for global cell array if non-manifold mesh is enabled
@@ -649,10 +659,10 @@ def run(source=None, parameters=None):
 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
-    # Delete temp object
+    # Delete temp object from database
     if objMod != None:
-        objMod.select = 1
-        bpy.ops.object.delete(use_global=False)
+        bpy.data.meshes.remove(objMod.data, do_unlink=1)
+        bpy.data.objects.remove(objMod, do_unlink=1)
     # Select new objects
     for objN in objsN:
         objN.select = 1

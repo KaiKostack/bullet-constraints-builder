@@ -1,5 +1,5 @@
 #############################################
-# Mesh Bisect Fracture v1.73 by Kai Kostack #
+# Mesh Bisect Fracture v1.74 by Kai Kostack #
 #############################################
 
 # ##### BEGIN GPL LICENSE BLOCK #####
@@ -174,26 +174,16 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
         # Switch to new scene
         bpy.context.screen.scene = sceneCreate
                        
-    ### Calculate new mass in case rigid body simulation is enabled
-    if grpRBWorld != None:
-        for obj in objs:
-            if obj.rigid_body != None:
-                obj.select = 1
-        if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
-        else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
-        # Deselect all objects
-        bpy.ops.object.select_all(action='DESELECT')
-           
     ### Main loop
-    objsHistoryList = []
-    objsNewList = objs
+    objsHistory = objs.copy()
+    objsRemoveIdx = []
+    objsToDo = objs.copy()
     objectCount = objectCountOld = len(objs)
     objectCountLimit += objectCount
     while objectCount < objectCountLimit:
         
-        objsHistoryList.extend(objsNewList)
-        objs = objsNewList
-        objsNewList = []
+        objs = objsToDo
+        objsToDo = []
         qNoObjectsLeft = 1
         for obj in objs:
 
@@ -201,7 +191,7 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
             splitAtJunction_face = 0
             if dim.x > minimumSizeLimit or dim.y > minimumSizeLimit or dim.z > minimumSizeLimit \
             or (qSplitAtJunctions and splitAtJunction_face < len(obj.data.polygons) and (not junctionMaxFaceCnt or splitAtJunction_face <= junctionMaxFaceCnt)):
-               
+                
                 if not qSilentVerbose: print(objectCount, '/', objectCountLimit, ':', obj.name)
                 else: sys.stdout.write('\r' +"%d " %objectCount)
                 # Debug: Save file now and then
@@ -345,19 +335,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                     if len(objA.data.vertices) == 0 or len(objB.data.vertices) == 0:
                         if not qSilentVerbose: print('Bad result on bisect operation, retrying with different location and angle...')
                         bisectErrorCount += 1
-                        ### Remove duplicate objects for new retry
-                        objA.select = 1
-                        objB.select = 1
-                        # Clear mesh datablock from database
+                        # Delete objects from database for new retry
                         bpy.data.meshes.remove(objA.data, do_unlink=1)
+                        bpy.data.objects.remove(objA, do_unlink=1)
                         bpy.data.meshes.remove(objB.data, do_unlink=1)
-                        # Remove object from all groups
-                        for grpTemp in bpy.data.groups:
-                            if objA.name in grpTemp.objects:
-                                grpTemp.objects.unlink(objA)
-                            if objB.name in grpTemp.objects:
-                                grpTemp.objects.unlink(objB)
-                        bpy.ops.object.delete(use_global=False)
+                        bpy.data.objects.remove(objB, do_unlink=1)
                         continue
                     
                     ### After successful bisect operation
@@ -399,9 +381,6 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             except: pass
                             objA.select = 0; objB.select = 0
                             bpy.ops.rigidbody.world_remove()
-                        # Remove empty original object from original scene
-                        try: sceneOriginal.objects.unlink(obj)
-                        except: pass
                                             
                     if grpRBWorld != None:
                         ### Copy rigid body data to new object (if enabled)
@@ -413,33 +392,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         except: pass
                         objA.select = 0; objB.select = 0
                     
-                    ### Clear source object and unlink it from active scene
-                    if qDebugVerbose: print("## MF: Clear source object and unlink it from active scene")
-                    bpy.context.scene.objects.active = obj
-                    try: bpy.ops.object.mode_set(mode='EDIT')
-                    except: pass 
-                    # Clear old mesh
-                    bpy.ops.mesh.select_all(action='SELECT')
-                    bpy.ops.mesh.delete(type='VERT')
-                    try: bpy.ops.object.mode_set(mode='OBJECT')
-                    except: pass 
-                    if grpRBWorld != None:
-                        ### Remove from RigidBodyWorld (if enabled)
-                        bpy.context.scene.objects.active = obj
-                        try: bpy.ops.rigidbody.object_remove()
-                        except: pass
-                        if obj.name in grpRBWorld.objects:
-                            grpRBWorld.objects.unlink(obj)
-                    # Finally unlink original object from scenes
-                    if qSecondScnOpt:
-                        sceneCreate.objects.unlink(obj)
-                        scene.objects.unlink(obj)
-                    else:
-                        bpy.context.scene.objects.unlink(obj)
-                    # Remove object from all groups (so it won't stick in the .blend file forever)
-                    for grp in bpy.data.groups:
-                        if obj.name in grp.objects:
-                            grp.objects.unlink(obj)
+                    ### Delete source object from database
+                    if qDebugVerbose: print("## MF: Delete source object from database")
+                    objsRemoveIdx.append(objsHistory.index(obj))
+                    bpy.data.meshes.remove(obj.data, do_unlink=1)
+                    bpy.data.objects.remove(obj, do_unlink=1)
                     
                     ### Add new objects to the list
                     objectCount -= 1   # Remove original object
@@ -463,7 +420,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         if objTemp.select and objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(bpy.context.scene):
                             if qSecondScnOpt:
                                 scene.objects.link(objTemp)  # Link object back to original scene
-                            objsNewList.append(objTemp)
+                            objsToDo.append(objTemp)
+                            objsHistory.append(objTemp)
                             objTemp.select = 0
                             objectCount += 1
                     break                        
@@ -481,7 +439,13 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
             break
     
     if qSilentVerbose: print()
-    
+
+    ### Remove deleted objects from main list
+    objsNew = []
+    for idx in range(len(objsHistory)):
+        if idx not in objsRemoveIdx:
+            objsNew.append(objsHistory[idx])
+
     ### Remove new scene again
     if qSecondScnOpt:
         # Make sure we're in original scene again
@@ -491,29 +455,27 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
             if ob.type != 'CAMERA':
                 sceneCreate.objects.unlink(ob)
         # Delete second scene
-        try:    bpy.data.scenes.remove(sceneCreate, do_unlink=1)
-        except: bpy.data.scenes.remove(sceneCreate)
+        bpy.data.scenes.remove(sceneCreate, do_unlink=1)
     
     ### Calculate new masses for new objects in case rigid body simulation is enabled
     if grpRBWorld != None:
-        for obj in objsNewList:
+        for obj in objsNew:
             if obj.rigid_body != None:
                 obj.select = 1
         if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
         else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
     # Select all objects in fracture history
-    for obj in objsHistoryList:
+    for obj in objsNew:
         try: obj.select = 1
         except: pass
     
     print('Done. -- Time: %0.2f s' %(time.time() -time_start))
     
-    # return if new objects have been created
-    # secondly return list with all objects created and deleted
-    objsHistoryList.extend(objsNewList)
+    # Return if new objects have been created
+    # Secondly return list with all objects
     if objectCount > objectCountOld: qNewShards = 1
     else: qNewShards = 0
-    return qNewShards, objsHistoryList
+    return qNewShards, objsNew
                  
 ################################################################################   
 

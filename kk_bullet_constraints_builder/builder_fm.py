@@ -48,6 +48,17 @@ def build_fm(use_handler=0):
     props = bpy.context.window_manager.bcb
     scene = bpy.context.scene
 
+    ### Purge orphaned data-blocks in database
+    for obj in bpy.data.objects:
+        qFound = 0
+        for scn in bpy.data.scenes:
+            if obj.name in scn.objects:
+                qFound = 1; break
+        if not qFound: bpy.data.objects.remove(obj, do_unlink=1)
+    for me in bpy.data.meshes:
+        if me.users == 0:
+            bpy.data.meshes.remove(me, do_unlink=1)
+
     ### Create new animation data and action if necessary
     if scene.animation_data == None:
         scene.animation_data_create()
@@ -244,6 +255,17 @@ def build_fm(use_handler=0):
     if not use_handler:
         bpy.ops.object.delete(use_global=True)
 
+    ### Purge orphaned data-blocks in database
+    for obj in bpy.data.objects:
+        qFound = 0
+        for scn in bpy.data.scenes:
+            if obj.name in scn.objects:
+                qFound = 1; break
+        if not qFound: bpy.data.objects.remove(obj, do_unlink=1)
+    for me in bpy.data.meshes:
+        if me.users == 0:
+            bpy.data.meshes.remove(me, do_unlink=1)
+        
     ### Apply parent if found
     if objParent != None:
         ob.select = 1

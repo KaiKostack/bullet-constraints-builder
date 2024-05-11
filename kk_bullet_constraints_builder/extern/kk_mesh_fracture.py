@@ -1,5 +1,5 @@
 ######################################
-# Mesh Fracture v1.73 by Kai Kostack #
+# Mesh Fracture v1.74 by Kai Kostack #
 ######################################
 
 # ##### BEGIN GPL LICENSE BLOCK #####
@@ -190,26 +190,16 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
         # Switch to new scene
         bpy.context.screen.scene = sceneCreate
                        
-    ### Calculate new mass in case rigid body simulation is enabled
-    if grpRBWorld != None:
-        for obj in objs:
-            if obj.rigid_body != None:
-                obj.select = 1
-        if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
-        else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
-        # Deselect all objects
-        bpy.ops.object.select_all(action='DESELECT')
-           
     ### Main loop
-    objsHistoryList = []
-    objsNewList = objs
+    objsHistory = objs.copy()
+    objsRemoveIdx = []
+    objsToDo = objs.copy()
     objectCount = objectCountOld = len(objs)
     objectCountLimit += objectCount
     while objectCount < objectCountLimit:
         
-        objsHistoryList.extend(objsNewList)
-        objs = objsNewList
-        objsNewList = []
+        objs = objsToDo
+        objsToDo = []
         qNoObjectsLeft = 1
         for obj in objs:
 
@@ -373,8 +363,9 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         if qBadResult or (surfA > surf -.001 and surfA < surf +.001):
                             if not qSilentVerbose: print('Error on boolean operation, mesh problems detected. Retrying...')
                             boolErrorCount += 1
-                            # Remove other object already linked to scene for new retry
-                            bpy.context.scene.objects.unlink(objCdup)
+                            # Delete object from database for new retry
+                            bpy.data.meshes.remove(objCdup.data, do_unlink=1)
+                            bpy.data.objects.remove(objCdup, do_unlink=1)
                             # Clear modifier from original object after that
                             obj.modifiers.clear()
                             continue
@@ -416,9 +407,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         if qBadResult or (surfB > surf -.001 and surfB < surf +.001):
                             if not qSilentVerbose: print('Error on boolean operation, mesh problems detected. Retrying...')
                             boolErrorCount += 1
-                            # Remove other object already linked to scene for new retry
-                            bpy.context.scene.objects.unlink(objA)
-                            bpy.context.scene.objects.unlink(objCdup)
+                            # Delete objects from database for new retry
+                            bpy.data.meshes.remove(objA.data, do_unlink=1)
+                            bpy.data.objects.remove(objA, do_unlink=1)
+                            bpy.data.meshes.remove(objCdup.data, do_unlink=1)
+                            bpy.data.objects.remove(objCdup, do_unlink=1)
                             continue
                         objB = bpy.data.objects.new(obj.name, meB)
                         bpy.context.scene.objects.link(objB)
@@ -437,10 +430,13 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         or abs(surf -(surfA +surfB)) > .01:
                             if not qSilentVerbose: print('Bad result on boolean operation, retrying with different location and angle...')
                             boolErrorCount += 1
-                            # Remove duplicate objects for new retry
-                            bpy.context.scene.objects.unlink(objA)
-                            bpy.context.scene.objects.unlink(objB)
-                            bpy.context.scene.objects.unlink(objCdup)
+                            # Delete objects from database for new retry
+                            bpy.data.meshes.remove(objA.data, do_unlink=1)
+                            bpy.data.objects.remove(objA, do_unlink=1)
+                            bpy.data.meshes.remove(objB.data, do_unlink=1)
+                            bpy.data.objects.remove(objB, do_unlink=1)
+                            bpy.data.meshes.remove(objCdup.data, do_unlink=1)
+                            bpy.data.objects.remove(objCdup, do_unlink=1)
                             continue
                         
                         ### After successful boolean operation
@@ -489,21 +485,10 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                                 except: pass
                                 objA.select = 0; objB.select = 0
                                 bpy.ops.rigidbody.world_remove()
-                            # Remove empty original object from original scene
-                            try: sceneOriginal.objects.unlink(obj)
-                            except: pass
                             
-                        ### Cutter object can be removed
-                        bpy.context.scene.objects.active = objCdup
-                        try: bpy.ops.object.mode_set(mode='EDIT')
-                        except: pass 
-                        # Clear old mesh
-                        bpy.ops.mesh.select_all(action='SELECT')
-                        bpy.ops.mesh.delete(type='VERT')
-                        try: bpy.ops.object.mode_set(mode='OBJECT')
-                        except: pass 
-                        # Finally unlink object from scene
-                        bpy.context.scene.objects.unlink(objCdup)
+                        ### Delete cutter object from database
+                        bpy.data.meshes.remove(objCdup.data, do_unlink=1)
+                        bpy.data.objects.remove(objCdup, do_unlink=1)
                         
                         if grpRBWorld != None:
                             ### Copy rigid body data to new object (if enabled)
@@ -515,33 +500,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             except: pass
                             objA.select = 0; objB.select = 0
                         
-                        ### Clear source object and unlink it from active scene
-                        if qDebugVerbose: print("## MF: Clear source object and unlink it from active scene")
-                        bpy.context.scene.objects.active = obj
-                        try: bpy.ops.object.mode_set(mode='EDIT')
-                        except: pass 
-                        # Clear old mesh
-                        bpy.ops.mesh.select_all(action='SELECT')
-                        bpy.ops.mesh.delete(type='VERT')
-                        try: bpy.ops.object.mode_set(mode='OBJECT')
-                        except: pass 
-                        if grpRBWorld != None:
-                            ### Remove from RigidBodyWorld (if enabled)
-                            bpy.context.scene.objects.active = obj
-                            try: bpy.ops.rigidbody.object_remove()
-                            except: pass
-                            if obj.name in grpRBWorld.objects:
-                                grpRBWorld.objects.unlink(obj)
-                        # Finally unlink original object from scenes
-                        if qSecondScnOpt:
-                            sceneCreate.objects.unlink(obj)
-                            scene.objects.unlink(obj)
-                        else:
-                            bpy.context.scene.objects.unlink(obj)
-                        # Remove object from all groups (so it won't stick in the .blend file forever)
-                        for grp in bpy.data.groups:
-                            if obj.name in grp.objects:
-                                grp.objects.unlink(obj)
+                        ### Delete source object from database
+                        if qDebugVerbose: print("## MF: Delete source object from database")
+                        objsRemoveIdx.append(objsHistory.index(obj))
+                        bpy.data.meshes.remove(obj.data, do_unlink=1)
+                        bpy.data.objects.remove(obj, do_unlink=1)
                                                     
                         ### Add new objects to the list
                         objectCount -= 1   # Remove original object
@@ -565,7 +528,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             if objTemp.select and objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(bpy.context.scene):
                                 if qSecondScnOpt:
                                     scene.objects.link(objTemp)  # Link object back to original scene
-                                objsNewList.append(objTemp)
+                                objsToDo.append(objTemp)
+                                objsHistory.append(objTemp)
                                 objTemp.select = 0
                                 objectCount += 1
                         break                        
@@ -703,8 +667,9 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         if qBadResult or (surfB > surf -.001 and surfB < surf +.001):
                             if not qSilentVerbose: print('Error on boolean operation, mesh problems detected. Retrying...')
                             boolErrorCount += 1
-                            # Remove other object already linked to scene for new retry
-                            bpy.context.scene.objects.unlink(objA)
+                            # Delete object from database for new retry
+                            bpy.data.meshes.remove(objA.data, do_unlink=1)
+                            bpy.data.objects.remove(objA, do_unlink=1)
                             continue
                         objB = bpy.data.objects.new(obj.name, meB)
                         bpy.context.scene.objects.link(objB)
@@ -774,9 +739,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         and (dimB.x >= 0 and dimB.y >= 0 and dimB.z >= 0)) and objC == objCP):  
                             if not qSilentVerbose: print('Error on boolean operation, retrying with different location and angle...')
                             boolErrorCount += 1
-                            # Remove both objects for new retry
-                            bpy.context.scene.objects.unlink(objA)
-                            bpy.context.scene.objects.unlink(objB)
+                            # Delete both objects from database for new retry
+                            bpy.data.meshes.remove(objA.data, do_unlink=1)
+                            bpy.data.objects.remove(objA, do_unlink=1)
+                            bpy.data.meshes.remove(objB.data, do_unlink=1)
+                            bpy.data.objects.remove(objB, do_unlink=1)
                             continue
                         
                         ### After successful boolean operation
@@ -825,9 +792,6 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                                 except: pass
                                 objA.select = 0; objB.select = 0
                                 bpy.ops.rigidbody.world_remove()
-                            # Remove empty original object from original scene
-                            try: sceneOriginal.objects.unlink(obj)
-                            except: pass
                        
                         if grpRBWorld != None:
                             ### Copy rigid body data to new object (if enabled)
@@ -839,33 +803,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             except: pass
                             objA.select = 0; objB.select = 0
                         
-                        ### Clear source object and unlink it from active scene
-                        if qDebugVerbose: print("## MF: Clear source object and unlink it from active scene")
-                        bpy.context.scene.objects.active = obj
-                        try: bpy.ops.object.mode_set(mode='EDIT')
-                        except: pass 
-                        # Clear old mesh
-                        bpy.ops.mesh.select_all(action='SELECT')
-                        bpy.ops.mesh.delete(type='VERT')
-                        try: bpy.ops.object.mode_set(mode='OBJECT')
-                        except: pass 
-                        if grpRBWorld != None:
-                            ### Remove from RigidBodyWorld (if enabled)
-                            bpy.context.scene.objects.active = obj
-                            try: bpy.ops.rigidbody.object_remove()
-                            except: pass
-                            if obj.name in grpRBWorld.objects:
-                                grpRBWorld.objects.unlink(obj)
-                        # Finally unlink original object from scenes
-                        if qSecondScnOpt:
-                            sceneCreate.objects.unlink(obj)
-                            scene.objects.unlink(obj)
-                        else:
-                            bpy.context.scene.objects.unlink(obj)
-                        # Remove object from all groups (so it won't stick in the .blend file forever)
-                        for grp in bpy.data.groups:
-                            if obj.name in grp.objects:
-                                grp.objects.unlink(obj)
+                        ### Delete source object from database
+                        if qDebugVerbose: print("## MF: Delete source object from database")
+                        objsRemoveIdx.append(objsHistory.index(obj))
+                        bpy.data.meshes.remove(obj.data, do_unlink=1)
+                        bpy.data.objects.remove(obj, do_unlink=1)
                         
                         ### Add new objects to the list
                         objectCount -= 1   # Remove original object
@@ -889,7 +831,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             if objTemp.select and objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(bpy.context.scene):
                                 if qSecondScnOpt:
                                     scene.objects.link(objTemp)  # Link object back to original scene
-                                objsNewList.append(objTemp)
+                                objsToDo.append(objTemp)
+                                objsHistory.append(objTemp)
                                 objTemp.select = 0
                                 objectCount += 1
                         break
@@ -907,7 +850,13 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
             break
 
     if qSilentVerbose: print()
-                                                          
+
+    ### Remove deleted objects from main list
+    objsNew = []
+    for idx in range(len(objsHistory)):
+        if idx not in objsRemoveIdx:
+            objsNew.append(objsHistory[idx])
+
     ### Remove new scene again
     if qSecondScnOpt:
         # Make sure we're in original scene again
@@ -917,8 +866,7 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
             if ob.type != 'CAMERA':
                 sceneCreate.objects.unlink(ob)
         # Delete second scene
-        try:    bpy.data.scenes.remove(sceneCreate, do_unlink=1)
-        except: bpy.data.scenes.remove(sceneCreate)
+        bpy.data.scenes.remove(sceneCreate, do_unlink=1)
             
     objCP.location = locCold
     objCP.rotation_euler = rotCold
@@ -931,24 +879,23 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
     
     ### Calculate new masses for new objects in case rigid body simulation is enabled
     if grpRBWorld != None:
-        for obj in objsNewList:
+        for obj in objsNew:
             if obj.rigid_body != None:
                 obj.select = 1
         if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
         else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
     # Select all objects in fracture history
-    for obj in objsHistoryList:
+    for obj in objsNew:
         try: obj.select = 1
         except: pass
                                                             
     print('Done. -- Time: %0.2f s' %(time.time() -time_start))
     
-    # return if new objects have been created
-    # secondly return list with all objects created and deleted
-    objsHistoryList.extend(objsNewList)
+    # Return if new objects have been created
+    # Secondly return list with all objects
     if objectCount > objectCountOld: qNewShards = 1
     else: qNewShards = 0
-    return qNewShards, objsHistoryList
+    return qNewShards, objsNew
                  
 ################################################################################   
 
