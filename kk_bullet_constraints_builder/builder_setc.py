@@ -233,7 +233,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             for detonatorObj in detonatorObjs:
                 if detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
                     if objA not in objsDetonSkip or objB not in objsDetonSkip:
-                        distVec = loc -detonatorObj.location
+                        distVec = Vector(loc) -detonatorObj.location
                         if detonatorObj.type == 'EMPTY' and detonatorObj.empty_draw_type == 'CUBE':
                             # When empty is in Cube mode then use a cubic shape
                             dist =           abs(distVec[0]) /abs(detonatorObj.scale[0])

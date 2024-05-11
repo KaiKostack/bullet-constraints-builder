@@ -134,7 +134,6 @@ def createElementGroupIndex(objs):
 
 def gatherObjects(scene):
 
-    ### Create object lists of selected objects
     print("Creating object lists of selected objects...")
 
     props = bpy.context.window_manager.bcb
@@ -210,6 +209,8 @@ def gatherObjects(scene):
 
 def prepareObjects(objs):
 
+    print("Preparing objects...")
+
     bpy.context.scene.objects.active = objs[0]
 
     ### Create one main group for all objects
@@ -261,6 +262,8 @@ def prepareObjects(objs):
 ################################################################################   
 
 def prepareMaterials(objs, objsEGrp):
+
+    print("Preparing materials...")
 
     elemGrps = global_vars.elemGrps
             
