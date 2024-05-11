@@ -1254,9 +1254,15 @@ def tool_groundMotion(scene):
                 bbMin, bbMax, bbCenter = boundaryBox(obj, 1)
                 if qFirst:
                     bbMin_all = bbMin.copy()
+                    bbMax_all = bbMax.copy()
                     qFirst = 0
                 else:
+                    if bbMin_all[0] > bbMin[0]: bbMin_all[0] = bbMin[0]
+                    if bbMin_all[1] > bbMin[1]: bbMin_all[1] = bbMin[1]
                     if bbMin_all[2] > bbMin[2]: bbMin_all[2] = bbMin[2]
+                    if bbMax_all[0] < bbMax[0]: bbMax_all[0] = bbMax[0]
+                    if bbMax_all[1] < bbMax[1]: bbMax_all[1] = bbMax[1]
+                    if bbMax_all[2] < bbMax[2]: bbMax_all[2] = bbMax[2]
                 # Also consider collision margin (find largest one)
                 if obj.rigid_body.use_margin:
                     if obj.rigid_body.collision_margin > margin: margin = obj.rigid_body.collision_margin
@@ -1264,8 +1270,8 @@ def tool_groundMotion(scene):
         else: height = 0
         ### Create ground object data
         verts = []; edges = []; faces = []
-        corner1 = Vector((-500,-500,-10))
-        corner2 = Vector((500, 500, 0))
+        corner1 = Vector((bbMin_all[0]-500, bbMin_all[1]-500, -10))
+        corner2 = Vector((bbMax_all[0]+500, bbMax_all[1]+500, 0))
         createBoxData(verts, edges, faces, corner1, corner2)
         # Create empty mesh object
         #me = bpy.data.meshes.new(props.preprocTools_gnd_obj)
