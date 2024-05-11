@@ -187,7 +187,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
         
         pair = next(connectsPair_iter)   
         consts = next(connectsConsts_iter)
-        loc = Vector(next(connectsLoc_iter))
+        loc = next(connectsLoc_iter)
         geo = next(connectsGeo_iter)
         btMultiplier = next(connectsBtMul_iter)
         

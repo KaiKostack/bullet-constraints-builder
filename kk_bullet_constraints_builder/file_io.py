@@ -56,28 +56,39 @@ def removeBadCharsFromFilename(filename):
         
 ################################################################################
 
-def dataToFile(data, pathName):
+def dataToFile(data, pathName, qPickle=True, qCompressed=False):
     try: f = open(pathName, "wb")
     except:
         print('Error: Could not write file:', pathName)
         return 1
     else:
-        pickle.dump(data, f, 0)
+        if qCompressed:
+            if qPickle:
+                data = pickle.dumps(data, 4)  # 0 for using real ASCII pickle protocol and comment out the base64 lines (slower but human readable)
+            data = zlib.compress(data, 9)
+            f.write(data)
+        else:
+            if qPickle:
+                pickle.dump(data, f, 0)
+            else:
+                f.write(data)
         f.close()
 
 ########################################
 
-def dataFromFile(pathName):
+def dataFromFile(pathName, qPickle=True, qCompressed=False):
     try: f = open(pathName, "rb")
     except:
         print('Error: Could not read file:', pathName)
         return 1
     else:
-        raw = f.read()
-        data = pickle.loads(raw)
+        data = f.read()
+        if qCompressed:
+            data = zlib.decompress(data)
+        if qPickle:
+            data = pickle.loads(data)
         f.close()
         return data
-    return None
 
 ########################################
 

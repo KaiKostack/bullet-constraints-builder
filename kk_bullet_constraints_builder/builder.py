@@ -106,6 +106,8 @@ def build():
                     if len(constsConnect) > 0:
                         time_start_building = time.time()
                         
+                        ###### Apply displacement correction to meshes and connection locations
+                        connectsLoc = applyDisplacementCorrection(objs, objsEGrp, connectsPair, connectsLoc)
                         ###### Scale elements by custom scale factor and make separate collision object for that
                         applyScale(scene, objs, objsEGrp, childObjs)
                         ###### Bevel elements and make separate collision object for that

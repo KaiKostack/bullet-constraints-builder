@@ -37,6 +37,7 @@ import global_vars
 
 ### Import submodules
 from global_vars import *      # Contains global variables
+from file_io import *       # Contains build data access functions
 
 ################################################################################
 
@@ -885,7 +886,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
 
         return geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect
 
-    return 0, 0, 0, [0,0,0], [1,2,3], 0  # Dummy data, connection will be remove later because of zero area anyway
+    return 0, 0, 0, Vector((0,0,0)), [1,2,3], 0  # Dummy data, connection will be remove later because of zero area anyway
 
 ########################################
 
@@ -1139,6 +1140,103 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
     print()
     return connectsGeo, connectsLoc
 
+################################################################################   
+
+def applyDisplacementCorrection(objs, objsEGrp, connectsPair, connectsLoc):
+
+    elemGrps = global_vars.elemGrps
+
+    ### Prepare dictionary of element indices for faster item search (optimization)
+    objsDict = {}
+    for i in range(len(objs)):
+        objsDict[objs[i]] = i
+    
+    ### Create group index with their respective objects
+    grpsObjs = {}
+    for elemGrp in elemGrps:
+        grpName = elemGrp[EGSidxName]
+        grpObjs = []
+        for obj in objs:
+            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
+                grpObjs.append(obj)
+        grpsObjs[grpName] = grpObjs
+    
+    vLocDataCnt = 0
+    for elemGrp in elemGrps:
+        grpDCor = elemGrp[EGSidxDCor]
+        if grpDCor:
+            grpName = elemGrp[EGSidxName]
+            for obj in grpsObjs[grpName]:
+                for vert in obj.data.vertices:
+                    vLocDataCnt += 1
+
+    # Import data from file
+    if vLocDataCnt:
+        filePath = os.path.join(logPath, "bcb-diff-%d.cfg" %vLocDataCnt)
+        if os.path.exists(filePath):
+            print("Displacement correction vertices: %d" %vLocDataCnt)
+            print("Importing displacement correction data from:", filePath)
+            vLocData = dataFromFile(filePath, qPickle=True, qCompressed=True)
+            
+            if vLocData != 1 and len(vLocData):
+
+                ### Build kd-trees for every object's vertices
+                objsKd = []
+                for obj in objs:
+                    me = obj.data
+                    mat = obj.matrix_world
+                    
+                    kd = mathutils.kdtree.KDTree(len(me.vertices))
+                    for i, v in enumerate(me.vertices):
+                        loc = mat *v.co    # Multiply matrix by vertex coordinates to get global coordinates
+                        kd.insert(loc, i)
+                    kd.balance()
+                    objsKd.append(kd)
+                                    
+                ### Apply differences to the vertices of the input meshes
+                vIdx = 0
+                for elemGrp in elemGrps:
+                    grpDCor = elemGrp[EGSidxDCor]
+                    if grpDCor:
+                        grpName = elemGrp[EGSidxName]
+                        for obj in grpsObjs[grpName]:
+                            for vert in obj.data.vertices:
+                                vert.co -= Vector(vLocData[vIdx])
+                                vIdx += 1
+                                
+                # If changes have been made
+                if vIdx > 0:
+                    # Set object centers to geometry origin (again after prepareObjects())
+                    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+
+                    ### Apply corrections also on connection locations
+                    connectsPair_iter = iter(connectsPair)
+                    connectsLoc_iter = iter(connectsLoc)
+                    for k in range(len(connectsPair)):
+                        pair = next(connectsPair_iter)   
+                        loc = next(connectsLoc_iter)
+                        objA = objs[pair[0]]
+                        objB = objs[pair[1]]
+                        objKdA = objsKd[pair[0]]
+                        objKdB = objsKd[pair[1]]
+                        
+                        # Find closest vertices via kd-tree in comparison objects A and B
+                        vertAco, vertAidx = objKdA.find(loc)[:2]
+                        vertBco, vertBidx = objKdB.find(loc)[:2]
+                        coClosestAidx = objKdA.find(loc)[0]
+                        coClosestB = objKdB.find(loc)[0]
+                        center = (vertAco +vertBco) /2   # Calculate center of both original vertices
+                        
+                        vertAcoNew = objA.matrix_world *objA.data.vertices[vertAidx].co
+                        vertBcoNew = objB.matrix_world *objB.data.vertices[vertBidx].co
+                        centerNew = (vertAcoNew +vertBcoNew) /2   # Calculate center of both corrected vertices
+                        
+                        # Apply the difference of the closest vertices of both objects to the location of the connection
+                        diff = center -centerNew
+                        connectsLoc[k] = loc -diff
+       
+    return connectsLoc
+       
 ################################################################################   
 
 def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connectsLoc):

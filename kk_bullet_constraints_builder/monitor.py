@@ -149,6 +149,10 @@ def monitor_eventHandler(scene):
             if props.progrWeakStartFact != 1:
                 monitor_progressiveWeakening(scene, props.progrWeakStartFact)
                                                 
+            ### Displacement correction initialization
+            if 1: # props.displCorr:
+                displCorrectDiffExport(scene)
+
         ################################
         ### What to do AFTER start frame
         elif "bcb_monitor" in bpy.app.driver_namespace.keys() and scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
@@ -200,6 +204,11 @@ def monitor_eventHandler(scene):
                 if props.timeScalePeriod and scene.frame_current == scene.frame_start +props.timeScalePeriod:
                     ###### Function
                     monitor_fixSprings(scene)
+                    
+            ### Displacement correction vertex location differences export
+            if 1: # props.displCorr:
+                if scene.frame_current == scene.frame_start +props.warmUpPeriod:
+                    displCorrectDiffExport(scene)
 
     # When Fracture Modifier is in use
     else:
@@ -224,6 +233,10 @@ def monitor_eventHandler(scene):
                 bpy.app.driver_namespace["bcb_progrWeakTmp"] = props.progrWeak
             if props.progrWeakStartFact != 1:
                 monitor_progressiveWeakening_fm(scene, props.progrWeakStartFact)
+
+            ### Displacement correction initialization
+            if 1: # props.displCorr:
+                displCorrectDiffExport(scene)
                                                 
         ################################
         ### What to do AFTER start frame
@@ -267,6 +280,11 @@ def monitor_eventHandler(scene):
                 if props.timeScalePeriod and scene.frame_current == scene.frame_start +props.timeScalePeriod:
                     ###### Function
                     monitor_fixSprings_fm(scene)
+
+            ### Displacement correction vertex location differences export
+            if 1: # props.displCorr:
+                if scene.frame_current == scene.frame_start +props.warmUpPeriod:
+                    displCorrectDiffExport(scene)
 
 ################################################################################
 
@@ -657,7 +675,6 @@ def monitor_checkForChange_fm(scene):
 ################################################################################
 
 def monitor_initTriggers(scene):
-    
 
     props = bpy.context.window_manager.bcb
     elemGrps = global_vars.elemGrps
@@ -881,6 +898,81 @@ def monitor_progressiveWeakening_fm(scene, progrWeakVar):
             
 ################################################################################
 
+def displCorrectDiffExport(scene):
+    
+    elemGrps = global_vars.elemGrps
+
+    # When Fracture Modifier is in use
+    if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
+        try: objFM = scene.objects[asciiExportName]
+        except: print("Error: Fracture Modifier object expected but not found."); return
+        md = objFM.modifiers["Fracture"]
+
+    ### Get data from scene
+    try: objs = scene["bcb_objs"]
+    except: objs = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+    try: objsEGrp = scene["bcb_objsEGrp"]
+    except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
+    ### Prepare dictionary of element indices for faster item search (optimization)
+    objsDict = {}
+    for i in range(len(objs)):
+        objsDict[objs[i]] = i
+    
+    ### Create group index with their respective objects
+    grpsObjs = {}
+    for elemGrp in elemGrps:
+        grpName = elemGrp[EGSidxName]
+        grpObjs = []
+        for obj in objs:
+            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
+                grpObjs.append(obj)
+        grpsObjs[grpName] = grpObjs
+    
+    if "bcb_vLocs" not in bpy.app.driver_namespace:
+        vLocData = bpy.app.driver_namespace["bcb_vLocs"] = []    
+        qStartFrame = 1
+    else:
+        vLocDataStart = bpy.app.driver_namespace["bcb_vLocs"]  
+        vLocData = []
+        qStartFrame = 0
+
+    for elemGrp in elemGrps:
+        grpDCor = elemGrp[EGSidxDCor]
+        if grpDCor:
+            grpName = elemGrp[EGSidxName]
+            for objName in grpsObjs[grpName]:
+
+                # When official Blender and not Fracture Modifier is in use
+                if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
+                    obj = scene.objects[objName]
+                    for vert in obj.data.vertices:
+                        vLoc_world = obj.matrix_world *vert.co  # Vertex location in world space
+                        vLocData.append(vLoc_world)
+                # When Fracture Modifier is in use
+                else:
+                    shard = md.mesh_islands[objName]
+                    for vert in shard.vertices:
+                        vLoc_world = objFM.matrix_world *vert.co  # Vertex location in world space
+                        vLocData.append(vLoc_world)
+
+    if len(vLocData): print("Displacement correction vertices: %d" %len(vLocData))
+
+    # Export data to file
+    if not qStartFrame and len(vLocData):
+        if len(vLocData) == len(vLocDataStart):
+            for idx in range(len(vLocData)):
+                vLocData[idx] = tuple(vLocData[idx] -vLocDataStart[idx])
+            filePath = os.path.join(logPath, "bcb-diff-%d.cfg" %len(vLocData))
+            if not os.path.exists(filePath):
+                print("Exporting displacement correction data to:", filePath)
+                dataToFile(vLocData, filePath, qPickle=True, qCompressed=True)
+                # Clear vertex location properties
+                del bpy.app.driver_namespace["bcb_vLocs"]
+        else:
+            print("Error: Displacement correction vertex count mismatch, no file exported.")
+
+################################################################################
+
 def monitor_freeBuffers(scene):
     
     if debug: print("Calling freeBuffers")
@@ -935,6 +1027,10 @@ def monitor_freeBuffers(scene):
 
         # Clear trigger properties
         try: del bpy.app.driver_namespace["bcb_triggers"]
+        except: pass
+
+        # Clear vertex location properties
+        try: del bpy.app.driver_namespace["bcb_vLocs"]
         except: pass
 
         # When Fracture Modifier is in use

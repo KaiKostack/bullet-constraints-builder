@@ -223,8 +223,9 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxBevl" %i +" = bool_(name='Bevel', default=presets[j][EGSidxBevl], description='Enables beveling for elements to avoid `Jenga´ effect (undesired stability increase caused by incompressible rigid bodies). This uses hidden collision meshes and has no influence on breaking threshold and mass calculations')")
         exec("elemGrp_%d_EGSidxFacg" %i +" = bool_(name='Facing', default=presets[j][EGSidxFacg], description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation)')")
         exec("elemGrp_%d_EGSidxCyln" %i +" = bool_(name='Cylindric Shape', default=presets[j][EGSidxCyln], description='Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns')")
-        exec("elemGrp_%d_EGSidxIter" %i +" = int_(name='Solver Iterations Override', default=presets[j][EGSidxIter], min=0, max=100000, description='Overrides the Constraint Solver Iterations value of the scene for constraints of this element group if set to a value greater 0. Higher numbers can help to reduce solver induced deformation on elements bearing extreme loads')")
+        exec("elemGrp_%d_EGSidxDCor" %i +" = bool_(name='Displ. Correction', default=presets[j][EGSidxDCor], description='Enables the correction of initial displacements. This can compensate for sagging structures such as bridges that would otherwise require a very high solver step count to be straight. To do this, the simulation must be run twice. On the first run, the displacements are saved into an external file when the warm-up period ends. In the second run (rebuilding required), the differences are integrated into the mesh. Delete the external file to reset')")
         exec("elemGrp_%d_EGSidxDClP" %i +" = bool_(name='Dis. Col. Permanently', default=presets[j][EGSidxDClP], description='Disables collisions between initially connected elements of this element group permanently (overrides global setting)')")
+        exec("elemGrp_%d_EGSidxIter" %i +" = int_(name='Solver Iterations Override', default=presets[j][EGSidxIter], min=0, max=100000, description='Overrides the Constraint Solver Iterations value of the scene for constraints of this element group if set to a value greater 0. Higher numbers can help to reduce solver induced deformation on elements bearing extreme loads')")
 
         # Update fromula assistant submenu according to the chosen element group
         exec("assistant_menu = enum_(name='Type of Building Material', items=assistant_menu_data, default=presets[j][EGSidxAsst]['ID'])")
@@ -271,8 +272,9 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxBevl" %i +" = elemGrps[i][EGSidxBevl]")
                 exec("self.elemGrp_%d_EGSidxFacg" %i +" = elemGrps[i][EGSidxFacg]")
                 exec("self.elemGrp_%d_EGSidxCyln" %i +" = elemGrps[i][EGSidxCyln]")
-                exec("self.elemGrp_%d_EGSidxIter" %i +" = elemGrps[i][EGSidxIter]")
+                exec("self.elemGrp_%d_EGSidxDCor" %i +" = elemGrps[i][EGSidxDCor]")
                 exec("self.elemGrp_%d_EGSidxDClP" %i +" = elemGrps[i][EGSidxDClP]")
+                exec("self.elemGrp_%d_EGSidxIter" %i +" = elemGrps[i][EGSidxIter]")
             
             # Update fromula assistant submenu according to the chosen element group
             i = self.menu_selectedElemGrp
@@ -330,8 +332,9 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxBevl] = eval("self.elemGrp_%d_EGSidxBevl" %i)
                 elemGrps[i][EGSidxFacg] = eval("self.elemGrp_%d_EGSidxFacg" %i)
                 elemGrps[i][EGSidxCyln] = eval("self.elemGrp_%d_EGSidxCyln" %i)
-                elemGrps[i][EGSidxIter] = eval("self.elemGrp_%d_EGSidxIter" %i)
+                elemGrps[i][EGSidxDCor] = eval("self.elemGrp_%d_EGSidxDCor" %i)
                 elemGrps[i][EGSidxDClP] = eval("self.elemGrp_%d_EGSidxDClP" %i)
+                elemGrps[i][EGSidxIter] = eval("self.elemGrp_%d_EGSidxIter" %i)
                 # Remove surface variable if existing (will be added in setConstraintSettings()
                 elemGrps[i][EGSidxBTC] = elemGrps[i][EGSidxBTC].replace('*a','')
                 elemGrps[i][EGSidxBTT] = elemGrps[i][EGSidxBTT].replace('*a','')
