@@ -1259,7 +1259,7 @@ def tool_groundMotion(scene):
         objsA = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE' and len(obj.data.vertices) > 0]
         if len(objsA) > 0:
             ### Calculate boundary boxes for all active objects with connection type > 0
-            margin = 0
+            margin = props.preprocTools_fix_rng
             qFirst = 1
             for obj in objsA:
                 # Calculate boundary box corners
