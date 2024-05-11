@@ -44,9 +44,25 @@ def initGeneralRigidBodyWorldSettings(scene):
 
     ### Set general rigid body world settings
     props = bpy.context.window_manager.bcb
-    # Set FPS rate for rigid body simulation (from Blender preset)
-    scene.render.fps = 25
-    scene.render.fps_base = 1
+
+    # Automatically correct the FPS rate or Solver Steps as the FPS must be multiples of the Solver Steps to avoid stuttering
+    if props.stepsPerSecond %scene.render.fps != 0 or scene.render.fps_base != 1:
+        print("Warning: Solver Steps should be multiples of the Frame Rate, trying to fix it...")
+        fps = props.stepsPerSecond /int(props.stepsPerSecond /scene.render.fps)
+        if fps %int(fps) == 0:
+            scene.render.fps = fps
+            scene.render.fps_base = 1
+            print("New Frame Rate set to:", scene.render.fps)
+        else:
+            props.stepsPerSecond = scene.render.fps *int(props.stepsPerSecond /scene.render.fps)
+            print("New Solver Steps set to:", props.stepsPerSecond)
+            if props.stepsPerSecond %scene.render.fps != 0 or scene.render.fps_base != 1:
+                fps = props.stepsPerSecond /int(props.stepsPerSecond /scene.render.fps)
+                if fps %int(fps) == 0:
+                    print("New Frame Rate set to:", scene.render.fps)
+                    scene.render.fps = fps
+                    scene.render.fps_base = 1
+                
     # Set Steps Per Second for rigid body simulation
     scene.rigidbody_world.steps_per_second = props.stepsPerSecond
     scene.rigidbody_world.solver_iterations = props.solverIterations
