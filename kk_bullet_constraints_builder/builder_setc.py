@@ -551,6 +551,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
         if elemGrp != None:
             elemGrps_elemGrp = elemGrps[elemGrp]
             disColPerm = elemGrps_elemGrp[EGSidxDClP]
+            solvIter = elemGrps_elemGrp[EGSidxIter]
         
         ### If invalid contact area
         elif elemGrp == None:
@@ -713,7 +714,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
         ### 1x FIXED; Indestructible buffer between passive and active foundation elements
         if CT == -1:
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
-            solvIter = max(1, int(props.solverIterations /10))
+            if solvIter == 0: solvIter = max(1, int(props.solverIterations /10))  # If no custom Solver Iterations, an automatic value is generated
             setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=props.passiveUseBreaking,si=solvIter)
             constsData.append([cData, cDatb])
 
