@@ -91,7 +91,7 @@ def createElementGroupIndex(objs):
                     else: objGrpsTmp.append(elemGrps.index(elemGrp))
         if len(objGrpsTmp) > 1:
             if errorsShown < 2:
-                sys.stdout.write("Warning: Object %s belongs to more than one element group, defaults are used. Element groups:" %obj.name)
+                sys.stdout.write("Warning: Object %s belongs to more than one element group, only first group is used. Element groups:" %obj.name)
                 for idx in objGrpsTmp: sys.stdout.write(" #%d %s" %(idx, elemGrps[idx][EGSidxName]))
                 print()
                 errorsShown += 1
@@ -1291,38 +1291,65 @@ def applyDisplacementCorrection(objs, objsEGrp, connectsPair, connectsLoc):
        
 ################################################################################   
 
-def deleteConnectionsWithZeroContactArea(objs, connectsPair, connectsGeo, connectsLoc):
+def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsGeo, connectsLoc):
     
     ### Delete connections with zero contact area
     if debug: print("Deleting connections with zero contact area...")
 
     props = bpy.context.window_manager.bcb
+    elemGrps = global_vars.elemGrps
     connectCntOld = len(connectsPair)
     connectCnt = 0
     
-    if props.disableCollisionPerm:
-        # Mark as zero instead of removing (special case for collision suppression connections)
-        for i in range(len(connectsPair)):
-            geoContactArea = connectsGeo[i][0]
-            if geoContactArea <= minimumContactArea:
+    ### Prepare dictionary of element indices for faster item search (optimization)
+    objsDict = {}
+    for i in range(len(objs)):
+        objsDict[objs[i]] = i
+
+    connectsPairTmp = []
+    connectsGeoTmp = []
+    connectsLocTmp = []
+    connectsPair_iter = iter(connectsPair)
+    for i in range(len(connectsPair)):
+        pair = next(connectsPair_iter)   
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
+        elemGrpA = objsEGrp[objsDict[objA]] 
+        elemGrpB = objsEGrp[objsDict[objB]]
+        elemGrps_elemGrpA = elemGrps[elemGrpA]
+        elemGrps_elemGrpB = elemGrps[elemGrpB]
+        CT_A = elemGrps_elemGrpA[EGSidxCTyp]
+        CT_B = elemGrps_elemGrpB[EGSidxCTyp]
+        Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+        Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+        geoContactArea = connectsGeo[i][0]
+        
+        # Both A and B are active groups and priority is the same
+        if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
+            ### Use the connection type with the smaller count of constraints for connection between different element groups
+            ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+            if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
+                  CT = CT_A; elemGrp = elemGrpA
+            else: CT = CT_B; elemGrp = elemGrpB
+            elemGrps_elemGrp = elemGrps[elemGrp]
+            disColPerm = elemGrps_elemGrp[EGSidxDClP]
+        else: disColPerm = 0
+        
+        ### Keep connection with non-zero contact area or if collision suppression connection
+        if geoContactArea >= minimumContactArea or props.disableCollisionPerm or disColPerm:
+            # Mark as zero (special case for collision suppression connections)
+            if geoContactArea < minimumContactArea:
                 connectsGeo[i][0] = 0
-                connectCnt += 1
-    else:    
-        ### Delete connections with zero contact area
-        connectsPairTmp = []
-        connectsGeoTmp = []
-        connectsLocTmp = []
-        for i in range(len(connectsPair)):
-            geoContactArea = connectsGeo[i][0]
-            if geoContactArea > minimumContactArea:
-                connectsPairTmp.append(connectsPair[i])
-                connectsGeoTmp.append(connectsGeo[i])
-                connectsLocTmp.append(connectsLoc[i])
-                connectCnt += 1
-        connectsPair = connectsPairTmp
-        connectsGeo = connectsGeoTmp
-        connectsLoc = connectsLocTmp
-        print("Connections skipped due to zero contact area:", connectCntOld -connectCnt)
+            # Copy connection data
+            connectsPairTmp.append(connectsPair[i])
+            connectsGeoTmp.append(connectsGeo[i])
+            connectsLocTmp.append(connectsLoc[i])
+            connectCnt += 1
+                
+    connectsPair = connectsPairTmp
+    connectsGeo = connectsGeoTmp
+    connectsLoc = connectsLocTmp
+    print("Connections skipped due to zero contact area:", connectCntOld -connectCnt)
 
     return connectsPair, connectsGeo, connectsLoc
 
@@ -1461,15 +1488,26 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
             elemGrps_elemGrp = elemGrps[elemGrp]
             disColPerm = elemGrps_elemGrp[EGSidxDClP]
         
-        ### If invalid contact area
-        if geoContactArea == 0 or elemGrp == None:
-            constCnt = 0
+        elif elemGrp == None:
+            constCnt = 0    
             disColPerm = 0
+
+        ### If invalid contact area
+        if geoContactArea == 0:
+            constCnt = 0    
+            # Both A and B are active groups and priority is the same
+            if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
+                ### Use the connection type with the smaller count of constraints for connection between different element groups
+                ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+                if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
+                      CT = CT_A; elemGrp = elemGrpA
+                else: CT = CT_B; elemGrp = elemGrpB
+                elemGrps_elemGrp = elemGrps[elemGrp]
+                disColPerm = elemGrps_elemGrp[EGSidxDClP]
+            else: disColPerm = 0
 
         # Add one extra slot for a possible constraint for permanent collision suppression
         if props.disableCollisionPerm or disColPerm: constCnt += 1
-        # Alternative: Only suppress for valid connections - however, it is more user friendly to suppress always
-        #if (props.disableCollisionPerm or disColPerm) and not qNoCon: constCnt += 1
 
         # In case the connection type is passive or unknown reserve no space for constraints (connectsConsts needs to stay in sync with connectsPair)
         if constCnt == 0: connectsConsts.append([])
@@ -1482,7 +1520,7 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
                 constsConnect.append(i)
             connectsConsts.append(items)
             constCntOfs += len(items)
-            
+    
     return connectsConsts, constsConnect
 
 ################################################################################   

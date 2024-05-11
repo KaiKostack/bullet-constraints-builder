@@ -216,6 +216,14 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             geoContactArea *= min(corFacA, corFacB)
 
         ### Prepare connection data
+        elemGrpA = objsEGrp[objsDict[objA]] 
+        elemGrpB = objsEGrp[objsDict[objB]]
+        elemGrps_elemGrpA = elemGrps[elemGrpA]
+        elemGrps_elemGrpB = elemGrps[elemGrpB]
+        CT_A = elemGrps_elemGrpA[EGSidxCTyp]
+        CT_B = elemGrps_elemGrpB[EGSidxCTyp]
+        Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+        Prio_B = elemGrps_elemGrpB[EGSidxPrio]
         elemGrp = None
         if geoContactArea > 0:  # Only if contact area is valid then prepare connection data
             
@@ -257,14 +265,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             
             x = loc[0]; y = loc[1]; z = loc[2]
         
-            elemGrpA = objsEGrp[objsDict[objA]] 
-            elemGrpB = objsEGrp[objsDict[objB]]
-            elemGrps_elemGrpA = elemGrps[elemGrpA]
-            elemGrps_elemGrpB = elemGrps[elemGrpB]
-            CT_A = elemGrps_elemGrpA[EGSidxCTyp]
-            CT_B = elemGrps_elemGrpB[EGSidxCTyp]
-            Prio_A = elemGrps_elemGrpA[EGSidxPrio]
-            Prio_B = elemGrps_elemGrpB[EGSidxPrio]
             NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
             NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
             NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
@@ -553,9 +553,22 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             disColPerm = elemGrps_elemGrp[EGSidxDClP]
             solvIter = elemGrps_elemGrp[EGSidxIter]
         
-        ### If invalid contact area
         elif elemGrp == None:
             disColPerm = 0
+            if props.disableCollisionPerm: CT = -2
+
+        ### If invalid contact area
+        if geoContactArea == 0:
+            # Both A and B are active groups and priority is the same
+            if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
+                ### Use the connection type with the smaller count of constraints for connection between different element groups
+                ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+                if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
+                      CT = CT_A; elemGrp = elemGrpA
+                else: CT = CT_B; elemGrp = elemGrpB
+                elemGrps_elemGrp = elemGrps[elemGrp]
+                disColPerm = elemGrps_elemGrp[EGSidxDClP]
+            else: disColPerm = 0
             if props.disableCollisionPerm or disColPerm: CT = -2
         
         if CT > 0:

@@ -462,7 +462,19 @@ def tool_separateLoose(scene):
 
 ################################################################################
 
-def updateObjList(scene, objs, objsNew=None):
+def objInObjects(obj, objects):
+
+    # Find an object reference instead of the name within an .objects attribute of a scene or group
+    # This can be useful when obj.name in scene.objects doesn't work because of deleted object data
+    qFound = False
+    for ob in objects:
+        if obj == ob: qFound = True; break
+        
+    return qFound
+
+########################################   
+
+def updateObjList(scene, objs, objsName=None, objsNew=None, objsRemName=None):
     
     ### Add new objects and selected objects to the object list and remove deleted ones
     for objTemp in scene.objects:
@@ -474,10 +486,11 @@ def updateObjList(scene, objs, objsNew=None):
         for idx in reversed(range(len(objs))):
             if objs[idx].name not in scene.objects:
                 del objs[idx]
-    else:
-        for idx in reversed(range(len(objs))):
-            if objs[idx] not in objsNew:
+    elif objsName != None and objsRemName != None:
+        for idx in reversed(range(len(objsName))):
+            if objsName[idx] in objsRemName:
                 del objs[idx]
+                del objsName[idx]
                                 
 ########################################
 
@@ -602,8 +615,10 @@ def tool_discretize(scene):
         # Parameters: [qSplitAtJunctions, minimumSizeLimit, qTriangulate, halvingCutter]
         if props.preprocTools_dis_jus:
             print("\nDiscretization - Junction pass:")
-            if not props.preprocTools_dis_bis: qNewShards, objsNew = kk_mesh_fracture.run(scene, 'BCB', ['JUNCTION', 0, 1, 'BCB_CuttingPlane'], None)
-            else:                       qNewShards, objsNew = kk_mesh_fracture_bisect.run(scene, 'BCB', ['JUNCTION', 0, 1, 'BCB_CuttingPlane'], None)
+            selectionName = [ob.name for ob in selection]
+            objsName = [ob.name for ob in objs]
+            if not props.preprocTools_dis_bis: qNewShards, objsNew, objsRemName = kk_mesh_fracture.run(scene, 'BCB', ['JUNCTION', 0, 1, 'BCB_CuttingPlane'], None)
+            else:                       qNewShards, objsNew, objsRemName = kk_mesh_fracture_bisect.run(scene, 'BCB', ['JUNCTION', 0, 1, 'BCB_CuttingPlane'], None)
             
     ###### Voxel cell based discretization
 
@@ -623,11 +638,13 @@ def tool_discretize(scene):
     
         print("\nDiscretization - Halving pass:")
         ###### External function
-        if not props.preprocTools_dis_bis: qNewShards, objsNew = kk_mesh_fracture.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
-        else:                       qNewShards, objsNew = kk_mesh_fracture_bisect.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+        selectionName = [ob.name for ob in selection]
+        objsName = [ob.name for ob in objs]
+        if not props.preprocTools_dis_bis: qNewShards, objsNew, objsRemName = kk_mesh_fracture.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+        else:                       qNewShards, objsNew, objsRemName = kk_mesh_fracture_bisect.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
         ### Add new objects to the object list and remove deleted ones
-        updateObjList(scene, selection, objsNew)
-        updateObjList(scene, objs, objsNew)
+        updateObjList(scene, selection, objsName=selectionName, objsNew=objsNew, objsRemName=objsRemName)
+        updateObjList(scene, objs, objsName=objsName, objsNew=objsNew, objsRemName=objsRemName)
         
         ### From now on do multiple passes until either now non-discretized objects are found or the passes limit is reached
         passes = 5  # Maximum number of passes
@@ -655,7 +672,6 @@ def tool_discretize(scene):
                 print("\nDiscretization - Pass %d (%d elements left):" %(passNum, count))
                 # Deselect all objects.
                 bpy.ops.object.select_all(action='DESELECT')
-                failedExt = []
                 for obj in failed:
                     obj.select = 1
                     bpy.context.scene.objects.active = obj
@@ -726,11 +742,13 @@ def tool_discretize(scene):
                 # Set object centers to geometry origin
                 bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
                 ###### External function
-                if not props.preprocTools_dis_bis: qNewShards, objsNew = kk_mesh_fracture.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
-                else:                       qNewShards, objsNew = kk_mesh_fracture_bisect.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+                selectionName = [ob.name for ob in selection]
+                objsName = [ob.name for ob in objs]
+                if not props.preprocTools_dis_bis: qNewShards, objsNew, objsRemName = kk_mesh_fracture.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
+                else:                       qNewShards, objsNew, objsRemName = kk_mesh_fracture_bisect.run(scene, 'BCB', ['HALVING', props.preprocTools_dis_siz, 1, 'BCB_CuttingPlane'], None)
                 ### Add new objects to the object list and remove deleted ones
-                updateObjList(scene, selection, objsNew)
-                updateObjList(scene, objs, objsNew)
+                updateObjList(scene, selection, objsName=selectionName, objsNew=objsNew, objsRemName=objsRemName)
+                updateObjList(scene, objs, objsName=objsName, objsNew=objsNew, objsRemName=objsRemName)
                 
         ### If there are still objects larger than minimumSizeLimit left (due to failed boolean operations)
         ### print warning message together with a list of the problematic objects
@@ -762,7 +780,7 @@ def tool_discretize(scene):
     # Update selection list if voxel cells together with junction search is used
     if props.preprocTools_dis_cel and props.preprocTools_dis_jus:
         ### Add new objects to the object list and remove deleted ones
-        updateObjList(scene, selection, objsNew)
+        updateObjList(scene, selection, objsName=selectionName, objsNew=objsNew, objsRemName=objsRemName)
 
     if not props.preprocTools_dis_cel or props.preprocTools_dis_jus:
 

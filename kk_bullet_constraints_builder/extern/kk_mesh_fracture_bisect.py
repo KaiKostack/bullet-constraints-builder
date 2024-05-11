@@ -177,6 +177,7 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
     ### Main loop
     objsHistory = objs.copy()
     objsRemoveIdx = []
+    objsRemoveName = []
     objsToDo = objs.copy()
     objectCount = objectCountOld = len(objs)
     objectCountLimit += objectCount
@@ -395,6 +396,7 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                     ### Delete source object from database
                     if qDebugVerbose: print("## MF: Delete source object from database")
                     objsRemoveIdx.append(objsHistory.index(obj))
+                    objsRemoveName.append(obj.name)
                     bpy.data.meshes.remove(obj.data, do_unlink=1)
                     bpy.data.objects.remove(obj, do_unlink=1)
                     
@@ -445,7 +447,18 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
     for idx in range(len(objsHistory)):
         if idx not in objsRemoveIdx:
             objsNew.append(objsHistory[idx])
+            
+    # Eliminate duplicates from removed objects names list
+    objsRemoveName = list(dict.fromkeys(objsRemoveName))
 
+    ### Eliminate objects from removed objects names list
+    objsNewName = [ob.name for ob in objsNew]
+    objsRemoveNameNew = []
+    for objName in objsRemoveName:
+        if objName not in objsNewName:
+            objsRemoveNameNew.append(objName)
+    objsRemoveName = objsRemoveNameNew
+    
     ### Remove new scene again
     if qSecondScnOpt:
         # Make sure we're in original scene again
@@ -475,8 +488,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
     # Secondly return list with all objects
     if objectCount > objectCountOld: qNewShards = 1
     else: qNewShards = 0
-    return qNewShards, objsNew
-                 
+    return qNewShards, objsNew, objsRemoveName
+
 ################################################################################   
 
 def boundaryBox(obj, qGlobalSpace):
