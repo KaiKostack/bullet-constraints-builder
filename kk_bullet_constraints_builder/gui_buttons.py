@@ -588,6 +588,7 @@ class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
         if props.preprocTools_grp: tool_createGroupsFromNames(scene); props.preprocTools_grp = 0
         if props.preprocTools_sep: tool_separateLoose(scene); props.preprocTools_sep = 0
         if props.preprocTools_mod: tool_applyAllModifiers(scene); props.preprocTools_mod = 0
+        if props.preprocTools_rem: tool_remesh(scene); props.preprocTools_rem = 0
         if props.preprocTools_ctr: tool_centerModel(scene); props.preprocTools_ctr = 0
         if props.preprocTools_sep2: tool_separateLoose(scene); props.preprocTools_sep2 = 0
         if props.preprocTools_dis: tool_discretize(scene); props.preprocTools_dis = 0
@@ -719,12 +720,25 @@ class OBJECT_OT_bcb_preproc_tool_separate_loose(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_separate_loose_2(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_separate_loose_2"
     bl_label = "Separate Loose"
-    bl_description = "Separates all loose (not connected) mesh elements within an object into separate objects, this is done for all selected objects"
+    bl_description = "Separates all loose (not connected) mesh elements within an object into separate objects, this is done for all selected objects. Members of an object group 'bcb_noSeparateLoose' will be skipped if present"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
         tool_separateLoose(scene)
         props.preprocTools_sep2 = 0
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_preproc_tool_remesh(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_remesh"
+    bl_label = "Remesh"
+    bl_description = "Remeshes all selected objects by converting them to convex hulls. This can help clean up 'bad' geometry that can cause problems with tools like Discretize. Members of an object group 'bcb_noRemesh' will be skipped if present"
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_remesh(scene)
+        props.preprocTools_rem = 0
         return{'FINISHED'}
 
 ########################################

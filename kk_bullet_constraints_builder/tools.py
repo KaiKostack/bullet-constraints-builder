@@ -462,6 +462,50 @@ def tool_separateLoose(scene):
 
 ################################################################################
 
+def tool_remesh(scene):
+    
+    print("\nRemeshing geometry...")
+
+    # Leave edit mode to make sure next operator works in object mode
+    try: bpy.ops.object.mode_set(mode='OBJECT') 
+    except: pass
+
+    # Backup selection
+    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selectionActive = bpy.context.scene.objects.active
+
+    ### Sort out user-defined objects (members of a specific group)
+    grpName = "bcb_noRemesh"
+    selectionSkip = []
+    for grp in bpy.data.groups:
+        if grpName in grp.name:
+            for obj in selection:
+                if obj.name in grp.objects:
+                    obj.select = 0
+                    selectionSkip.append(obj)
+    selection = [obj for obj in selection if obj.select]
+    if len(selectionSkip): print("Elements skipped by '%s' group:" %grpName, len(selectionSkip))
+
+    count = 0
+    for obj in selection:
+        sys.stdout.write('\r' +"%d %s... " %(count, obj.name))
+        bpy.context.scene.objects.active = obj
+        try: bpy.ops.object.mode_set(mode='EDIT')
+        except: pass
+        try: bpy.ops.mesh.select_all(action='SELECT')
+        except: pass
+        try: bpy.ops.mesh.convex_hull()
+        except: pass
+        try: bpy.ops.object.mode_set(mode='OBJECT') 
+        except: pass
+        count += 1
+    print('\r                                                                                ')
+    
+    # Reselect previously deselected objects
+    for obj in selectionSkip: obj.select = 1
+
+################################################################################
+
 def objInObjects(obj, objects):
 
     # Find an object reference instead of the name within an .objects attribute of a scene or group

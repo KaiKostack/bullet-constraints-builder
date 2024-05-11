@@ -207,6 +207,11 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
         box.operator("bcb.preproc_tool_apply_all_modifiers", icon="DOT")
 
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
+        split.prop(props, "preprocTools_rem", text="")
+        box = split.box()
+        box.operator("bcb.preproc_tool_remesh", icon="DOT")
+
+        row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_ctr", text="")
         box = split.box()
         box.operator("bcb.preproc_tool_center_model", icon="DOT")

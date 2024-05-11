@@ -83,6 +83,8 @@ class bcb_props(bpy.types.PropertyGroup):
 
     preprocTools_sep = bool_(default=1)
 
+    preprocTools_rem = bool_(default=0)
+
     preprocTools_dis = bool_(default=1)
     preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.9, min=0.0, max=1000, description="Discretization size in m this tool tries to reach by discretization. To enforce regularity at all times, elements afterwards can deviate in size to some extent from the target size. For booleans (default method): The minimum dimension value serves as limit for an element still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller up to 50%")
     preprocTools_dis_cel = bool_(name="Use Voxel Method (Faster)", default=0, description="Enables the voxel based discretizaton method and geometry is converted into cuboid-shaped cells. While this method has the disadvantage that it can't keep mesh details such as curved surfaces, round columns or mural reliefs, it is very fast compared to the default boolean based method. Also note that this method is limited to odd subdivision level numbers [1,3,5,7..], so you basically can't split an element into two for instance but only into three, five and so on")
