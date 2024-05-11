@@ -1241,6 +1241,18 @@ def tool_groundMotion(scene):
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
 
+    ### Sort out user-defined objects (members of a specific group)
+    grpName = "bcb_noGroundMotion"
+    selectionSkip = []
+    for grp in bpy.data.groups:
+        if grpName in grp.name:
+            for obj in selection:
+                if obj.name in grp.objects:
+                    obj.select = 0
+                    selectionSkip.append(obj)
+    selection = [obj for obj in selection if obj.select]
+    if len(selectionSkip): print("Elements skipped by '%s' group:" %grpName, len(selectionSkip))
+
     if qCreateGroundObj:
         print("Ground object not found, creating new one...")
         # Find active mesh objects in selection
@@ -1267,11 +1279,14 @@ def tool_groundMotion(scene):
                 if obj.rigid_body.use_margin:
                     if obj.rigid_body.collision_margin > margin: margin = obj.rigid_body.collision_margin
             height = bbMin_all[2] -margin
-        else: height = 0
+            corner1 = Vector((bbMin_all[0]-500, bbMin_all[1]-500, -10))
+            corner2 = Vector((bbMax_all[0]+500, bbMax_all[1]+500, 0))
+        else:
+            height = 0
+            corner1 = Vector((-500, -500, -10))
+            corner2 = Vector((500, 500, 0))
         ### Create ground object data
         verts = []; edges = []; faces = []
-        corner1 = Vector((bbMin_all[0]-500, bbMin_all[1]-500, -10))
-        corner2 = Vector((bbMax_all[0]+500, bbMax_all[1]+500, 0))
         createBoxData(verts, edges, faces, corner1, corner2)
         # Create empty mesh object
         #me = bpy.data.meshes.new(props.preprocTools_gnd_obj)
@@ -1419,6 +1434,9 @@ def tool_groundMotion(scene):
     # Revert to start selection
     for obj in selection: obj.select = 1
     bpy.context.scene.objects.active = selectionActive
+
+    # Reselect previously deselected objects
+    for obj in selectionSkip: obj.select = 1
 
 ################################################################################
 
