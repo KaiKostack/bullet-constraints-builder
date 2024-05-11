@@ -706,7 +706,7 @@ class OBJECT_OT_bcb_preproc_tool_center_model(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_separate_loose(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_separate_loose"
     bl_label = "Separate Loose"
-    bl_description = "Separates all loose (not connected) mesh elements within an object into separate objects, this is done for all selected objects"
+    bl_description = "Separates all loose (not connected) mesh elements within an object into separate objects, this is done for all selected objects. Members of an object group 'bcb_noSeparateLoose' will be skipped if present"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene
@@ -773,7 +773,7 @@ class OBJECT_OT_bcb_preproc_tool_remove_intersections(bpy.types.Operator):
 class OBJECT_OT_bcb_preproc_tool_fix_foundation(bpy.types.Operator):
     bl_idname = "bcb.preproc_tool_fix_foundation"
     bl_label = "Fix Foundation"
-    bl_description = "Either uses name based search to find foundation objects or creates foundation objects for all objects touching the overall model boundary box. These foundation objects will be set to be 'Passive' rigid bodies"
+    bl_description = "Either uses name based search to find foundation objects or creates foundation objects for all objects touching the overall model boundary box. These foundation objects will be set to be 'Passive' rigid bodies. Members of an object group 'bcb_noFixFoundation' will be skipped if present"
     def execute(self, context):
         props = context.window_manager.bcb
         scene = bpy.context.scene

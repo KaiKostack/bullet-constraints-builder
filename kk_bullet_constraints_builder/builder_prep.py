@@ -2048,16 +2048,18 @@ def generateDetonator(objs, connectsPair, objsEGrp):
 
     print("\nPreprocessing detonation simulation...")
 
-    ### Get detonator object
-    detonatorObj = None
+    connectsBtMul = [1 for i in connectsPair]
+
+    ### Get detonator objects
+    detonatorObjs = []
     if props.detonAdvanced:
         if len(props.detonatorObj):
-            try: detonatorObj = scene.objects[props.detonatorObj]
-            except: pass
-    if detonatorObj == None:
+            for obj in scene.objects:
+                if props.detonatorObj in obj.name and "_Push" not in obj.name and "_Pull" not in obj.name:
+                    detonatorObjs.append(obj)
+    if len(detonatorObjs) == 0:
         if props.detonAdvanced:
             print("Warning: No detonator object found, skipping advanced blast wave simulation.")
-        connectsBtMul = [1 for i in connectsPair]
         return connectsBtMul
 
     ### Sort out user-defined objects (members of a specific group)
@@ -2117,264 +2119,279 @@ def generateDetonator(objs, connectsPair, objsEGrp):
     else:              print("Ray sampling method: Optimized")
 
     random.seed(0)
-    objsDetonRatio = []
-    objsCoLen = [0] *objsCnt
-    objsCoIdxs = [[]] *objsCnt
-    for i in range(objsCnt):
-        sys.stdout.write('\r' +"%d" %i)
-        obj = objs[i]
-        raySamplesOpen = 0
-        co_len = 0
-        
-        ### Use brute force sampling if enough samples are available
-        for raySample in range(raySamples):
-            rayObj = rayObjLast = obj
-            rayLoc = rayObj.location
 
-            qRayCast = 1
-            if raySample == 0:
-                ### Build kd-tree for object locations
-                kdObjs = mathutils.kdtree.KDTree(objsCnt)
-                for j, ob in enumerate(objs):
-                    kdObjs.insert(ob.location, j)
-                kdObjs.balance()
-                ### Find closest objects via kd-tree
-                co_find = obj.location
-                aIndex = []; aCo = []  #; aDist = []
-                for (co, index, dist) in kdObjs.find_range(co_find, rayDist):
-                    aIndex.append(index); aCo.append(co)  #; aDist.append(dist)
-                aIndex = aIndex[1:]; aCo = aCo[1:]  # Remove first item because it's the same as co_find (zero distance)
-                ### Average all found elements locations
-                co_aver = Vector((0, 0, 0))
-                for co in aCo: co_aver += co
-                co_len = len(aCo)
-                if co_len == 0: rayObjLast = 0  # Skip ray cast
-                else:
-                    co_aver /= co_len
-                    rayDir = rayDir0 = (rayLoc -co_aver).normalized()
-                    objsCoLen[i] = co_len
-                    objsCoIdxs[i] = aIndex
-            else:
-                rayDir = Vector((random.random()*2-1, random.random()*2-1, random.random())).normalized()
-                
-            ### Walk along ray until leaving original element and find the next one within range
-            while rayObj == rayObjLast:
-                rayObjLast = rayObj
-                rayRes, rayLoc, rayNor, rayIdx, rayObj, rayMtx = scene.ray_cast(rayLoc+rayDir/1000, rayDir, distance=rayDist)
-            if not rayRes: raySamplesOpen += 1  # No other object found within range
-            # Debug:
-            #if rayRes: bpy.ops.mesh.primitive_ico_sphere_add(size=.5, view_align=False, enter_editmode=False, location=rayLoc)
-
-        if raySamples == 1:
-            if co_len == 0:   openSpaceRatio = 1
-            elif co_len == 1: openSpaceRatio = raySamplesOpen *.75
-            elif co_len >= 2: openSpaceRatio = raySamplesOpen *.5
-        else:
-            openSpaceRatio = raySamplesOpen /raySamples
-            
-        ### Directional blast impact
-        if qDirectImpact:
-            if co_len > 0:
-                detonDir = detonatorObj.location -obj.location
-                angle = rayDir0.angle(detonDir, -1)
-                if angle >= 0:                                            # Front, side, back
-                    #openSpaceRatio *= 1 -(angle /3.14159)                # 1, 0.5, 0
-                    #openSpaceRatio *= min(1, 1.5 -(angle /3.14159))      # 1, 1, 0.5
-                    openSpaceRatio *= min(1, 2 -(angle /3.14159) *2)     # 1, 1, 0
-                    #openSpaceRatio *= min(1, 3 -(angle /3.14159) *3)      # 1, 1, 1, 0
-                    #openSpaceRatio *= min(1, 2 -(angle /3.14159) *1.5)   # 1, 1, 1, 0.5
-                    #openSpaceRatio *= min(1, 2.5 -(angle /3.14159) *2)   # 1, 1, 1, 1, 0.5
-
-        if obj not in objsDetonSkip: obj['DetonRatio'] = openSpaceRatio
-        objsDetonRatio.append(openSpaceRatio)
-    print()
-
-    ### Merging of open space ratios for objects withing ray length distance to smooth out results
-    if objsRatioMerge:
+    for detonatorObj in detonatorObjs:
+        objsDetonRatio = []
+        objsCoLen = [0] *objsCnt
+        objsCoIdxs = [[]] *objsCnt
         for i in range(objsCnt):
-            co_len = objsCoLen[i]
-            if co_len > 0:
-                obj = objs[i]
-                idxs = objsCoIdxs[i]
-                openSpaceRatio = 0
-                idxCnt = 1
-                for idx in idxs:
-                    #openSpaceRatio += objsDetonRatio[idx]          # Equally balanced samples
-                    openSpaceRatio += objsDetonRatio[idx] /idxCnt  # Balanced by importance
-                    if idxCnt == min(co_len, objsRatioMerge): break
-                    idxCnt += 1
-                #openSpaceRatio /= min(co_len, objsRatioMerge)        # Equally balanced samples
-                openSpaceRatio /= 2 -1 /min(co_len, objsRatioMerge)  # Balanced by importance
-                if obj not in objsDetonSkip: obj['DetonRatioMerge'] = openSpaceRatio
-                objsDetonRatio[i] = openSpaceRatio
-        
-    ###### Transfer data to related constraints
-    connectsBtMul = []
-    connectsPair_iter = iter(connectsPair)
-    cntBtMulZero = 0
-    btMultiplierAver = 0; btMultiplierAverCnt = 0
-    for k in range(len(connectsPair)):
-        pair = next(connectsPair_iter)
-        objA = objs[pair[0]]
-        objB = objs[pair[1]]
-        if objA not in objsDetonSkip or objB not in objsDetonSkip:
-            objAratio = objsDetonRatio[pair[0]]
-            objBratio = objsDetonRatio[pair[1]]
-            # Use average confined/open space ratio for connection
-            openSpaceRatio = (objAratio +objBratio) /2
-            # Value will be considered in breaking threshold multiplier as we only have homogenous strength force fields in Blender.
-            # The force field magnitude will be rescaled accordingly, so that the pressure wave won't produce more damage than to be expected.
-            btMultiplier = max(0, 1 -(openSpaceRatio *deflection))
-        else:
-            btMultiplier = 1
-        if btMultiplier == 0:
-            btMultiplier = 0.001  # Minimum multiplier, could be a setting in UI but leaving it hard-coded for now 
-            cntBtMulZero += 1
-        connectsBtMul.append(btMultiplier)
-        if btMultiplier < 1:
-            btMultiplierAver += btMultiplier
-            btMultiplierAverCnt += 1
-    if cntBtMulZero:
-        print("Warning: Blast wave correction weakened %d connection(s) to very low strength! Deflection Multiplier likely too high." %cntBtMulZero)
-
-    if btMultiplierAverCnt > 0:
-        openSpaceCorrect = btMultiplierAver /btMultiplierAverCnt
-        print("Blast wave correction: %0.3f" %openSpaceCorrect)    
-
-        ### Clamp lowest outliers to ensure simulation stability using a non-linear gradient
-        if qClampLowest:
-            for idx in range(len(connectsBtMul)):
-                correctRef = openSpaceCorrect /2
-                if connectsBtMul[idx] < correctRef:
-                    x = correctRef -connectsBtMul[idx]
-                    connectsBtMul[idx] = correctRef -(1-1/(x+1))
-
-    else: openSpaceCorrect = 1
-    
-    ### Vars
-    explosiveMass = props.detonExplosiveMass  # Mass of the explosive in kg
-    blastWaveVel  = props.detonBlastWaveVel   # Velocity with which the blast wave is traveling in m/s (depends on frame rate)
-    pullBackDelay = props.detonPullBackDelay  # Delay in frames until the negative pressure wave follows the positive one (pressure will be divided by this value to keep overall pressure consistent)
-    groundReflect = props.detonGroundReflect  # Enables reflection of the blast wave from the ground by adding duplicate force fields beneath the surface
-    timeScale = props.timeScalePeriodValue    # Pressure wave propagation time scale (depends on frame rate)
-
-    if "bcb_startFrame" in detonatorObj.keys():
-          startFr = detonatorObj["bcb_startFrame"]  # Startframe of the detonation
-    else: startFr = scene.frame_start
-    endFr = props.timeScalePeriod -pullBackDelay  # Endframe of the effect
-
-    # Create surface reflection by duplicating the entire emitter
-    for isReflection in range(groundReflect +1):
-        
-        # Create two Empties with only a few settings different
-        for typeIdx in range(2):
+            sys.stdout.write('\r' +"%d" %i)
+            obj = objs[i]
+            raySamplesOpen = 0
+            co_len = 0
             
-            ### Special handling for different Empties
-            if typeIdx == 0:
-                if not isReflection: objName = props.detonatorObj +'_Main_Push'
-                else:                objName = props.detonatorObj +'_Refl_Push'
-                frameOffset = 0
-                sign = 1
-            else:
-                if not isReflection: objName = props.detonatorObj +'_Main_Pull'
-                else:                objName = props.detonatorObj +'_Refl_Pull'
-                frameOffset = pullBackDelay
-                sign = -1
-            
-            ###### Create Empty object
-            if objName not in scene.objects:
-                obj = bpy.data.objects.new(objName, None)
-                bpy.context.scene.objects.link(obj)
-                obj.name = objName  # Enforce name even in case it's a duplicate (to avoid '.001')
-                bpy.context.scene.objects.active = obj
-                bpy.ops.object.forcefield_toggle()
-            else:
-                obj = scene.objects[objName]
-                bpy.context.scene.objects.active = obj
+            ### Use brute force sampling if enough samples are available
+            for raySample in range(raySamples):
+                rayObj = rayObjLast = obj
+                rayLoc = rayObj.location
 
-            obj.select = 1
-            obj.location = detonatorObj.location  # Use location of detonator object
-            if isReflection and obj.location[2] > 1: obj.location[2] = -obj.location[2]
-            obj.empty_draw_type = 'SPHERE'
-            obj.field.use_min_distance = True
-            obj.field.use_max_distance = True
-            obj.field.flow = 0  # Flow needs to be disabled as it limits the acting force
-            # These vars will be animated
-            #obj.field.strength = 0
-            #obj.field.distance_min = 0
-            #obj.field.distance_max = 0
-            
-            ### Create new animation curves
-            obj.animation_data_create()
-            # If current action is already a "Motion" one then output a hint
-            if obj.animation_data.action != None and "Detonator" in obj.animation_data.action.name:
-                print("There is already a Detonator action, creating a new one...")
-            obj.animation_data.action = bpy.data.actions.new(name="Detonator")
-            curveStr = obj.animation_data.action.fcurves.new(data_path="field.strength", index=0)  
-            curveMin = obj.animation_data.action.fcurves.new(data_path="field.distance_min", index=0)  
-            curveMax = obj.animation_data.action.fcurves.new(data_path="field.distance_max", index=0)  
-            
-            ### Add points to empty animation curves for strength
-            pIndex = 0
-            for frame in range(startFr-1, endFr+1):
-                if frame >= startFr and frame < endFr:
-                    ### TNT peak pressure formula (result in bar, standard formula by Kinney)
-                    x = ((frame -startFr) /scene.render.fps) *blastWaveVel *timeScale
-                    eq = TNTequivalent *explosiveMass
-                    str = ((808*(1+((x /eq**(1/3))/4.5)**2)) / (((1+((x /eq**(1/3))/0.048)**2) *(1+((x /eq**(1/3))/0.32)**2) *(1+((x /eq**(1/3))/1.35)**2))**0.5))
-                    # str value in bar
-                    str /= 10               # Conversion bar to N/mm^2 (or MPa)
-                    str *= 1000000          # Conversion N/mm^2 to N/m^2
-                    str *= 2.358            # Conversion N into force field strength (forceFieldStr = f *elemMass *9.81 *correction; correction = 2.358)
-                    str /= timeScale
-                    # str value in force field strength
-                    str *= sign             # Consider if push or pull force field
-                    str *= openSpaceCorrect
-                    if groundReflect: str /= 2
+                qRayCast = 1
+                if raySample == 0:
+                    ### Build kd-tree for object locations
+                    kdObjs = mathutils.kdtree.KDTree(objsCnt)
+                    for j, ob in enumerate(objs):
+                        kdObjs.insert(ob.location, j)
+                    kdObjs.balance()
+                    ### Find closest objects via kd-tree
+                    co_find = obj.location
+                    aIndex = []; aCo = []  #; aDist = []
+                    for (co, index, dist) in kdObjs.find_range(co_find, rayDist):
+                        aIndex.append(index); aCo.append(co)  #; aDist.append(dist)
+                    aIndex = aIndex[1:]; aCo = aCo[1:]  # Remove first item because it's the same as co_find (zero distance)
+                    ### Average all found elements locations
+                    co_aver = Vector((0, 0, 0))
+                    for co in aCo: co_aver += co
+                    co_len = len(aCo)
+                    if co_len == 0: rayObjLast = 0  # Skip ray cast
+                    else:
+                        co_aver /= co_len
+                        rayDir = rayDir0 = (rayLoc -co_aver).normalized()
+                        objsCoLen[i] = co_len
+                        objsCoIdxs[i] = aIndex
                 else:
-                    str = 0
+                    rayDir = Vector((random.random()*2-1, random.random()*2-1, random.random())).normalized()
                     
-                if typeIdx == 1:  # Avoid setting strength > 0 after duration of push field has ended
-                    if frame >= endFr -frameOffset:
+                ### Walk along ray until leaving original element and find the next one within range
+                while rayObj == rayObjLast:
+                    rayObjLast = rayObj
+                    rayRes, rayLoc, rayNor, rayIdx, rayObj, rayMtx = scene.ray_cast(rayLoc+rayDir/1000, rayDir, distance=rayDist)
+                if not rayRes: raySamplesOpen += 1  # No other object found within range
+                # Debug:
+                #if rayRes: bpy.ops.mesh.primitive_ico_sphere_add(size=.5, view_align=False, enter_editmode=False, location=rayLoc)
+
+            if raySamples == 1:
+                if co_len == 0:   openSpaceRatio = 1
+                elif co_len == 1: openSpaceRatio = raySamplesOpen *.75
+                elif co_len >= 2: openSpaceRatio = raySamplesOpen *.5
+            else:
+                openSpaceRatio = raySamplesOpen /raySamples
+                
+            ### Directional blast impact
+            if qDirectImpact:
+                if co_len > 0:
+                    detonDir = detonatorObj.location -obj.location
+                    angle = rayDir0.angle(detonDir, -1)
+                    if angle >= 0:                                            # Front, side, back
+                        #openSpaceRatio *= 1 -(angle /3.14159)                # 1, 0.5, 0
+                        #openSpaceRatio *= min(1, 1.5 -(angle /3.14159))      # 1, 1, 0.5
+                        openSpaceRatio *= min(1, 2 -(angle /3.14159) *2)     # 1, 1, 0
+                        #openSpaceRatio *= min(1, 3 -(angle /3.14159) *3)      # 1, 1, 1, 0
+                        #openSpaceRatio *= min(1, 2 -(angle /3.14159) *1.5)   # 1, 1, 1, 0.5
+                        #openSpaceRatio *= min(1, 2.5 -(angle /3.14159) *2)   # 1, 1, 1, 1, 0.5
+
+            if obj not in objsDetonSkip: obj['DetonRatio'] = openSpaceRatio
+            objsDetonRatio.append(openSpaceRatio)
+        print()
+
+        ### Merging of open space ratios for objects withing ray length distance to smooth out results
+        if objsRatioMerge:
+            for i in range(objsCnt):
+                co_len = objsCoLen[i]
+                if co_len > 0:
+                    obj = objs[i]
+                    idxs = objsCoIdxs[i]
+                    openSpaceRatio = 0
+                    idxCnt = 1
+                    for idx in idxs:
+                        #openSpaceRatio += objsDetonRatio[idx]          # Equally balanced samples
+                        openSpaceRatio += objsDetonRatio[idx] /idxCnt  # Balanced by importance
+                        if idxCnt == min(co_len, objsRatioMerge): break
+                        idxCnt += 1
+                    #openSpaceRatio /= min(co_len, objsRatioMerge)        # Equally balanced samples
+                    openSpaceRatio /= 2 -1 /min(co_len, objsRatioMerge)  # Balanced by importance
+                    if obj not in objsDetonSkip: obj['DetonRatioMerge'] = openSpaceRatio
+                    objsDetonRatio[i] = openSpaceRatio
+            
+        ###### Transfer data to related constraints
+        connectsBtMulNew = []
+        connectsPair_iter = iter(connectsPair)
+        cntBtMulZero = 0
+        btMultiplierAver = 0; btMultiplierAverCnt = 0
+        for k in range(len(connectsPair)):
+            pair = next(connectsPair_iter)
+            objA = objs[pair[0]]
+            objB = objs[pair[1]]
+            if objA not in objsDetonSkip or objB not in objsDetonSkip:
+                objAratio = objsDetonRatio[pair[0]]
+                objBratio = objsDetonRatio[pair[1]]
+                # Use average confined/open space ratio for connection
+                openSpaceRatio = (objAratio +objBratio) /2
+                # Value will be considered in breaking threshold multiplier as we only have homogenous strength force fields in Blender.
+                # The force field magnitude will be rescaled accordingly, so that the pressure wave won't produce more damage than to be expected.
+                btMultiplier = max(0, 1 -(openSpaceRatio *deflection))
+            else:
+                btMultiplier = 1
+            if btMultiplier == 0:
+                btMultiplier = 0.001  # Minimum multiplier, could be a setting in UI but leaving it hard-coded for now 
+                cntBtMulZero += 1
+            connectsBtMulNew.append(btMultiplier)
+            if btMultiplier < 1:
+                btMultiplierAver += btMultiplier
+                btMultiplierAverCnt += 1
+        if cntBtMulZero:
+            print("Warning: Blast wave correction weakened %d connection(s) to very low strength! Deflection Multiplier likely too high." %cntBtMulZero)
+
+        if btMultiplierAverCnt > 0:
+            openSpaceCorrect = btMultiplierAver /btMultiplierAverCnt
+            print("Blast wave correction: %0.3f" %openSpaceCorrect)    
+
+            ### Clamp lowest outliers to ensure simulation stability using a non-linear gradient
+            if qClampLowest:
+                for idx in range(len(connectsBtMulNew)):
+                    correctRef = openSpaceCorrect /2
+                    if connectsBtMulNew[idx] < correctRef:
+                        x = correctRef -connectsBtMulNew[idx]
+                        connectsBtMulNew[idx] = correctRef -(1-1/(x+1))
+
+        else: openSpaceCorrect = 1
+
+        # Merge multipliers of multiple detonators
+        for idx in range(len(connectsBtMul)):
+            connectsBtMul[idx] *= connectsBtMulNew[idx]
+
+        ### Vars
+        explosiveMass = props.detonExplosiveMass  # Mass of the explosive in kg
+        blastWaveVel  = props.detonBlastWaveVel   # Velocity with which the blast wave is traveling in m/s (depends on frame rate)
+        pullBackDelay = props.detonPullBackDelay  # Delay in frames until the negative pressure wave follows the positive one (pressure will be divided by this value to keep overall pressure consistent)
+        groundReflect = props.detonGroundReflect  # Enables reflection of the blast wave from the ground by adding duplicate force fields beneath the surface
+        startFr = scene.frame_start               # Start frame of the detonation
+        endFr = props.timeScalePeriod -pullBackDelay  # Endframe of the effect
+        timeScale = props.timeScalePeriodValue    # Pressure wave propagation time scale (depends on frame rate)
+        
+        # User definitions as possible property of the detonator object
+        if "detonExplosiveMass" in detonatorObj.keys():
+              explosiveMass = detonatorObj["detonExplosiveMass"]
+        if "detonBlastWaveVel" in detonatorObj.keys():
+              blastWaveVel = detonatorObj["detonBlastWaveVel"]
+        if "detonPullBackDelay" in detonatorObj.keys():
+              pullBackDelay = detonatorObj["detonPullBackDelay"]
+        if "detonGroundReflect" in detonatorObj.keys():
+              groundReflect = bool(detonatorObj["detonGroundReflect"])
+        if "detonFrameStart" in detonatorObj.keys():
+              startFr = detonatorObj["detonFrameStart"]  
+
+        # Create surface reflection by duplicating the entire emitter
+        for isReflection in range(groundReflect +1):
+            
+            # Create two Empties with only a few settings different
+            for typeIdx in range(2):
+                
+                ### Special handling for different Empties
+                if typeIdx == 0:
+                    if not isReflection: objName = detonatorObj.name +"_Main_Push"
+                    else:                objName = detonatorObj.name +"_Refl_Push"
+                    frameOffset = 0
+                    sign = 1
+                else:
+                    if not isReflection: objName = detonatorObj.name +"_Main_Pull"
+                    else:                objName = detonatorObj.name +"_Refl_Pull"
+                    frameOffset = pullBackDelay
+                    sign = -1
+                
+                ###### Create Empty object
+                if objName not in scene.objects:
+                    obj = bpy.data.objects.new(objName, None)
+                    bpy.context.scene.objects.link(obj)
+                    obj.name = objName  # Enforce name even in case it's a duplicate (to avoid '.001')
+                    bpy.context.scene.objects.active = obj
+                    bpy.ops.object.forcefield_toggle()
+                else:
+                    obj = scene.objects[objName]
+                    bpy.context.scene.objects.active = obj
+
+                obj.select = 1
+                obj.location = detonatorObj.location  # Use location of detonator object
+                if isReflection and obj.location[2] > 1: obj.location[2] = -obj.location[2]
+                obj.empty_draw_type = 'SPHERE'
+                obj.field.use_min_distance = True
+                obj.field.use_max_distance = True
+                obj.field.flow = 0  # Flow needs to be disabled as it limits the acting force
+                # These vars will be animated
+                #obj.field.strength = 0
+                #obj.field.distance_min = 0
+                #obj.field.distance_max = 0
+                
+                ### Create new animation curves
+                obj.animation_data_create()
+                # If current action is already a "Motion" one then output a hint
+                if obj.animation_data.action != None and "Detonator" in obj.animation_data.action.name:
+                    print("There is already a Detonator action, creating one more...")
+                obj.animation_data.action = bpy.data.actions.new(name="Detonator")
+                curveStr = obj.animation_data.action.fcurves.new(data_path="field.strength", index=0)  
+                curveMin = obj.animation_data.action.fcurves.new(data_path="field.distance_min", index=0)  
+                curveMax = obj.animation_data.action.fcurves.new(data_path="field.distance_max", index=0)  
+                
+                ### Add points to empty animation curves for strength
+                pIndex = 0
+                for frame in range(startFr-1, endFr+1):
+                    if frame >= startFr and frame < endFr:
+                        ### TNT peak pressure formula (result in bar, standard formula by Kinney)
+                        x = ((frame -startFr) /scene.render.fps) *blastWaveVel *timeScale
+                        eq = TNTequivalent *explosiveMass
+                        str = ((808*(1+((x /eq**(1/3))/4.5)**2)) / (((1+((x /eq**(1/3))/0.048)**2) *(1+((x /eq**(1/3))/0.32)**2) *(1+((x /eq**(1/3))/1.35)**2))**0.5))
+                        # str value in bar
+                        str /= 10               # Conversion bar to N/mm^2 (or MPa)
+                        str *= 1000000          # Conversion N/mm^2 to N/m^2
+                        str *= 2.358            # Conversion N into force field strength (forceFieldStr = f *elemMass *9.81 *correction; correction = 2.358)
+                        str /= timeScale
+                        # str value in force field strength
+                        str *= sign             # Consider if push or pull force field
+                        str *= openSpaceCorrect
+                        if groundReflect: str /= 2
+                    else:
                         str = 0
-                
-                ### Add keyframe
-                curveStr.keyframe_points.add(1)
-                curvePoint = curveStr.keyframe_points[pIndex]; curvePoint.co = frame +frameOffset, str
-                curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co
-                #curvePoint.handle_left_type = curveType; curvePoint.handle_right_type = curveType
-                pIndex += 1
+                        
+                    if typeIdx == 1:  # Avoid setting strength > 0 after duration of push field has ended
+                        if frame >= endFr -frameOffset:
+                            str = 0
+                    
+                    ### Add keyframe
+                    curveStr.keyframe_points.add(1)
+                    curvePoint = curveStr.keyframe_points[pIndex]; curvePoint.co = frame +frameOffset, str
+                    curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co
+                    #curvePoint.handle_left_type = curveType; curvePoint.handle_right_type = curveType
+                    pIndex += 1
 
-                if typeIdx == 1:  # Only write this last keyframe after duration of push field has ended
-                    if frame > endFr -frameOffset:
-                        break
+                    if typeIdx == 1:  # Only write this last keyframe after duration of push field has ended
+                        if frame > endFr -frameOffset:
+                            break
 
-            ### Add points to empty animation curves of minimum and maximum ranges
-            pIndex = 0
-            for keyframe in range(3):
-                if keyframe == 0:
-                    frame = startFr
-                    pos = 0
-                elif keyframe == 1:
-                    frame = endFr
-                    pos = ((endFr -startFr) /scene.render.fps) *blastWaveVel *timeScale
-                elif keyframe == 2:
-                    frame = endFr +(endFr -startFr)
-                    pos += ((endFr -startFr) /scene.render.fps) *blastWaveVel
-                
-                ### Add keyframe
-                curveMin.keyframe_points.add(1)
-                curveMax.keyframe_points.add(1)
-                curvePoint = curveMin.keyframe_points[pIndex]; curvePoint.co = frame +frameOffset, pos
-                curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co
-                curvePoint.handle_left_type = 'VECTOR'; curvePoint.handle_right_type = 'VECTOR'
-                curvePoint = curveMax.keyframe_points[pIndex]; curvePoint.co = frame +frameOffset, pos
-                curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co
-                curvePoint.handle_left_type = 'VECTOR'; curvePoint.handle_right_type = 'VECTOR'
-                pIndex += 1
+                ### Add points to empty animation curves of minimum and maximum ranges
+                pIndex = 0
+                for keyframe in range(3):
+                    if keyframe == 0:
+                        frame = startFr
+                        pos = 0
+                    elif keyframe == 1:
+                        frame = endFr
+                        pos = ((endFr -startFr) /scene.render.fps) *blastWaveVel *timeScale
+                    elif keyframe == 2:
+                        frame = endFr +(endFr -startFr)
+                        pos += ((endFr -startFr) /scene.render.fps) *blastWaveVel
+                    
+                    ### Add keyframe
+                    curveMin.keyframe_points.add(1)
+                    curveMax.keyframe_points.add(1)
+                    curvePoint = curveMin.keyframe_points[pIndex]; curvePoint.co = frame +frameOffset, pos
+                    curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co
+                    curvePoint.handle_left_type = 'VECTOR'; curvePoint.handle_right_type = 'VECTOR'
+                    curvePoint = curveMax.keyframe_points[pIndex]; curvePoint.co = frame +frameOffset, pos
+                    curvePoint.handle_left = curvePoint.co; curvePoint.handle_right = curvePoint.co
+                    curvePoint.handle_left_type = 'VECTOR'; curvePoint.handle_right_type = 'VECTOR'
+                    pIndex += 1
 
-            # Switch curves to linear extrapolation
-            curveMin.extrapolation = 'LINEAR'
-            curveMax.extrapolation = 'LINEAR'
+                # Switch curves to linear extrapolation
+                curveMin.extrapolation = 'LINEAR'
+                curveMax.extrapolation = 'LINEAR'
 
     return connectsBtMul

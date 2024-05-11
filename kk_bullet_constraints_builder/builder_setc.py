@@ -154,14 +154,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
     scene.objects.unlink(objConst)
     
     ### Get detonator object
-    detonatorObj = None
-    if not props.detonAdvanced:
-        if len(props.detonatorObj):
-            try: detonatorObj = scene.objects[props.detonatorObj]
-            except: pass
+    detonatorObjs = []
+    if len(props.detonatorObj):
+        for obj in scene.objects:
+            if props.detonatorObj in obj.name and "_Push" not in obj.name and "_Pull" not in obj.name:
+                detonatorObjs.append(obj)
+    if len(detonatorObjs): print("Detonator object(s) found:", len(detonatorObjs))
 
     ### Sort out user-defined objects (members of a specific group)
-    if detonatorObj != None:
+    if len(detonatorObjs) > 0:
         grpName = "bcb_noDetonator"
         objsDetonSkip = []
         for grp in bpy.data.groups:
@@ -228,23 +229,26 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             ax = [geoAxisNormal, geoAxisHeight, geoAxisWidth]
             
             ### Calculate breaking threshold multiplier from explosion gradient of detonator object (-1 = center .. 1 = boundary, clamped to [0..1])
-            if detonatorObj != None and detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
-                if objA not in objsDetonSkip or objB not in objsDetonSkip:
-                    distVec = loc -detonatorObj.location
-                    if detonatorObj.type == 'EMPTY' and detonatorObj.empty_draw_type == 'CUBE':
-                        # When empty is in Cube mode then use a cubic shape
-                        dist =           abs(distVec[0]) /abs(detonatorObj.scale[0])
-                        dist = max(dist, abs(distVec[1]) /abs(detonatorObj.scale[1]))
-                        dist = max(dist, abs(distVec[2]) /abs(detonatorObj.scale[2]))
-                    else:
-                        # Otherwise prefer spherical shape
-                        dist =  (abs(distVec[0]) /abs(detonatorObj.scale[0]))**2
-                        dist += (abs(distVec[1]) /abs(detonatorObj.scale[1]))**2
-                        dist += (abs(distVec[2]) /abs(detonatorObj.scale[2]))**2
-                        dist = dist**.5
-                    damageMul = min(1, max(1 -props.detonatorMax, (dist -1) *2 *props.detonatorMul +1))
-                    btMultiplier *= damageMul
-                else: damageMul = 1
+            damageMul = 1
+            for detonatorObj in detonatorObjs:
+                if detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
+                    if objA not in objsDetonSkip or objB not in objsDetonSkip:
+                        distVec = loc -detonatorObj.location
+                        if detonatorObj.type == 'EMPTY' and detonatorObj.empty_draw_type == 'CUBE':
+                            # When empty is in Cube mode then use a cubic shape
+                            dist =           abs(distVec[0]) /abs(detonatorObj.scale[0])
+                            dist = max(dist, abs(distVec[1]) /abs(detonatorObj.scale[1]))
+                            dist = max(dist, abs(distVec[2]) /abs(detonatorObj.scale[2]))
+                        else:
+                            # Otherwise prefer spherical shape
+                            dist =  (abs(distVec[0]) /abs(detonatorObj.scale[0]))**2
+                            dist += (abs(distVec[1]) /abs(detonatorObj.scale[1]))**2
+                            dist += (abs(distVec[2]) /abs(detonatorObj.scale[2]))**2
+                            dist = dist**.5
+                        damageMul *= min(1, max(1 -props.detonatorMax, (dist -1) *2 *props.detonatorMul +1))
+                    else: damageMul = 1
+            if damageMul < 1:
+                btMultiplier *= damageMul
 
             ### Prepare expression variables and convert m to mm
             a = geoContactArea *1000000
@@ -639,10 +643,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                 else: objConst0['ConnectType'] = CT; qUpdateComplete = 1
                 ### Store value as ID property for debug purposes
                 objConst0['Contact Area'] = geoContactArea
-                if detonatorObj != None:
-                    if damageMul < 1:
-                        damage = (1 -damageMul) *100
-                        for idx in consts: emptyObjs[idx]['Damage %'] = damage
+                if damageMul < 1:
+                    damage = (1 -damageMul) *100
+                    for idx in consts: emptyObjs[idx]['Damage %'] = damage
             else:
                 qUpdateComplete = 1
                 

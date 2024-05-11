@@ -387,6 +387,19 @@ def tool_separateLoose(scene):
     # Backup selection
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
+
+    ### Sort out user-defined objects (members of a specific group)
+    grpName = "bcb_noSeparateLoose"
+    selectionSkip = []
+    for grp in bpy.data.groups:
+        if grpName in grp.name:
+            for obj in selection:
+                if obj.name in grp.objects:
+                    obj.select = 0
+                    selectionSkip.append(obj)
+    selection = [obj for obj in selection if obj.select]
+    if len(selectionSkip): print("Elements skipped by '%s' group:" %grpName, len(selectionSkip))
+
     # Find empty objects with constraints in selection
     emptyObjs = [obj for obj in selection if obj.type == 'EMPTY' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body_constraint != None]
     # Remove mesh objects which are used within constraints from selection (we want to leave them untouched)
@@ -399,17 +412,6 @@ def tool_separateLoose(scene):
                 obj.select = 0
                 objsConst.add(obj)
                 
-    ### Sort out user-defined objects (members of a specific group)
-    grpName = "bcb_noSeparateLoose"
-    selectionSkip = []
-    for grp in bpy.data.groups:
-        if grpName in grp.name:
-            for obj in selection:
-                if obj.name in grp.objects:
-                    obj.select = 0
-                    selectionSkip.append(obj)
-            if len(selectionSkip): print("Elements skipped by '%s' group:" %grp.name, len(selectionSkip))
-    
     # Code to generate a component ID per object would belong here but for now it will be used only for discretization
 
     # Remove rigid body settings because of the unlinking optimization in the external module they will be lost anyway (while the RBW group remains)
@@ -430,12 +432,12 @@ def tool_separateLoose(scene):
     # Set object centers to geometry origin
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
-    # Reselect previously deselected objects
-    for obj in selectionSkip: obj.select = 1
-
     # Revert to start selection
     for obj in selection: obj.select = 1
     bpy.context.scene.objects.active = selectionActive
+
+    # Reselect previously deselected objects
+    for obj in selectionSkip: obj.select = 1
 
     # Revert empties and constrained objects to start selection
     for obj in emptyObjs: obj.select = 1
@@ -468,6 +470,19 @@ def tool_discretize(scene):
     # Backup selection
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
+    
+    ### Sort out user-defined objects (members of a specific group)
+    grpName = "bcb_noDiscretization"
+    selectionSkip = []
+    for grp in bpy.data.groups:
+        if grpName in grp.name:
+            for obj in selection:
+                if obj.name in grp.objects:
+                    obj.select = 0
+                    selectionSkip.append(obj)
+    selection = [obj for obj in selection if obj.select]
+    if len(selectionSkip): print("Elements skipped by '%s' group:" %grpName, len(selectionSkip))
+    
     # Find mesh objects in selection
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
     if len(objs) == 0:
@@ -521,17 +536,6 @@ def tool_discretize(scene):
         if "ID" not in obj.keys():
             obj["ID"] = ID; ID += 1
 
-    ### Sort out user-defined objects (members of a specific group)
-    grpName = "bcb_noDiscretization"
-    for grp in bpy.data.groups:
-        if grpName in grp.name:
-            objsNew = []
-            for obj in objs:
-                if obj.name not in grp.objects:
-                    objsNew.append(obj)
-            if len(objs) -len(objsNew): print("Elements skipped by '%s' group:" %grp.name, len(objs) -len(objsNew))
-            objs = objsNew
-            
     ### Sort out non-manifold meshes (not water tight and thus not suited for boolean operations)
     objsNonMan = []
     if not props.preprocTools_dis_bis:  # Only required if not bisect method
@@ -747,6 +751,9 @@ def tool_discretize(scene):
         for obj in selection: obj.select = 1
         bpy.context.scene.objects.active = selectionActive
         
+    # Reselect previously deselected objects
+    for obj in selectionSkip: obj.select = 1
+
     # Revert empties and constrained objects to start selection
     for obj in emptyObjs: obj.select = 1
     for obj in objsConst: obj.select = 1
@@ -898,6 +905,19 @@ def tool_fixFoundation(scene):
     # Backup selection
     selection = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
+    
+    ### Sort out user-defined objects (members of a specific group)
+    grpName = "bcb_noFixFoundation"
+    selectionSkip = []
+    for grp in bpy.data.groups:
+        if grpName in grp.name:
+            for obj in selection:
+                if obj.name in grp.objects:
+                    obj.select = 0
+                    selectionSkip.append(obj)
+    selection = [obj for obj in selection if obj.select]
+    if len(selectionSkip): print("Elements skipped by '%s' group:" %grpName, len(selectionSkip))
+
     # Find mesh objects in selection
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE' and len(obj.data.vertices) > 0]
     if len(objs) == 0:
@@ -1137,6 +1157,9 @@ def tool_fixFoundation(scene):
     # Revert to start selection
     for obj in selection: obj.select = 1
     bpy.context.scene.objects.active = selectionActive
+
+    # Reselect previously deselected objects
+    for obj in selectionSkip: obj.select = 1
 
 ################################################################################
 
