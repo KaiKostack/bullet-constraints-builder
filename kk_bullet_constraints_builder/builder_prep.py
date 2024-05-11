@@ -2002,7 +2002,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
 
     ### Update masses
     
-    objsTotal = []; objsScale = []; objsSelectedAll = []
+    objsTotal = []; objsScale = []
     for j in range(len(elemGrps)):
         elemGrp = elemGrps[j]
         
@@ -2047,8 +2047,6 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
             else: print("Warning: Density of 0 set and no material preset defined for '%s', can't compute mass and leaving it as is." %elemGrp[EGSidxName])
         else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
 
-        objsSelectedAll.extend(objsSelected)
-
         ### Calculating and applying material masses based on surface area * thickness
         if (props.surfaceForced and props.surfaceThickness) or (props.surfaceThickness and len(objsNonMan)):
             # Deselect all objects
@@ -2080,12 +2078,10 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                     # Calculate mass
                     obj.rigid_body.mass = volume *materialDensity
                     objsNonManSelected.append(obj)
-                                
-            objsSelectedAll.extend(objsNonManSelected)
-                
+                                                
         ### Adding live load to masses
         liveLoad = elemGrp[EGSidxLoad]
-        for obj in objsSelectedAll:
+        for obj in objsSelected:
             dims = obj.dimensions
             floorArea = dims[0] *dims[1]  # Simple approximation by assuming rectangular floor area (x *y)
             if liveLoad > 0: obj.rigid_body.mass += floorArea *liveLoad
@@ -2093,7 +2089,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
 
         ### Setting friction if we are at it already (could be separate function but not because of 3 lines)
         friction = elemGrp[EGSidxFric]
-        for obj in objsSelectedAll:
+        for obj in objsSelected:
             obj.rigid_body.friction = friction
 
     # Deselect all objects
