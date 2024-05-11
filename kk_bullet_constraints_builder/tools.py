@@ -312,11 +312,28 @@ def tool_applyAllModifiers(scene):
             objsM.append(obj)
     bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True, material=False, texture=False, animation=False)
 
+    # List objects with Skin modifier as normals can be faulty and might need correction in some cases
+    objsSkin = []
+    for obj in objs:
+        for mod in obj.modifiers:
+            if mod.type == 'SKIN': objsSkin.append(obj)
+
     # Apply modifiers and convert curves to meshes
     if len(objsM):
         bpy.context.scene.objects.active = objsM[0]
         bpy.ops.object.convert(target='MESH')
     
+    # Perform recalculate normals outside on objects with Skin modifier to fix possible inconsistent normals   
+    for obj in objsSkin:
+        bpy.context.scene.objects.active = obj
+        # Enter edit mode              
+        bpy.ops.object.mode_set(mode='EDIT')
+        # Select all elements
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.normals_make_consistent(inside=False)
+        # Leave edit mode
+        bpy.ops.object.mode_set(mode='OBJECT')
+        
     # Set object centers to geometry origin
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
