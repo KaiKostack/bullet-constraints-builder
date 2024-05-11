@@ -78,6 +78,8 @@ def build():
                     
                     ###### Prepare objects (make unique, apply transforms etc.)
                     prepareObjects(objs)
+                    ###### Prepare materials for element groups
+                    prepareMaterials(objs, objsEGrp)
                     ###### Find connections by vertex pairs
                     #connectsPair, connectsPairDist, connectsLoc = findConnectionsByVertexPairs(objs, objsEGrp)
                     ###### Find connections by boundary box intersection and skip connections whose elements are too small and store them for later parenting

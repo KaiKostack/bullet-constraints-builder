@@ -260,6 +260,55 @@ def prepareObjects(objs):
     
 ################################################################################   
 
+def prepareMaterials(objs, objsEGrp):
+
+    elemGrps = global_vars.elemGrps
+            
+    ### Prepare dictionary of element indices for faster item search (optimization)
+    objsDict = {}
+    for i in range(len(objs)):
+        objsDict[objs[i]] = i
+    
+    ### Create group index with their respective objects
+    grpsObjs = {}
+    for elemGrp in elemGrps:
+        grpName = elemGrp[EGSidxName]
+        grpObjs = []
+        for obj in objs:
+            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
+                grpObjs.append(obj)
+        grpsObjs[grpName] = grpObjs
+    
+    ### Create and add individual materials to objects based on element groups if not already present
+    # Deselect all objects.
+    bpy.ops.object.select_all(action='DESELECT')
+    for elemGrp in elemGrps:
+        # Select objects by element group if no material present
+        grpName = elemGrp[EGSidxName]
+        grpNoMat = []
+        for obj in grpsObjs[grpName]:
+            if len(obj.material_slots) == 0:
+                obj.select = 1
+                grpNoMat.append(obj)
+
+        # Create and add new material to the found objects
+        if len(grpNoMat):
+            bpy.context.scene.objects.active = grpNoMat[0]
+            
+            # Create material slot with material
+            bpy.ops.object.material_slot_add()
+            try: mat = bpy.data.materials[grpName]
+            except: mat = bpy.data.materials.new(grpName)
+            bpy.context.scene.objects.active.material_slots[-1].material = mat
+
+            # Link new material to entire selection
+            bpy.ops.object.make_links_data(type='MATERIAL')
+            # Revert selection
+            for obj in grpNoMat:
+                obj.select = 0
+                
+################################################################################   
+
 def boundaryBox(obj, qGlobalSpace):
 
     ### Calculate boundary box corners and center from given object
