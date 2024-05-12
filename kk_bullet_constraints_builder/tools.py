@@ -1371,7 +1371,7 @@ def tool_groundMotion(scene):
 
         ### Make object parent for selected objects
         bpy.context.scene.objects.active = objGnd  # Parent
-        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=False)
         
         # Enable animated flag for all passive rigid bodies so that Bullet takes their motion into account
         for obj in objs: obj.rigid_body.kinematic = True
@@ -1404,7 +1404,7 @@ def tool_groundMotion(scene):
         ### Make object parent for selected objects
         objGnd.select = 1  # Child
         bpy.context.scene.objects.active = objMot  # Parent
-        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=False)
         objGnd.select = 0
         
         # Use given motion object for creating artificial earthquake motion from now on

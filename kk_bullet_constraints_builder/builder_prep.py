@@ -654,7 +654,7 @@ def makeParentsForTooSmallElementsReal(objs, connectsPairParent):
         objParent.select = 1
         objChild.select = 1
         bpy.context.scene.objects.active = objParent   # Parent
-        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=False)
         objParent.select = 0
         objChild.select = 0
 
@@ -1861,7 +1861,7 @@ def createParentsIfRequired(scene, objs, objsEGrp, childObjs):
             parentObj.select = 1
             childObj.select = 1
             bpy.context.scene.objects.active = parentObj
-            bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+            bpy.ops.object.parent_set(type='OBJECT', keep_transform=False)
             parentObj.select = 0
             childObj.select = 0
             if len(childObjsNew) > 0: print()
