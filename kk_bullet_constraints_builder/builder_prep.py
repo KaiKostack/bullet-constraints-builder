@@ -2011,19 +2011,19 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         
         objsSelected = []
         for k in range(len(objs)):
-            obj = objs[k]
-            if obj != None and obj.rigid_body != None:
-                CT = elemGrps[objsEGrp[k]][EGSidxCTyp]
-                if CT == 0:
-                    # The foundation buffer objects need a large mass so they won't pushed away
-                    materialDensity = elemGrp[EGSidxDens]
-                    if materialDensity > 1: obj.rigid_body.mass = materialDensity
-                    else: obj.rigid_body.mass = 1000  # Backward compatibility for older settings
-                else:
-                    try: scale = elemGrps[objsEGrp[k]][EGSidxScal]  # Try in case elemGrps is from an old BCB version
-                    except: qScale = 0
-                    else: qScale = 1
-                    if j == objsEGrp[k]:
+            if objsEGrp[k] == j:  # If object is in current element group
+                obj = objs[k]
+                if obj != None and obj.rigid_body != None:
+                    CT = elemGrps[j][EGSidxCTyp]
+                    if CT == 0:
+                        # The foundation buffer objects need a large mass so they won't pushed away
+                        materialDensity = elemGrp[EGSidxDens]
+                        if materialDensity > 1: obj.rigid_body.mass = materialDensity
+                        else: obj.rigid_body.mass = 1000  # Backward compatibility for older settings
+                    else:
+                        try: scale = elemGrps[j][EGSidxScal]  # Try in case elemGrps is from an old BCB version
+                        except: qScale = 0
+                        else: qScale = 1
                         if obj != None:
                             if "bcb_child" in obj.keys():
                                 obj = scene.objects[obj["bcb_child"]]
@@ -2049,9 +2049,6 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
 
         ### Calculating and applying material masses based on surface area * thickness
         if (props.surfaceForced and props.surfaceThickness) or (props.surfaceThickness and len(objsNonMan)):
-            # Deselect all objects
-            bpy.ops.object.select_all(action='DESELECT')
-
             # Find out density of the element group
             if not materialDensity:
                 materialPreset = elemGrp[EGSidxMatP]
@@ -2070,7 +2067,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
             for n in range(len(objsNonMan)):
                 obj = objsNonMan[n]
                 k = objsIndex[obj.name]
-                if j == objsEGrp[k]:
+                if objsEGrp[k] == j:  # If object is in current element group
                     # Calculate object surface area and volume
                     me = obj.data
                     area = sum(f.area for f in me.polygons)
@@ -2118,7 +2115,7 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                     except:
                         try: groupsArea[group.name] = obj["Floor Area"]
                         except: pass
-    for groupName in groupsMass.keys():
+    for groupName in sorted(groupsMass.keys()):
         try: mass = groupsMass[groupName]
         except: mass = 0
         try: area = groupsArea[groupName]
