@@ -1363,6 +1363,17 @@ def tool_groundMotion(scene):
 
     # Find passive mesh objects in selection
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'PASSIVE' and len(obj.data.vertices) > 0]
+
+    # Exceptionally also include unselected objects from the foundation group (for user convenience)
+    # One can add neighboring buildings to this group so that they share the ground motion more easily, so selecting these structures and suppressing discretization etc. is not necessary.
+    if len(props.preprocTools_fix_nam) > 0:
+        foundationName = props.preprocTools_fix_nam
+        if foundationName in bpy.data.groups:
+            grp = bpy.data.groups[foundationName]
+            for obj in grp.objects:
+                if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'PASSIVE' and len(obj.data.vertices) > 0:
+                    objs.append(obj)
+
     if len(objs) == 0:
         print("No passive rigid body elements selected, nothing attached to the ground.")
     else:
@@ -1487,6 +1498,9 @@ def tool_groundMotion(scene):
         objGnd.select = 0
         
     else: print("No text file defined.");
+
+    # Deselect all objects.
+    bpy.ops.object.select_all(action='DESELECT')
 
     # Revert to start selection
     for obj in selection: obj.select = 1
