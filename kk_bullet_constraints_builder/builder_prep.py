@@ -1285,8 +1285,12 @@ def applyDisplacementCorrection(objs, objsEGrp, connectsPair, connectsLoc):
                     if grpDCor:
                         grpName = elemGrp[EGSidxName]
                         for obj in grpsObjs[grpName]:
+                            inv_matrix = obj.matrix_world.inverted()
                             for vert in obj.data.vertices:
-                                vert.co -= Vector(vLocData[vIdx])
+                                current_world_loc = obj.matrix_world *vert.co
+                                corrected_world_loc = current_world_loc -Vector(vLocData[vIdx])
+                                local_corrected_loc = inv_matrix * corrected_world_loc
+                                vert.co = local_corrected_loc
                                 vIdx += 1
                                 
                 # If changes have been made
