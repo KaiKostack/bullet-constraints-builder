@@ -498,6 +498,10 @@ def monitor_checkForChange(scene):
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
 
+    # Diagnostic verbose
+    if props.submenu_assistant_advanced:
+        brokenC, brokenT, brokenS, brokenB = 0, 0, 0, 0
+        
     d = 0; e = 0; cntP = 0; cntB = 0
     for connect in connects:
         conMode = connect[12]
@@ -558,21 +562,30 @@ def monitor_checkForChange(scene):
 
                     ### Dynamic change of breaking thresholds depending on pressure (Mohr-Coulomb theory)
                     if qMohrCoulomb:
-                        # Find the maximum force of the compressive constraints in connection
-                        forceMax = 0
-                        for const in consts:
+                        ### Diagnostic verbose
+                        if props.submenu_assistant_advanced:
+                            for i in range(0, len(consts)):
+                                con = consts[i].rigid_body_constraint
+                                if not con.isIntact():
+                                    if   i == 0: brokenC += 1
+                                    elif i == 1: brokenT += 1
+                                    elif i == 2 or i == 3: brokenS += 1
+                                    elif i == 4 or i == 5: brokenB += 1
+                        ### Determine force of the compressive constraints in connection
+                        force = 0
+                        for const in consts[:2]:  # Only first two constraints can provide a compressive force for most CTs (except spring arrays)
                             con = const.rigid_body_constraint
                             ### For Point and Fixed costraints
                             ### For Generic constraints
                             # Compressive constraints
                             if con.type != 'GENERIC' \
                             or con.use_limit_lin_x:
-                                force = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
-                                if force > forceMax: forceMax = force
+                                forceCon = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                                force += forceCon
                         # Compute new breaking threshold incease based on force
                         # σ = F /A
                         # τ = c +σ *tan(ϕ)
-                        brkThresInc = forceMax /contactArea *0.577 *mul
+                        brkThresInc = abs(force) /contactArea *1 *mul
                         # Modify constraints
                         for i in range(1, len(consts)):  # We know that first constraint is always pressure
                             con = consts[i].rigid_body_constraint
@@ -584,7 +597,7 @@ def monitor_checkForChange(scene):
                             if con.type != 'GENERIC' \
                             or con.use_limit_lin_x \
                             or con.use_limit_lin_y or con.use_limit_lin_z \
-                            or con.use_limit_ang_y or con.use_limit_ang_z:
+                            or con.use_limit_ang_x or con.use_limit_ang_y or con.use_limit_ang_z:
                                 # Apply breaking threshold incease
                                 con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
 
@@ -698,6 +711,9 @@ def monitor_checkForChange(scene):
     if cntP > 0: sys.stdout.write(" | Deformed: %d" %cntP)
     if cntB > 0: sys.stdout.write(" | Broken: %d" %cntB)
     print()
+    # Diagnostic verbose
+    if props.submenu_assistant_advanced and (brokenC or brokenT or brokenS or brokenB):
+        print("Individual constraints broken - C: %d, T: %d, S: %d, B: %d" %(brokenC, brokenT, brokenS, brokenB))
 
     return cntB
                 
@@ -842,6 +858,10 @@ def monitor_checkForChange_fm(scene):
         if len(consts) > 0: consIntact.append(consts[0].isIntact())
         else:               consIntact.append(0)
 
+    # Diagnostic verbose
+    if props.submenu_assistant_advanced:
+        brokenC, brokenT, brokenS, brokenB = 0, 0, 0, 0
+        
     c = 0
     for connect in connects:
         consts = connect[2]
@@ -858,20 +878,29 @@ def monitor_checkForChange_fm(scene):
             
                 ### Dynamic change of breaking thresholds depending on pressure (Mohr-Coulomb theory)
                 if qMohrCoulomb:
-                    # Find the maximum force of the compressive constraints in connection
-                    forceMax = 0
-                    for con in consts:
+                    ### Diagnostic verbose
+                    if props.submenu_assistant_advanced:
+                        for i in range(0, len(consts)):
+                            con = consts[i]
+                            if not con.isIntact():
+                                if   i == 0: brokenC += 1
+                                elif i == 1: brokenT += 1
+                                elif i == 2 or i == 3: brokenS += 1
+                                elif i == 4 or i == 5: brokenB += 1
+                    ### Determine force of the compressive constraints in connection
+                    force = 0
+                    for con in consts[:2]:  # Only first two constraints can provide a compressive force for most CTs (except spring arrays)
                         ### For Point and Fixed costraints
                         ### For Generic constraints
                         # Compressive constraints
                         if con.type != 'GENERIC' \
                         or con.use_limit_lin_x:
-                            force = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
-                            if force > forceMax: forceMax = force
+                            forceCon = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                            force += forceCon
                     # Compute new breaking threshold incease based on force
                     # σ = F /A
                     # τ = c +σ *tan(ϕ)
-                    brkThresInc = forceMax /contactArea *0.577 *mul
+                    brkThresInc = abs(force) /contactArea *1 *mul
                     # Modify constraints
                     for i in range(1, len(consts)):  # First constraint is always pressure
                         con = consts[i]
@@ -883,10 +912,14 @@ def monitor_checkForChange_fm(scene):
                         if con.type != 'GENERIC' \
                         or con.use_limit_lin_x \
                         or con.use_limit_lin_y or con.use_limit_lin_z \
-                        or con.use_limit_ang_y or con.use_limit_ang_z:
+                        or con.use_limit_ang_x or con.use_limit_ang_y or con.use_limit_ang_z:
                             # Apply breaking threshold incease
                             con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
                 
+    # Diagnostic verbose
+    if props.submenu_assistant_advanced and (brokenC or brokenT or brokenS or brokenB):
+        print("Individual constraints broken - C: %d, T: %d, S: %d, B: %d" %(brokenC, brokenT, brokenS, brokenB))
+
 ################################################################################
 
 def monitor_countIntactConnections_fm(scene):

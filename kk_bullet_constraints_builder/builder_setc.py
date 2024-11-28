@@ -1124,7 +1124,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                     elif i == 1: vec = Vector((0, radius, -radius))
                     elif i == 2: vec = Vector((0, -radius, 0))
                     vec.rotate(rotN)
-                    locN = loc +vec
+                    locN = Vector(loc) +vec
                     ### Enable linear spring
                     setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING')
                 if CT != 7:
@@ -1160,7 +1160,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                     elif i == 2: vec = Vector((0, -radius, -radius))
                     elif i == 3: vec = Vector((0, -radius, radius))
                     vec.rotate(rotN)
-                    locN = loc +vec
+                    locN = Vector(loc) +vec
                     ### Enable linear spring
                     setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING')
                 if CT != 8:
@@ -1225,7 +1225,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                     elif j == 1: vec = Vector((0, radius, -radius))
                     elif j == 2: vec = Vector((0, -radius, 0))
                     vec.rotate(rotN)
-                    locN = loc +vec
+                    locN = Vector(loc) +vec
                     ### Lock direction for compressive force and enable linear spring
                     setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=llxl,llxu=99999, ulax=0,ulay=0,ulaz=0)
                 if props.asciiExport:
@@ -1242,7 +1242,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                     elif j == 1: vec = Vector((0, radius, -radius))
                     elif j == 2: vec = Vector((0, -radius, 0))
                     vec.rotate(rotN)
-                    locN = loc +vec
+                    locN = Vector(loc) +vec
                     ### Lock direction for tensile force and enable linear spring
                     setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=llxu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if props.asciiExport:
@@ -1259,7 +1259,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                     elif j == 1: vec = Vector((0, radius, -radius))
                     elif j == 2: vec = Vector((0, -radius, 0))
                     vec.rotate(rotN)
-                    locN = loc +vec
+                    locN = Vector(loc) +vec
                     ### Lock directions for shearing force and enable linear spring
                     setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if props.asciiExport:
@@ -1295,7 +1295,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                     elif j == 2: vec = Vector((0, -radius, -radius))
                     elif j == 3: vec = Vector((0, -radius, radius))
                     vec.rotate(rotN)
-                    locN = loc +vec
+                    locN = Vector(loc) +vec
                     ### Lock direction for compressive force and enable linear spring
                     setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=llxl,llxu=99999, ulax=0,ulay=0,ulaz=0)
                 if props.asciiExport:
@@ -1313,7 +1313,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                     elif j == 2: vec = Vector((0, -radius, -radius))
                     elif j == 3: vec = Vector((0, -radius, radius))
                     vec.rotate(rotN)
-                    locN = loc +vec
+                    locN = Vector(loc) +vec
                     ### Lock direction for tensile force and enable linear spring
                     setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=1,ully=0,ullz=0, llxl=-99999,llxu=llxu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if props.asciiExport:
@@ -1331,7 +1331,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                     elif j == 2: vec = Vector((0, -radius, -radius))
                     elif j == 3: vec = Vector((0, -radius, radius))
                     vec.rotate(rotN)
-                    locN = loc +vec
+                    locN = Vector(loc) +vec
                     ### Lock directions for shearing force and enable linear spring
                     setConstParams(cData,cDatb,cDef, loc=locN,rotm=rotm, ct='GENERIC_SPRING', ullx=0,ully=1,ullz=1, llyl=llyl,llyu=llyu,llzl=llzl,llzu=llzu, ulax=0,ulay=0,ulaz=0, uslx=1,usly=1,uslz=1, sdlx=springDamp,sdly=springDamp,sdlz=springDamp)
                 if props.asciiExport:
