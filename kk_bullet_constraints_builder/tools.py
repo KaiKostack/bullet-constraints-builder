@@ -928,6 +928,11 @@ def tool_enableRigidBodies(scene):
             if grpName in bpy.data.groups:
                 if obj.name in bpy.data.groups[grpName].objects:
                     obj.rigid_body.type = 'PASSIVE'
+
+    # Set collision specific collision shape from object property
+    for obj in objs:
+        if "rigidBodyShape" in obj.keys():
+            obj.rigid_body.collision_shape = obj["rigidBodyShape"]
     
     # Revert to start selection
     for obj in selection: obj.select = 1
