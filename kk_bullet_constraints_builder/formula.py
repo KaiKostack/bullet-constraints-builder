@@ -327,7 +327,7 @@ def combineExpressions():
                 if Vpn9 != Vpn: elemGrps[i][EGSidxBTS9] = splitAndApplyPrecisionToFormula(Vpn9)
                 else:           elemGrps[i][EGSidxBTS9] = ""
                 if Mpn9 != Mpn: elemGrps[i][EGSidxBTB9] = splitAndApplyPrecisionToFormula(Mpn9)
-                else:           elemGrps[i][EGSidxBTS9] = ""
+                else:           elemGrps[i][EGSidxBTB9] = ""
        
     ###### Reinforced Concrete (Walls & Slabs)
     elif props.assistant_menu == "con_rei_wall":
@@ -475,6 +475,6 @@ def combineExpressions():
                 if Vpn9 != Vpn: elemGrps[i][EGSidxBTS9] = splitAndApplyPrecisionToFormula(Vpn9)
                 else:           elemGrps[i][EGSidxBTS9] = ""
                 if Mpn9 != Mpn: elemGrps[i][EGSidxBTB9] = splitAndApplyPrecisionToFormula(Mpn9)
-                else:           elemGrps[i][EGSidxBTS9] = ""
+                else:           elemGrps[i][EGSidxBTB9] = ""
                 
 ################################################################################
