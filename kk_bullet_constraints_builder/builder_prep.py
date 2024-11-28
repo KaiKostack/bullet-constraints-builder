@@ -892,8 +892,10 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qNon
             geoContactAreaB = overlapAreaX +overlapAreaY +overlapAreaZ
                 
         ### Or calculate contact area based on predefined custom thickness
-        else:
+        elif props.surfaceForced:
             geoContactAreaB = (overlapX +overlapY +overlapZ) *props.surfaceThickness
+        else:
+            geoContactAreaB = 0
 
         ### Calculate alternative contact area from object dimensions
         dimA = objA.dimensions
