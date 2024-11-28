@@ -502,6 +502,40 @@ def monitor_checkForChange(scene):
     if props.submenu_assistant_advanced:
         brokenC, brokenT, brokenS, brokenB = 0, 0, 0, 0
         
+    ###### Initial pass for the Mohr-Coulomb theory to measure the pressure acting per element
+    objsForces = {}
+    objsConstCnts = {}
+    for connect in connects:
+        conMode = connect[12]
+
+        ### If connection is in fixed mode then check if first tolerance is reached
+        if conMode == 0:
+            consts = connect[4]
+            if consts[0].rigid_body_constraint.use_breaking:
+                qMohrCoulomb = connect[16]
+
+                if qMohrCoulomb:
+                    ### Determine force of the compressive constraints in connection
+                    force = 0
+                    for const in consts[:2]:  # Only first two constraints can provide a compressive force for most CTs (except spring arrays)
+                        con = const.rigid_body_constraint
+                        ### For Point and Fixed costraints
+                        ### For Generic constraints
+                        # Compressive constraints
+                        if con.type != 'GENERIC' \
+                        or con.use_limit_lin_x:
+                            forceCon = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                            force += forceCon
+                    # Summarize forces and add them to the forces list, also counting the number of connections
+                    objA = connect[0][0]
+                    objB = connect[1][0]
+                    for obj in [objA, objB]:
+                        if obj not in objsForces: objsForces[obj] = force
+                        else:                     objsForces[obj] += force
+                        if obj not in objsConstCnts: objsConstCnts[obj] = 1
+                        else:                        objsConstCnts[obj] += 1
+
+    ###### Main pass
     d = 0; e = 0; cntP = 0; cntB = 0
     for connect in connects:
         conMode = connect[12]
@@ -582,10 +616,16 @@ def monitor_checkForChange(scene):
                             or con.use_limit_lin_x:
                                 forceCon = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
                                 force += forceCon
-                        # Compute new breaking threshold incease based on force
+                        ### Get forces from the force list for both connected elements and divide it by the number of connections
+                        forceA = objsForces[objA] /objsConstCnts[objA]
+                        forceB = objsForces[objB] /objsConstCnts[objB]
+                        #forceElem = min(forceA, forceB)  # Use the smaller force and thus strength for the connection
+                        forceElem = (forceA +forceB) /2  # Calculate average force and thus strength for the connection
+                        force = (force +forceElem) /2  # Use also the average of the averaged force per element and the invididual constraint force
+                        ### Compute new breaking threshold incease based on force
                         # σ = F /A
                         # τ = c +σ *tan(ϕ)
-                        brkThresInc = abs(force) /contactArea *1 *mul
+                        brkThresInc = force /contactArea *1 *mul
                         # Modify constraints
                         for i in range(1, len(consts)):  # We know that first constraint is always pressure
                             con = consts[i].rigid_body_constraint
@@ -862,6 +902,9 @@ def monitor_checkForChange_fm(scene):
     if props.submenu_assistant_advanced:
         brokenC, brokenT, brokenS, brokenB = 0, 0, 0, 0
         
+    ###### Initial pass for the Mohr-Coulomb theory to measure the pressure acting per element
+    objsForces = {}
+    objsConstCnts = {}
     c = 0
     for connect in connects:
         consts = connect[2]
@@ -871,6 +914,40 @@ def monitor_checkForChange_fm(scene):
         ### If connection is in fixed mode then check if first tolerance is reached
         if conIntact:
             if consts[0].use_breaking:
+                qMohrCoulomb = connect[6]
+
+                if qMohrCoulomb:
+                    ### Determine force of the compressive constraints in connection
+                    force = 0
+                    for con in consts[:2]:  # Only first two constraints can provide a compressive force for most CTs (except spring arrays)
+                        ### For Point and Fixed costraints
+                        ### For Generic constraints
+                        # Compressive constraints
+                        if con.type != 'GENERIC' \
+                        or con.use_limit_lin_x:
+                            forceCon = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                            force += forceCon
+                    # Summarize forces and add them to the forces list, also counting the number of connections
+                    objA = connect[0][0]
+                    objB = connect[1][0]
+                    for obj in [objA, objB]:
+                        if obj not in objsForces: objsForces[obj] = force
+                        else:                     objsForces[obj] += force
+                        if obj not in objsConstCnts: objsConstCnts[obj] = 1
+                        else:                        objsConstCnts[obj] += 1
+
+    ###### Main pass
+    c = 0
+    for connect in connects:
+        consts = connect[2]
+        conIntact = consIntact[c]
+        c += 1
+
+        ### If connection is in fixed mode then check if first tolerance is reached
+        if conIntact:
+            if consts[0].use_breaking:
+                objA = connect[0][0]
+                objB = connect[1][0]
                 contactArea = connect[4]
                 constsBrkThres = connect[5]
                 qMohrCoulomb = connect[6]
@@ -897,10 +974,16 @@ def monitor_checkForChange_fm(scene):
                         or con.use_limit_lin_x:
                             forceCon = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
                             force += forceCon
-                    # Compute new breaking threshold incease based on force
+                    ### Get forces from the force list for both connected elements and divide it by the number of connections
+                    forceA = objsForces[objA] /objsConstCnts[objA]
+                    forceB = objsForces[objB] /objsConstCnts[objB]
+                    #forceElem = min(forceA, forceB)  # Use the smaller force and thus strength for the connection
+                    forceElem = (forceA +forceB) /2  # Calculate average force and thus strength for the connection
+                    force = (force +forceElem) /2  # Use also the average of the averaged force per element and the invididual constraint force
+                    ### Compute new breaking threshold incease based on force
                     # σ = F /A
                     # τ = c +σ *tan(ϕ)
-                    brkThresInc = abs(force) /contactArea *1 *mul
+                    brkThresInc = force /contactArea *1 *mul
                     # Modify constraints
                     for i in range(1, len(consts)):  # First constraint is always pressure
                         con = consts[i]
