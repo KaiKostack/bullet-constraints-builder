@@ -728,7 +728,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
         if CT == -1:
             cData = {}; cDatb = []; cIdx = consts[cInc]; cInc += 1
             if solvIter == 0: solvIter = max(1, int(props.solverIterations /10))  # If no custom Solver Iterations, an automatic value is generated
-            setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=props.passiveUseBreaking,si=solvIter)
+            setConstParams(cData,cDatb,cDef, loc=loc, ub=0, dc=1, ct='FIXED', so=bool(solvIter),si=solvIter)
             constsData.append([cData, cDatb])
 
         ### 1x FIXED; Linear omni-directional + bending breaking threshold
