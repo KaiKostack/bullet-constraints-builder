@@ -57,15 +57,15 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_preprocTools_grp_sep"] = props.preprocTools_grp_sep
     scene["bcb_prop_preprocTools_grp_occ"] = props.preprocTools_grp_occ
 
-    scene["bcb_prop_preprocTools_sep2"] = props.preprocTools_sep2
+    scene["bcb_prop_preprocTools_sep"] = props.preprocTools_sep
 
     scene["bcb_prop_preprocTools_mod"] = props.preprocTools_mod
 
+    scene["bcb_prop_preprocTools_rem"] = props.preprocTools_rem
+
     scene["bcb_prop_preprocTools_ctr"] = props.preprocTools_ctr
 
-    scene["bcb_prop_preprocTools_sep"] = props.preprocTools_sep
-
-    scene["bcb_prop_preprocTools_rem"] = props.preprocTools_rem
+    scene["bcb_prop_preprocTools_sep2"] = props.preprocTools_sep2
 
     scene["bcb_prop_preprocTools_dis"] = props.preprocTools_dis
     scene["bcb_prop_preprocTools_dis_siz"] = props.preprocTools_dis_siz
@@ -74,6 +74,8 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_preprocTools_dis_jus"] = props.preprocTools_dis_jus
 
     scene["bcb_prop_preprocTools_mod2"] = props.preprocTools_mod2
+    
+    scene["bcb_prop_preprocTools_rem2"] = props.preprocTools_rem2
 
     scene["bcb_prop_preprocTools_rbs"] = props.preprocTools_rbs
 
@@ -216,20 +218,20 @@ def getConfigDataFromScene(scene):
     if "bcb_prop_preprocTools_grp_occ" in scene.keys():
         props.preprocTools_grp_occ = scene["bcb_prop_preprocTools_grp_occ"]
 
-    if "bcb_prop_preprocTools_sep2" in scene.keys():
-        props.preprocTools_sep2 = scene["bcb_prop_preprocTools_sep2"]
+    if "bcb_prop_preprocTools_sep" in scene.keys():
+        props.preprocTools_sep = scene["bcb_prop_preprocTools_sep"]
 
     if "bcb_prop_preprocTools_mod" in scene.keys():
         props.preprocTools_mod = scene["bcb_prop_preprocTools_mod"]
 
+    if "bcb_prop_preprocTools_rem" in scene.keys():
+        props.preprocTools_rem = scene["bcb_prop_preprocTools_rem"]
+
     if "bcb_prop_preprocTools_ctr" in scene.keys():
         props.preprocTools_ctr = scene["bcb_prop_preprocTools_ctr"]
 
-    if "bcb_prop_preprocTools_sep" in scene.keys():
-        props.preprocTools_sep = scene["bcb_prop_preprocTools_sep"]
-
-    if "bcb_prop_preprocTools_rem" in scene.keys():
-        props.preprocTools_rem = scene["bcb_prop_preprocTools_rem"]
+    if "bcb_prop_preprocTools_sep2" in scene.keys():
+        props.preprocTools_sep2 = scene["bcb_prop_preprocTools_sep2"]
 
     if "bcb_prop_preprocTools_dis" in scene.keys():
         props.preprocTools_dis = scene["bcb_prop_preprocTools_dis"]
@@ -244,6 +246,9 @@ def getConfigDataFromScene(scene):
 
     if "bcb_prop_preprocTools_mod2" in scene.keys():
         props.preprocTools_mod2 = scene["bcb_prop_preprocTools_mod2"]
+
+    if "bcb_prop_preprocTools_rem2" in scene.keys():
+        props.preprocTools_rem2 = scene["bcb_prop_preprocTools_rem2"]
 
     if "bcb_prop_preprocTools_rbs" in scene.keys():
         props.preprocTools_rbs = scene["bcb_prop_preprocTools_rbs"]

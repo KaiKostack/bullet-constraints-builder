@@ -599,6 +599,7 @@ class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
         if props.preprocTools_sep2: tool_separateLoose(scene); props.preprocTools_sep2 = 0
         if props.preprocTools_dis: tool_discretize(scene); props.preprocTools_dis = 0
         if props.preprocTools_mod2: tool_applyAllModifiers(scene); props.preprocTools_mod2 = 0
+        if props.preprocTools_rem2: tool_remesh(scene); props.preprocTools_rem2 = 0
         if props.preprocTools_rbs: tool_enableRigidBodies(scene); props.preprocTools_rbs = 0
         if props.preprocTools_int: tool_removeIntersections(scene); props.preprocTools_int = 0
         if props.preprocTools_fix: tool_fixFoundation(scene); props.preprocTools_fix = 0
@@ -745,6 +746,19 @@ class OBJECT_OT_bcb_preproc_tool_remesh(bpy.types.Operator):
         scene = bpy.context.scene
         tool_remesh(scene)
         props.preprocTools_rem = 0
+        return{'FINISHED'}
+
+########################################
+
+class OBJECT_OT_bcb_preproc_tool_remesh_2(bpy.types.Operator):
+    bl_idname = "bcb.preproc_tool_remesh_2"
+    bl_label = "Remesh"
+    bl_description = "Remeshes all selected objects by converting them to convex hulls. This can help clean up 'bad' geometry that can cause problems with tools like Discretize. Members of an object group 'bcb_noRemesh' will be skipped if present"
+    def execute(self, context):
+        props = context.window_manager.bcb
+        scene = bpy.context.scene
+        tool_remesh(scene)
+        props.preprocTools_rem2 = 0
         return{'FINISHED'}
 
 ########################################

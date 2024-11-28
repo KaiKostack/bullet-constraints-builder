@@ -86,15 +86,15 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_grp_sep = string_(name="Separator",               default=':', update=updGlob, description="Defines a key character or string to derive the group names from the object names in the scene. Example: An object name 'Columns:B4' with separator ':' will generate a group named 'Columns' containing all objects with this phrase in their names")
     preprocTools_grp_occ = bool_(name="First Occurrence",          default=1, update=updGlob, description="Enables first occurrence search of the separator within an element name for cases when there are more than one separator included, if disabled the last occurrence is used")
 
-    preprocTools_sep2 = bool_(default=1)
+    preprocTools_sep = bool_(default=1)
 
     preprocTools_mod = bool_(default=1)
 
+    preprocTools_rem = bool_(default=0)
+
     preprocTools_ctr = bool_(default=1)
 
-    preprocTools_sep = bool_(default=1)
-
-    preprocTools_rem = bool_(default=0)
+    preprocTools_sep2 = bool_(default=1)
 
     preprocTools_dis = bool_(default=1)
     preprocTools_dis_siz = float_(name="Minimum Size Limit",       default=2.9, min=0.0, max=1000, update=updGlob, description="Discretization size in m this tool tries to reach by discretization. To enforce regularity at all times, elements afterwards can deviate in size to some extent from the target size. For booleans (default method): The minimum dimension value serves as limit for an element still being considered for subdivision, at least two dimension axis must be above this size. After discretization no element will be larger than this value anymore, although they can be smaller up to 50%")
@@ -103,6 +103,8 @@ class bcb_props(bpy.types.PropertyGroup):
     preprocTools_dis_jus = bool_(name="Enable Junction Search",    default=1, update=updGlob, description="Tries to split cornered walls at the corner rather than splitting based on object space to generate more clean shapes")
 
     preprocTools_mod2 = bool_(default=0)
+
+    preprocTools_rem2 = bool_(default=0)
 
     preprocTools_rbs = bool_(default=1)
 

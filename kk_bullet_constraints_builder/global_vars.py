@@ -35,7 +35,7 @@ import bpy, os
 ################################################################################
 
 ### Vars:
-bcb_version = (3, 6, 0)
+bcb_version = (3, 6, 1)
 
 ### Customizable element group presets
 presets = [
