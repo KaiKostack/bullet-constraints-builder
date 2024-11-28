@@ -176,7 +176,7 @@ def tool_createGroupsFromNames(scene):
     except: pass
 
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     # Find mesh objects in selection
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
     if len(objs) == 0:
@@ -241,7 +241,7 @@ def tool_applyAllModifiers(scene):
     except: pass
     
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
     objs = [obj for obj in selection if (obj.type == 'MESH' or obj.type == 'CURVE') and not obj.hide and obj.is_visible(bpy.context.scene)]
@@ -352,7 +352,7 @@ def tool_centerModel(scene):
     except: pass
 
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
@@ -402,7 +402,7 @@ def tool_separateLoose(scene):
     except: pass
 
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
 
     ### Sort out user-defined objects (members of a specific group)
@@ -441,7 +441,7 @@ def tool_separateLoose(scene):
     kk_mesh_separate_loose.run()
 
     # Update selection list
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     
     # Deselect objects with modifiers (in case they have not been applied yet) 
     for obj in selection:
@@ -471,7 +471,7 @@ def tool_remesh(scene):
     except: pass
 
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
 
     ### Sort out user-defined objects (members of a specific group)
@@ -542,7 +542,7 @@ def tool_discretize(scene):
     except: pass
     
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     
     ### Sort out user-defined objects (members of a specific group)
@@ -561,7 +561,10 @@ def tool_discretize(scene):
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
     if len(objs) == 0:
         print("No mesh objects selected.")
+        # Revert to start selection
+        for obj in selectionBak: obj.select = 1
         return
+    
     # Find empty objects with constraints in selection
     emptyObjs = [obj for obj in selection if obj.type == 'EMPTY' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body_constraint != None]
     # Remove mesh objects which are used within constraints (we want to leave them untouched)
@@ -577,8 +580,11 @@ def tool_discretize(scene):
     for obj in objs:
         if obj not in objsConst: objsNew.append(obj)
     objs = objsNew
+
     if len(objs) == 0:
         print("No mesh objects changed because of attached constraints.")
+        # Revert to start selection
+        for obj in selectionBak: obj.select = 1
         return
 
     ### Flip face normals for objects with negative scaling to avoid problems with booleans (will be reverted again when scaling is applied)
@@ -844,7 +850,7 @@ def tool_removeIntersections(scene, mode=1):
     except: pass
     
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
@@ -898,7 +904,7 @@ def tool_enableRigidBodies(scene):
     except: pass
 
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
@@ -977,7 +983,7 @@ def tool_fixFoundation(scene):
     except: pass
 
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     
     ### Sort out user-defined objects (members of a specific group)
@@ -996,6 +1002,8 @@ def tool_fixFoundation(scene):
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body != None and obj.rigid_body.type == 'ACTIVE' and len(obj.data.vertices) > 0]
     if len(objs) == 0:
         print("No active rigid body objects selected.")
+        # Revert to start selection
+        for obj in selectionBak: obj.select = 1
         return
 
     props = bpy.context.window_manager.bcb
@@ -1295,7 +1303,7 @@ def tool_groundMotion(scene):
     except: pass
 
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
 
     ### Sort out user-defined objects (members of a specific group)
@@ -2423,7 +2431,7 @@ def tool_cavityDetection(scene):
     except: pass
     
     # Backup selection
-    selection = [obj for obj in bpy.context.scene.objects if obj.select]
+    selection = selectionBak = [obj for obj in bpy.context.scene.objects if obj.select]
     selectionActive = bpy.context.scene.objects.active
     # Find mesh objects in selection
     objs = [obj for obj in selection if obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene) and len(obj.data.vertices) > 0]
