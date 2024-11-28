@@ -2117,11 +2117,21 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
             if liveLoad > 0: obj.rigid_body.mass += floorArea *liveLoad
             obj["Floor Area"] = floorArea  # Only needed for the diagnostic prints below
 
+        ### Balance masses
+        balanceFac = elemGrp[EGSidxBlnc]
+        if balanceFac > 0 and len(objsSelected):
+            massGrp = 0
+            for obj in objsSelected:
+                massGrp += obj.rigid_body.mass
+            massGrp /= len(objsSelected)
+            for obj in objsSelected:
+                obj.rigid_body.mass = ((1 -balanceFac) *obj.rigid_body.mass) +(balanceFac *massGrp)
+        
         ### Setting friction if we are at it already (could be separate function but not because of 3 lines)
         friction = elemGrp[EGSidxFric]
         for obj in objsSelected:
             obj.rigid_body.friction = friction
-
+            
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
 
