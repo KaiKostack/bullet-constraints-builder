@@ -751,9 +751,9 @@ def boundaryBoxFaces(obj, qGlobalSpace, selMin=None, selMax=None):
     else: 
         return None, None, None, 0
 
-################################################################################   
+################################################################################
 
-def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, qAccurate=0):
+def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qNonManifold=0, qAccurate=0):
 
     ###### Calculate contact area for a single pair of objects
     props = bpy.context.window_manager.bcb
@@ -813,15 +813,15 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             bbBMin, bbBMax, bbBCenter = bbBMinF, bbBMaxF, bbBCenterF
         ### Alternatively use regular search distance face areas to derive locations from (but not for contact area as it may be too inaccurate)
         # Use the smallest detected area of both objects as contact area
-        elif props.searchDistanceFallback and areaA2 > 0 and areaB2 > 0:
+        elif sDistFallb and areaA2 > 0 and areaB2 > 0:
             bbAMin, bbAMax, bbACenter = bbAMinF2, bbAMaxF2, bbACenterF2
             bbBMin, bbBMax, bbBCenter = bbBMinF2, bbBMaxF2, bbBCenterF2
         # Or if only one area is greater zero then use that one
-        elif props.searchDistanceFallback and areaA2 > 0:
+        elif sDistFallb and areaA2 > 0:
             bbAMin, bbAMax, bbACenter = bbAMinF2, bbAMaxF2, bbACenterF2
-        elif props.searchDistanceFallback and areaB2 > 0:
+        elif sDistFallb and areaB2 > 0:
             bbBMin, bbBMax, bbBCenter = bbBMinF2, bbBMaxF2, bbBCenterF2
-        elif not props.searchDistanceFallback: qSkipConnect = 1
+        elif not sDistFallb: qSkipConnect = 1
 
         ### Calculate overlap of face based boundary boxes rather than simple boundary box overlap
         if areaA > 0 and areaB > 0:
@@ -849,7 +849,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
                   qSkipConnect = 1
             else: overlapX, overlapY, overlapZ = max(0,overlapXF), max(0,overlapYF), max(0,overlapZF)
         ### Alternatively use overlap of face based boundary boxes based on regular search distance
-        elif props.searchDistanceFallback and areaA2 > 0 and areaB2 > 0:
+        elif sDistFallb and areaA2 > 0 and areaB2 > 0:
             overlapXF = min(bbAMaxF2[0],bbBMaxF2[0]) -max(bbAMinF2[0],bbBMinF2[0])
             overlapYF = min(bbAMaxF2[1],bbBMaxF2[1]) -max(bbAMinF2[1],bbBMinF2[1])
             overlapZF = min(bbAMaxF2[2],bbBMaxF2[2]) -max(bbAMinF2[2],bbBMinF2[2])
@@ -857,7 +857,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             if overlapXF < -searchDist or overlapYF < -searchDist or overlapZF < -searchDist:
                   qSkipConnect = 1
             else: overlapX, overlapY, overlapZ = max(0,overlapXF), max(0,overlapYF), max(0,overlapZF)
-        elif props.searchDistanceFallback and areaA2 > 0:
+        elif sDistFallb and areaA2 > 0:
             overlapXF = min(bbAMaxF2[0],bbBMax[0]) -max(bbAMinF2[0],bbBMin[0])
             overlapYF = min(bbAMaxF2[1],bbBMax[1]) -max(bbAMinF2[1],bbBMin[1])
             overlapZF = min(bbAMaxF2[2],bbBMax[2]) -max(bbAMinF2[2],bbBMin[2])
@@ -865,7 +865,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             if overlapXF < -searchDist or overlapYF < -searchDist or overlapZF < -searchDist:
                   qSkipConnect = 1
             else: overlapX, overlapY, overlapZ = max(0,overlapXF), max(0,overlapYF), max(0,overlapZF)
-        elif props.searchDistanceFallback and areaB2 > 0:
+        elif sDistFallb and areaB2 > 0:
             overlapXF = min(bbAMax[0],bbBMaxF2[0]) -max(bbAMin[0],bbBMinF2[0])
             overlapYF = min(bbAMax[1],bbBMaxF2[1]) -max(bbAMin[1],bbBMinF2[1])
             overlapZF = min(bbAMax[2],bbBMaxF2[2]) -max(bbAMin[2],bbBMinF2[2])
@@ -873,9 +873,9 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
             if overlapXF < -searchDist or overlapYF < -searchDist or overlapZF < -searchDist:
                   qSkipConnect = 1
             else: overlapX, overlapY, overlapZ = max(0,overlapXF), max(0,overlapYF), max(0,overlapZF)
-        elif not props.searchDistanceFallback: qSkipConnect = 1
+        elif not sDistFallb: qSkipConnect = 1
                 
-    if not qAccurate or qSkipConnect or props.searchDistanceFallback:
+    if not qAccurate or qSkipConnect or sDistFallb:
         ### Calculate simple overlap of boundary boxes for contact area calculation (project along all axis')
         overlapX = max(0, min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]))
         overlapY = max(0, min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]))
@@ -944,16 +944,45 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=0, 
 
 ########################################
 
-def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate):
+def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, objsEGrp, connectsPair, qAccurate):
     
     ### Calculate contact area for all connections
     print("Calculating contact area for connections...")
     
+    props = bpy.context.window_manager.bcb
+    elemGrps = global_vars.elemGrps
+
+    ### Prepare dictionary of element indices for faster item search (optimization)
+    objsDict = {}
+    for i in range(len(objs)):
+        objsDict[objs[i]] = i
+    
     connectsGeo = []
     connectsLoc = []
-    for k in range(len(connectsPair)):
-        objA = objs[connectsPair[k][0]]
-        objB = objs[connectsPair[k][1]]
+    connectsPair_iter = iter(connectsPair)
+    for i in range(len(connectsPair)):
+        pair = next(connectsPair_iter)   
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
+        
+        ### Get Search Distance Fallback setting
+        if not props.searchDistanceFallback:
+            elemGrpA = objsEGrp[objsDict[objA]] 
+            elemGrpB = objsEGrp[objsDict[objB]]
+            elemGrps_elemGrpA = elemGrps[elemGrpA]
+            elemGrps_elemGrpB = elemGrps[elemGrpB]
+            Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+            Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+            if Prio_A == Prio_B:  # Priority is the same for both element groups
+                sDistFallb_A = elemGrps_elemGrpA[EGSidxSDFl]
+                sDistFallb_B = elemGrps_elemGrpB[EGSidxSDFl]
+                sDistFallb = sDistFallb_A or sDistFallb_B
+            if Prio_A > Prio_B:  # Priority is higher for A
+                sDistFallb = elemGrps_elemGrpA[EGSidxSDFl]
+            elif Prio_A < Prio_B:  # Priority is higher for B
+                sDistFallb = elemGrps_elemGrpB[EGSidxSDFl]
+        else:
+            sDistFallb = 1
         
         ### Check if meshes are water tight (non-manifold)
         nonManifolds = []
@@ -967,7 +996,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate
             bm.free()
 
         ###### Calculate contact area for a single pair of objects
-        geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qAccurate=qAccurate, qNonManifold=len(nonManifolds))
+        geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qAccurate=qAccurate, qNonManifold=len(nonManifolds))
                     
         # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth, qVolCorrect]
         connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2], qVolCorrect])
@@ -977,7 +1006,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate
 
 ################################################################################   
 
-def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
+def calculateContactAreaBasedOnBooleansForAll(objs, objsEGrp, connectsPair):
     
     ### Calculate contact area for all connections
     print("Calculating contact area for connections... (%d)" %len(connectsPair))
@@ -1035,7 +1064,7 @@ def calculateContactAreaBasedOnBooleansForAll(objs, connectsPair):
             #print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
 
             ###### Calculate contact area for a single pair of objects
-            geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, qNonManifold=1)
+            geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qNonManifold=1)
             
             # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth]
             connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2], qVolCorrect])

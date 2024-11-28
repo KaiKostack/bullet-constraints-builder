@@ -924,6 +924,10 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
 
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
+            row.prop(props, "elemGrp_%d_EGSidxSDFl" %i)
+            
+            row = col.row(align=1)
+            if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxMCTh" %i)
             row.prop(props, "elemGrp_%d_EGSidxCyln" %i)
 

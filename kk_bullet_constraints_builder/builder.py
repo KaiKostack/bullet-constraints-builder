@@ -90,10 +90,10 @@ def build():
                     ###### Calculate contact area for all connections
                     ### For now this is not used anymore as it is less safe than to derive an accurate contact area indirectly by using: volume /length
                     if props.useAccurateArea:
-                        #connectsGeo, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, connectsPair)
-                        connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate=1)
+                        #connectsGeo, connectsLoc = calculateContactAreaBasedOnBooleansForAll(objs, objsEGrp, connectsPair)
+                        connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, objsEGrp, connectsPair, qAccurate=1)
                     else:
-                        connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, connectsPair, qAccurate=0)
+                        connectsGeo, connectsLoc = calculateContactAreaBasedOnBoundaryBoxesForAll(objs, objsEGrp, connectsPair, qAccurate=0)
                     ###### Delete connections with zero contact area
                     connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsGeo, connectsLoc)
                     ###### Delete connections with references from predefined constraints

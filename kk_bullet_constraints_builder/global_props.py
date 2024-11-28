@@ -230,6 +230,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxTl2R" %i +" = float_(name='2nd Rot. Tol.', default=presets[j][EGSidxTl2R], min=-1.0, max=pi, update=updGlob, description='Second deformation tolerance limit for angular change in radian for connection removal. The Formula Assistant might set this to 0 which means that this tolerance will be calculated later during the constraint building phase individually for each connection using Formula Assistant settings, there is no need to change it back then')")
         exec("elemGrp_%d_EGSidxPrio" %i +" = int_(name='Connection Priority', default=presets[j][EGSidxPrio], min=1, max=9, update=updGlob, description='Changes the connection priority for this element group which will override that the weaker breaking threshold of two elements is preferred for an connection. Lower Strength Priority has similar functionality but works on all groups, however, it is ignored if the priority here is different for a particular connection')")
         exec("elemGrp_%d_EGSidxFric" %i +" = float_(name='Friction', default=presets[j][EGSidxFric], min=0.0, max=100000, update=updGlob, description='Coefficient of friction for the given material (dimensionless)')")
+        exec("elemGrp_%d_EGSidxSDFl" %i +" = bool_(name='Search Distance Fallback', default=presets[j][EGSidxSDFl], update=updGlob, description='In case no geometry could be detected within mesh search distance while the neighbor element´s boundary box is still within range this enables a fallback using the intersection of the boundary boxes as contact area instead of the mesh surface. If disabled contact area will remain zero and no connection will be created in that case')")
         exec("elemGrp_%d_EGSidxMCTh" %i +" = bool_(name='Mohr-Coulomb Theory', default=presets[j][EGSidxMCTh], update=updGlob, description='Enables the calculation of shear and bending strength using the Mohr-Coulomb theory and makes it stress-related. This method is recommended for masonry structures in earthquake scenarios. Note that the Multiplier setting is also applied to the strength increase')")
         exec("elemGrp_%d_EGSidxScal" %i +" = float_(name='Rescale Factor', default=presets[j][EGSidxScal], min=0.0, max=10.0, update=updGlob, description='Applies scaling factor on elements to avoid `Jenga´ effect (undesired stability increase caused by incompressible rigid bodies). This has no influence on breaking threshold and mass calculations')")
         exec("elemGrp_%d_EGSidxNoHo" %i +" = bool_(name='No Horizontal Connections', default=presets[j][EGSidxNoHo], update=updGlob, description='Removes horizontal connections between elements of different element groups. This can be useful for masonry walls touching a framing structure without a particular fixation')")
@@ -283,6 +284,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxTl2R" %i +" = elemGrps[i][EGSidxTl2R]")
                 exec("self.elemGrp_%d_EGSidxPrio" %i +" = elemGrps[i][EGSidxPrio]")
                 exec("self.elemGrp_%d_EGSidxFric" %i +" = elemGrps[i][EGSidxFric]")
+                exec("self.elemGrp_%d_EGSidxSDFl" %i +" = elemGrps[i][EGSidxSDFl]")
                 exec("self.elemGrp_%d_EGSidxMCTh" %i +" = elemGrps[i][EGSidxMCTh]")
                 exec("self.elemGrp_%d_EGSidxScal" %i +" = elemGrps[i][EGSidxScal]")
                 exec("self.elemGrp_%d_EGSidxNoHo" %i +" = elemGrps[i][EGSidxNoHo]")
@@ -352,6 +354,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxTl2R] = eval("self.elemGrp_%d_EGSidxTl2R" %i)
                 elemGrps[i][EGSidxPrio] = eval("self.elemGrp_%d_EGSidxPrio" %i)
                 elemGrps[i][EGSidxFric] = eval("self.elemGrp_%d_EGSidxFric" %i)
+                elemGrps[i][EGSidxSDFl] = eval("self.elemGrp_%d_EGSidxSDFl" %i)
                 lastValue = elemGrps[i][EGSidxMCTh]
                 elemGrps[i][EGSidxMCTh] = eval("self.elemGrp_%d_EGSidxMCTh" %i)
                 if elemGrps[i][EGSidxMCTh] != lastValue: qFMonlySettingModified = 1
