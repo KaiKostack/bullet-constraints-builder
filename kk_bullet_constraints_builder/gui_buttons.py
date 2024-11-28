@@ -338,7 +338,6 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
             if self.menuIdx < 0:
                 # Call menu
                 bpy.ops.wm.call_menu(name="bcb.add_preset")
-            print("DEBUG button", self.menuIdx)
             if self.menuIdx >= 0:
                 props = context.window_manager.bcb
                 # Update global vars (only for initializing on new scene)
@@ -367,6 +366,8 @@ class OBJECT_OT_bcb_dup(bpy.types.Operator):
             if len(elemGrps) < maxMenuElementGroupItems:
                 # Add element group (syncing element group indices happens on execution)
                 elemGrps.append(elemGrps[props.menu_selectedElemGrp].copy())
+                # Make copy of assistant data rather than instance
+                elemGrps[-1][EGSidxAsst] = elemGrps[-1][EGSidxAsst].copy()
                 # Update menu selection
                 props.menu_selectedElemGrp = len(elemGrps) -1
             else: self.report({'ERROR'}, "Maximum allowed element group count reached.")  # Create popup message

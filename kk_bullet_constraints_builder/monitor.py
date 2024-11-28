@@ -1333,8 +1333,6 @@ def monitor_displCorrectDiffExport(scene):
                         vLoc_world = objFM.matrix_world *vert.co  # Vertex location in world space
                         vLocData.append(vLoc_world)
 
-    if len(vLocData): print("Displacement correction vertices: %d" %len(vLocData))
-
     # Export data to file
     if not qStartFrame and len(vLocData):
         if len(vLocData) == len(vLocDataStart):
@@ -1342,12 +1340,13 @@ def monitor_displCorrectDiffExport(scene):
                 vLocData[idx] = tuple(vLocData[idx] -vLocDataStart[idx])
             filePath = os.path.join(logPath, "bcb-diff-%d.cfg" %len(vLocData))
             if not os.path.exists(filePath):
+                print("Displacement correction vertices: %d" %len(vLocData))
                 print("Exporting displacement correction data to:", filePath)
                 dataToFile(vLocData, filePath, qPickle=True, qCompressed=True)
                 # Clear vertex location properties
                 del bpy.app.driver_namespace["bcb_vLocs"]
         else:
-            print("Error: Displacement correction vertex count mismatch, no file exported.")
+            print("Error: Displacement correction vertex count mismatch, no file exported.", len(vLocDataStart), len(vLocData))
 
 ################################################################################
 
