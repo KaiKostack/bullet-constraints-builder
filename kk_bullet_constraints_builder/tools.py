@@ -526,9 +526,9 @@ def updateObjList(scene, objs, objsName=None, objsNew=None, objsRemName=None):
             if objTemp not in objs:
                 if objTemp.type == 'MESH' and not objTemp.hide and objTemp.is_visible(scene):
                     objs.append(objTemp)
-    objsScnID = [id(ob) for ob in scene.objects]
+    objsScnID = [ob.as_pointer() for ob in scene.objects]
     for idx in reversed(range(len(objs))):
-        if id(objs[idx]) not in objsScnID:
+        if objs[idx].as_pointer() not in objsScnID:
             del objs[idx]
 
 ########################################
