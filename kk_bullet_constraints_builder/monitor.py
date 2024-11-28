@@ -150,8 +150,7 @@ def monitor_eventHandler(scene):
                 monitor_progressiveWeakening(scene, props.progrWeakStartFact)
                                                 
             ### Displacement correction initialization
-            if 1: # props.displCorr:
-                displCorrectDiffExport(scene)
+            monitor_displCorrectDiffExport(scene)
 
         ################################
         ### What to do AFTER start frame
@@ -206,9 +205,8 @@ def monitor_eventHandler(scene):
                     monitor_fixSprings(scene)
                     
             ### Displacement correction vertex location differences export
-            if 1: # props.displCorr:
-                if scene.frame_current == scene.frame_start +props.warmUpPeriod:
-                    displCorrectDiffExport(scene)
+            if scene.frame_current == scene.frame_start +props.warmUpPeriod:
+                monitor_displCorrectDiffExport(scene)
 
     # When Fracture Modifier is in use
     else:
@@ -225,6 +223,9 @@ def monitor_eventHandler(scene):
             bpy.app.driver_namespace["bcb_monitor"] = None
                             
             ###### Function
+            monitor_initBuffers_fm(scene)
+
+            ###### Function
             monitor_initTriggers(scene)
 
             ### Init weakening
@@ -235,8 +236,7 @@ def monitor_eventHandler(scene):
                 monitor_progressiveWeakening_fm(scene, props.progrWeakStartFact)
 
             ### Displacement correction initialization
-            if 1: # props.displCorr:
-                displCorrectDiffExport(scene)
+            monitor_displCorrectDiffExport(scene)
                                                 
         ################################
         ### What to do AFTER start frame
@@ -250,7 +250,11 @@ def monitor_eventHandler(scene):
                 print("Frame: %d | Time: %0.2f s" %(scene.frame_current, time.time() -time_last))
         
             ###### Function
-            cntBrokenAbs = monitor_checkForChange_fm(scene)
+            if bpy.app.driver_namespace["bcb_monitor"] != None:
+                monitor_checkForChange_fm(scene)
+
+            ###### Function
+            cntBrokenAbs = monitor_countIntactConnections_fm(scene)
             
             ###### Function
             monitor_checkForTriggers_fm(scene)
@@ -282,9 +286,8 @@ def monitor_eventHandler(scene):
                     monitor_fixSprings_fm(scene)
 
             ### Displacement correction vertex location differences export
-            if 1: # props.displCorr:
-                if scene.frame_current == scene.frame_start +props.warmUpPeriod:
-                    displCorrectDiffExport(scene)
+            if scene.frame_current == scene.frame_start +props.warmUpPeriod:
+                monitor_displCorrectDiffExport(scene)
 
 ################################################################################
 
@@ -340,8 +343,14 @@ def monitor_stop_eventHandler(scene):
                     for canvas_surface in mod.canvas_settings.canvas_surfaces:
                         contextFix['active_object'] = obj; contextFix['point_cache'] = canvas_surface.point_cache
                         bpy.ops.ptcache.bake_from_cache(contextFix)
-        # Free all monitor related data
-        monitor_freeBuffers(scene)
+
+        ### Free all monitor related data
+        # When official Blender and not Fracture Modifier is in use
+        if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
+              monitor_freeBuffers(scene)
+        else: monitor_freeBuffers_fm(scene)
+        monitor_freeBuffers_both(scene)
+
         # Go back to start frame
         #scene.frame_current = scene.frame_start
 
@@ -377,9 +386,6 @@ def monitor_initBuffers(scene):
     
     ###### Get data from scene
 
-    try: objsEGrp = scene["bcb_objsEGrp"]
-    except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
-
     try: names = scene["bcb_objs"]
     except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
     objs = []
@@ -398,17 +404,20 @@ def monitor_initBuffers(scene):
             except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
         else: emptyObjs.append(None)
         
+    try: objsEGrp = scene["bcb_objsEGrp"]
+    except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, rebuilding constraints is required.")
     try: connectsPair = scene["bcb_connectsPair"]
     except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
-
     try: connectsConsts = scene["bcb_connectsConsts"]
     except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
-    
     try: connectsTol = scene["bcb_connectsTol"]
     except: connectsTol = []; print("Error: bcb_connectsTol property not found, rebuilding constraints is required.")
+    try: connectsGeo = scene["bcb_connectsGeo"]
+    except: connectsGeo = []; print("Error: bcb_connectsGeo property not found, rebuilding constraints is required.")
     
     ### Create original transform data array
     connectsTol_iter = iter(connectsTol)
+    connectsGeo_iter = iter(connectsGeo)
     cCnt = 1; d = 0
     qWarning = 0
     for pair in connectsPair:
@@ -417,9 +426,22 @@ def monitor_initBuffers(scene):
         
         objA = objs[pair[0]]
         objB = objs[pair[1]]
-        tol = next(connectsTol_iter)
-
         if objA != None and objB != None:
+            tol = next(connectsTol_iter)
+            geo = next(connectsGeo_iter)
+            geoContactArea = geo[0]
+            elemGrpA = objsEGrp[pair[0]]
+            elemGrpB = objsEGrp[pair[1]]
+            elemGrps_elemGrpA = elemGrps[elemGrpA]
+            elemGrps_elemGrpB = elemGrps[elemGrpB]
+            Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+            Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+            elemGrp = None
+            if Prio_A >= Prio_B: elemGrp = elemGrps_elemGrpA
+            else:                elemGrp = elemGrps_elemGrpB
+            qMohrCoulomb = elemGrp[EGSidxMCTh]
+            mul = elemGrp[EGSidxBTX]
+
             # Calculate distance between both elements of the connection
             dist = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
             # Calculate angle between two elements
@@ -458,8 +480,8 @@ def monitor_initBuffers(scene):
                     constsEnabled.append(0)
                     constsUseBrk.append(0)
                     constsBrkThres.append(0)
-            #                0                1                2     3     4       5              6             7 (unused) 8       9       10      11      12    13              14 15
-            connects.append([[objA, pair[0]], [objB, pair[1]], dist, angl, consts, constsEnabled, constsUseBrk, None,      tol[0], tol[1], tol[2], tol[3], mode, constsBrkThres, 0, 0])
+            #                0                1                2     3     4       5              6             7               8       9       10      11      12    13              14 15 16            17
+            connects.append([[objA, pair[0]], [objB, pair[1]], dist, angl, consts, constsEnabled, constsUseBrk, geoContactArea, tol[0], tol[1], tol[2], tol[3], mode, constsBrkThres, 0, 0, qMohrCoulomb, mul])
             cCnt += 1
         d += 1
         
@@ -469,7 +491,7 @@ def monitor_initBuffers(scene):
 
 def monitor_checkForChange(scene):
 
-    if debug: print("Calling checkForDistanceChange")
+    if debug: print("Calling checkForChange")
     
     props = bpy.context.window_manager.bcb
     connects = bpy.app.driver_namespace["bcb_monitor"]
@@ -491,8 +513,12 @@ def monitor_checkForChange(scene):
                 anglOrig = connect[3]
                 tolDist = connect[8]
                 tolRot = connect[9]
+                contactArea = connect[7]
+                constsBrkThres = connect[13]
                 distDifLast = connect[14]
                 anglDifLast = connect[15]
+                qMohrCoulomb = connect[16]
+                mul = connect[17]
                 
                 # Calculate distance between both elements of the connection
                 dist = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
@@ -527,8 +553,29 @@ def monitor_checkForChange(scene):
                         connect[12] += 2
                         cntB += 1
 
-#                # When no breaking or mode change happens but connection is breakable
-#                else:
+                # When no breaking or mode change happens but connection is breakable
+                else:
+
+                    ### Dynamic change of breaking thresholds depending on pressure (Mohr-Coulomb theory)
+                    if qMohrCoulomb:
+                        # Get force acting on the compressive constraints in connection
+                        force = abs(consts[0].rigid_body_constraint.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                        # Compute new breaking threshold incease based on force
+                        # σ = F /A
+                        # τ = c +σ *tan(ϕ)
+                        brkThresInc = force /contactArea *0.577 *mul
+                        # Modify constraints
+                        for i in range(1, len(consts)):  # We know that first constraint is always pressure
+                            con = consts[i].rigid_body_constraint
+                            # Set override to shear connections in connection
+                            if con.type != 'GENERIC':  # For Point and Fixed costraints
+                                con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
+                            else:  # For Generic constraints
+                                if con.use_limit_lin_y or con.use_limit_lin_z:  # Shear constraints - Comment this line out to include all constraints
+                                    con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
+                                # Set override to bend connections in connection
+                                if con.use_limit_ang_y or con.use_limit_ang_z:  # Bend constraints - Comment this line out to include all constraints
+                                    con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
 
 #                    ### Modify limits from applied forces
 #                    strainDist = .001 # Maximum linear strain for the given breaking threshold
@@ -645,11 +692,200 @@ def monitor_checkForChange(scene):
                 
 ################################################################################
 
-def monitor_checkForChange_fm(scene):
-
-    if debug: print("Calling checkForDistanceChange_fm")
+def monitor_initBuffers_fm(scene):
+    
+    if debug: print("Calling initBuffers_fm")
     
     elemGrps = global_vars.elemGrps
+
+    ### Check element groups if a setting is used that requires the monitor, otherwise stop here
+    qMonitorRequired = 0
+    for elemGrp in elemGrps:
+        qMohrCoulomb = elemGrp[EGSidxMCTh]
+        if qMohrCoulomb:
+            qMonitorRequired = 1
+            break
+    if not qMonitorRequired:
+        print("No setting is used that requires the full monitor, skipping...")
+        return
+
+    props = bpy.context.window_manager.bcb
+    connects = bpy.app.driver_namespace["bcb_monitor"] = []
+    
+    # Get Fracture Modifier
+    try: ob = scene.objects[asciiExportName]
+    except: print("Error: Fracture Modifier object expected but not found."); return
+    md = ob.modifiers["Fracture"]
+
+    ### Prepare scene object dictionaries by type to be used for faster item search (optimization)
+    scnObjs = {}
+    for obj in md.mesh_islands: scnObjs[obj.name] = obj
+    scnEmptyObjs = {}
+    for obj in md.mesh_constraints: scnEmptyObjs[obj.name] = obj
+    
+    ###### Get data from scene
+
+    try: names = scene["bcb_objs"]
+    except: names = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+    objs = []
+    for name in names:
+        if len(name):
+            try: objs.append(scnObjs[name])
+            except: objs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+        else: objs.append(None)
+
+    try: names = scene["bcb_emptyObjs"]
+    except: names = []; print("Error: bcb_emptyObjs property not found, rebuilding constraints is required.")
+    emptyObjs = []
+    for name in names:
+        if len(name):
+            try: emptyObjs.append(scnEmptyObjs[name])
+            except: emptyObjs.append(None); print("Error: Object %s missing, rebuilding constraints is required." %name)
+        else: emptyObjs.append(None)
+
+    try: objsEGrp = scene["bcb_objsEGrp"]
+    except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, rebuilding constraints is required.")
+    try: connectsPair = scene["bcb_connectsPair"]
+    except: connectsPair = []; print("Error: bcb_connectsPair property not found, rebuilding constraints is required.")
+    try: connectsConsts = scene["bcb_connectsConsts"]
+    except: connectsConsts = []; print("Error: bcb_connectsConsts property not found, rebuilding constraints is required.")
+    try: connectsGeo = scene["bcb_connectsGeo"]
+    except: connectsGeo = []; print("Error: bcb_connectsGeo property not found, rebuilding constraints is required.")
+    
+    ### Create original transform data array
+    connectsGeo_iter = iter(connectsGeo)
+    cCnt = 1; d = 0
+    qWarning = 0
+    for pair in connectsPair:
+        if not qWarning:
+            sys.stdout.write('\r' +"%d " %cCnt)
+        
+        objA = objs[pair[0]]
+        objB = objs[pair[1]]
+        if objA != None and objB != None:
+            geo = next(connectsGeo_iter)
+            geoContactArea = geo[0]
+            elemGrpA = objsEGrp[pair[0]]
+            elemGrpB = objsEGrp[pair[1]]
+            elemGrps_elemGrpA = elemGrps[elemGrpA]
+            elemGrps_elemGrpB = elemGrps[elemGrpB]
+            Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+            Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+            elemGrp = None
+            if Prio_A >= Prio_B: elemGrp = elemGrps_elemGrpA
+            else:                elemGrp = elemGrps_elemGrpB
+            qMohrCoulomb = elemGrp[EGSidxMCTh]
+            mul = elemGrp[EGSidxBTX]
+
+            consts = []
+            constsEnabled = []
+            constsBrkThres = []
+            if props.disableCollisionPerm: conConsts = connectsConsts[d][:-1]  # For permanent collision suppression the last constraint should be ignored
+            else: conConsts = connectsConsts[d]
+            for const in conConsts:
+                emptyObj = emptyObjs[const]
+                consts.append(emptyObj)
+                if emptyObj != None:
+                    if emptyObj.island1 != None:
+                        # Backup original settings
+                        constsEnabled.append(emptyObj.enabled)
+                        constsBrkThres.append(emptyObj.breaking_threshold)
+                    else:
+                        if not qWarning:
+                            qWarning = 1
+                            print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
+                        print("(%s)" %emptyObj.name)
+                        constsEnabled.append(0)
+                        constsBrkThres.append(0)
+                else:
+                    constsEnabled.append(0)
+                    constsBrkThres.append(0)
+            #                0                1                2       3              4               5               6             7
+            connects.append([[objA, pair[0]], [objB, pair[1]], consts, constsEnabled, geoContactArea, constsBrkThres, qMohrCoulomb, mul])
+            cCnt += 1
+        d += 1
+        
+    print("connections")
+        
+################################################################################
+
+def monitor_checkForChange_fm(scene):
+
+    if debug: print("Calling checkForChange_fm")
+    
+    props = bpy.context.window_manager.bcb
+    elemGrps = global_vars.elemGrps
+    connects = bpy.app.driver_namespace["bcb_monitor"]
+    rbw_steps_per_second = scene.rigidbody_world.steps_per_second
+    rbw_time_scale = scene.rigidbody_world.time_scale
+
+    # Get Fracture Modifier
+    try: ob = scene.objects[asciiExportName]
+    except: print("Error: Fracture Modifier object expected but not found."); return
+    md = ob.modifiers["Fracture"]
+
+    # Get intact flag of all connections (if broken or not)
+    consIntact = []
+    for connect in connects:
+        consts = connect[2]
+        if len(consts) > 0: consIntact.append(consts[0].isIntact())
+        else:               consIntact.append(0)
+
+    c = 0
+    for connect in connects:
+        consts = connect[2]
+        conIntact = consIntact[c]
+        c += 1
+
+        ### If connection is in fixed mode then check if first tolerance is reached
+        if conIntact:
+            if consts[0].use_breaking:
+                contactArea = connect[4]
+                constsBrkThres = connect[5]
+                qMohrCoulomb = connect[6]
+                mul = connect[7]
+            
+                ### Dynamic change of breaking thresholds depending on pressure (Mohr-Coulomb theory)
+                if qMohrCoulomb:
+                    # Get force acting on the compressive constraints in connection
+                    force = abs(consts[0].appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                    # Compute new breaking threshold incease based on force
+                    # σ = F /A
+                    # τ = c +σ *tan(ϕ)
+                    brkThresInc = force /contactArea *0.577 *mul
+                    # Modify constraints
+                    for i in range(1, len(consts)):  # First constraint is always pressure
+                        con = consts[i]
+                        # Set override to shear connections in connection
+                        if con.type != 'GENERIC':  # For Point and Fixed costraints
+                            con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
+                        else:  # For Generic constraints
+                            if con.use_limit_lin_y or con.use_limit_lin_z:  # Shear constraints - Comment this line out to include all constraints
+                                con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
+                            # Set override to bend connections in connection
+                            if con.use_limit_ang_y or con.use_limit_ang_z:  # Bend constraints - Comment this line out to include all constraints
+                                con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
+                    
+################################################################################
+
+def monitor_countIntactConnections_fm(scene):
+
+    if debug: print("Calling countIntactConnections_fm")
+    
+#    # Disabled: Better method, but since it requires the initialized monitor,
+#    # which is optional, we'll continue to use the older code below for now.
+#
+#    # Count intact flag of all connections (if broken or not)
+#    connects = bpy.app.driver_namespace["bcb_monitor"]
+#    cntBabs = 0
+#    for connect in connects:
+#        consts = connect[2]
+#        if len(consts) > 0:
+#            if not consts[0].isIntact(): cntBabs += 1
+
+    elemGrps = global_vars.elemGrps
+
+    # Get Fracture Modifier
     try: ob = scene.objects[asciiExportName]
     except: print("Error: Fracture Modifier object expected but not found."); return
     md = ob.modifiers["Fracture"]
@@ -671,7 +907,7 @@ def monitor_checkForChange_fm(scene):
     cntBabs = int(cntBabs /constsPerConnect)
     
     return cntBabs
-                
+
 ################################################################################
 
 def monitor_initTriggers(scene):
@@ -763,7 +999,7 @@ def monitor_checkForTriggers(scene):
     except: return
     connects = bpy.app.driver_namespace["bcb_monitor"]
 
-    triggerCnt = 1    
+    triggerCnt = 0    
     for trigger in triggers:
         if trigger[0] == scene.frame_current:
             objAt = trigger[1]
@@ -772,14 +1008,15 @@ def monitor_checkForTriggers(scene):
                 objAn = connect[0][0].name
                 objBn = connect[1][0].name
                 if (objAn == objAt and objBn == objBt) or (objAn == objBt and objBn == objAt):
-                    if triggerCnt <= 3: print("Triggered connection: %s, %s" %(objAt, objBt))
+                    if triggerCnt < 10:
+                        print("Triggered connection: %s, %s" %(objAt, objBt))
+                        triggerCnt += 1
                     consts = connect[4]
                     for const in consts:
                         const.rigid_body_constraint.enabled = 0
                     connect[12] = 2  # conMode
-                    triggerCnt += 1
-    if triggerCnt > 4:
-        print("Triggered further %d connection(s)." %(triggerCnt -4))
+    if triggerCnt > 10:
+        print("Triggered further %d connection(s)." %(triggerCnt -10))
                     
 ################################################################################
 
@@ -790,11 +1027,12 @@ def monitor_checkForTriggers_fm(scene):
     try: triggers = bpy.app.driver_namespace["bcb_triggers"]
     except: return
 
+    # Get Fracture Modifier
     try: ob = scene.objects[asciiExportName]
     except: print("Error: Fracture Modifier object expected but not found."); return
     md = ob.modifiers["Fracture"]
 
-    triggerCnt = 1    
+    triggerCnt = 0    
     for trigger in triggers:
         if trigger[0] == scene.frame_current:
             objAt = trigger[1]
@@ -804,12 +1042,13 @@ def monitor_checkForTriggers_fm(scene):
                 objAn = const.island1.name
                 objBn = const.island2.name
                 if (objAn == objAt and objBn == objBt) or (objAn == objBt and objBn == objAt):
-                    if triggerCnt <= 3: print("Triggered constraint: %s, %s" %(objAt, objBt))
+                    if triggerCnt < 10:
+                        print("Triggered constraint: %s, %s" %(objAt, objBt))
+                        triggerCnt += 1
                     const.enabled = 0
                     const.breaking_threshold = 0  # FM will switch to plastic mode if 1st tolerance is exceeded, so we also need to reset BT
-                    triggerCnt += 1
-    if triggerCnt > 4:
-        print("Triggered further %d constraint(s)." %(triggerCnt -4))
+    if triggerCnt > 10:
+        print("Triggered further %d constraint(s)." %(triggerCnt -10))
 
 ################################################################################
 
@@ -848,6 +1087,7 @@ def monitor_fixSprings_fm(scene):
     
     if debug: print("Calling fixSprings_fm")
 
+    # Get Fracture Modifier
     try: ob = scene.objects[asciiExportName]
     except: print("Error: Fracture Modifier object expected but not found."); return
     md = ob.modifiers["Fracture"]
@@ -889,6 +1129,7 @@ def monitor_progressiveWeakening_fm(scene, progrWeakVar):
 
     if debug: print("Calling progressiveWeakening_fm")
 
+    # Get Fracture Modifier
     try: ob = scene.objects[asciiExportName]
     except: print("Error: Fracture Modifier object expected but not found."); return
     md = ob.modifiers["Fracture"]
@@ -898,7 +1139,7 @@ def monitor_progressiveWeakening_fm(scene, progrWeakVar):
             
 ################################################################################
 
-def displCorrectDiffExport(scene):
+def monitor_displCorrectDiffExport(scene):
     
     elemGrps = global_vars.elemGrps
 
@@ -980,8 +1221,6 @@ def monitor_freeBuffers(scene):
     if "bcb_monitor" in bpy.app.driver_namespace.keys():
         props = bpy.context.window_manager.bcb
         connects = bpy.app.driver_namespace["bcb_monitor"]
-
-        # Settings to be restored for official Blender version monitor
         if connects != None:
 
             ### Restore original constraint and element data
@@ -1004,7 +1243,56 @@ def monitor_freeBuffers(scene):
                                 qWarning = 1
                                 print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
                             print("(%s)" %const.name)
-                    
+                        
+################################################################################
+
+def monitor_freeBuffers_fm(scene):
+    
+    if debug: print("Calling freeBuffers_fm")
+    
+    if "bcb_monitor" in bpy.app.driver_namespace.keys():
+        props = bpy.context.window_manager.bcb
+        connects = bpy.app.driver_namespace["bcb_monitor"]
+        if connects != None:
+
+            ### Restore original constraint and element data
+            qWarning = 0
+            for connect in connects:
+                consts = connect[2]
+                constsEnabled = connect[3]
+                constsBrkThres = connect[5]
+                for i in range(len(consts)):
+                    const = consts[i]
+                    if const != None:
+                        if const.island1 != None:
+                            # Restore original settings
+                            const.enabled = constsEnabled[i]
+                            const.breaking_threshold = constsBrkThres[i]
+                        else:
+                            if not qWarning:
+                                qWarning = 1
+                                print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
+                            print("(%s)" %const.name)
+
+        # Clear monitor properties
+        try: del bpy.app.driver_namespace["bcb_monitor_fm"]
+        except: pass
+
+        # Clear broken connections properties
+        try: del bpy.app.driver_namespace["bcb_progrWeakBroken"]
+        except: pass
+    
+################################################################################
+
+def monitor_freeBuffers_both(scene):
+    
+    if debug: print("Calling freeBuffers_both")
+    
+    if "bcb_monitor" in bpy.app.driver_namespace.keys():
+        props = bpy.context.window_manager.bcb
+        connects = bpy.app.driver_namespace["bcb_monitor"]
+        if connects != None:
+
             if props.timeScalePeriod:
                 # Set original time scale
                 scene.rigidbody_world.time_scale = bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
@@ -1013,7 +1301,7 @@ def monitor_freeBuffers(scene):
 
                 del bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
                 del bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
-                    
+
         ### Move detonator force fields back to original layer(s) (Todo: Detonator not yet part of BCB)
         if "Detonator" in bpy.data.groups:
             for obj in bpy.data.groups["Detonator"].objects:
@@ -1032,26 +1320,3 @@ def monitor_freeBuffers(scene):
         # Clear vertex location properties
         try: del bpy.app.driver_namespace["bcb_vLocs"]
         except: pass
-
-        # When Fracture Modifier is in use
-        if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
-
-            ### Restore original constraint data
-            try: connects = bpy.app.driver_namespace["bcb_monitor_fm"]
-            except: pass
-            else:
-                
-                try: ob = scene.objects[asciiExportName]
-                except: print("Error: Fracture Modifier object expected but not found."); return
-                md = ob.modifiers["Fracture"]
-
-                for i in range(len(connects)):
-                    const = md.mesh_constraints[i]
-                    connect = connects[i]
-                    const.enabled = connect[0]
-                    const.breaking_threshold = connect[1]
-
-                del bpy.app.driver_namespace["bcb_monitor_fm"]
-
-            try: del bpy.app.driver_namespace["bcb_progrWeakBroken"]
-            except: pass

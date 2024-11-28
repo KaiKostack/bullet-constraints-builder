@@ -232,10 +232,11 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
                     
                     ###### Building FM
                     build_fm(use_handler=self.use_handler)
-                    
-                    if not self.use_handler and asciiExportName +".txt" in bpy.data.texts:
-                        try:    bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"], do_unlink=1)
-                        except: bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"])
+
+#                   # Remove export data for Fracture Modifier (commented out because we need it for the monitor in some cases)                    
+#                    if not self.use_handler and asciiExportName +".txt" in bpy.data.texts:
+#                        try:    bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"], do_unlink=1)
+#                        except: bpy.data.texts.remove(bpy.data.texts[asciiExportName +".txt"])
                 
                     if props.menu_gotData:
                         if props.automaticMode and props.postprocTools_aut:

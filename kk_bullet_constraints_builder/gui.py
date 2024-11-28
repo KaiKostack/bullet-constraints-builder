@@ -920,6 +920,11 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxFric" %i)
+            row.prop(props, "elemGrp_%d_EGSidxIter" %i)
+
+            row = col.row(align=1)
+            if props.menu_gotData: row.enabled = 0
+            row.prop(props, "elemGrp_%d_EGSidxMCTh" %i)
             row.prop(props, "elemGrp_%d_EGSidxCyln" %i)
 
             row = col.row(align=1)
@@ -943,9 +948,6 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
             row.prop(props, "elemGrp_%d_EGSidxDCor" %i)
             row.prop(props, "elemGrp_%d_EGSidxDClP" %i)
             
-            row = col.row(align=1)
-            row.prop(props, "elemGrp_%d_EGSidxIter" %i)
-
         else:  # Message if no element group is selected
             row = layout.row(align=1); row.alignment = 'CENTER'
             row.label(text="No element group", icon="INFO")
