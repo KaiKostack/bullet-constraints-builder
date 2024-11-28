@@ -241,6 +241,15 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             for detonatorObj in detonatorObjs:
                 if detonatorObj.scale[0] > 0 and detonatorObj.scale[1] > 0 and detonatorObj.scale[2] > 0:
                     if objA not in objsDetonSkip or objB not in objsDetonSkip:
+                        ### Vars
+                        detonatorMul = props.detonatorMul  # Multiplier
+                        detonatorMax = props.detonatorMax  # Maximum
+                        # User definitions as possible property of the detonator object
+                        if "detonMultiplier" in detonatorObj.keys():
+                              detonatorMul = detonatorObj["detonMultiplier"]
+                        if "detonMaximum" in detonatorObj.keys():
+                              detonatorMax = detonatorObj["detonMaximum"]
+                        # Calculate distance to connection
                         distVec = Vector(loc) -detonatorObj.location
                         if detonatorObj.type == 'EMPTY' and detonatorObj.empty_draw_type == 'CUBE':
                             # When empty is in Cube mode then use a cubic shape
@@ -253,7 +262,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                             dist += (abs(distVec[1]) /abs(detonatorObj.scale[1]))**2
                             dist += (abs(distVec[2]) /abs(detonatorObj.scale[2]))**2
                             dist = dist**.5
-                        damageMul *= min(1, max(1 -props.detonatorMax, (dist -1) *2 *props.detonatorMul +1))
+                        damageMul *= min(1, max(1 -detonatorMax, (dist -1) *2 *detonatorMul +1))
                     else: damageMul = 1
             if damageMul < 1:
                 btMultiplier *= damageMul
