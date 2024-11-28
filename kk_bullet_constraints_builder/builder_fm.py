@@ -182,7 +182,7 @@ def build_fm(use_handler=0):
 
     # Change some FM settings
     md.fracture_mode = 'PREFRACTURED'
-    md.use_constraint_collision = not props.disableCollision
+    md.use_constraint_collision = not props.disableCollisionCon
     md.fracture_mode = 'EXTERNAL'
     
     # Enable Dynamic Paint brush settings for FM object to make it interact with dynamic surfaces like water

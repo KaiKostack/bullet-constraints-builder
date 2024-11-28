@@ -49,7 +49,9 @@ def initGeneralRigidBodyWorldSettings(scene):
     # Automatically correct the FPS rate or Solver Steps as the FPS must be multiples of the Solver Steps to avoid stuttering
     if props.stepsPerSecond %scene.render.fps != 0 or scene.render.fps_base != 1:
         print("Warning: Solver Steps should be multiples of the Frame Rate, trying to fix it...")
-        fps = props.stepsPerSecond /int(props.stepsPerSecond /scene.render.fps)
+        multiple = int(props.stepsPerSecond /scene.render.fps)
+        if multiple > 0: fps = props.stepsPerSecond /multiple
+        else:            fps = props.stepsPerSecond
         if fps %int(fps) == 0:
             scene.render.fps = fps
             scene.render.fps_base = 1

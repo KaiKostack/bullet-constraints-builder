@@ -346,7 +346,7 @@ class bcb_panel_global_settings(bpy.types.Panel):
         row = col.row(align=1)
         split = row.split(percentage=.50, align=1)
         split.prop(props, "constraintUseBreaking")
-        split.prop(props, "disableCollision")
+        split.prop(props, "disableCollisionCon")
 
         row = col.row(align=1)
         split = row.split(percentage=.50, align=1)
@@ -937,22 +937,27 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxIter" %i)
+            row.prop(props, "elemGrp_%d_EGSidxSDFl" %i)
                        
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
-            row.prop(props, "elemGrp_%d_EGSidxSDFl" %i)
             row.prop(props, "elemGrp_%d_EGSidxDmpR" %i)
+            row.prop(props, "elemGrp_%d_EGSidxMCTh" %i)
             
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
-            row.prop(props, "elemGrp_%d_EGSidxMCTh" %i)
             row.prop(props, "elemGrp_%d_EGSidxCyln" %i)
+            row.prop(props, "elemGrp_%d_EGSidxNoHo" %i)
 
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
-            row.prop(props, "elemGrp_%d_EGSidxNoHo" %i)
             row.prop(props, "elemGrp_%d_EGSidxNoCo" %i)
+            row.prop(props, "elemGrp_%d_EGSidxDCol" %i)
                         
+            row = col.row(align=1)
+            row.prop(props, "elemGrp_%d_EGSidxDCor" %i)
+            row.prop(props, "elemGrp_%d_EGSidxDClP" %i)
+            
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxBevl" %i)
@@ -965,10 +970,6 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
             if prop_EGSidxBevl and not prop_EGSidxFacg:
                 row = col.row(align=1); row.label(text="Warning: Disabled facing makes bevel permanent!")
 
-            row = col.row(align=1)
-            row.prop(props, "elemGrp_%d_EGSidxDCor" %i)
-            row.prop(props, "elemGrp_%d_EGSidxDClP" %i)
-            
         else:  # Message if no element group is selected
             row = layout.row(align=1); row.alignment = 'CENTER'
             row.label(text="No element group", icon="INFO")

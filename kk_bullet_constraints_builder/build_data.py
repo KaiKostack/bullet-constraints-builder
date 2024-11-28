@@ -152,7 +152,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_progrWeakLimit"] = props.progrWeakLimit
     scene["bcb_prop_progrWeakStartFact"] = props.progrWeakStartFact
     scene["bcb_prop_snapToAreaOrient"] = props.snapToAreaOrient
-    scene["bcb_prop_disableCollision"] = props.disableCollision
+    scene["bcb_prop_disableCollisionCon"] = props.disableCollisionCon
     scene["bcb_prop_disableCollisionPerm"] = props.disableCollisionPerm
     scene["bcb_prop_lowerBrkThresPriority"] = props.lowerBrkThresPriority
     scene["bcb_prop_dampRegObj"] = props.dampRegObj
@@ -390,8 +390,8 @@ def getConfigDataFromScene(scene):
         props.progrWeakStartFact = scene["bcb_prop_progrWeakStartFact"]
     if "bcb_prop_snapToAreaOrient" in scene.keys():
         props.snapToAreaOrient = scene["bcb_prop_snapToAreaOrient"]
-    if "bcb_prop_disableCollision" in scene.keys():
-        props.disableCollision = scene["bcb_prop_disableCollision"]
+    if "bcb_prop_disableCollisionCon" in scene.keys():
+        props.disableCollisionCon = scene["bcb_prop_disableCollisionCon"]
     if "bcb_prop_disableCollisionPerm" in scene.keys():
         props.disableCollisionPerm = scene["bcb_prop_disableCollisionPerm"]
     if "bcb_prop_lowerBrkThresPriority" in scene.keys():

@@ -181,7 +181,7 @@ class bcb_props(bpy.types.PropertyGroup):
     progrWeakLimit        = int_(name="Progr. Weak. Limit",       default=10, min=0, max=10000,    update=updGlob, description="For progressive weakening: Limits the weakening process by the number of broken connections per frame. If the limit is exceeded weakening will be disabled for the rest of the simulation")
     progrWeakStartFact    = float_(name="Start Weakness",         default=1, min=0.0, max=1.0,     update=updGlob, description="Start weakness as factor all breaking thresholds will be multiplied with. This can be used to quick-change the initial thresholds without performing a full update")
     snapToAreaOrient      = bool_(name="90° Axis Snapping for Const. Orient.", default=1,          update=updGlob, description="Enables axis snapping based on contact area orientation for constraints rotation instead of using center to center vector alignment (old method)")
-    disableCollision      = bool_(name="Disable Collisions",      default=1,                       update=updGlob, description="Disables collisions between connected elements until breach")
+    disableCollisionCon   = bool_(name="Dis. Col. Connection",    default=1,                       update=updGlob, description="Disables collisions between connected elements until breach")
     disableCollisionPerm  = bool_(name="Dis. Col. Permanently",   default=0,                       update=updGlob, description="Disables collisions between initially connected elements permanently. This can help to make simulations with intersecting geometry more stable at the cost of accuracy")
     lowerBrkThresPriority = bool_(name="Lower Strength Priority", default=1,                       update=updGlob, description="Gives priority to the weaker breaking threshold of two elements from different element groups with same Priority value to be connected, if disabled the stronger value is used for the connection")
     dampRegObj            = string_(name="Damping Region Object", default="Waterbody",             update=updGlob, description="Enter the name of an object to define the region in which the damping effects should be simulated. This feature is intended to simulate environments with a higher viscosity than air, e.g. water. Note: The element groups must be activated individually for the effect to take effect. Multiple damping regions are supported if they contain this string in the name")
@@ -246,6 +246,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxFacg" %i +" = bool_(name='Facing', default=presets[j][EGSidxFacg], update=updGlob, description='Generates an addional layer of elements only for display (will only be used together with bevel and scale option, also serves as backup and for mass calculation)')")
         exec("elemGrp_%d_EGSidxCyln" %i +" = bool_(name='Cylindric Shape', default=presets[j][EGSidxCyln], update=updGlob, description='Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns')")
         exec("elemGrp_%d_EGSidxDCor" %i +" = bool_(name='Displ. Correction', default=presets[j][EGSidxDCor], update=updGlob, description='Enables the correction of initial displacements. This can compensate for sagging structures such as bridges that would otherwise require a very high solver step count to be straight. To do this, the simulation must be run twice. On the first run, the displacements are saved into an external file when the warm-up period ends. In the second run (rebuilding required), the differences are integrated into the mesh. Delete the external file to reset')")
+        exec("elemGrp_%d_EGSidxDCol" %i +" = bool_(name='Dis. Col. Connection', default=presets[j][EGSidxDCol], update=updGlob, description='Disables collisions between connected elements of this element group until breach (overrides global setting)')")
         exec("elemGrp_%d_EGSidxDClP" %i +" = bool_(name='Dis. Col. Permanently', default=presets[j][EGSidxDClP], update=updGlob, description='Disables collisions between initially connected elements of this element group permanently (overrides global setting)')")
         exec("elemGrp_%d_EGSidxDmpR" %i +" = bool_(name='Damp. Region', default=presets[j][EGSidxDmpR], update=updGlob, description='Enables the Damping Region feature for this element group. Refer to Advanced Global Settings to define boundary objects and damping parameters')")
 
@@ -302,6 +303,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxFacg" %i +" = elemGrps[i][EGSidxFacg]")
                 exec("self.elemGrp_%d_EGSidxCyln" %i +" = elemGrps[i][EGSidxCyln]")
                 exec("self.elemGrp_%d_EGSidxDCor" %i +" = elemGrps[i][EGSidxDCor]")
+                exec("self.elemGrp_%d_EGSidxDCol" %i +" = elemGrps[i][EGSidxDCol]")
                 exec("self.elemGrp_%d_EGSidxDClP" %i +" = elemGrps[i][EGSidxDClP]")
                 exec("self.elemGrp_%d_EGSidxDmpR" %i +" = elemGrps[i][EGSidxDmpR]")
 
@@ -376,6 +378,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxFacg] = eval("self.elemGrp_%d_EGSidxFacg" %i)
                 elemGrps[i][EGSidxCyln] = eval("self.elemGrp_%d_EGSidxCyln" %i)
                 elemGrps[i][EGSidxDCor] = eval("self.elemGrp_%d_EGSidxDCor" %i)
+                elemGrps[i][EGSidxDCol] = eval("self.elemGrp_%d_EGSidxDCol" %i)
                 elemGrps[i][EGSidxDClP] = eval("self.elemGrp_%d_EGSidxDClP" %i)
                 elemGrps[i][EGSidxDmpR] = eval("self.elemGrp_%d_EGSidxDmpR" %i)
                 # Remove surface variable if existing (will be added in setConstraintSettings()
