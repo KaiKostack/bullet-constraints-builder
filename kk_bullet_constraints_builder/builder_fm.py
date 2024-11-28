@@ -309,14 +309,50 @@ def markPassiveVerts(scene):
     passiveGrpName = "Passive"
     for obj in objs:
         if obj.rigid_body.type == 'PASSIVE':
-            ### Create vertex group
-            bpy.context.scene.objects.active = obj
-            if passiveGrpName not in obj.vertex_groups:
-                bpy.ops.object.vertex_group_add()
-                vGrp = obj.vertex_groups[-1:][0]
-                vGrp.name = passiveGrpName
-                # Set vertex weights to 1
-                vGrp.add(list(range(len(obj.data.vertices))), 1.0, 'REPLACE')
+            # Check if the vertex group already exists
+            if passiveGrpName not in [vg.name for vg in obj.vertex_groups]:
+                # Add a new vertex group
+                vGrp = obj.vertex_groups.new(name=passiveGrpName)
+            else:
+                # Get the existing vertex group
+                vGrp = obj.vertex_groups[passiveGrpName]
+            # Assign weights to all vertices
+            all_verts = list(range(len(obj.data.vertices)))
+            vGrp.add(all_verts, 1.0, 'REPLACE')
+            # Update the mesh to ensure changes are applied
+            obj.data.update()
+
+    ### Vertex group synchronization among objects (required because the FM can confuse indices otherwise)
+    # Step 1: Collect all unique vertex group names, using a list to preserve order
+    vertex_group_names = []
+    for obj in objs:
+        for vg in obj.vertex_groups:
+            if vg.name not in vertex_group_names:  # Prevent duplicates
+                vertex_group_names.append(vg.name)
+    # Step 2: Ensure all objects have all vertex groups
+    for obj in objs:
+        current_vg_names = {vg.name for vg in obj.vertex_groups}
+        # Add missing vertex groups
+        for vg_name in vertex_group_names:
+            if vg_name not in current_vg_names:
+                obj.vertex_groups.new(name=vg_name)
+    # Step 3: Reorder vertex groups to match the sorted list
+    for obj in objs:
+        bpy.context.scene.objects.active = obj  # Set the active object
+        vg_map = {vg.name: i for i, vg in enumerate(obj.vertex_groups)}  # Current positions of vertex groups
+        for target_index, vg_name in enumerate(vertex_group_names):
+            current_index = vg_map[vg_name]
+            while current_index != target_index:
+                if current_index < target_index:
+                    obj.vertex_groups.active_index = current_index
+                    bpy.ops.object.vertex_group_move(direction='DOWN')
+                    current_index += 1
+                elif current_index > target_index:
+                    obj.vertex_groups.active_index = current_index
+                    bpy.ops.object.vertex_group_move(direction='UP')
+                    current_index -= 1
+                # Update the map after each move
+                vg_map = {vg.name: i for i, vg in enumerate(obj.vertex_groups)}
 
     scene.update()
 
