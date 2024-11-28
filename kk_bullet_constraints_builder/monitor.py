@@ -152,6 +152,9 @@ def monitor_eventHandler(scene):
             ### Displacement correction initialization
             monitor_displCorrectDiffExport(scene)
 
+            ### Damping region initialization
+            monitor_dampingRegion(scene)
+
         ################################
         ### What to do AFTER start frame
         elif "bcb_monitor" in bpy.app.driver_namespace.keys() and scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
@@ -208,6 +211,9 @@ def monitor_eventHandler(scene):
             if scene.frame_current == scene.frame_start +props.warmUpPeriod:
                 monitor_displCorrectDiffExport(scene)
 
+            ### Damping region update
+            monitor_dampingRegion(scene)
+
     # When Fracture Modifier is in use
     else:
              
@@ -238,6 +244,9 @@ def monitor_eventHandler(scene):
             ### Displacement correction initialization
             monitor_displCorrectDiffExport(scene)
                                                 
+            ### Damping region initialization
+            monitor_dampingRegion_fm(scene)
+
         ################################
         ### What to do AFTER start frame
         elif "bcb_monitor" in bpy.app.driver_namespace.keys() and scene.frame_current > scene.frame_start:   # Check this to skip the last run when jumping back to start frame
@@ -288,6 +297,9 @@ def monitor_eventHandler(scene):
             ### Displacement correction vertex location differences export
             if scene.frame_current == scene.frame_start +props.warmUpPeriod:
                 monitor_displCorrectDiffExport(scene)
+
+            ### Damping region update
+            monitor_dampingRegion_fm(scene)
 
 ################################################################################
 
@@ -1276,6 +1288,218 @@ def monitor_progressiveWeakening_fm(scene, progrWeakVar):
             
 ################################################################################
 
+def monitor_dampingRegion(scene):
+
+    if debug: print("Calling dampingRegion")
+
+    props = bpy.context.window_manager.bcb
+
+    ### Get damping region object
+    dampRegObjs = []
+    if len(props.dampRegObj):
+        for obj in scene.objects:
+            if props.dampRegObj in obj.name:
+                dampRegObjs.append(obj)
+    if len(dampRegObjs):
+        if scene.frame_current == scene.frame_start: print("Damping region object(s) found:", len(dampRegObjs))
+    else: return
+
+    elemGrps = global_vars.elemGrps
+
+    ### Get data from scene
+    try: objs = scene["bcb_objs"]
+    except: objs = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+    try: objsEGrp = scene["bcb_objsEGrp"]
+    except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
+    ### Prepare dictionary of element indices for faster item search (optimization)
+    objsDict = {}
+    for i in range(len(objs)):
+        objsDict[objs[i]] = i
+    
+    ### Create group index with their respective objects
+    grpsObjs = {}
+    for elemGrp in elemGrps:
+        grpName = elemGrp[EGSidxName]
+        grpObjs = []
+        for obj in objs:
+            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
+                grpObjs.append(obj)
+        grpsObjs[grpName] = grpObjs
+    
+    ### On start frame backup data
+    if "bcb_damps" not in bpy.app.driver_namespace:
+        dampsData = bpy.app.driver_namespace["bcb_damps"] = []    
+
+        for elemGrp in elemGrps:
+            qDampReg = elemGrp[EGSidxDmpR]
+            if qDampReg:
+                grpName = elemGrp[EGSidxName]
+                for objName in grpsObjs[grpName]:
+                    obj = scene.objects[objName]
+                    dampsData.append([obj.rigid_body.linear_damping, obj.rigid_body.angular_damping, 0])
+    else:
+        dampsData = bpy.app.driver_namespace["bcb_damps"]
+
+    ### Set new damping
+    if len(dampsData):
+        
+        dataIdx = 0
+        for elemGrp in elemGrps:
+            qDampReg = elemGrp[EGSidxDmpR]
+            if qDampReg:
+                grpName = elemGrp[EGSidxName]
+                for objName in grpsObjs[grpName]:
+
+                    ### Revert damping values back to their original because elements also can leave damping regions,
+                    ### also multiple damping regions are added per pass by multiplication.
+                    obj = scene.objects[objName]
+                    objLoc = obj.matrix_world.to_translation()
+                    objRB = obj.rigid_body
+
+                    # Get original values
+                    #dampLinOrig, dampAngOrig, qFlagged = dampsData[dataIdx]  # Commented out because we only modify the damping once (optimization)
+                    qFlagged = dampsData[dataIdx][2]
+
+                    if not qFlagged:
+                        # Reset values to original (only required when the qFlagged optimization is not used)
+                        #if objRB.linear_damping != dampLinOrig: objRB.linear_damping = dampLinOrig
+                        #if objRB.angular_damping != dampAngOrig: objRB.angular_damping = dampAngOrig
+
+                        ### New damping values are calculated and applied per region object
+                        for dampRegObj in dampRegObjs:
+                            # Calculate the bounding box extent of dampRegObj
+                            min_bound = dampRegObj.location -dampRegObj.scale
+                            max_bound = dampRegObj.location +dampRegObj.scale
+                            # Check if objLoc is within the bounds of dampRegObj and set new damping values
+                            if (min_bound.x <= objLoc.x <= max_bound.x and
+                                min_bound.y <= objLoc.y <= max_bound.y and
+                                min_bound.z <= objLoc.z <= max_bound.z):
+                                # Set flagged (after one-time contact damping will not be modified again)
+                                dampsData[dataIdx][2] = 1
+                                # Vars
+                                dampLin, dampAng = props.dampRegLin, props.dampRegAng
+                                # User definitions as possible property of the detonator object
+                                if "dampRegLinear" in dampRegObj.keys():
+                                    dampLin = dampRegObj["dampRegLinear"]
+                                if "dampRegAngular" in dampRegObj.keys():
+                                    dampAng = dampRegObj["dampRegAngular"]
+                                # This method combines damping values in a non-linear way, which is useful when multiple damping regions overlap
+                                objRB.linear_damping = (1 -(1 -objRB.linear_damping) *(1 -dampLin))
+                                objRB.angular_damping = (1 -(1 -objRB.angular_damping) *(1 -dampAng))
+
+                    dataIdx += 1
+
+########################################
+
+def monitor_dampingRegion_fm(scene):
+
+    if debug: print("Calling dampingRegion")
+
+    props = bpy.context.window_manager.bcb
+
+    ### Get damping region object
+    dampRegObjs = []
+    if len(props.dampRegObj):
+        for obj in scene.objects:
+            if props.dampRegObj in obj.name:
+                dampRegObjs.append(obj)
+    if len(dampRegObjs):
+        if scene.frame_current == scene.frame_start: print("Damping region object(s) found:", len(dampRegObjs))
+    else: return
+
+    elemGrps = global_vars.elemGrps
+
+    # When Fracture Modifier is in use
+    if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
+        try: objFM = scene.objects[asciiExportName]
+        except: print("Error: Fracture Modifier object expected but not found."); return
+        md = objFM.modifiers["Fracture"]
+
+    ### Get data from scene
+    try: objs = scene["bcb_objs"]
+    except: objs = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+    try: objsEGrp = scene["bcb_objsEGrp"]
+    except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
+    ### Prepare dictionary of element indices for faster item search (optimization)
+    objsDict = {}
+    for i in range(len(objs)):
+        objsDict[objs[i]] = i
+    
+    ### Create group index with their respective objects
+    grpsObjs = {}
+    for elemGrp in elemGrps:
+        grpName = elemGrp[EGSidxName]
+        grpObjs = []
+        for obj in objs:
+            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
+                grpObjs.append(obj)
+        grpsObjs[grpName] = grpObjs
+    
+    ### On start frame backup data
+    if "bcb_damps" not in bpy.app.driver_namespace:
+        dampsData = bpy.app.driver_namespace["bcb_damps"] = []    
+
+        for elemGrp in elemGrps:
+            qDampReg = elemGrp[EGSidxDmpR]
+            if qDampReg:
+                grpName = elemGrp[EGSidxName]
+                for objName in grpsObjs[grpName]:
+                    shard = md.mesh_islands[objName]
+                    dampsData.append([shard.rigidbody.linear_damping, shard.rigidbody.angular_damping, 0])
+    else:
+        dampsData = bpy.app.driver_namespace["bcb_damps"]
+
+    ### Set new damping
+    if len(dampsData):
+        
+        dataIdx = 0
+        for elemGrp in elemGrps:
+            qDampReg = elemGrp[EGSidxDmpR]
+            if qDampReg:
+                grpName = elemGrp[EGSidxName]
+                for objName in grpsObjs[grpName]:
+
+                    ### Revert damping values back to their original because elements also can leave damping regions,
+                    ### also multiple damping regions are added per pass by multiplication.
+                    shard = md.mesh_islands[objName]
+                    objLoc = shard.rigidbody.location
+                    objRB = shard.rigidbody
+
+                    # Get original values
+                    #dampLinOrig, dampAngOrig, qFlagged = dampsData[dataIdx]  # Commented out because we only modify the damping once (optimization)
+                    qFlagged = dampsData[dataIdx][2]
+
+                    if not qFlagged:
+                        # Reset values to original (only required when the qFlagged optimization is not used)
+                        #if objRB.linear_damping != dampLinOrig: objRB.linear_damping = dampLinOrig
+                        #if objRB.angular_damping != dampAngOrig: objRB.angular_damping = dampAngOrig
+                        
+                        ### New damping values are calculated and applied per region object
+                        for dampRegObj in dampRegObjs:
+                            # Calculate the bounding box extent of dampRegObj
+                            min_bound = dampRegObj.location -dampRegObj.scale
+                            max_bound = dampRegObj.location +dampRegObj.scale
+                            # Check if objLoc is within the bounds of dampRegObj and set new damping values
+                            if (min_bound.x <= objLoc.x <= max_bound.x and
+                                min_bound.y <= objLoc.y <= max_bound.y and
+                                min_bound.z <= objLoc.z <= max_bound.z):
+                                # Set flagged (after one-time contact damping will not be modified again)
+                                dampsData[dataIdx][2] = 1
+                                # Vars
+                                dampLin, dampAng = props.dampRegLin, props.dampRegAng
+                                # User definitions as possible property of the detonator object
+                                if "dampRegLinear" in dampRegObj.keys():
+                                    dampLin = dampRegObj["dampRegLinear"]
+                                if "dampRegAngular" in dampRegObj.keys():
+                                    dampAng = dampRegObj["dampRegAngular"]
+                                # This method combines damping values in a non-linear way, which is useful when multiple damping regions overlap
+                                objRB.linear_damping = (1 -(1 -objRB.linear_damping) *(1 -dampLin))
+                                objRB.angular_damping = (1 -(1 -objRB.angular_damping) *(1 -dampAng))
+
+                    dataIdx += 1
+
+################################################################################
+
 def monitor_displCorrectDiffExport(scene):
     
     elemGrps = global_vars.elemGrps
@@ -1333,7 +1557,7 @@ def monitor_displCorrectDiffExport(scene):
                         vLoc_world = objFM.matrix_world *vert.co  # Vertex location in world space
                         vLocData.append(vLoc_world)
 
-    # Export data to file
+    ### Export data to file
     if not qStartFrame and len(vLocData):
         if len(vLocData) == len(vLocDataStart):
             for idx in range(len(vLocData)):
@@ -1356,7 +1580,29 @@ def monitor_freeBuffers(scene):
     
     if "bcb_monitor" in bpy.app.driver_namespace.keys():
         props = bpy.context.window_manager.bcb
+        elemGrps = global_vars.elemGrps
         connects = bpy.app.driver_namespace["bcb_monitor"]
+
+        ### Get data from scene
+        try: objs = scene["bcb_objs"]
+        except: objs = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+        try: objsEGrp = scene["bcb_objsEGrp"]
+        except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
+        ### Prepare dictionary of element indices for faster item search (optimization)
+        objsDict = {}
+        for i in range(len(objs)):
+            objsDict[objs[i]] = i
+
+        ### Create group index with their respective objects
+        grpsObjs = {}
+        for elemGrp in elemGrps:
+            grpName = elemGrp[EGSidxName]
+            grpObjs = []
+            for obj in objs:
+                if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
+                    grpObjs.append(obj)
+            grpsObjs[grpName] = grpObjs
+
         if connects != None:
 
             ### Restore original constraint and element data
@@ -1380,6 +1626,35 @@ def monitor_freeBuffers(scene):
                                 print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
                             print("(%s)" %const.name)
                         
+        ### Damping Region - revert RBs to original dampings
+        if "bcb_damps" in bpy.app.driver_namespace:
+            ### Get damping region object
+            dampRegObjs = []
+            if len(props.dampRegObj):
+                for obj in scene.objects:
+                    if props.dampRegObj in obj.name:
+                        dampRegObjs.append(obj)
+            dampsData = bpy.app.driver_namespace["bcb_damps"]
+            if len(dampRegObjs) and len(dampsData):
+                dataIdx = 0
+                for elemGrp in elemGrps:
+                    qDampReg = elemGrp[EGSidxDmpR]
+                    if qDampReg:
+                        grpName = elemGrp[EGSidxName]
+                        for objName in grpsObjs[grpName]:
+                            obj = scene.objects[objName]
+                            objRB = obj.rigid_body
+                            # Get original values
+                            dampLinOrig, dampAngOrig, qFlagged = dampsData[dataIdx]
+                            dataIdx += 1
+                            # Reset values to original
+                            if objRB.linear_damping != dampLinOrig: objRB.linear_damping = dampLinOrig
+                            if objRB.angular_damping != dampAngOrig: objRB.angular_damping = dampAngOrig
+                                    
+            # Clear damping properties
+            try: del bpy.app.driver_namespace["bcb_damps"]
+            except: pass
+
 ################################################################################
 
 def monitor_freeBuffers_fm(scene):
@@ -1388,7 +1663,35 @@ def monitor_freeBuffers_fm(scene):
     
     if "bcb_monitor" in bpy.app.driver_namespace.keys():
         props = bpy.context.window_manager.bcb
+        elemGrps = global_vars.elemGrps
         connects = bpy.app.driver_namespace["bcb_monitor"]
+
+        # When Fracture Modifier is in use
+        if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
+            try: objFM = scene.objects[asciiExportName]
+            except: print("Error: Fracture Modifier object expected but not found."); return
+            md = objFM.modifiers["Fracture"]
+
+        ### Get data from scene
+        try: objs = scene["bcb_objs"]
+        except: objs = []; print("Error: bcb_objs property not found, rebuilding constraints is required.")
+        try: objsEGrp = scene["bcb_objsEGrp"]
+        except: objsEGrp = []; print("Error: bcb_objsEGrp property not found, cleanup may be incomplete.")
+        ### Prepare dictionary of element indices for faster item search (optimization)
+        objsDict = {}
+        for i in range(len(objs)):
+            objsDict[objs[i]] = i
+
+        ### Create group index with their respective objects
+        grpsObjs = {}
+        for elemGrp in elemGrps:
+            grpName = elemGrp[EGSidxName]
+            grpObjs = []
+            for obj in objs:
+                if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
+                    grpObjs.append(obj)
+            grpsObjs[grpName] = grpObjs
+
         if connects != None:
 
             ### Restore original constraint and element data
@@ -1410,6 +1713,34 @@ def monitor_freeBuffers_fm(scene):
                                 print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
                             print("(%s)" %const.name)
 
+        ### Damping Region - revert RBs to original dampings
+        if "bcb_damps" in bpy.app.driver_namespace:
+            ### Get damping region object
+            dampRegObjs = []
+            if len(props.dampRegObj):
+                for obj in scene.objects:
+                    if props.dampRegObj in obj.name:
+                        dampRegObjs.append(obj)
+            dampsData = bpy.app.driver_namespace["bcb_damps"]
+            if len(dampRegObjs) and len(dampsData):
+                dataIdx = 0
+                for elemGrp in elemGrps:
+                    qDampReg = elemGrp[EGSidxDmpR]
+                    if qDampReg:
+                        grpName = elemGrp[EGSidxName]
+                        for objName in grpsObjs[grpName]:
+                            shard = md.mesh_islands[objName]
+                            objRB = shard.rigidbody
+                            # Get original values
+                            dampLinOrig, dampAngOrig, qFlagged = dampsData[dataIdx]
+                            dataIdx += 1
+                            # Reset values to original
+                            if objRB.linear_damping != dampLinOrig: objRB.linear_damping = dampLinOrig
+                            if objRB.angular_damping != dampAngOrig: objRB.angular_damping = dampAngOrig
+            # Clear damping properties
+            try: del bpy.app.driver_namespace["bcb_damps"]
+            except: pass
+
         # Clear monitor properties
         try: del bpy.app.driver_namespace["bcb_monitor_fm"]
         except: pass
@@ -1427,6 +1758,7 @@ def monitor_freeBuffers_both(scene):
     if "bcb_monitor" in bpy.app.driver_namespace.keys():
         props = bpy.context.window_manager.bcb
         connects = bpy.app.driver_namespace["bcb_monitor"]
+
         if connects != None:
 
             if props.timeScalePeriod:
@@ -1456,3 +1788,5 @@ def monitor_freeBuffers_both(scene):
         # Clear vertex location properties
         try: del bpy.app.driver_namespace["bcb_vLocs"]
         except: pass
+    
+    

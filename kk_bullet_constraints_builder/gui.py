@@ -425,6 +425,13 @@ class bcb_panel_advanced_global_settings(bpy.types.Panel):
         row = col.row(align=1); row.prop(props, "timeScalePeriodValue")
         if props.timeScalePeriod == 0: row.enabled = 0
 
+        col.separator()
+        row = col.row(align=1); row.prop(props, "dampRegObj")
+        row = col.row(align=1); split = row.split(align=1);
+        split.prop(props, "dampRegLin")
+        split.prop(props, "dampRegAng")
+        if not len(props.dampRegObj) or props.dampRegObj not in bpy.context.scene.objects: row.enabled = 0
+
 ########################################
 
 class bcb_panel_triggers(bpy.types.Panel):
@@ -925,7 +932,11 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxIter" %i)
+                       
+            row = col.row(align=1)
+            if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxSDFl" %i)
+            row.prop(props, "elemGrp_%d_EGSidxDmpR" %i)
             
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0

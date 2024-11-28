@@ -182,6 +182,9 @@ class bcb_props(bpy.types.PropertyGroup):
     disableCollision      = bool_(name="Disable Collisions",      default=1,                       update=updGlob, description="Disables collisions between connected elements until breach")
     disableCollisionPerm  = bool_(name="Dis. Col. Permanently",   default=0,                       update=updGlob, description="Disables collisions between initially connected elements permanently. This can help to make simulations with intersecting geometry more stable at the cost of accuracy")
     lowerBrkThresPriority = bool_(name="Lower Strength Priority", default=1,                       update=updGlob, description="Gives priority to the weaker breaking threshold of two elements from different element groups with same Priority value to be connected, if disabled the stronger value is used for the connection")
+    dampRegObj            = string_(name="Damping Region Object", default="Waterbody",             update=updGlob, description="Enter the name of an object to define the region in which the damping effects should be simulated. This feature is intended to simulate environments with a higher viscosity than air, e.g. water. Note: The element groups must be activated individually for the effect to take effect. Multiple damping regions are supported if they contain this string in the name")
+    dampRegLin            = float_(name="Linear Damping",         default=0.9, min=0.0, max=1.0,   update=updGlob, description="For a Damping Region: Amount of linear velocity that is lost over time")
+    dampRegAng            = float_(name="Angular Damping",        default=0.1, min=0.0, max=1.0,   update=updGlob, description="For a Damping Region: Amount of angular velocity that is lost over time")
     detonatorObj          = string_(name="Detonator Object",      default="Detonator",             update=updGlob, description="Enter name of an object to be used to simulate the effects of an explosion. This feature replicates the damage caused by such an event by weakening the constraints within range of the object. It is recommended to use an Empty object with a sphere shape for this. The damage is calculated as gradient of the distance mapped to the size, from 200% weakening at center to 0% at boundary. Multiple detonators are supported if they contain this string in the name")
     detonatorMul          = float_(name="Multiplier",             default=1, min=0.0, max=1000.0,  update=updGlob, description="Multiplier the weakening gradient strength derived from the Detonator object space will be multiplied with (not used for Advanced Detonator)")
     detonatorMax          = float_(name="Maximum",                default=1, min=0.0, max=1.0,     update=updGlob, description="Detonator influence maximum to limit the weakening (not used for Advanced Detonator)")
@@ -231,6 +234,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxPrio" %i +" = int_(name='Connection Priority', default=presets[j][EGSidxPrio], min=1, max=9, update=updGlob, description='Changes the connection priority for this element group which will override that the weaker breaking threshold of two elements is preferred for an connection. Lower Strength Priority has similar functionality but works on all groups, however, it is ignored if the priority here is different for a particular connection')")
         exec("elemGrp_%d_EGSidxFric" %i +" = float_(name='Friction', default=presets[j][EGSidxFric], min=0.0, max=100000, update=updGlob, description='Coefficient of friction for the given material (dimensionless)')")
         exec("elemGrp_%d_EGSidxBlnc" %i +" = float_(name='Balance Masses', default=presets[j][EGSidxBlnc], min=0.0, max=1.0, update=updGlob, description='Factor to balance the masses of elements within this group. A value of 1 assigns the same mass to each element, regardless of size, while maintaining the total mass of the group. This can be useful for force fields that require uniform element masses. A value of 0 (default) calculates masses proportionally based on the elements´ volume')")
+        exec("elemGrp_%d_EGSidxIter" %i +" = int_(name='Solver Iterations Override', default=presets[j][EGSidxIter], min=0, max=100000, update=updGlob, description='Overrides the Constraint Solver Iterations value of the scene for constraints of this element group if set to a value greater 0. Higher numbers can help to reduce solver induced deformation on elements bearing extreme loads')")
         exec("elemGrp_%d_EGSidxSDFl" %i +" = bool_(name='Search Dist. Fallback', default=presets[j][EGSidxSDFl], update=updGlob, description='In case no geometry could be detected within mesh search distance while the neighbor element´s boundary box is still within range this enables a fallback using the intersection of the boundary boxes as contact area instead of the mesh surface. If disabled contact area will remain zero and no connection will be created in that case')")
         exec("elemGrp_%d_EGSidxMCTh" %i +" = bool_(name='Mohr-Coulomb Theory', default=presets[j][EGSidxMCTh], update=updGlob, description='Enables the calculation of shear and bending strength using the Mohr-Coulomb theory and makes it stress-related. This method is recommended for masonry structures in earthquake scenarios. Note that the Multiplier setting is also applied to the strength increase')")
         exec("elemGrp_%d_EGSidxScal" %i +" = float_(name='Rescale Factor', default=presets[j][EGSidxScal], min=0.0, max=10.0, update=updGlob, description='Applies scaling factor on elements to avoid `Jenga´ effect (undesired stability increase caused by incompressible rigid bodies). This has no influence on breaking threshold and mass calculations')")
@@ -241,7 +245,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxCyln" %i +" = bool_(name='Cylindric Shape', default=presets[j][EGSidxCyln], update=updGlob, description='Interpret connection area as round instead of rectangular (ar = a *pi/4). This can be useful when you have to deal with cylindrical columns')")
         exec("elemGrp_%d_EGSidxDCor" %i +" = bool_(name='Displ. Correction', default=presets[j][EGSidxDCor], update=updGlob, description='Enables the correction of initial displacements. This can compensate for sagging structures such as bridges that would otherwise require a very high solver step count to be straight. To do this, the simulation must be run twice. On the first run, the displacements are saved into an external file when the warm-up period ends. In the second run (rebuilding required), the differences are integrated into the mesh. Delete the external file to reset')")
         exec("elemGrp_%d_EGSidxDClP" %i +" = bool_(name='Dis. Col. Permanently', default=presets[j][EGSidxDClP], update=updGlob, description='Disables collisions between initially connected elements of this element group permanently (overrides global setting)')")
-        exec("elemGrp_%d_EGSidxIter" %i +" = int_(name='Solver Iterations Override', default=presets[j][EGSidxIter], min=0, max=100000, update=updGlob, description='Overrides the Constraint Solver Iterations value of the scene for constraints of this element group if set to a value greater 0. Higher numbers can help to reduce solver induced deformation on elements bearing extreme loads')")
+        exec("elemGrp_%d_EGSidxDmpR" %i +" = bool_(name='Damp. Region', default=presets[j][EGSidxDmpR], update=updGlob, description='Enables the Damping Region feature for this element group. Refer to Advanced Global Settings to define boundary objects and damping parameters')")
 
         # Update fromula assistant submenu according to the chosen element group
         exec("assistant_menu = enum_(name='Type of Building Material', items=assistant_menu_data, default=presets[j][EGSidxAsst]['ID'], update=updGlob)")
@@ -286,6 +290,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxPrio" %i +" = elemGrps[i][EGSidxPrio]")
                 exec("self.elemGrp_%d_EGSidxFric" %i +" = elemGrps[i][EGSidxFric]")
                 exec("self.elemGrp_%d_EGSidxBlnc" %i +" = elemGrps[i][EGSidxBlnc]")
+                exec("self.elemGrp_%d_EGSidxIter" %i +" = elemGrps[i][EGSidxIter]")
                 exec("self.elemGrp_%d_EGSidxSDFl" %i +" = elemGrps[i][EGSidxSDFl]")
                 exec("self.elemGrp_%d_EGSidxMCTh" %i +" = elemGrps[i][EGSidxMCTh]")
                 exec("self.elemGrp_%d_EGSidxScal" %i +" = elemGrps[i][EGSidxScal]")
@@ -296,7 +301,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxCyln" %i +" = elemGrps[i][EGSidxCyln]")
                 exec("self.elemGrp_%d_EGSidxDCor" %i +" = elemGrps[i][EGSidxDCor]")
                 exec("self.elemGrp_%d_EGSidxDClP" %i +" = elemGrps[i][EGSidxDClP]")
-                exec("self.elemGrp_%d_EGSidxIter" %i +" = elemGrps[i][EGSidxIter]")
+                exec("self.elemGrp_%d_EGSidxDmpR" %i +" = elemGrps[i][EGSidxDmpR]")
 
             # Update fromula assistant submenu according to the chosen element group
             i = self.menu_selectedElemGrp
@@ -357,6 +362,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxPrio] = eval("self.elemGrp_%d_EGSidxPrio" %i)
                 elemGrps[i][EGSidxFric] = eval("self.elemGrp_%d_EGSidxFric" %i)
                 elemGrps[i][EGSidxBlnc] = eval("self.elemGrp_%d_EGSidxBlnc" %i)
+                elemGrps[i][EGSidxIter] = eval("self.elemGrp_%d_EGSidxIter" %i)
                 elemGrps[i][EGSidxSDFl] = eval("self.elemGrp_%d_EGSidxSDFl" %i)
                 lastValue = elemGrps[i][EGSidxMCTh]
                 elemGrps[i][EGSidxMCTh] = eval("self.elemGrp_%d_EGSidxMCTh" %i)
@@ -369,7 +375,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxCyln] = eval("self.elemGrp_%d_EGSidxCyln" %i)
                 elemGrps[i][EGSidxDCor] = eval("self.elemGrp_%d_EGSidxDCor" %i)
                 elemGrps[i][EGSidxDClP] = eval("self.elemGrp_%d_EGSidxDClP" %i)
-                elemGrps[i][EGSidxIter] = eval("self.elemGrp_%d_EGSidxIter" %i)
+                elemGrps[i][EGSidxDmpR] = eval("self.elemGrp_%d_EGSidxDmpR" %i)
                 # Remove surface variable if existing (will be added in setConstraintSettings()
                 elemGrps[i][EGSidxBTC] = elemGrps[i][EGSidxBTC].replace('*a','')
                 elemGrps[i][EGSidxBTT] = elemGrps[i][EGSidxBTT].replace('*a','')

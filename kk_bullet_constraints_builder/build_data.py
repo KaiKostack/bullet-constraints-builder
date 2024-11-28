@@ -153,6 +153,9 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_disableCollision"] = props.disableCollision
     scene["bcb_prop_disableCollisionPerm"] = props.disableCollisionPerm
     scene["bcb_prop_lowerBrkThresPriority"] = props.lowerBrkThresPriority
+    scene["bcb_prop_dampRegObj"] = props.dampRegObj
+    scene["bcb_prop_dampRegLin"] = props.dampRegLin
+    scene["bcb_prop_dampRegAng"] = props.dampRegAng
     scene["bcb_prop_detonatorObj"] = props.detonatorObj
     scene["bcb_prop_detonatorMul"] = props.detonatorMul
     scene["bcb_prop_detonatorMax"] = props.detonatorMax
@@ -388,6 +391,12 @@ def getConfigDataFromScene(scene):
         props.disableCollisionPerm = scene["bcb_prop_disableCollisionPerm"]
     if "bcb_prop_lowerBrkThresPriority" in scene.keys():
         props.lowerBrkThresPriority = scene["bcb_prop_lowerBrkThresPriority"]
+    if "bcb_prop_dampRegObj" in scene.keys():
+        props.dampRegObj = scene["bcb_prop_dampRegObj"]
+    if "bcb_prop_dampRegLin" in scene.keys():
+        props.dampRegLin = scene["bcb_prop_dampRegLin"]
+    if "bcb_prop_dampRegAng" in scene.keys():
+        props.dampRegAng = scene["bcb_prop_dampRegAng"]
     if "bcb_prop_detonatorObj" in scene.keys():
         props.detonatorObj = scene["bcb_prop_detonatorObj"]
     if "bcb_prop_detonatorMul" in scene.keys():
