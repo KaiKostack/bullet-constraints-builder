@@ -53,7 +53,7 @@ import kk_select_intersecting_objects     # Contains intersection detection and 
 
 def tool_estimateClusterRadius(scene):
     
-    objs, emptyObjs = gatherObjects(scene)
+    objs, emptyObjs, objsID = gatherObjects(scene)
     
     if len(objs) > 0:        
         print("Estimating optimal cluster radius...")

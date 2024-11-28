@@ -55,7 +55,9 @@ def initGeneralRigidBodyWorldSettings(scene):
             scene.render.fps_base = 1
             print("New Frame Rate set to:", scene.render.fps)
         else:
+            props.update_lock = 1  # Suppress automatic updating to set a new property value
             props.stepsPerSecond = scene.render.fps *int(props.stepsPerSecond /scene.render.fps)
+            props.update_lock = 0
             print("New Solver Steps set to:", props.stepsPerSecond)
             if props.stepsPerSecond %scene.render.fps != 0 or scene.render.fps_base != 1:
                 fps = props.stepsPerSecond /int(props.stepsPerSecond /scene.render.fps)

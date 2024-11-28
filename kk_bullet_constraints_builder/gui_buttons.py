@@ -45,7 +45,7 @@ from monitor import *          # Contains baking monitor event handler
 from tools import *            # Contains smaller independently working tools
 
 ################################################################################   
-         
+
 class OBJECT_OT_bcb_set_config(bpy.types.Operator):
     bl_idname = "bcb.set_config"
     bl_label = ""
@@ -203,7 +203,8 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
     use_handler = int_(default = 0)
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
-            self.report({'ERROR'}, "Fracture Modifier not available in this Blender version. Visit kaikostack.com/fracture for the FM-enabled Blender version.")  # Create popup message
+            # Create popup message
+            self.report({'ERROR'}, "This feature requires a Blender version with Fracture Modifier. Visit kaikostack.com/fracture for the FM-enabled Blender version.")
         else:
             ###### Execute main building process from scratch
             scene = bpy.context.scene
@@ -337,8 +338,11 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
             if self.menuIdx < 0:
                 # Call menu
                 bpy.ops.wm.call_menu(name="bcb.add_preset")
-            else:
+            print("DEBUG button", self.menuIdx)
+            if self.menuIdx >= 0:
                 props = context.window_manager.bcb
+                # Update global vars (only for initializing on new scene)
+                props.props_update_globals()
                 elemGrps = global_vars.elemGrps
                 # Add element group (syncing element group indices happens on execution)
                 elemGrps.append(presets[self.menuIdx].copy())

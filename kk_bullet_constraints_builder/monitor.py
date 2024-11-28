@@ -558,24 +558,35 @@ def monitor_checkForChange(scene):
 
                     ### Dynamic change of breaking thresholds depending on pressure (Mohr-Coulomb theory)
                     if qMohrCoulomb:
-                        # Get force acting on the compressive constraints in connection
-                        force = abs(consts[0].rigid_body_constraint.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                        # Find the maximum force of the compressive constraints in connection
+                        forceMax = 0
+                        for const in consts:
+                            con = const.rigid_body_constraint
+                            ### For Point and Fixed costraints
+                            ### For Generic constraints
+                            # Compressive constraints
+                            if con.type != 'GENERIC' \
+                            or con.use_limit_lin_x:
+                                force = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                                if force > forceMax: forceMax = force
                         # Compute new breaking threshold incease based on force
                         # σ = F /A
                         # τ = c +σ *tan(ϕ)
-                        brkThresInc = force /contactArea *0.577 *mul
+                        brkThresInc = forceMax /contactArea *0.577 *mul
                         # Modify constraints
                         for i in range(1, len(consts)):  # We know that first constraint is always pressure
                             con = consts[i].rigid_body_constraint
-                            # Set override to shear connections in connection
-                            if con.type != 'GENERIC':  # For Point and Fixed costraints
+                            ### For Point and Fixed costraints
+                            ### For Generic constraints
+                            # Tensile constraints - Comment this line out to include all constraints
+                            # Shear constraints - Comment this line out to include all constraints
+                            # Bend constraints - Comment this line out to include all constraints
+                            if con.type != 'GENERIC' \
+                            or con.use_limit_lin_x \
+                            or con.use_limit_lin_y or con.use_limit_lin_z \
+                            or con.use_limit_ang_y or con.use_limit_ang_z:
+                                # Apply breaking threshold incease
                                 con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
-                            else:  # For Generic constraints
-                                if con.use_limit_lin_y or con.use_limit_lin_z:  # Shear constraints - Comment this line out to include all constraints
-                                    con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
-                                # Set override to bend connections in connection
-                                if con.use_limit_ang_y or con.use_limit_ang_z:  # Bend constraints - Comment this line out to include all constraints
-                                    con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
 
 #                    ### Modify limits from applied forces
 #                    strainDist = .001 # Maximum linear strain for the given breaking threshold
@@ -634,7 +645,7 @@ def monitor_checkForChange(scene):
 #                    strain = abs(force) /brkThres  # Normalized to breaking threshold
 #                    if strain > strainMax: strainMax = strain
 #            strainIters = iterMin +(iterMax -iterMin) *strainMax  # Compute iterations from strain
-#            # Set override only to shear connections in connection
+#            # Set override only to shear constraints in connection
 #            for const in consts:
 #                con = const.rigid_body_constraint
 #                if con.use_limit_lin_y or con.use_limit_lin_z:  # Shear constraints - Comment this line out to include all constraints
@@ -847,25 +858,35 @@ def monitor_checkForChange_fm(scene):
             
                 ### Dynamic change of breaking thresholds depending on pressure (Mohr-Coulomb theory)
                 if qMohrCoulomb:
-                    # Get force acting on the compressive constraints in connection
-                    force = abs(consts[0].appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                    # Find the maximum force of the compressive constraints in connection
+                    forceMax = 0
+                    for con in consts:
+                        ### For Point and Fixed costraints
+                        ### For Generic constraints
+                        # Compressive constraints
+                        if con.type != 'GENERIC' \
+                        or con.use_limit_lin_x:
+                            force = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                            if force > forceMax: forceMax = force
                     # Compute new breaking threshold incease based on force
                     # σ = F /A
                     # τ = c +σ *tan(ϕ)
-                    brkThresInc = force /contactArea *0.577 *mul
+                    brkThresInc = forceMax /contactArea *0.577 *mul
                     # Modify constraints
                     for i in range(1, len(consts)):  # First constraint is always pressure
                         con = consts[i]
-                        # Set override to shear connections in connection
-                        if con.type != 'GENERIC':  # For Point and Fixed costraints
+                        ### For Point and Fixed costraints
+                        ### For Generic constraints
+                        # Tensile constraints - Comment this line out to include all constraints
+                        # Shear constraints - Comment this line out to include all constraints
+                        # Bend constraints - Comment this line out to include all constraints
+                        if con.type != 'GENERIC' \
+                        or con.use_limit_lin_x \
+                        or con.use_limit_lin_y or con.use_limit_lin_z \
+                        or con.use_limit_ang_y or con.use_limit_ang_z:
+                            # Apply breaking threshold incease
                             con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
-                        else:  # For Generic constraints
-                            if con.use_limit_lin_y or con.use_limit_lin_z:  # Shear constraints - Comment this line out to include all constraints
-                                con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
-                            # Set override to bend connections in connection
-                            if con.use_limit_ang_y or con.use_limit_ang_z:  # Bend constraints - Comment this line out to include all constraints
-                                con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
-                    
+                
 ################################################################################
 
 def monitor_countIntactConnections_fm(scene):

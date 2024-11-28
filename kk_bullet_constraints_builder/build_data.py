@@ -196,6 +196,8 @@ def getConfigDataFromScene(scene):
 
     ### Preprocessing Tools
 
+    props.update_lock = 1  # Suppress automatic updating to set a new property value
+    
     if "bcb_prop_preprocTools_aut" in scene.keys():
         props.preprocTools_aut = scene["bcb_prop_preprocTools_aut"]
 
@@ -406,6 +408,11 @@ def getConfigDataFromScene(scene):
         props.detonPullBackDelay = scene["bcb_prop_detonPullBackDelay"]
     if "bcb_prop_detonGroundReflect" in scene.keys():
         props.detonGroundReflect = scene["bcb_prop_detonGroundReflect"]
+
+    props.update_lock = 0
+    
+    ###### Update global vars from menu properties
+    props.props_update_globals()
         
     #if len(warning): return warning
             

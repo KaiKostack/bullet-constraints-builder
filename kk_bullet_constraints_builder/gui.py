@@ -40,7 +40,7 @@ from global_vars import *      # Contains global variables
 
 def dpifac100():
     prefs = bpy.context.user_preferences.system
-    if hasattr(prefs, 'pixel_size'):  # python access to this was only added recently, assume non-retina display is used if using older blender
+    if hasattr(prefs, 'pixel_size'):  # Python access to this was only added recently, assume non-retina display is used if using older blender
         retinafac = bpy.context.user_preferences.system.pixel_size
     else:
         retinafac = 1
@@ -50,31 +50,34 @@ class bcb_report(bpy.types.Operator):
     bl_idname = "bcb.report"
     bl_label = "Info"
     bl_description = "Report message operator"
+
+    message = bpy.props.StringProperty()
+    icon = bpy.props.StringProperty()
+    
     def execute(self, context):
         return {'FINISHED'}
+    
     def invoke(self, context, event):
         wm = context.window_manager
-        props = context.window_manager.bcb
-        print(props.message)
+        print(self.message)
         # Calculate safe width in pixel from char count of the string
-        strSize = len(props.message)
+        strSize = len(self.message)
         # widthPx = (strSize*12+40) /dpifac100()  # Approx. width for capitals
         widthPx = (strSize*8+30) /dpifac100()   # Approx. width for normal text
         #return wm.invoke_props_dialog(self)
         return wm.invoke_popup(self, width=widthPx, height=300)
+    
     def draw(self, context):
-        layout = self.layout
-        props = context.window_manager.bcb
-        message = props.message
-        row = layout.row()
-        row.label(text=message, icon="ERROR")
+        row = self.layout.row()
+        row.label(text=self.message, icon=self.icon)
+        row.alert = True  # Red background
 
 ########################################
 
 class bcb_add_preset(bpy.types.Menu):
     bl_idname = "bcb.add_preset"
     bl_label = "Available Presets"
-    bl_description = "Duplicates selected element group"
+    bl_description = "Adds a preset element group to list"
     def draw(self, context):
         layout = self.layout
         #layout.operator("wm.open_mainfile")
@@ -147,9 +150,6 @@ class bcb_panel_execute(bpy.types.Panel):
             split.operator("bcb.bake", icon="REC")
             split2 = split.split(align=1)
             split2.operator("bcb.set_config", icon="NEW")
-
-        ### Update global vars from menu related properties
-        props.props_update_globals()
 
 ########################################
 

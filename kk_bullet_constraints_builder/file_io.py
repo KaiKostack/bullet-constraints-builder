@@ -189,6 +189,7 @@ def importConfigData(scene):
         return 1
     else:
         props = bpy.context.window_manager.bcb
+        props.update_lock = 1  # Suppress automatic updating to set a new property value
         i += 1
         props.stepsPerSecond = configData[i]; i += 1
         props.solverIterations = configData[i]; i += 1
@@ -227,7 +228,12 @@ def importConfigData(scene):
         props.detonBlastWaveVel = configData[i]; i += 1
         props.detonPullBackDelay = configData[i]; i += 1
         props.detonGroundReflect = configData[i]; i += 1
+        props.update_lock = 0
+        ###### Update global vars from menu properties
+        props.props_update_globals()
+
         global_vars.elemGrps = configData[i]; i += 1
+        
         return 0
 
 ################################################################################   
