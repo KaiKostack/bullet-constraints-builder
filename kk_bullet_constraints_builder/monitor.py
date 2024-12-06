@@ -149,6 +149,9 @@ def monitor_eventHandler(scene):
             if props.progrWeakStartFact != 1:
                 monitor_progressiveWeakening(scene, props.progrWeakStartFact)
                                                 
+            ### Motor constraint warm up period
+            monitor_motorWarmUp(scene)
+
             ### Displacement correction initialization
             monitor_displCorrectDiffExport(scene)
 
@@ -207,6 +210,10 @@ def monitor_eventHandler(scene):
                     ###### Function
                     monitor_fixSprings(scene)
                     
+            ### Motor constraint warm up period
+            if scene.frame_current < scene.frame_start +props.warmUpPeriod:
+                monitor_motorWarmUp(scene)
+
             ### Displacement correction vertex location differences export
             if scene.frame_current == scene.frame_start +props.warmUpPeriod:
                 monitor_displCorrectDiffExport(scene)
@@ -240,6 +247,9 @@ def monitor_eventHandler(scene):
                 bpy.app.driver_namespace["bcb_progrWeakTmp"] = props.progrWeak
             if props.progrWeakStartFact != 1:
                 monitor_progressiveWeakening_fm(scene, props.progrWeakStartFact)
+
+            ### Motor constraint warm up period
+            monitor_motorWarmUp_fm(scene)
 
             ### Displacement correction initialization
             monitor_displCorrectDiffExport(scene)
@@ -293,6 +303,10 @@ def monitor_eventHandler(scene):
                 if props.timeScalePeriod and scene.frame_current == scene.frame_start +props.timeScalePeriod:
                     ###### Function
                     monitor_fixSprings_fm(scene)
+
+            ### Motor constraint warm up period
+            if scene.frame_current < scene.frame_start +props.warmUpPeriod:
+                monitor_motorWarmUp_fm(scene)
 
             ### Displacement correction vertex location differences export
             if scene.frame_current == scene.frame_start +props.warmUpPeriod:
@@ -1285,6 +1299,61 @@ def monitor_progressiveWeakening_fm(scene, progrWeakVar):
 
     for const in md.mesh_constraints:
         const.breaking_threshold *= progrWeakVar
+            
+################################################################################
+
+def monitor_motorWarmUp(scene):
+
+    if debug: print("Calling motorWarmUp")
+
+    props = bpy.context.window_manager.bcb
+
+    # Find motor constraints (not BCB generated)
+    try: emptyObjs = bpy.data.groups["RigidBodyConstraints"].objects
+    except: emptyObjs = []
+    emptyObjs = [obj for obj in emptyObjs if obj.type == 'EMPTY' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body_constraint != None]
+
+    if scene.frame_current == scene.frame_start:
+        factor = 1 /props.warmUpPeriod
+    else:
+        factor = 1 /(scene.frame_current -scene.frame_start) +1
+
+    for objConst in emptyObjs:
+        const = objConst.rigid_body_constraint
+        if const.type == 'MOTOR' and const.enabled:
+            if const.use_motor_lin:
+                const.motor_lin_target_velocity *= factor
+                const.motor_lin_max_impulse *= factor
+            if const.use_motor_ang:
+                const.motor_ang_target_velocity *= factor
+                const.motor_ang_max_impulse *= factor
+            
+########################################
+
+def monitor_motorWarmUp_fm(scene):
+
+    if debug: print("Calling motorWarmUp_fm")
+
+    props = bpy.context.window_manager.bcb
+
+    # Get Fracture Modifier
+    try: ob = scene.objects[asciiExportName]
+    except: print("Error: Fracture Modifier object expected but not found."); return
+    md = ob.modifiers["Fracture"]
+
+    if scene.frame_current == scene.frame_start:
+        factor = 1 /props.warmUpPeriod
+    else:
+        factor = 1 /(scene.frame_current -scene.frame_start) +1
+    
+    for const in md.mesh_constraints:
+        if const.type == 'MOTOR' and const.enabled:
+            if const.use_motor_lin:
+                const.motor_lin_target_velocity *= factor
+                const.motor_lin_max_impulse *= factor
+            if const.use_motor_ang:
+                const.motor_ang_target_velocity *= factor
+                const.motor_ang_max_impulse *= factor
             
 ################################################################################
 

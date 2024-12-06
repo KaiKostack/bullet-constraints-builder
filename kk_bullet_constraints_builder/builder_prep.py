@@ -72,6 +72,7 @@ def initGeneralRigidBodyWorldSettings(scene):
     scene.rigidbody_world.steps_per_second = props.stepsPerSecond
     scene.rigidbody_world.solver_iterations = props.solverIterations
     # Set the length of the point cache to match the scene length
+    scene.rigidbody_world.point_cache.frame_start = scene.frame_start
     scene.rigidbody_world.point_cache.frame_end = scene.frame_end
     # Set Split Impulse for rigid body simulation
     #scene.rigidbody_world.use_split_impulse = True
