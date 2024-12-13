@@ -1289,18 +1289,21 @@ def applyDisplacementCorrection(objs, objsEGrp, connectsPair, connectsLoc):
                         grpName = elemGrp[EGSidxName]
                         for obj in grpsObjs[grpName]:
                             inv_matrix = obj.matrix_world.inverted()
+                            vIdxLast = vIdx
                             for vert in obj.data.vertices:
                                 current_world_loc = obj.matrix_world *vert.co
                                 corrected_world_loc = current_world_loc -Vector(vLocData[vIdx])
                                 local_corrected_loc = inv_matrix * corrected_world_loc
                                 vert.co = local_corrected_loc
                                 vIdx += 1
+                            if vIdxLast != vIdx:
+                                obj.select = 1
                                 
                 # If changes have been made
                 if vIdx > 0:
                     # Set object centers to geometry origin (again after prepareObjects())
                     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-
+                   
                     ### Apply corrections also on connection locations
                     connectsPair_iter = iter(connectsPair)
                     connectsLoc_iter = iter(connectsLoc)

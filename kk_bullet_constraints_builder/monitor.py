@@ -1782,6 +1782,12 @@ def monitor_freeBuffers_fm(scene):
                                 print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
                             print("(%s)" %const.name)
 
+        ### Disable Dynamic Paint modifier after baking for a playback performance boost
+            for mod in objFM.modifiers:
+                if "Dynamic Paint" in mod.name:
+                    mod.show_render = False
+                    mod.show_viewport = False
+
         ### Damping Region - revert RBs to original dampings
         if "bcb_damps" in bpy.app.driver_namespace:
             ### Get damping region object
@@ -1817,7 +1823,7 @@ def monitor_freeBuffers_fm(scene):
         # Clear broken connections properties
         try: del bpy.app.driver_namespace["bcb_progrWeakBroken"]
         except: pass
-    
+        
 ################################################################################
 
 def monitor_freeBuffers_both(scene):
