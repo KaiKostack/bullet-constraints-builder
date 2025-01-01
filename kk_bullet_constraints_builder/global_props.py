@@ -249,6 +249,7 @@ class bcb_props(bpy.types.PropertyGroup):
         exec("elemGrp_%d_EGSidxDCol" %i +" = bool_(name='Dis. Col. Connection', default=presets[j][EGSidxDCol], update=updGlob, description='Disables collisions between connected elements of this element group until breach (overrides global setting)')")
         exec("elemGrp_%d_EGSidxDClP" %i +" = bool_(name='Dis. Col. Permanently', default=presets[j][EGSidxDClP], update=updGlob, description='Disables collisions between initially connected elements of this element group permanently (overrides global setting)')")
         exec("elemGrp_%d_EGSidxDmpR" %i +" = bool_(name='Damp. Region', default=presets[j][EGSidxDmpR], update=updGlob, description='Enables the Damping Region feature for this element group. Refer to Advanced Global Settings to define boundary objects and damping parameters')")
+        exec("elemGrp_%d_EGSidxPrWk" %i +" = bool_(name='Progr. Weakening', default=presets[j][EGSidxPrWk], update=updGlob, description='Enables the Progressive Weakening feature for this element group. Refer to Triggers to define Progessive Weakening parameters')")
 
         # Update fromula assistant submenu according to the chosen element group
         exec("assistant_menu = enum_(name='Type of Building Material', items=assistant_menu_data, default=presets[j][EGSidxAsst]['ID'], update=updGlob)")
@@ -306,6 +307,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 exec("self.elemGrp_%d_EGSidxDCol" %i +" = elemGrps[i][EGSidxDCol]")
                 exec("self.elemGrp_%d_EGSidxDClP" %i +" = elemGrps[i][EGSidxDClP]")
                 exec("self.elemGrp_%d_EGSidxDmpR" %i +" = elemGrps[i][EGSidxDmpR]")
+                exec("self.elemGrp_%d_EGSidxPrWk" %i +" = elemGrps[i][EGSidxPrWk]")
 
             # Update fromula assistant submenu according to the chosen element group
             i = self.menu_selectedElemGrp
@@ -381,6 +383,7 @@ class bcb_props(bpy.types.PropertyGroup):
                 elemGrps[i][EGSidxDCol] = eval("self.elemGrp_%d_EGSidxDCol" %i)
                 elemGrps[i][EGSidxDClP] = eval("self.elemGrp_%d_EGSidxDClP" %i)
                 elemGrps[i][EGSidxDmpR] = eval("self.elemGrp_%d_EGSidxDmpR" %i)
+                elemGrps[i][EGSidxPrWk] = eval("self.elemGrp_%d_EGSidxPrWk" %i)
                 # Remove surface variable if existing (will be added in setConstraintSettings()
                 elemGrps[i][EGSidxBTC] = elemGrps[i][EGSidxBTC].replace('*a','')
                 elemGrps[i][EGSidxBTT] = elemGrps[i][EGSidxBTT].replace('*a','')

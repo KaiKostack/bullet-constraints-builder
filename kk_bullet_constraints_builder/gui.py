@@ -937,11 +937,15 @@ class bcb_panel_advanced_element_group_settings(bpy.types.Panel):
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxIter" %i)
+
+            row = col.row(align=1)
+            if props.menu_gotData: row.enabled = 0
             row.prop(props, "elemGrp_%d_EGSidxSDFl" %i)
+            row.prop(props, "elemGrp_%d_EGSidxDmpR" %i)
                        
             row = col.row(align=1)
             if props.menu_gotData: row.enabled = 0
-            row.prop(props, "elemGrp_%d_EGSidxDmpR" %i)
+            row.prop(props, "elemGrp_%d_EGSidxPrWk" %i)
             row.prop(props, "elemGrp_%d_EGSidxMCTh" %i)
             
             row = col.row(align=1)

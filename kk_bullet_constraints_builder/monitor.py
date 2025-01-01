@@ -146,8 +146,6 @@ def monitor_eventHandler(scene):
             if props.progrWeak:
                 bpy.app.driver_namespace["bcb_progrWeakCurrent"] = 1
                 bpy.app.driver_namespace["bcb_progrWeakTmp"] = props.progrWeak
-            if props.progrWeakStartFact != 1:
-                monitor_progressiveWeakening(scene, props.progrWeakStartFact)
                                                 
             ### Motor constraint warm up period
             monitor_motorWarmUp(scene)
@@ -181,8 +179,6 @@ def monitor_eventHandler(scene):
             and (not props.warmUpPeriod or (props.warmUpPeriod and scene.frame_current > scene.frame_start +props.warmUpPeriod)):
                 if cntBroken < props.progrWeakLimit:
                     progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
-                    ###### Weakening function
-                    monitor_progressiveWeakening(scene, 1 -progrWeakTmp)
                     progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
                     bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
                 else:
@@ -245,8 +241,6 @@ def monitor_eventHandler(scene):
             if props.progrWeak:
                 bpy.app.driver_namespace["bcb_progrWeakCurrent"] = 1
                 bpy.app.driver_namespace["bcb_progrWeakTmp"] = props.progrWeak
-            if props.progrWeakStartFact != 1:
-                monitor_progressiveWeakening_fm(scene, props.progrWeakStartFact)
 
             ### Motor constraint warm up period
             monitor_motorWarmUp_fm(scene)
@@ -290,8 +284,6 @@ def monitor_eventHandler(scene):
             and (not props.warmUpPeriod or (props.warmUpPeriod and scene.frame_current > scene.frame_start +props.warmUpPeriod)):
                 if cntBroken < props.progrWeakLimit:
                     progrWeakTmp = bpy.app.driver_namespace["bcb_progrWeakTmp"]
-                    ###### Weakening function
-                    monitor_progressiveWeakening_fm(scene, 1 -progrWeakTmp)
                     progrWeakCurrent -= progrWeakCurrent *progrWeakTmp
                     bpy.app.driver_namespace["bcb_progrWeakCurrent"] = progrWeakCurrent
                 else:
@@ -467,6 +459,7 @@ def monitor_initBuffers(scene):
             else:                elemGrp = elemGrps_elemGrpB
             qMohrCoulomb = elemGrp[EGSidxMCTh]
             mul = elemGrp[EGSidxBTX]
+            qProgrWeak = elemGrp[EGSidxPrWk]
 
             # Calculate distance between both elements of the connection
             dist = (objA.matrix_world.to_translation() -objB.matrix_world.to_translation()).length
@@ -506,8 +499,8 @@ def monitor_initBuffers(scene):
                     constsEnabled.append(0)
                     constsUseBrk.append(0)
                     constsBrkThres.append(0)
-            #                0                1                2     3     4       5              6             7               8       9       10      11      12    13              14 15 16            17
-            connects.append([[objA, pair[0]], [objB, pair[1]], dist, angl, consts, constsEnabled, constsUseBrk, geoContactArea, tol[0], tol[1], tol[2], tol[3], mode, constsBrkThres, 0, 0, qMohrCoulomb, mul])
+            #                0                1                2     3     4       5              6             7               8       9       10      11      12    13              14 15 16            17   18
+            connects.append([[objA, pair[0]], [objB, pair[1]], dist, angl, consts, constsEnabled, constsUseBrk, geoContactArea, tol[0], tol[1], tol[2], tol[3], mode, constsBrkThres, 0, 0, qMohrCoulomb, mul, qProgrWeak])
             cCnt += 1
         d += 1
         
@@ -521,6 +514,7 @@ def monitor_checkForChange(scene):
     
     props = bpy.context.window_manager.bcb
     connects = bpy.app.driver_namespace["bcb_monitor"]
+    progrWeakVar = 1 -bpy.app.driver_namespace["bcb_progrWeakTmp"]
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
 
@@ -564,12 +558,13 @@ def monitor_checkForChange(scene):
     ###### Main pass
     d = 0; e = 0; cntP = 0; cntB = 0
     for connect in connects:
+        consts = connect[4]
         conMode = connect[12]
+        qProgrWeak = connect[18]
 
         ### If connection is in fixed mode then check if first tolerance is reached
         if conMode == 0:
             d += 1
-            consts = connect[4]
             if consts[0].rigid_body_constraint.use_breaking:
                 objA = connect[0][0]
                 objB = connect[1][0]
@@ -667,74 +662,9 @@ def monitor_checkForChange(scene):
                                 # Apply breaking threshold incease
                                 con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
 
-#                    ### Modify limits from applied forces
-#                    strainDist = .001 # Maximum linear strain for the given breaking threshold
-#                    strainAngl = .002 # Maximum angular strain for the given breaking threshold
-#                    for const in consts:
-#                        con = const.rigid_body_constraint
-#                        force = con.appliedImpulse() *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
-#                        brkThres = con.breaking_threshold *rbw_steps_per_second /rbw_time_scale
-#                        strainLin = strainDist *(abs(force) /brkThres)  # Normalized to breaking threshold
-#                        strainAng = strainAngl *(abs(force) /brkThres)
-#                        # Limits Linear
-#                        if con.use_limit_lin_x:
-#                            if con.limit_lin_x_lower > -1: con.limit_lin_x_lower -= strainLin
-#                            if con.limit_lin_x_upper < 1: con.limit_lin_x_upper += strainLin
-#                        if con.use_limit_lin_y:
-#                            if con.limit_lin_y_lower > -1: con.limit_lin_y_lower -= strainLin
-#                            if con.limit_lin_y_upper < 1: con.limit_lin_y_upper += strainLin
-#                        if con.use_limit_lin_z:
-#                            if con.limit_lin_z_lower > -1: con.limit_lin_z_lower -= strainLin
-#                            if con.limit_lin_z_upper < 1: con.limit_lin_z_upper += strainLin
-#                        # Limits Angular
-#                        if con.use_limit_ang_x:
-#                            if con.limit_ang_x_lower > -1: con.limit_ang_x_lower -= strainAng
-#                            if con.limit_ang_x_upper < 1: con.limit_ang_x_upper += strainAng
-#                        if con.use_limit_ang_y:
-#                            if con.limit_ang_y_lower > -1: con.limit_ang_y_lower -= strainAng
-#                            if con.limit_ang_y_upper < 1: con.limit_ang_y_upper += strainAng
-#                        if con.use_limit_ang_z:
-#                            if con.limit_ang_z_lower > -1: con.limit_ang_z_lower -= strainAng
-#                            if con.limit_ang_z_upper < 1: con.limit_ang_z_upper += strainAng
-
-#                    ### Calculate fatigue from the change in distance between last frame and current one
-#                    fatigueDist = 0.002  # [%/mm]
-#                    if fatigueDist:
-#                        facDist = max(0, 1 -(abs(distDif -distDifLast) *1000) *fatigueDist)
-#                        connect[14] = distDif
-#                    fatigueAngl = 0.2  # [%/rad]
-#                    if fatigueAngl:
-#                        facAngl = max(0, 1 -abs(anglDif -anglDifLast) *fatigueAngl)
-#                        connect[15] = anglDif
-#                    fac = facDist *facAngl
-#                    if fac < 1:
-#                        for const in consts:
-#                            const.rigid_body_constraint.breaking_threshold *= fac
-
-#            ### Adaptive change of constraint solver iterations depending on acting force
-#            iterMin = 100     # Minimum iterations when acting force is 0
-#            iterMax = 100000  # Maximum iterations when acting force is equal to the breaking threshold
-#            # Find the maximum strain of the compressive constraints in connection
-#            strainMax = 0
-#            for const in consts:
-#                con = const.rigid_body_constraint
-#                if con.use_limit_lin_x:  # Compressive constraints - Comment this line out to include all constraints 
-#                    force = con.appliedImpulse() *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
-#                    brkThres = con.breaking_threshold *rbw_steps_per_second /rbw_time_scale
-#                    strain = abs(force) /brkThres  # Normalized to breaking threshold
-#                    if strain > strainMax: strainMax = strain
-#            strainIters = iterMin +(iterMax -iterMin) *strainMax  # Compute iterations from strain
-#            # Set override only to shear constraints in connection
-#            for const in consts:
-#                con = const.rigid_body_constraint
-#                if con.use_limit_lin_y or con.use_limit_lin_z:  # Shear constraints - Comment this line out to include all constraints
-#                    if not con.use_override_solver_iterations: con.use_override_solver_iterations = 1
-#                    con.solver_iterations = strainIters
-
         ### If connection is in plastic mode then check if second tolerance is reached
         if conMode == 1:
             e += 1
-            consts = connect[4]
             if len(consts) and consts[0] != None and consts[0].rigid_body_constraint.use_breaking:
                 objA = connect[0][0]
                 objB = connect[1][0]
@@ -763,15 +693,11 @@ def monitor_checkForChange(scene):
                     # Flag connection as being disconnected
                     connect[12] += 1  # conMode
                     cntB += 1
-
-        ### Enable original breakability for all constraints when warm up time is over
-#        if props.warmUpPeriod:
-#            if scene.frame_current == scene.frame_start +props.warmUpPeriod:
-#                consts = connect[4]
-#                constsUseBrk = connect[6]
-#                for i in range(len(consts)):
-#                    const = consts[i]
-#                    const.rigid_body_constraint.use_breaking = constsUseBrk[i]
+        
+        # Progressive Weakening
+        if qProgrWeak:
+            for const in consts:
+                const.rigid_body_constraint.breaking_threshold *= progrWeakVar
            
     sys.stdout.write("Connections: %d Intact & %d Plastic" %(d, e))
     if cntP > 0: sys.stdout.write(" | Deformed: %d" %cntP)
@@ -795,7 +721,8 @@ def monitor_initBuffers_fm(scene):
     qMonitorRequired = 0
     for elemGrp in elemGrps:
         qMohrCoulomb = elemGrp[EGSidxMCTh]
-        if qMohrCoulomb:
+        qProgrWeak = elemGrp[EGSidxPrWk]
+        if qMohrCoulomb or qProgrWeak:
             qMonitorRequired = 1
             break
     if not qMonitorRequired:
@@ -869,6 +796,7 @@ def monitor_initBuffers_fm(scene):
             else:                elemGrp = elemGrps_elemGrpB
             qMohrCoulomb = elemGrp[EGSidxMCTh]
             mul = elemGrp[EGSidxBTX]
+            qProgrWeak = elemGrp[EGSidxPrWk]
 
             consts = []
             constsEnabled = []
@@ -893,8 +821,8 @@ def monitor_initBuffers_fm(scene):
                 else:
                     constsEnabled.append(0)
                     constsBrkThres.append(0)
-            #                0                1                2       3              4               5               6             7
-            connects.append([[objA, pair[0]], [objB, pair[1]], consts, constsEnabled, geoContactArea, constsBrkThres, qMohrCoulomb, mul])
+            #                0                1                2       3              4               5               6             7    8
+            connects.append([[objA, pair[0]], [objB, pair[1]], consts, constsEnabled, geoContactArea, constsBrkThres, qMohrCoulomb, mul, qProgrWeak])
             cCnt += 1
         d += 1
         
@@ -909,6 +837,7 @@ def monitor_checkForChange_fm(scene):
     props = bpy.context.window_manager.bcb
     elemGrps = global_vars.elemGrps
     connects = bpy.app.driver_namespace["bcb_monitor"]
+    progrWeakVar = 1 -bpy.app.driver_namespace["bcb_progrWeakTmp"]
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
 
@@ -937,7 +866,6 @@ def monitor_checkForChange_fm(scene):
         conIntact = consIntact[c]
         c += 1
 
-        ### If connection is in fixed mode then check if first tolerance is reached
         if conIntact:
             if consts[0].use_breaking:
                 qMohrCoulomb = connect[6]
@@ -969,7 +897,6 @@ def monitor_checkForChange_fm(scene):
         conIntact = consIntact[c]
         c += 1
 
-        ### If connection is in fixed mode then check if first tolerance is reached
         if conIntact:
             if consts[0].use_breaking:
                 objA = connect[0][0]
@@ -978,6 +905,7 @@ def monitor_checkForChange_fm(scene):
                 constsBrkThres = connect[5]
                 qMohrCoulomb = connect[6]
                 mul = connect[7]
+                qProgrWeak = connect[8]
             
                 ### Dynamic change of breaking thresholds depending on pressure (Mohr-Coulomb theory)
                 if qMohrCoulomb:
@@ -1024,6 +952,11 @@ def monitor_checkForChange_fm(scene):
                         or con.use_limit_ang_x or con.use_limit_ang_y or con.use_limit_ang_z:
                             # Apply breaking threshold incease
                             con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
+
+                # Progressive Weakening
+                if qProgrWeak:
+                    for const in consts:
+                        const.breaking_threshold *= progrWeakVar
                 
     # Diagnostic verbose
     if props.submenu_assistant_advanced and (brokenC or brokenT or brokenS or brokenB):
@@ -1269,37 +1202,7 @@ def monitor_fixSprings_fm(scene):
 
             fixSprCnt += 1
     print("Fixed springs: %d" %fixSprCnt)
-    
-################################################################################
-
-def monitor_progressiveWeakening(scene, progrWeakVar):
-
-    if debug: print("Calling progressiveWeakening")
-
-    connects = bpy.app.driver_namespace["bcb_monitor"]
-    i = 0
-    for connect in connects:
-        sys.stdout.write("\r%d" %i)
-        consts = connect[4]
-        for const in consts:
-            const.rigid_body_constraint.breaking_threshold *= progrWeakVar
-        i += 1
-    sys.stdout.write("\r")
-            
-########################################
-
-def monitor_progressiveWeakening_fm(scene, progrWeakVar):
-
-    if debug: print("Calling progressiveWeakening_fm")
-
-    # Get Fracture Modifier
-    try: ob = scene.objects[asciiExportName]
-    except: print("Error: Fracture Modifier object expected but not found."); return
-    md = ob.modifiers["Fracture"]
-
-    for const in md.mesh_constraints:
-        const.breaking_threshold *= progrWeakVar
-            
+                
 ################################################################################
 
 def monitor_motorWarmUp(scene):
