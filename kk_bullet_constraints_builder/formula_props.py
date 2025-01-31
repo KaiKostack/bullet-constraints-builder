@@ -32,6 +32,7 @@
 
 import bpy
 import global_vars
+from math import *
 
 ### Import submodules
 from global_vars import *      # Contains global variables

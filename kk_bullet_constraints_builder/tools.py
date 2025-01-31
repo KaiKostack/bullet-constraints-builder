@@ -2083,11 +2083,12 @@ def tool_forcesVisualization_eventHandler(scene):
                     if qFoundation:       
                         elemGrpA = objsEGrp[pair[0]]
                         elemGrpB = objsEGrp[pair[1]]
-                        CT_A = elemGrps[elemGrpA][EGSidxCTyp]
-                        CT_B = elemGrps[elemGrpB][EGSidxCTyp]
-                        if CT_A != 0 and CT_B == 0: pass # Only A is active and B is passive group
-                        elif CT_A == 0 and CT_B != 0: pass # Only B is active and A is passive group
-                        else: qUse = 0
+                        if elemGrpA != -1 and elemGrpB != -1:
+                            CT_A = elemGrps[elemGrpA][EGSidxCTyp]
+                            CT_B = elemGrps[elemGrpB][EGSidxCTyp]
+                            if CT_A != 0 and CT_B == 0: pass # Only A is active and B is passive group
+                            elif CT_A == 0 and CT_B != 0: pass # Only B is active and A is passive group
+                            else: qUse = 0
                     # Fallback in case no foundation group is available, then check for passive objects instead
                     else:
                         if not qFM and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'): qUse = 0

@@ -31,6 +31,7 @@
 ################################################################################
 
 import bpy, sys
+from math import *
 import global_vars
 
 ### Import submodules

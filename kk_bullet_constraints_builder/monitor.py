@@ -428,12 +428,12 @@ def monitor_initBuffers(scene):
         
         objA = objs[pair[0]]
         objB = objs[pair[1]]
-        if objA != None and objB != None:
+        elemGrpA = objsEGrp[pair[0]]
+        elemGrpB = objsEGrp[pair[1]]
+        if objA != None and objB != None and elemGrpA != -1 and elemGrpB != -1:
             tol = next(connectsTol_iter)
             geo = next(connectsGeo_iter)
             geoContactArea = geo[0]
-            elemGrpA = objsEGrp[pair[0]]
-            elemGrpB = objsEGrp[pair[1]]
             elemGrps_elemGrpA = elemGrps[elemGrpA]
             elemGrps_elemGrpB = elemGrps[elemGrpB]
             Prio_A = elemGrps_elemGrpA[EGSidxPrio]
@@ -498,7 +498,8 @@ def monitor_checkForChange(scene):
     
     props = bpy.context.window_manager.bcb
     connects = bpy.app.driver_namespace["bcb_monitor"]
-    progrWeakVar = 1 -bpy.app.driver_namespace["bcb_progrWeakTmp"]
+    try:    progrWeakVar = 1 -bpy.app.driver_namespace["bcb_progrWeakTmp"]
+    except: progrWeakVar = 1
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
 
@@ -679,7 +680,7 @@ def monitor_checkForChange(scene):
                     cntB += 1
         
         # Progressive Weakening
-        if qProgrWeak:
+        if qProgrWeak and progrWeakVar != 1:
             for const in consts:
                 const.rigid_body_constraint.breaking_threshold *= progrWeakVar
            
@@ -766,11 +767,11 @@ def monitor_initBuffers_fm(scene):
         
         objA = objs[pair[0]]
         objB = objs[pair[1]]
-        if objA != None and objB != None:
+        elemGrpA = objsEGrp[pair[0]]
+        elemGrpB = objsEGrp[pair[1]]
+        if objA != None and objB != None and elemGrpA != -1 and elemGrpB != -1:
             geo = next(connectsGeo_iter)
             geoContactArea = geo[0]
-            elemGrpA = objsEGrp[pair[0]]
-            elemGrpB = objsEGrp[pair[1]]
             elemGrps_elemGrpA = elemGrps[elemGrpA]
             elemGrps_elemGrpB = elemGrps[elemGrpB]
             Prio_A = elemGrps_elemGrpA[EGSidxPrio]
@@ -821,7 +822,8 @@ def monitor_checkForChange_fm(scene):
     props = bpy.context.window_manager.bcb
     elemGrps = global_vars.elemGrps
     connects = bpy.app.driver_namespace["bcb_monitor"]
-    progrWeakVar = 1 -bpy.app.driver_namespace["bcb_progrWeakTmp"]
+    try:    progrWeakVar = 1 -bpy.app.driver_namespace["bcb_progrWeakTmp"]
+    except: progrWeakVar = 1
     rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
 
@@ -938,7 +940,7 @@ def monitor_checkForChange_fm(scene):
                             con.breaking_threshold = constsBrkThres[i] +(brkThresInc *rbw_time_scale /rbw_steps_per_second)
 
                 # Progressive Weakening
-                if qProgrWeak:
+                if qProgrWeak and progrWeakVar != 1:
                     for const in consts:
                         const.breaking_threshold *= progrWeakVar
                 
@@ -1010,8 +1012,10 @@ def monitor_initTriggers(scene):
         grpName = elemGrp[EGSidxName]
         grpObjs = []
         for obj in objs:
-            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
-                grpObjs.append(obj)
+            elemGrpIdx = objsEGrp[objsDict[obj]]
+            if elemGrpIdx != -1:
+                if elemGrp == elemGrps[elemGrpIdx]:
+                    grpObjs.append(obj)
         grpsObjs[grpName] = grpObjs
     
     ### Get trigger data from text file
@@ -1278,8 +1282,10 @@ def monitor_dampingRegion(scene):
         grpName = elemGrp[EGSidxName]
         grpObjs = []
         for obj in objs:
-            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
-                grpObjs.append(obj)
+            elemGrpIdx = objsEGrp[objsDict[obj]]
+            if elemGrpIdx != -1:
+                if elemGrp == elemGrps[elemGrpIdx]:
+                    grpObjs.append(obj)
         grpsObjs[grpName] = grpObjs
     
     ### On start frame backup data
@@ -1387,8 +1393,10 @@ def monitor_dampingRegion_fm(scene):
         grpName = elemGrp[EGSidxName]
         grpObjs = []
         for obj in objs:
-            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
-                grpObjs.append(obj)
+            elemGrpIdx = objsEGrp[objsDict[obj]]
+            if elemGrpIdx != -1:
+                if elemGrp == elemGrps[elemGrpIdx]:
+                    grpObjs.append(obj)
         grpsObjs[grpName] = grpObjs
     
     ### On start frame backup data
@@ -1482,8 +1490,10 @@ def monitor_displCorrectDiffExport(scene):
         grpName = elemGrp[EGSidxName]
         grpObjs = []
         for obj in objs:
-            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
-                grpObjs.append(obj)
+            elemGrpIdx = objsEGrp[objsDict[obj]]
+            if elemGrpIdx != -1:
+                if elemGrp == elemGrps[elemGrpIdx]:
+                    grpObjs.append(obj)
         grpsObjs[grpName] = grpObjs
     
     if "bcb_vLocs" not in bpy.app.driver_namespace:
@@ -1555,8 +1565,10 @@ def monitor_freeBuffers(scene):
             grpName = elemGrp[EGSidxName]
             grpObjs = []
             for obj in objs:
-                if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
-                    grpObjs.append(obj)
+                elemGrpIdx = objsEGrp[objsDict[obj]]
+                if elemGrpIdx != -1:
+                    if elemGrp == elemGrps[elemGrpIdx]:
+                        grpObjs.append(obj)
             grpsObjs[grpName] = grpObjs
 
         if connects != None:
@@ -1644,8 +1656,10 @@ def monitor_freeBuffers_fm(scene):
             grpName = elemGrp[EGSidxName]
             grpObjs = []
             for obj in objs:
-                if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
-                    grpObjs.append(obj)
+                elemGrpIdx = objsEGrp[objsDict[obj]]
+                if elemGrpIdx != -1:
+                    if elemGrp == elemGrps[elemGrpIdx]:
+                        grpObjs.append(obj)
             grpsObjs[grpName] = grpObjs
 
         if connects != None:

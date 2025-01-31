@@ -32,6 +32,7 @@
 
 import bpy, mathutils, math, sys, copy, random
 from mathutils import Vector
+from math import *
 import global_vars
 
 ### Import submodules
@@ -197,8 +198,10 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
 
         objA = objs[pair[0]]
         objB = objs[pair[1]]
-        # If objects are missing fill in empty data and skip rest
-        if objA == None or objB == None or len(consts) == 0:
+        elemGrpA = objsEGrp[objsDict[objA]] 
+        elemGrpB = objsEGrp[objsDict[objB]]
+        # If objects are missing or connection not used then fill in empty data and skip rest
+        if objA == None or objB == None or len(consts) == 0 or elemGrpA == -1 or elemGrpB == -1:
             cData = {}; cDatb = []
             for cIdx in consts:
                 setConstParams(cData,cDatb,cDef)
@@ -216,8 +219,6 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             geoContactArea *= min(corFacA, corFacB)
 
         ### Prepare connection data
-        elemGrpA = objsEGrp[objsDict[objA]] 
-        elemGrpB = objsEGrp[objsDict[objB]]
         elemGrps_elemGrpA = elemGrps[elemGrpA]
         elemGrps_elemGrpB = elemGrps[elemGrpB]
         CT_A = elemGrps_elemGrpA[EGSidxCTyp]
@@ -675,6 +676,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                 if damageMul < 1:
                     damage = (1 -damageMul) *100
                     for idx in consts: emptyObjs[idx]['Damage %'] = damage
+                objConst0['Element Group'] = elemGrp
             else:
                 qUpdateComplete = 1
                 
@@ -1607,7 +1609,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             bpy.context.window_manager.progress_update(k /len(connectsPair))
 
             obj = objs[k]
-            elemGrp = objsEGrp[objsDict[obj]] 
+            elemGrp = objsEGrp[objsDict[obj]]
+            if elemGrp == -1: continue
+            
             elemGrps_elemGrp = elemGrps[elemGrp]
             dims = obj.dimensions /2
             # Compensate BCB rescaling

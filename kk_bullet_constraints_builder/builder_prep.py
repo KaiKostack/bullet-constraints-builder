@@ -115,7 +115,7 @@ def createElementGroupIndex(objs):
             objsEGrps.append(objGrpsTmp)
         # If not even a default group is available then use element group 0 as fallback
         # (Todo: flag the group as -1 and deal with it later, but that's also complex)
-        else: objsEGrps.append([0])
+        else: objsEGrps.append([-1])
         
     ### Taking only first item of the element group lists per object into account (the BCB can only manage one element group per object)
     ### Earlier idea was to expand objs array for objects being member of multiple element groups (item duplication allowed)
@@ -283,7 +283,8 @@ def prepareMaterials(objs, objsEGrp):
         grpName = elemGrp[EGSidxName]
         grpObjs = []
         for obj in objs:
-            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
+            elemGrpIdx = objsEGrp[objsDict[obj]]
+            if elemGrpIdx != -1 and elemGrp == elemGrps[elemGrpIdx]:
                 grpObjs.append(obj)
         grpsObjs[grpName] = grpObjs
     
@@ -445,17 +446,24 @@ def findConnectionsByVertexPairs(objs, objsEGrp):
         vPairCnt = next(connectsVpairCnt_iter)
         pairDist = next(connectsPairDist_iter)   
         loc = next(connectsLoc_iter)
-        Prio_A = elemGrps[objsEGrp[objs.index(objs[pair[0]])]][EGSidxPrio]
-        Prio_B = elemGrps[objsEGrp[objs.index(objs[pair[1]])]][EGSidxPrio]
-        reqVertexPairsObjA = elemGrps[objsEGrp[objs.index(objs[pair[0]])]][EGSidxRqVP]
-        reqVertexPairsObjB = elemGrps[objsEGrp[objs.index(objs[pair[1]])]][EGSidxRqVP]
-        if vertPairCnt >= reqVertexPairsObjA and vertPairCnt >= reqVertexPairsObjB and Prio_A == Prio_B \
-        or vertPairCnt >= reqVertexPairsObjA and Prio_A > Prio_B \
-        or vertPairCnt >= reqVertexPairsObjB and Prio_A < Prio_B:
-            connectsPairNew.append(pair)
-            connectsPairDistNew.append(pairDist)
-            connectsLocNew.append(loc)
-        else:
+        elemGrpA = objsEGrp[objs.index(objs[pair[0]])]
+        elemGrpB = objsEGrp[objs.index(objs[pair[1]])]
+        
+        qSkip = 0
+        if elemGrpA != -1 and elemGrpB != -1:
+            Prio_A = elemGrps[elemGrpA][EGSidxPrio]
+            Prio_B = elemGrps[elemGrpB][EGSidxPrio]
+            reqVertexPairsObjA = elemGrps[elemGrpA][EGSidxRqVP]
+            reqVertexPairsObjB = elemGrps[elemGrpB][EGSidxRqVP]
+            if vertPairCnt >= reqVertexPairsObjA and vertPairCnt >= reqVertexPairsObjB and Prio_A == Prio_B \
+            or vertPairCnt >= reqVertexPairsObjA and Prio_A > Prio_B \
+            or vertPairCnt >= reqVertexPairsObjB and Prio_A < Prio_B:
+                connectsPairNew.append(pair)
+                connectsPairDistNew.append(pairDist)
+                connectsLocNew.append(loc)
+            else: qSkip = 1
+        else: qSkip = 1
+        if qSkip:
             # Connections count correction
             objsConnectCnt[pair[0]] -= 1
             objsConnectCnt[pair[1]] -= 1
@@ -970,263 +978,49 @@ def calculateContactAreaBasedOnBoundaryBoxesForAll(objs, objsEGrp, connectsPair,
         pair = next(connectsPair_iter)   
         objA = objs[pair[0]]
         objB = objs[pair[1]]
-        
-        ### Get Search Distance Fallback setting
-        if not props.searchDistanceFallback:
-            elemGrpA = objsEGrp[objsDict[objA]] 
-            elemGrpB = objsEGrp[objsDict[objB]]
-            elemGrps_elemGrpA = elemGrps[elemGrpA]
-            elemGrps_elemGrpB = elemGrps[elemGrpB]
-            Prio_A = elemGrps_elemGrpA[EGSidxPrio]
-            Prio_B = elemGrps_elemGrpB[EGSidxPrio]
-            if Prio_A == Prio_B:  # Priority is the same for both element groups
-                sDistFallb_A = elemGrps_elemGrpA[EGSidxSDFl]
-                sDistFallb_B = elemGrps_elemGrpB[EGSidxSDFl]
-                sDistFallb = sDistFallb_A or sDistFallb_B
-            if Prio_A > Prio_B:  # Priority is higher for A
-                sDistFallb = elemGrps_elemGrpA[EGSidxSDFl]
-            elif Prio_A < Prio_B:  # Priority is higher for B
-                sDistFallb = elemGrps_elemGrpB[EGSidxSDFl]
-        else:
-            sDistFallb = 1
-        
-        ### Check if meshes are water tight (non-manifold)
-        nonManifolds = []
-        for obj in [objA, objB]:
-            bpy.context.scene.objects.active = obj
-            me = obj.data
-            # Find non-manifold elements
-            bm = bmesh.new()
-            bm.from_mesh(me)
-            nonManifolds.extend([i for i, ele in enumerate(bm.edges) if not ele.is_manifold])
-            bm.free()
-
-        ###### Calculate contact area for a single pair of objects
-        geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qAccurate=qAccurate, qNonManifold=len(nonManifolds))
-                    
-        # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth, qVolCorrect]
-        connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2], qVolCorrect])
-        connectsLoc.append(center)
-        
-    return connectsGeo, connectsLoc
-
-################################################################################   
-
-def calculateContactAreaBasedOnBooleansForAll(objs, objsEGrp, connectsPair):
-    
-    ### Calculate contact area for all connections
-    print("Calculating contact area for connections... (%d)" %len(connectsPair))
-
-    props = bpy.context.window_manager.bcb
-
-    ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
-    scene = bpy.context.scene
-    sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
-    # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
-    bpy.context.screen.scene = scene
-    # Link cameras because in second scene is none and when coming back camera view will losing focus
-    objCameras = []
-    for objTemp in scene.objects:
-        if objTemp.type == 'CAMERA':
-            sceneTemp.objects.link(objTemp)
-            objCameras.append(objTemp)
-    # Switch to new scene
-    bpy.context.screen.scene = sceneTemp
-
-    ### Main calculation loop
-    connectsGeo = []
-    connectsLoc = []
-    connectsPair_len = len(connectsPair)
-    for k in range(connectsPair_len):
-        sys.stdout.write('\r' +"%d " %k)
-        # Update progress bar
-        bpy.context.window_manager.progress_update(k /connectsPair_len)
-
-        objA = objs[connectsPair[k][0]]
-        objB = objs[connectsPair[k][1]]
-        objA.select = 0
-        objB.select = 0
+        elemGrpA = objsEGrp[objsDict[objA]] 
+        elemGrpB = objsEGrp[objsDict[objB]]
+        if elemGrpA != -1 and elemGrpB != -1:
+                        
+            ### Get Search Distance Fallback setting
+            if not props.searchDistanceFallback:
+                elemGrps_elemGrpA = elemGrps[elemGrpA]
+                elemGrps_elemGrpB = elemGrps[elemGrpB]
+                Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+                Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+                if Prio_A == Prio_B:  # Priority is the same for both element groups
+                    sDistFallb_A = elemGrps_elemGrpA[EGSidxSDFl]
+                    sDistFallb_B = elemGrps_elemGrpB[EGSidxSDFl]
+                    sDistFallb = sDistFallb_A or sDistFallb_B
+                if Prio_A > Prio_B:  # Priority is higher for A
+                    sDistFallb = elemGrps_elemGrpA[EGSidxSDFl]
+                elif Prio_A < Prio_B:  # Priority is higher for B
+                    sDistFallb = elemGrps_elemGrpB[EGSidxSDFl]
+            else:
+                sDistFallb = 1
             
-        # Link objects we're working on to second scene (we try because of the object unlink workaround)
-        try: sceneTemp.objects.link(objA)
-        except: pass
-        try: sceneTemp.objects.link(objB)
-        except: pass
-        
-        ### Check if meshes are water tight (non-manifold)
-        nonManifolds = []
-        for obj in [objA, objB]:
-            bpy.context.scene.objects.active = obj
-            me = obj.data
-            # Find non-manifold elements
-            bm = bmesh.new()
-            bm.from_mesh(me)
-            nonManifolds.extend([i for i, ele in enumerate(bm.edges) if not ele.is_manifold])
-            bm.free()
-
-        ###### If non-manifold then calculate a contact area estimation based on boundary boxes intersection and a user defined thickness
-        if len(nonManifolds):
-
-            #print('Warning: Mesh not water tight, non-manifolds found:', obj.name)
+            ### Check if meshes are water tight (non-manifold)
+            nonManifolds = []
+            for obj in [objA, objB]:
+                bpy.context.scene.objects.active = obj
+                me = obj.data
+                # Find non-manifold elements
+                bm = bmesh.new()
+                bm.from_mesh(me)
+                nonManifolds.extend([i for i, ele in enumerate(bm.edges) if not ele.is_manifold])
+                bm.free()
 
             ###### Calculate contact area for a single pair of objects
-            geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qNonManifold=1)
-            
-            # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth]
+            geoContactArea, geoHeight, geoWidth, center, geoAxis, qVolCorrect = calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qAccurate=qAccurate, qNonManifold=len(nonManifolds))
+                        
+            # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth, qVolCorrect]
             connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2], qVolCorrect])
             connectsLoc.append(center)
 
-        ###### If both meshes are manifold continue with regular boolean based approach
         else:
-
-            ### Add displacement modifier to objects to take search distance into account
-            objA.modifiers.new(name="Displace_BCB", type='DISPLACE')
-            modA_disp = objA.modifiers["Displace_BCB"]
-            modA_disp.mid_level = 0
-            modA_disp.strength = props.searchDistance /2
-            objB.modifiers.new(name="Displace_BCB", type='DISPLACE')
-            modB_disp = objB.modifiers["Displace_BCB"]
-            modB_disp.mid_level = 0
-            modB_disp.strength = props.searchDistance /2
-            meA_disp = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-            meB_disp = objB.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-                
-            ### Add boolean modifier to object
-            objA.modifiers.new(name="Boolean_BCB", type='BOOLEAN')
-            modA_bool = objA.modifiers["Boolean_BCB"]
-            ### Create a boolean intersection mesh (for center point calculation)
-            modA_bool.operation = 'INTERSECT'
-            try: modA_bool.solver = 'CARVE'
-            except: pass
-#            try: modA_bool.solver = 'BMESH'  # Try to enable bmesh based boolean if possible
-#            except: pass
-#            else:
-#                try: modA_bool.use_bmesh_connect_regions = 0  # Disable this for bmesh to avoid long malformed faces
-#                except: pass
-#                try: modA_bool.threshold = 0.2  # Not sure what kind of threshold this is but 0 or 1 led to bad results including the full original mesh
-#                except: pass                    # (If connection centers are lying on element centers, that's a sign for a bad boolean operation)
-            modA_bool.object = objB
-            ### Perform boolean operation and in case result is corrupt try again with small changes in displacement size
-            searchDistanceMinimum = props.searchDistance /2 *0.9   # Lowest limit for retrying until we accept that no solution can be found
-            qNoSolution = 0
-            while 1:
-                me_intersect = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-                qBadResult = me_intersect.validate(verbose=False, clean_customdata=False)
-                if qBadResult == 0: break
-                modA_disp.strength *= 0.99
-                sceneTemp.update()
-                if modA_disp.strength < searchDistanceMinimum: qNoSolution = 1; break
-            if qNoSolution: print('Error on boolean operation, mesh problems detected:', objA.name, objB.name); halt
-                
-            # If intersection mesh has geometry then continue calculation
-            if len(me_intersect.vertices) > 0:
-                
-#                ### Create a boolean union mesh (for contact area calculation)
-#                modA_bool.operation = 'UNION'
-#                me_union = objA.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-#                # Clean boolean result in case it is corrupted, because otherwise Blender sometimes crashes with "Error: EXCEPTION_ACCESS_VIOLATION"
-#                qBadResult = me_union.validate(verbose=False, clean_customdata=False)
-#                if qBadResult: print('Error on boolean operation, mesh problems detected:', objA.name, objB.name)
-                
-                ### Calculate center point for the intersection mesh
-                # Create a new object for the mesh
-                objIntersect = bpy.data.objects.new("BCB Temp Object", me_intersect)
-                bpy.context.scene.objects.link(objIntersect)
-                objIntersect.matrix_world = objA.matrix_world
-                # Apply transforms so that local axes are matching world space axes (important for constraint orientation)
-                objIntersect.select = 1
-                bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-                
-                ### Calculate center of intersection mesh based on its boundary box (throws ugly "group # is unclassified!" warnings)
-#                objIntersect.select = 1
-#                #bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS')
-#                center = objIntersect.matrix_world.to_translation()
-                ### Calculate center of intersection mesh based on its boundary box (alternative code, slower but no warnings)
-                bbMin, bbMax, center = boundaryBox(objIntersect, 1)
-                
-                ### Find out element thickness to be used for bending threshold calculation (the diameter of the intersection mesh should be sufficient for now)
-                geo = list(objIntersect.dimensions)
-                geoAxis = [1, 2, 3]
-                geo, geoAxis = zip(*sorted(zip(geo, geoAxis)))
-                geoHeight = geo[1]   # First item = mostly 0, second item = thickness/height, third item = width 
-                geoWidth = geo[2]
-                
-                ### Add displacement modifier to intersection mesh
-                objIntersect.modifiers.new(name="Displace_BCB", type='DISPLACE')
-                modIntersect_disp = objIntersect.modifiers["Displace_BCB"]
-                modIntersect_disp.mid_level = 0
-                modIntersect_disp.strength = -props.searchDistance /4
-                me_intersect_remDisp = objIntersect.to_mesh(bpy.context.scene, apply_modifiers=1, settings='PREVIEW', calc_tessface=True, calc_undeformed=False)
-                
-                ### Calculate surface area for both original elements
-                surface = 0
-                meA = objA.data
-                meB = objB.data
-                for poly in meA.polygons: surface += poly.area
-                for poly in meB.polygons: surface += poly.area
-                ### Calculate surface area for displaced versions of both original elements
-                surfaceDisp = 0
-                for poly in meA_disp.polygons: surfaceDisp += poly.area
-                for poly in meB_disp.polygons: surfaceDisp += poly.area
-                # Calculate ratio of original to displaced surface area for later contact area correction
-                correction = surface /surfaceDisp
-#                ### Calculate surface area for the unified mesh
-#                surfaceBoolUnion = 0
-#                for poly in me_union.polygons: surfaceBoolUnion += poly.area
-                ### Calculate surface area for the intersection mesh
-                surfaceBoolIntersect = 0
-                for poly in me_intersect.polygons: surfaceBoolIntersect += poly.area
-                ### Calculate surface area for the intersection mesh with removed displacement
-                surfaceBoolIntersectRemDisp = 0
-                for poly in me_intersect_remDisp.polygons: surfaceBoolIntersectRemDisp += poly.area
-#                ### The contact area is half the difference of both surface areas
-#                geoContactArea = (surfaceDisp -surfaceBoolUnion) /2
-                ### The contact area is half the surface area of the intersection mesh without displacement
-                geoContactArea = surfaceBoolIntersectRemDisp /2
-                geoContactArea *= correction
-                if geoContactArea < 0: print('Error on boolean operation, contact area negative:', objA.name, objB.name)
-                
-                # Unlink new object from second scene
-                sceneTemp.objects.unlink(objIntersect)
-                
-            # If intersection mesh has no geometry then invalidate connection
-            else:
-                geoContactArea = 0
-                geoHeight = 0
-                geoWidth = 0
-                geoAxis = [1, 2, 3]
-                center = Vector((0, 0, 0))
-            
-            # Remove modifiers from original object again
-            objA.modifiers.remove(modA_bool)
-            objA.modifiers.remove(modA_disp)
-            objB.modifiers.remove(modB_disp)
-            
-#            # Unlink objects from second scene (leads to loss of rigid body settings, bug in Blender)
-#            sceneTemp.objects.unlink(objA)
-#            sceneTemp.objects.unlink(objB)
-            # Workaround: Delete second scene and recreate it (deleting objects indirectly without the loss of rigid body settings)
-            if k %200 == 0:   # Only delete scene every now and then so we have lower overhead from the relatively slow process
-                try:    bpy.data.scenes.remove(sceneTemp, do_unlink=1)
-                except: bpy.data.scenes.remove(sceneTemp)
-                sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
-                # Link cameras because in second scene is none and when coming back camera view will losing focus
-                for obj in objCameras:
-                    sceneTemp.objects.link(obj)
-                # Switch to new scene
-                bpy.context.screen.scene = sceneTemp
-            
-            # Geometry array: [area, height, width, axisNormal, axisHeight, axisWidth]
-            connectsGeo.append([geoContactArea, geoHeight, geoWidth, geoAxis[0], geoAxis[1], geoAxis[2], 0])
-            connectsLoc.append(center)
-                
-    # Switch back to original scene
-    bpy.context.screen.scene = scene
-    # Delete second scene
-    try:    bpy.data.scenes.remove(sceneTemp, do_unlink=1)
-    except: bpy.data.scenes.remove(sceneTemp)
-    
-    print()
+            connectsGeo.append([0, 0, 0, 1,2,3, 0])  # Dummy data, connection will be remove later
+            connectsLoc.append(Vector((0,0,0)))
+        
     return connectsGeo, connectsLoc
 
 ################################################################################   
@@ -1246,7 +1040,8 @@ def applyDisplacementCorrection(objs, objsEGrp, connectsPair, connectsLoc):
         grpName = elemGrp[EGSidxName]
         grpObjs = []
         for obj in objs:
-            if elemGrp == elemGrps[objsEGrp[objsDict[obj]]]:
+            elemGrpIdx = objsEGrp[objsDict[obj]]
+            if elemGrpIdx != -1 and elemGrp == elemGrps[elemGrpIdx]:
                 grpObjs.append(obj)
         grpsObjs[grpName] = grpObjs
     
@@ -1360,35 +1155,37 @@ def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsG
         objB = objs[pair[1]]
         elemGrpA = objsEGrp[objsDict[objA]] 
         elemGrpB = objsEGrp[objsDict[objB]]
-        elemGrps_elemGrpA = elemGrps[elemGrpA]
-        elemGrps_elemGrpB = elemGrps[elemGrpB]
-        CT_A = elemGrps_elemGrpA[EGSidxCTyp]
-        CT_B = elemGrps_elemGrpB[EGSidxCTyp]
-        Prio_A = elemGrps_elemGrpA[EGSidxPrio]
-        Prio_B = elemGrps_elemGrpB[EGSidxPrio]
-        geoContactArea = connectsGeo[i][0]
-        
-        # Both A and B are active groups and priority is the same
-        if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
-            ### Use the connection type with the smaller count of constraints for connection between different element groups
-            ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-            if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
-                  CT = CT_A; elemGrp = elemGrpA
-            else: CT = CT_B; elemGrp = elemGrpB
-            elemGrps_elemGrp = elemGrps[elemGrp]
-            disColPerm = elemGrps_elemGrp[EGSidxDClP]
-        else: disColPerm = 0
-        
-        ### Keep connection with non-zero contact area or if collision suppression connection
-        if geoContactArea >= minimumContactArea or props.disableCollisionPerm or disColPerm:
-            # Mark as zero (special case for collision suppression connections)
-            if geoContactArea < minimumContactArea:
-                connectsGeo[i][0] = 0
-            # Copy connection data
-            connectsPairTmp.append(connectsPair[i])
-            connectsGeoTmp.append(connectsGeo[i])
-            connectsLocTmp.append(connectsLoc[i])
-            connectCnt += 1
+        if elemGrpA != -1 and elemGrpB != -1:
+
+            elemGrps_elemGrpA = elemGrps[elemGrpA]
+            elemGrps_elemGrpB = elemGrps[elemGrpB]
+            CT_A = elemGrps_elemGrpA[EGSidxCTyp]
+            CT_B = elemGrps_elemGrpB[EGSidxCTyp]
+            Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+            Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+            geoContactArea = connectsGeo[i][0]
+            
+            # Both A and B are active groups and priority is the same
+            if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
+                ### Use the connection type with the smaller count of constraints for connection between different element groups
+                ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+                if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
+                      CT = CT_A; elemGrp = elemGrpA
+                else: CT = CT_B; elemGrp = elemGrpB
+                elemGrps_elemGrp = elemGrps[elemGrp]
+                disColPerm = elemGrps_elemGrp[EGSidxDClP]
+            else: disColPerm = 0
+            
+            ### Keep connection with non-zero contact area or if collision suppression connection
+            if geoContactArea >= minimumContactArea or props.disableCollisionPerm or disColPerm:
+                # Mark as zero (special case for collision suppression connections)
+                if geoContactArea < minimumContactArea:
+                    connectsGeo[i][0] = 0
+                # Copy connection data
+                connectsPairTmp.append(connectsPair[i])
+                connectsGeoTmp.append(connectsGeo[i])
+                connectsLocTmp.append(connectsLoc[i])
+                connectCnt += 1
                 
     connectsPair = connectsPairTmp
     connectsGeo = connectsGeoTmp
@@ -1446,125 +1243,126 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
     constsConnect = []
     constCntOfs = 0
     for i in range(len(connectsPair)):
-        geoContactArea = connectsGeo[i][0]
-        elemGrp = None
-        
-        ### Count constraints by connection type preset
-
         pair = connectsPair[i]
-        loc = connectsLoc[i]
-
         elemGrpA = objsEGrp[pair[0]]
         elemGrpB = objsEGrp[pair[1]]
-        objA = objs[pair[0]]
-        objB = objs[pair[1]]
-        elemGrps_elemGrpA = elemGrps[elemGrpA]
-        elemGrps_elemGrpB = elemGrps[elemGrpB]
-        CT_A = elemGrps_elemGrpA[EGSidxCTyp]
-        CT_B = elemGrps_elemGrpB[EGSidxCTyp]
-        Prio_A = elemGrps_elemGrpA[EGSidxPrio]
-        Prio_B = elemGrps_elemGrpB[EGSidxPrio]
-        NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
-        NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
-        NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
-        NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
+        if elemGrpA != -1 and elemGrpB != -1:
 
-        ### Check if connection between different groups is not allowed and remove them
-        qNoCon = 0
-        if elemGrpA != elemGrpB:
-            if (NoCoA or NoCoB) and CT_A != 0 and CT_B != 0 and Prio_A == Prio_B: qNoCon = 1
-            ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
-            ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
-            elif NoHoA or NoHoB:
-                dirVecA = Vector(loc) -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-                dirVecAN = dirVecA.normalized()
-                if abs(dirVecAN[2]) > 0.7: qA = 1
-                else: qA = 0
-                dirVecB = Vector(loc) -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
-                dirVecBN = dirVecB.normalized()
-                if abs(dirVecBN[2]) > 0.7: qB = 1
-                else: qB = 0
-                if qA == 0 and qB == 0: qNoCon = 1
+            geoContactArea = connectsGeo[i][0]
+            elemGrp = None
+            
+            ### Count constraints by connection type preset
 
-        ### Decision on which material settings from both groups will be used for connection
-        if not qNoCon:
-            # Both A and B are active groups and priority is the same
-            if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
-                ### Use the connection type with the smaller count of constraints for connection between different element groups
-                ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-                if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
-                      CT = CT_A; elemGrp = elemGrpA
-                else: CT = CT_B; elemGrp = elemGrpB
-            # Only A is active and B is passive group or priority is higher for A
-            elif CT_A != 0 and CT_B == 0 or (CT_A != 0 and CT_B != 0 and Prio_A > Prio_B):
-                CT = CT_A; elemGrp = elemGrpA
-            # Only B is active and A is passive group or priority is higher for B
-            elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
-                CT = CT_B; elemGrp = elemGrpB
-            # Both A and B are in passive group but either one is actually an active RB (a xor b)
-            elif CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
-                CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
-            # Both A and B are in passive group and both are an active RB (connections for buffer elements)
-            elif CT_A == 0 and CT_B == 0 and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'):
-                disColPerm = elemGrps[elemGrpA][EGSidxDClP]
-                if disColPerm: CT = -1; elemGrp = elemGrpA  # Exception to enable collision suppression connections between buffer elements
-            else:  # Both A and B are in passive group and both are passive RBs
-                CT = 0
-            # For unbreakable passive connections above settings can be overwritten
-            if not props.passiveUseBreaking:
+            loc = connectsLoc[i]
+            objA = objs[pair[0]]
+            objB = objs[pair[1]]
+            elemGrps_elemGrpA = elemGrps[elemGrpA]
+            elemGrps_elemGrpB = elemGrps[elemGrpB]
+            CT_A = elemGrps_elemGrpA[EGSidxCTyp]
+            CT_B = elemGrps_elemGrpB[EGSidxCTyp]
+            Prio_A = elemGrps_elemGrpA[EGSidxPrio]
+            Prio_B = elemGrps_elemGrpB[EGSidxPrio]
+            NoHoA = elemGrps_elemGrpA[EGSidxNoHo]
+            NoHoB = elemGrps_elemGrpB[EGSidxNoHo]
+            NoCoA = elemGrps_elemGrpA[EGSidxNoCo]
+            NoCoB = elemGrps_elemGrpB[EGSidxNoCo]
+
+            ### Check if connection between different groups is not allowed and remove them
+            qNoCon = 0
+            if elemGrpA != elemGrpB:
+                if (NoCoA or NoCoB) and CT_A != 0 and CT_B != 0 and Prio_A == Prio_B: qNoCon = 1
+                ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
+                ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
+                elif NoHoA or NoHoB:
+                    dirVecA = Vector(loc) -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                    dirVecAN = dirVecA.normalized()
+                    if abs(dirVecAN[2]) > 0.7: qA = 1
+                    else: qA = 0
+                    dirVecB = Vector(loc) -objB.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
+                    dirVecBN = dirVecB.normalized()
+                    if abs(dirVecBN[2]) > 0.7: qB = 1
+                    else: qB = 0
+                    if qA == 0 and qB == 0: qNoCon = 1
+
+            ### Decision on which material settings from both groups will be used for connection
+            if not qNoCon:
+                # Both A and B are active groups and priority is the same
+                if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
+                    ### Use the connection type with the smaller count of constraints for connection between different element groups
+                    ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+                    if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
+                          CT = CT_A; elemGrp = elemGrpA
+                    else: CT = CT_B; elemGrp = elemGrpB
+                # Only A is active and B is passive group or priority is higher for A
+                elif CT_A != 0 and CT_B == 0 or (CT_A != 0 and CT_B != 0 and Prio_A > Prio_B):
+                    CT = CT_A; elemGrp = elemGrpA
+                # Only B is active and A is passive group or priority is higher for B
+                elif CT_A == 0 and CT_B != 0 or (CT_A != 0 and CT_B != 0 and Prio_A < Prio_B):
+                    CT = CT_B; elemGrp = elemGrpB
                 # Both A and B are in passive group but either one is actually an active RB (a xor b)
-                if CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                elif CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
                     CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
                 # Both A and B are in passive group and both are an active RB (connections for buffer elements)
                 elif CT_A == 0 and CT_B == 0 and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'):
                     disColPerm = elemGrps[elemGrpA][EGSidxDClP]
                     if disColPerm: CT = -1; elemGrp = elemGrpA  # Exception to enable collision suppression connections between buffer elements
+                else:  # Both A and B are in passive group and both are passive RBs
+                    CT = 0
+                # For unbreakable passive connections above settings can be overwritten
+                if not props.passiveUseBreaking:
+                    # Both A and B are in passive group but either one is actually an active RB (a xor b)
+                    if CT_A == 0 and CT_B == 0 and bool(objA.rigid_body.type == 'ACTIVE') != bool(objB.rigid_body.type == 'ACTIVE'):
+                        CT = -1; elemGrp = elemGrpA  # Only one fixed constraint is used to connect these (buffer special case)
+                    # Both A and B are in passive group and both are an active RB (connections for buffer elements)
+                    elif CT_A == 0 and CT_B == 0 and (objA.rigid_body.type == 'ACTIVE' and objB.rigid_body.type == 'ACTIVE'):
+                        disColPerm = elemGrps[elemGrpA][EGSidxDClP]
+                        if disColPerm: CT = -1; elemGrp = elemGrpA  # Exception to enable collision suppression connections between buffer elements
 
-        elif qNoCon: CT = 0
+            elif qNoCon: CT = 0
 
-        ### CT is now known and we can prepare further settings accordingly
+            ### CT is now known and we can prepare further settings accordingly
 
-        if CT > 0: constCnt = connectTypes[CT][1]
-        elif CT == 0: constCnt = 0
-        elif CT < 0: constCnt = 1
+            if CT > 0: constCnt = connectTypes[CT][1]
+            elif CT == 0: constCnt = 0
+            elif CT < 0: constCnt = 1
 
-        if elemGrp != None:
-            elemGrps_elemGrp = elemGrps[elemGrp]
-            disColPerm = elemGrps_elemGrp[EGSidxDClP]
-        
-        elif elemGrp == None:
-            constCnt = 0    
-            if (elemGrps[elemGrpA][EGSidxDClP] or elemGrps[elemGrpB][EGSidxDClP]) and Prio_A == Prio_B: disColPerm = 1
-            else: disColPerm = 0
-
-        ### If invalid contact area
-        if geoContactArea == 0:
-            constCnt = 0    
-            # Both A and B are active groups and priority is the same
-            if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
-                ### Use the connection type with the smaller count of constraints for connection between different element groups
-                ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
-                if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
-                      CT = CT_A; elemGrp = elemGrpA
-                else: CT = CT_B; elemGrp = elemGrpB
+            if elemGrp != None:
                 elemGrps_elemGrp = elemGrps[elemGrp]
                 disColPerm = elemGrps_elemGrp[EGSidxDClP]
-            else: disColPerm = 0
+            
+            elif elemGrp == None:
+                constCnt = 0    
+                if (elemGrps[elemGrpA][EGSidxDClP] or elemGrps[elemGrpB][EGSidxDClP]) and Prio_A == Prio_B: disColPerm = 1
+                else: disColPerm = 0
 
-        # Add one extra slot for a possible constraint for permanent collision suppression
-        if props.disableCollisionPerm or disColPerm: constCnt += 1
+            ### If invalid contact area
+            if geoContactArea == 0:
+                constCnt = 0    
+                # Both A and B are active groups and priority is the same
+                if CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
+                    ### Use the connection type with the smaller count of constraints for connection between different element groups
+                    ### (Menu order priority driven in older versions. This way is still not perfect as it has some ambiguities left, ideally the CT should be forced to stay the same for all EGs.)
+                    if connectTypes[CT_A][1] <= connectTypes[CT_B][1]:
+                          CT = CT_A; elemGrp = elemGrpA
+                    else: CT = CT_B; elemGrp = elemGrpB
+                    elemGrps_elemGrp = elemGrps[elemGrp]
+                    disColPerm = elemGrps_elemGrp[EGSidxDClP]
+                else: disColPerm = 0
 
-        # In case the connection type is passive or unknown reserve no space for constraints (connectsConsts needs to stay in sync with connectsPair)
-        if constCnt == 0: connectsConsts.append([])
-        # Otherwise reserve space for the predefined constraints count
-        else:
-            # Reserve constraint slots
-            items = []
-            for j in range(constCnt):
-                items.append(constCntOfs +j)
-                constsConnect.append(i)
-            connectsConsts.append(items)
-            constCntOfs += len(items)
+            # Add one extra slot for a possible constraint for permanent collision suppression
+            if props.disableCollisionPerm or disColPerm: constCnt += 1
+
+            # In case the connection type is passive or unknown reserve no space for constraints (connectsConsts needs to stay in sync with connectsPair)
+            if constCnt == 0: connectsConsts.append([])
+            # Otherwise reserve space for the predefined constraints count
+            else:
+                # Reserve constraint slots
+                items = []
+                for j in range(constCnt):
+                    items.append(constCntOfs +j)
+                    constsConnect.append(i)
+                connectsConsts.append(items)
+                constCntOfs += len(items)
     
     return connectsConsts, constsConnect
 
@@ -1874,13 +1672,16 @@ def createParentsIfRequired(scene, objs, objsEGrp, childObjs):
     q = 0
     for k in range(len(objs)):
         obj = objs[k]
-        facing = elemGrps[objsEGrp[k]][EGSidxFacg]
-        if facing:
-            q = 1
-            if obj.select:
-                if not "bcb_child" in obj.keys():
-                    obj["bcb_parent"] = obj.name
-                else: obj.select = 0
+        elemGrp = objsEGrp[k]
+        if elemGrp != -1:
+            facing = elemGrps[elemGrp][EGSidxFacg]
+            if facing:
+                q = 1
+                if obj.select:
+                    if not "bcb_child" in obj.keys():
+                        obj["bcb_parent"] = obj.name
+                    else: obj.select = 0
+            else: obj.select = 0
         else: obj.select = 0
         
     if q:
@@ -1936,10 +1737,12 @@ def applyScale(scene, objs, objsEGrp, childObjs):
     obj = None
     ### Select objects in question
     for k in range(len(objs)):
-        obj = objs[k]
-        scale = elemGrps[objsEGrp[k]][EGSidxScal]
-        if scale != 0 and scale != 1:
-            obj.select = 1
+        elemGrp = objsEGrp[k]
+        if elemGrp != -1:
+            scale = elemGrps[elemGrp][EGSidxScal]
+            if scale != 0 and scale != 1:
+                obj = objs[k]
+                obj.select = 1
     
     if obj != None:
         ###### Create parents if required
@@ -1969,10 +1772,12 @@ def applyBevel(scene, objs, objsEGrp, childObjs):
     obj = None
     ### Select objects in question
     for k in range(len(objs)):
-        qBevel = elemGrps[objsEGrp[k]][EGSidxBevl]
-        if qBevel:
-            obj = objs[k]
-            obj.select = 1
+        elemGrp = objsEGrp[k]
+        if elemGrp != -1:
+            qBevel = elemGrps[elemGrp][EGSidxBevl]
+            if qBevel:
+                obj = objs[k]
+                obj.select = 1
     
     ### Add only one bevel modifier and copy that to the other selected objects (Todo: Should be done for each object individually but is slower)
     if obj != None:
@@ -2312,20 +2117,22 @@ def generateDetonator(objs, connectsPair, objsEGrp):
     elemArea = 0
     elemVolume = 0
     elemMass = 0
+    objsCnt = 0
     for idx in range(len(objs)):
-        obj = objs[idx]
-        # Area
-        dim = obj.dimensions; dimAxis = [1, 2, 3]
-        dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
-        elemArea += dim[1] *dim[2]
-        # Volume
         elemGrp = objsEGrp[idx]
-        elemGrps_elemGrp = elemGrps[elemGrp]
-        materialDensity = elemGrps_elemGrp[EGSidxDens]
-        if materialDensity > 0: elemVolume += obj.rigid_body.mass /materialDensity
-        # Mass
-        elemMass += obj.rigid_body.mass
-    objsCnt = len(objs)
+        if elemGrp != -1:
+            obj = objs[idx]
+            # Area
+            dim = obj.dimensions; dimAxis = [1, 2, 3]
+            dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
+            elemArea += dim[1] *dim[2]
+            # Volume
+            elemGrps_elemGrp = elemGrps[elemGrp]
+            materialDensity = elemGrps_elemGrp[EGSidxDens]
+            if materialDensity > 0: elemVolume += obj.rigid_body.mass /materialDensity
+            # Mass
+            elemMass += obj.rigid_body.mass
+            objsCnt += 1
     if objsCnt:
         elemArea /= objsCnt
         elemVolume /= objsCnt
