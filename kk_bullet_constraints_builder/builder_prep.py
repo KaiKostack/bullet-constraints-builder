@@ -1899,32 +1899,21 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
 
         ### Calculating and applying material masses based on surface area * thickness
         if (props.surfaceForced and props.surfaceThickness) or (props.surfaceThickness and len(objsNonMan)):
-            # Find out density of the element group
-            if not materialDensity:
-                materialPreset = elemGrp[EGSidxMatP]
-                if materialPreset != "":
-                    try: materialDensity = materialPresets[materialPreset]
-                    except:
-                        print("Warning: Density of 0 set and material preset not found for '%s', a density of 1000 kg/m^3 is used." %elemGrp[EGSidxName])
-                        materialDensity = 1000
-                else:
-                    print("Warning: Density of 0 set and no material preset defined for '%s', a density of 1000 kg/m^3 is used." %elemGrp[EGSidxName])
-                    materialDensity = 1000
-            
-            if props.surfaceForced: objsNonMan = objs
-                
-            objsNonManSelected = []
-            for n in range(len(objsNonMan)):
-                obj = objsNonMan[n]
-                k = objsIndex[obj.name]
-                if objsEGrp[k] == j:  # If object is in current element group
-                    # Calculate object surface area and volume
-                    me = obj.data
-                    area = sum(f.area for f in me.polygons)
-                    volume = area *props.surfaceThickness
-                    # Calculate mass
-                    obj.rigid_body.mass = volume *materialDensity
-                    objsNonManSelected.append(obj)
+            if materialDensity:
+                if props.surfaceForced: objsNonMan = objs
+
+                objsNonManSelected = []
+                for n in range(len(objsNonMan)):
+                    obj = objsNonMan[n]
+                    k = objsIndex[obj.name]
+                    if objsEGrp[k] == j:  # If object is in current element group
+                        # Calculate object surface area and volume
+                        me = obj.data
+                        area = sum(f.area for f in me.polygons)
+                        volume = area *props.surfaceThickness
+                        # Calculate mass
+                        obj.rigid_body.mass = volume *materialDensity
+                        objsNonManSelected.append(obj)
                                                 
         ### Adding live load to masses
         liveLoad = elemGrp[EGSidxLoad]
@@ -2034,51 +2023,50 @@ def correctContactAreaByVolume(objs, objsEGrp, connectsPair, connectsGeo):
                 try: materialDensity = materialPresets[materialPreset]
                 except:
                     print("Warning: Density of 0 set and material preset not found for '%s', can't compute mass and leaving it as is." %elemGrp[EGSidxName])
-                    materialDensity = 1
             else:
                 print("Warning: Density of 0 set and no material preset defined for '%s', can't compute mass and leaving it as is." %elemGrp[EGSidxName])
-                materialDensity = 1
 
         ### Calculate volumes from densities and derive correctional factors for contact areas
-        for k in range(len(objs)):
-            if objsEGrp[k] == j:  # If object is in current element group
-                obj = objs[k]
+        if materialDensity:
+            for k in range(len(objs)):
+                if objsEGrp[k] == j:  # If object is in current element group
+                    obj = objs[k]
 
-                mass = obj.rigid_body.mass
+                    mass = obj.rigid_body.mass
 
-                ### Remove live load from mass if present
-                if liveLoad > 0:
-                    dims = obj.dimensions
-                    floorArea = dims[0] *dims[1]  # Simple approximation by assuming rectangular floor area (x *y) for live load
-                    mass -= floorArea *liveLoad
+                    ### Remove live load from mass if present
+                    if liveLoad > 0:
+                        dims = obj.dimensions
+                        floorArea = dims[0] *dims[1]  # Simple approximation by assuming rectangular floor area (x *y) for live load
+                        mass -= floorArea *liveLoad
 
-                volume = mass /materialDensity
-                
-                ### Find out element thickness to be used for bending threshold calculation 
-                dim = obj.dimensions; dimAxis = [1, 2, 3]
-                dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
-                dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
-
-                # Derive contact area correction factor from geometry section area divided by bbox section area
-                if dimLength != 0: sectionArea = volume /dimLength  # Full geometry section area of element
-                else:              sectionArea = volume**.5         # Assume cube as fallback if length is zero
-
-                ### Compensate section area for rescaling
-                try: scale = elemGrp[EGSidxScal]  # Try in case elemGrps is from an old BCB version
-                except: pass
-                else:
-                    if obj != None and scale != 0 and scale != 1:
-                        sectionArea *= scale**3  # Cubic instead of square because dimLength is included as well
-
-                ### Determine contact area correction factor
-                if dimHeight *dimWidth != 0 and mass != materialDensity:  # Special case: mass = materialDensity only for foundation elements
-                    corFac = sectionArea / (dimHeight *dimWidth)
-                else: corFac = 1
-
-                obj["CA Corr.Fac."] = corFac
-                obj["Density"] = materialDensity
-                obj["Volume"] = volume
+                    volume = mass /materialDensity
                     
+                    ### Find out element thickness to be used for bending threshold calculation 
+                    dim = obj.dimensions; dimAxis = [1, 2, 3]
+                    dim, dimAxis = zip(*sorted(zip(dim, dimAxis)))
+                    dimHeight = dim[0]; dimWidth = dim[1]; dimLength = dim[2]
+
+                    # Derive contact area correction factor from geometry section area divided by bbox section area
+                    if dimLength != 0: sectionArea = volume /dimLength  # Full geometry section area of element
+                    else:              sectionArea = volume**.5         # Assume cube as fallback if length is zero
+
+                    ### Compensate section area for rescaling
+                    try: scale = elemGrp[EGSidxScal]  # Try in case elemGrps is from an old BCB version
+                    except: pass
+                    else:
+                        if obj != None and scale != 0 and scale != 1:
+                            sectionArea *= scale**3  # Cubic instead of square because dimLength is included as well
+
+                    ### Determine contact area correction factor
+                    if dimHeight *dimWidth != 0 and mass != materialDensity:  # Special case: mass = materialDensity only for foundation elements
+                        corFac = sectionArea / (dimHeight *dimWidth)
+                    else: corFac = 1
+
+                    obj["CA Corr.Fac."] = corFac
+                    obj["Density"] = materialDensity
+                    obj["Volume"] = volume
+                
 ################################################################################   
 
 def generateDetonator(objs, connectsPair, objsEGrp):

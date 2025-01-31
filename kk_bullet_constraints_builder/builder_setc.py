@@ -213,9 +213,11 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
         ### Apply corrections to geometry lists  
         qVolCorrect = geo[6]
 
-        if qVolCorrect:  # No correction needed in valid polygon based contact area cases 
-            corFacA = objA["CA Corr.Fac."]
-            corFacB = objB["CA Corr.Fac."]
+        if qVolCorrect:  # No correction needed in valid polygon based contact area cases
+            try: corFacA = objA["CA Corr.Fac."]
+            except: corFacA = 1
+            try: corFacB = objB["CA Corr.Fac."]
+            except: corFacB = 1
             geoContactArea *= min(corFacA, corFacB)
 
         ### Prepare connection data
