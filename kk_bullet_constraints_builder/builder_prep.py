@@ -888,10 +888,15 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qNon
                 
     if not qAccurate or qSkipConnect or sDistFallb:
         ### Calculate simple overlap of boundary boxes for contact area calculation (project along all axis')
-        overlapX = max(0, min(bbAMax[0],bbBMax[0]) -max(bbAMin[0],bbBMin[0]))
-        overlapY = max(0, min(bbAMax[1],bbBMax[1]) -max(bbAMin[1],bbBMin[1]))
-        overlapZ = max(0, min(bbAMax[2],bbBMax[2]) -max(bbAMin[2],bbBMin[2]))
-    
+        # Include minimumContactArea for rare cases of edge-to-edge contact where we don't want to get zero as result
+        bbAMin_ = Vector((bbAMin[0]-minimumContactArea, bbAMin[1]-minimumContactArea, bbAMin[2]-minimumContactArea))
+        bbAMax_ = Vector((bbAMax[0]+minimumContactArea, bbAMax[1]+minimumContactArea, bbAMax[2]+minimumContactArea))
+        bbBMin_ = Vector((bbBMin[0]-minimumContactArea, bbBMin[1]-minimumContactArea, bbBMin[2]-minimumContactArea))
+        bbBMax_ = Vector((bbBMax[0]+minimumContactArea, bbBMax[1]+minimumContactArea, bbBMax[2]+minimumContactArea))
+        overlapX = max(0, min(bbAMax_[0],bbBMax_[0]) -max(bbAMin_[0],bbBMin_[0]))
+        overlapY = max(0, min(bbAMax_[1],bbBMax_[1]) -max(bbAMin_[1],bbBMin_[1]))
+        overlapZ = max(0, min(bbAMax_[2],bbBMax_[2]) -max(bbAMin_[2],bbBMin_[2]))
+
     if not qSkipConnect or props.surfaceForced:
 
         ### Calculate area based on either the sum of all axis surfaces...
@@ -1877,15 +1882,14 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                         if obj != None:
                             if "bcb_child" in obj.keys():
                                 obj = scene.objects[obj["bcb_child"]]
-                            if (props.surfaceForced == 0 or props.surfaceThickness == 0) and (props.surfaceThickness == 0 or obj not in objsNonMan):
-                                obj.select = 1
-                                objsSelected.append(obj)
-                                # Temporarily revert element scaling for mass calculation
-                                if qScale:
-                                    if scale != 0 and scale != 1:
-                                        obj.scale /= scale
-                                        objsTotal.append(obj)
-                                        objsScale.append(scale)
+                            obj.select = 1
+                            objsSelected.append(obj)
+                            # Temporarily revert element scaling for mass calculation
+                            if qScale:
+                                if scale != 0 and scale != 1:
+                                    obj.scale /= scale
+                                    objsTotal.append(obj)
+                                    objsScale.append(scale)
 
         ### Calculating and applying material masses based on volume
         materialPreset = elemGrp[EGSidxMatP]
