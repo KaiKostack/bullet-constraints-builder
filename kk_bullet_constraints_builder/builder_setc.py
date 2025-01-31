@@ -563,8 +563,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
             solvIter = elemGrps_elemGrp[EGSidxIter]
         
         elif elemGrp == None:
-            disColPerm = 0
-            if props.disableCollisionPerm: CT = -2
+            if (elemGrps[elemGrpA][EGSidxDClP] or elemGrps[elemGrpB][EGSidxDClP]) and Prio_A == Prio_B: disColPerm = 1
+            else: disColPerm = 0
+            if props.disableCollisionPerm or disColPerm: CT = -2
 
         ### If invalid contact area
         if geoContactArea == 0:

@@ -1534,7 +1534,8 @@ def createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
         
         elif elemGrp == None:
             constCnt = 0    
-            disColPerm = 0
+            if (elemGrps[elemGrpA][EGSidxDClP] or elemGrps[elemGrpB][EGSidxDClP]) and Prio_A == Prio_B: disColPerm = 1
+            else: disColPerm = 0
 
         ### If invalid contact area
         if geoContactArea == 0:
