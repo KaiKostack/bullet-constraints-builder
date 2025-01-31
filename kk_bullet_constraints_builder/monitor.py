@@ -44,32 +44,6 @@ def monitor_eventHandler(scene):
 
     props = bpy.context.window_manager.bcb
 
-    ### Render part
-    if qRenderAnimation:
-        # Need to disable handlers while rendering, otherwise Blender crashes
-        bpy.app.handlers.frame_change_pre.remove(monitor_eventHandler)
-        bpy.app.handlers.frame_change_pre.remove(monitor_stop_eventHandler)
-        
-        filepathOld = bpy.context.scene.render.filepath
-        bpy.context.scene.render.filepath += "%04d" %(scene.frame_current -1)
-        bpy.context.scene.render.image_settings.file_format = 'JPEG'
-        bpy.context.scene.render.image_settings.quality = 75
-        
-        # Stupid Blender design hack, enforcing context to be accepted by operators (at this point copy() even throws a warning but works anyway, funny Blender)
-        contextFix = bpy.context.copy()
-        print("Note: Please ignore above copy warning, it's a false alarm.")
-        contextFix["area"] = None     
-        # Render single frame with render settings
-        if qRenderAnimation == 1: bpy.ops.render.render(contextFix, write_still=True)
-        # Render single frame in OpenGL mode
-        elif qRenderAnimation == 2: bpy.ops.render.opengl(contextFix, write_still=True)
-        
-        bpy.context.scene.render.filepath = filepathOld
-        
-        # Append handlers again
-        bpy.app.handlers.frame_change_pre.append(monitor_eventHandler)
-        bpy.app.handlers.frame_change_pre.append(monitor_stop_eventHandler)
-
     # Only evaluate monitor when official Blender and not Fracture Modifier is in use
     if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') or not asciiExportName in scene.objects:
         
@@ -361,6 +335,16 @@ def monitor_stop_eventHandler(scene):
                     for canvas_surface in mod.canvas_settings.canvas_surfaces:
                         contextFix['active_object'] = obj; contextFix['point_cache'] = canvas_surface.point_cache
                         bpy.ops.ptcache.bake_from_cache(contextFix)
+        # When Fracture Modifier is in use
+        if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
+            try: objFM = scene.objects[asciiExportName]
+            except: pass
+            else:
+                # Disable Dynamic Paint modifier after baking for a playback performance boost
+                for mod in objFM.modifiers:
+                    if "Dynamic Paint" in mod.name:
+                        mod.show_render = False
+                        mod.show_viewport = False
 
         ### Free all monitor related data
         # When official Blender and not Fracture Modifier is in use
@@ -1684,12 +1668,6 @@ def monitor_freeBuffers_fm(scene):
                                 qWarning = 1
                                 print("\rWarning: Element has lost its constraint references or the corresponding empties their constraint properties respectively, rebuilding constraints is recommended.")
                             print("(%s)" %const.name)
-
-        ### Disable Dynamic Paint modifier after baking for a playback performance boost
-            for mod in objFM.modifiers:
-                if "Dynamic Paint" in mod.name:
-                    mod.show_render = False
-                    mod.show_viewport = False
 
         ### Damping Region - revert RBs to original dampings
         if "bcb_damps" in bpy.app.driver_namespace:

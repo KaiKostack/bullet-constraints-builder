@@ -286,9 +286,6 @@ grpNameVisualization = "BCB_Visualization"
 grpNameFoundation = "Foundation"
 materialName = "BCB_Gradient_"
 
-# For monitor event handler
-qRenderAnimation = 0                 # 0     | Render animation by using render single image function for each frame (doesn't support motion blur, keep it disabled), 1 = regular, 2 = OpenGL
-
 ### Consts
 pi = 3.1416
 pi2 = pi /2

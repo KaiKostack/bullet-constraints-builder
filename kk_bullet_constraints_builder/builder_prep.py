@@ -887,7 +887,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qNon
     if not qSkipConnect or props.surfaceForced:
 
         ### Calculate area based on either the sum of all axis surfaces...
-        if not qNonManifold:
+        if not qNonManifold or sDistFallb:
             overlapAreaX = overlapY *overlapZ
             overlapAreaY = overlapX *overlapZ
             overlapAreaZ = overlapX *overlapY
@@ -895,10 +895,11 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qNon
             geoContactAreaB = overlapAreaX +overlapAreaY +overlapAreaZ
                 
         ### Or calculate contact area based on predefined custom thickness
-        elif props.surfaceForced:
-            geoContactAreaB = (overlapX +overlapY +overlapZ) *props.surfaceThickness
-        else:
-            geoContactAreaB = 0
+        if qNonManifold:
+            if props.surfaceForced:
+                geoContactAreaB = (overlapX +overlapY +overlapZ) *props.surfaceThickness
+            elif not sDistFallb:
+                geoContactAreaB = 0
 
         ### Calculate alternative contact area from object dimensions
         dimA = objA.dimensions
