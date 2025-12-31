@@ -292,7 +292,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
                 if (NoCoA or NoCoB) and CT_A != 0 and CT_B != 0 and Prio_A == Prio_B: qNoCon = 1
                 ### Check if horizontal connection between different groups and remove them (e.g. for masonry walls touching a framing structure)
                 ### This code is used 3x, keep changes consistent in: builder_prep.py, builder_setc.py, and tools.py
-                elif NoHoA or NoHoB:
+                elif (NoHoA or NoHoB) and CT_A != 0 and CT_B != 0 and Prio_A == Prio_B:
                     dirVecA = Vector(loc) -objA.matrix_world.to_translation()  # Use actual locations (taking parent relationships into account)
                     dirVecAN = dirVecA.normalized()
                     if abs(dirVecAN[2]) > 0.7: qA = 1

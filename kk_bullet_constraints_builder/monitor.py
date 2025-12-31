@@ -1302,9 +1302,25 @@ def monitor_dampingRegion(scene):
     else:
         dampsData = bpy.app.driver_namespace["bcb_damps"]
 
+    ### Precompute region data once per frame:
+    # For each dampRegObj compute:
+    #   - axis-aligned min/max bound (location ± scale)
+    #   - linear and angular damping values (using object properties fallback to props)
+    dampRegData = []
+    for region in dampRegObjs:
+        min_bound = region.location - region.scale
+        max_bound = region.location + region.scale
+        dampLin = props.dampRegLin
+        dampAng = props.dampRegAng
+        if "dampRegLinear" in region.keys():
+            dampLin = region["dampRegLinear"]
+        if "dampRegAngular" in region.keys():
+            dampAng = region["dampRegAngular"]
+        dampRegData.append((min_bound, max_bound, dampLin, dampAng))
+
     ### Set new damping
     if len(dampsData):
-        
+
         dataIdx = 0
         for elemGrp in elemGrps:
             qDampReg = elemGrp[EGSidxDmpR]
@@ -1312,42 +1328,39 @@ def monitor_dampingRegion(scene):
                 grpName = elemGrp[EGSidxName]
                 for objName in grpsObjs[grpName]:
 
-                    ### Revert damping values back to their original because elements also can leave damping regions,
-                    ### also multiple damping regions are added per pass by multiplication.
                     obj = scene.objects[objName]
                     objLoc = obj.matrix_world.to_translation()
                     objRB = obj.rigid_body
 
-                    # Get original values
-                    #dampLinOrig, dampAngOrig, qFlagged = dampsData[dataIdx]  # Commented out because we only modify the damping once (optimization)
-                    qFlagged = dampsData[dataIdx][2]
+                    # Retrieve original values and flag
+                    dampLinOrig, dampAngOrig, qFlagged = dampsData[dataIdx]
 
-                    if not qFlagged:
-                        # Reset values to original (only required when the qFlagged optimization is not used)
-                        #if objRB.linear_damping != dampLinOrig: objRB.linear_damping = dampLinOrig
-                        #if objRB.angular_damping != dampAngOrig: objRB.angular_damping = dampAngOrig
+                    # Start from original values, then combine for regions that contain the object
+                    newLin = dampLinOrig
+                    newAng = dampAngOrig
+                    inAnyRegion = False
 
-                        ### New damping values are calculated and applied per region object
-                        for dampRegObj in dampRegObjs:
-                            # Calculate the bounding box extent of dampRegObj
-                            min_bound = dampRegObj.location -dampRegObj.scale
-                            max_bound = dampRegObj.location +dampRegObj.scale
-                            # Check if objLoc is within the bounds of dampRegObj and set new damping values
-                            if (min_bound.x <= objLoc.x <= max_bound.x and
-                                min_bound.y <= objLoc.y <= max_bound.y and
-                                min_bound.z <= objLoc.z <= max_bound.z):
-                                # Set flagged (after one-time contact damping will not be modified again)
-                                dampsData[dataIdx][2] = 1
-                                # Vars
-                                dampLin, dampAng = props.dampRegLin, props.dampRegAng
-                                # User definitions as possible property of the detonator object
-                                if "dampRegLinear" in dampRegObj.keys():
-                                    dampLin = dampRegObj["dampRegLinear"]
-                                if "dampRegAngular" in dampRegObj.keys():
-                                    dampAng = dampRegObj["dampRegAngular"]
-                                # This method combines damping values in a non-linear way, which is useful when multiple damping regions overlap
-                                objRB.linear_damping = (1 -(1 -objRB.linear_damping) *(1 -dampLin))
-                                objRB.angular_damping = (1 -(1 -objRB.angular_damping) *(1 -dampAng))
+                    # Use precomputed region data
+                    for (min_bound, max_bound, rLin, rAng) in dampRegData:
+                        if (min_bound.x <= objLoc.x <= max_bound.x and
+                            min_bound.y <= objLoc.y <= max_bound.y and
+                            min_bound.z <= objLoc.z <= max_bound.z):
+                            inAnyRegion = True
+                            # Non-linear combination as in original implementation
+                            newLin = (1 - (1 - newLin) * (1 - rLin))
+                            newAng = (1 - (1 - newAng) * (1 - rAng))
+
+                    if inAnyRegion:
+                        # Apply combined damping values
+                        if objRB.linear_damping != newLin: objRB.linear_damping = newLin
+                        if objRB.angular_damping != newAng: objRB.angular_damping = newAng
+                        dampsData[dataIdx][2] = 1
+                    else:
+                        # If it was flagged previously but now outside regions -> restore original
+                        if qFlagged:
+                            if objRB.linear_damping != dampLinOrig: objRB.linear_damping = dampLinOrig
+                            if objRB.angular_damping != dampAngOrig: objRB.angular_damping = dampAngOrig
+                            dampsData[dataIdx][2] = 0
 
                     dataIdx += 1
 
@@ -1413,9 +1426,25 @@ def monitor_dampingRegion_fm(scene):
     else:
         dampsData = bpy.app.driver_namespace["bcb_damps"]
 
+    ### Precompute region data once per frame:
+    # For each dampRegObj compute:
+    #   - axis-aligned min/max bound (location ± scale)
+    #   - linear and angular damping values (using object properties fallback to props)
+    dampRegData = []
+    for region in dampRegObjs:
+        min_bound = region.location - region.scale
+        max_bound = region.location + region.scale
+        dampLin = props.dampRegLin
+        dampAng = props.dampRegAng
+        if "dampRegLinear" in region.keys():
+            dampLin = region["dampRegLinear"]
+        if "dampRegAngular" in region.keys():
+            dampAng = region["dampRegAngular"]
+        dampRegData.append((min_bound, max_bound, dampLin, dampAng))
+
     ### Set new damping
     if len(dampsData):
-        
+
         dataIdx = 0
         for elemGrp in elemGrps:
             qDampReg = elemGrp[EGSidxDmpR]
@@ -1423,42 +1452,39 @@ def monitor_dampingRegion_fm(scene):
                 grpName = elemGrp[EGSidxName]
                 for objName in grpsObjs[grpName]:
 
-                    ### Revert damping values back to their original because elements also can leave damping regions,
-                    ### also multiple damping regions are added per pass by multiplication.
                     shard = md.mesh_islands[objName]
                     objLoc = shard.rigidbody.location
                     objRB = shard.rigidbody
 
-                    # Get original values
-                    #dampLinOrig, dampAngOrig, qFlagged = dampsData[dataIdx]  # Commented out because we only modify the damping once (optimization)
-                    qFlagged = dampsData[dataIdx][2]
+                    # Retrieve original values and flag
+                    dampLinOrig, dampAngOrig, qFlagged = dampsData[dataIdx]
 
-                    if not qFlagged:
-                        # Reset values to original (only required when the qFlagged optimization is not used)
-                        #if objRB.linear_damping != dampLinOrig: objRB.linear_damping = dampLinOrig
-                        #if objRB.angular_damping != dampAngOrig: objRB.angular_damping = dampAngOrig
-                        
-                        ### New damping values are calculated and applied per region object
-                        for dampRegObj in dampRegObjs:
-                            # Calculate the bounding box extent of dampRegObj
-                            min_bound = dampRegObj.location -dampRegObj.scale
-                            max_bound = dampRegObj.location +dampRegObj.scale
-                            # Check if objLoc is within the bounds of dampRegObj and set new damping values
-                            if (min_bound.x <= objLoc.x <= max_bound.x and
-                                min_bound.y <= objLoc.y <= max_bound.y and
-                                min_bound.z <= objLoc.z <= max_bound.z):
-                                # Set flagged (after one-time contact damping will not be modified again)
-                                dampsData[dataIdx][2] = 1
-                                # Vars
-                                dampLin, dampAng = props.dampRegLin, props.dampRegAng
-                                # User definitions as possible property of the detonator object
-                                if "dampRegLinear" in dampRegObj.keys():
-                                    dampLin = dampRegObj["dampRegLinear"]
-                                if "dampRegAngular" in dampRegObj.keys():
-                                    dampAng = dampRegObj["dampRegAngular"]
-                                # This method combines damping values in a non-linear way, which is useful when multiple damping regions overlap
-                                objRB.linear_damping = (1 -(1 -objRB.linear_damping) *(1 -dampLin))
-                                objRB.angular_damping = (1 -(1 -objRB.angular_damping) *(1 -dampAng))
+                    # Start from original values, then combine for regions that contain the object
+                    newLin = dampLinOrig
+                    newAng = dampAngOrig
+                    inAnyRegion = False
+
+                    # Use precomputed region data
+                    for (min_bound, max_bound, rLin, rAng) in dampRegData:
+                        if (min_bound.x <= objLoc.x <= max_bound.x and
+                            min_bound.y <= objLoc.y <= max_bound.y and
+                            min_bound.z <= objLoc.z <= max_bound.z):
+                            inAnyRegion = True
+                            # Non-linear combination as in original implementation
+                            newLin = (1 - (1 - newLin) * (1 - rLin))
+                            newAng = (1 - (1 - newAng) * (1 - rAng))
+
+                    if inAnyRegion:
+                        # Apply combined damping values
+                        if objRB.linear_damping != newLin: objRB.linear_damping = newLin
+                        if objRB.angular_damping != newAng: objRB.angular_damping = newAng
+                        dampsData[dataIdx][2] = 1
+                    else:
+                        # If it was flagged previously but now outside regions -> restore original
+                        if qFlagged:
+                            if objRB.linear_damping != dampLinOrig: objRB.linear_damping = dampLinOrig
+                            if objRB.angular_damping != dampAngOrig: objRB.angular_damping = dampAngOrig
+                            dampsData[dataIdx][2] = 0
 
                     dataIdx += 1
 
