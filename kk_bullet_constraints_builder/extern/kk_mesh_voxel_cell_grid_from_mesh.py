@@ -1,5 +1,5 @@
 #################################################
-# Voxel Cell Grid From Mesh v1.4 by Kai Kostack #
+# Voxel Cell Grid From Mesh v1.5 by Kai Kostack #
 #################################################
 # Some code is based on Cells.py for Blender 2.4x by Michael Schardt released under the GPL.
 # - Triangulation is a requirement, this can be done by this script but also manually before
@@ -52,6 +52,7 @@ def run(source=None, parameters=None):
     qRemoveOpenBottom = 1            # Removes also open spaces pointing downwards (assuming there would be no ground)
     qRemoveOriginal = 1              # Delete original objects
     qReuseName = 1                   # Enables reusing the name of the original objects for new objects
+    qUnlinkOpt = 1                   # Use unlink optimization for object processing, improves performance only for huge amounts of objects in scene
     
     ### Vars internal
     qTriangulate = 1                 # Enables automatic mesh triangulation
@@ -104,7 +105,8 @@ def run(source=None, parameters=None):
         if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(scene):
             objs.append(obj)
             # Unlink object (also serves as speed optimization)
-            scene.objects.unlink(obj)
+            if qUnlinkOpt:
+                scene.objects.unlink(obj)
     
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
@@ -119,7 +121,8 @@ def run(source=None, parameters=None):
         if not qSilentVerbose: print(obj.name)
         else: sys.stdout.write('\r' +"%d    " %len(objsN))
         # Link object (for speed optimization)
-        scene.objects.link(obj)
+        if qUnlinkOpt:
+            scene.objects.link(obj)
         bpy.context.scene.objects.active = obj
         me = obj.data
         
@@ -659,14 +662,16 @@ def run(source=None, parameters=None):
     if qRemoveOriginal:
         for obj in objs:
             bpy.data.meshes.remove(obj.data, do_unlink=1)
-            #bpy.data.objects.remove(obj, do_unlink=1)
+            try: bpy.data.objects.remove(obj, do_unlink=1)
+            except: pass
 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
     # Delete temp object from database
     if objMod != None:
         bpy.data.meshes.remove(objMod.data, do_unlink=1)
-        #bpy.data.objects.remove(objMod, do_unlink=1)
+        try:bpy.data.objects.remove(objMod, do_unlink=1)
+        except: pass
     # Select new objects
     for objN in objsN:
         objN.select = 1
@@ -700,10 +705,9 @@ def copyCustomData(obj, objSrc):
 
     ### Link new object to every group the original is linked to
     for grp in bpy.data.groups:
-        for objG in grp.objects:
-            if objG.name == objSrc.name:
-                try: grp.objects.link(obj)
-                except: pass
+        if objSrc.name in grp.objects:
+            try:    grp.objects.link(obj)
+            except: pass
             
     ### Copy materials    
     bpy.context.scene.objects.active = obj

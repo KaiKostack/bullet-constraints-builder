@@ -1,5 +1,5 @@
 ###########################################
-# Separate Less Loose v1.1 by Kai Kostack #
+# Separate Less Loose v1.2 by Kai Kostack #
 ###########################################
 # Separates all connected loose parts in a specific random radius into new objects.
 # (Makes larger pieces then regular separate loose.)
@@ -30,6 +30,7 @@ searchMode = 4          # 1 = Completely randomized search but keep islands inta
 searchSize = .5         # Base radius or tolerance for search for neighbours
 randomSizeFactor = 0    # How much size randomization should be used [0..1] 
 qSilentVerbose = 0      # Reduces text output to a minimum
+qUnlinkOpt = 1          # Use unlink optimization for object processing, improves performance only for huge amounts of objects in scene
 
 ################################################################################
 
@@ -38,24 +39,33 @@ from mathutils import *
 
 ################################################################################
 
-def run(source=None, parameters=None):
+def run(objsSource=None, parameters=None):
    
     ### Custom BCB parameter handling
-    if source == 'BCB':
+    if objsSource == 'BCB':
         global searchSize; searchSize = parameters[0]
         global searchMode; searchMode = 4
         global qSilentVerbose; qSilentVerbose = 1
-
-    ###
 
     print("\nStarting splitting process...")
     
     time_start = time.time()
     scene = bpy.context.scene
 
-    objs = allSelectedObjects(scene)
+    # Dictionary to backup group/collection relationships for all involved objects (required for modern Blender)
+    # Key: object name, Value: list of groups/collections
+    grpsBak = {}
 
-    # Deselect all objects.
+    # Create object list of selected objects
+    objs = []
+    for obj in bpy.data.objects:
+        if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
+            objs.append(obj)
+            grpsBak[obj.name] = [grp for grp in bpy.data.groups if obj.name in grp.objects]  # Backup groups
+            if qUnlinkOpt:
+                scene.objects.unlink(obj)   # Optimization: Unlink objects from scene for speed optimization
+
+    # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
     
     objsNew = []
@@ -65,16 +75,20 @@ def run(source=None, parameters=None):
         if searchMode == 1: searchAndSeparateMode1(scene, obj)
         elif searchMode == 2: searchAndSeparateMode2(scene, obj)
         elif searchMode == 3: searchAndSeparateMode3(scene, obj)
-        elif searchMode == 4: objsNew.extend(searchAndSeparateMode4(scene, obj))
+        elif searchMode == 4: objsNew.extend(searchAndSeparateMode4(scene, obj, grpsBak))
     print()
 
-    # Optimization: Relink all objects back to scene
+    # Select all objects and safely restore group structures
     for objN in objsNew:
-        try: scene.objects.link(objN)
-        except: pass
+        if qUnlinkOpt:
+            scene.objects.link(objN)  # Unlinking optimization: Relink all objects
+        # Remap pieces to their correct group dependencies
+        if objN.name in grpsBak:
+            for grp in grpsBak[objN.name]:
+                if objN.name not in grp.objects:
+                    grp.objects.link(objN)
 
-    # Select original objects again
-    for obj in objs: obj.select = 1
+    # Original selection remains intact
 
     print('Original mesh objects split:', len(objs))
     print('Done. -- Time: %0.2f s' %(time.time() -time_start))
@@ -99,10 +113,14 @@ def updateObjList(scene, objs):
 
 ########################################
 
-def searchAndSeparateMode4(scene, obj):
+def searchAndSeparateMode4(scene, obj, grpsBak):
     """"""
     bpy.context.tool_settings.mesh_select_mode = False, False, True 
     
+    if qUnlinkOpt:
+        try: scene.objects.link(obj)   # Optimization: Relink objects to scene so we can work with it
+        except: pass
+
     obj.select = 1
     # Reset object origins
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
@@ -120,8 +138,9 @@ def searchAndSeparateMode4(scene, obj):
         else: sys.stdout.write('\r' +"%d " %(len(bpy.data.objects)-lenObjsStart))
 
         if k not in objsFin:
-            try: scene.objects.link(obj)   # Optimization: Relink objects to scene so we can work with it
-            except: pass
+            if qUnlinkOpt:
+                try: scene.objects.link(obj)   # Optimization: Relink objects to scene so we can work with it
+                except: pass
             bpy.context.scene.objects.active = obj
             me = obj.data
             
@@ -167,19 +186,27 @@ def searchAndSeparateMode4(scene, obj):
                     # Reset object origins
                     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
-                    scene.objects.unlink(obj)   # Optimization: Unlink objects from scene for speed optimization
+                    if qUnlinkOpt:
+                        scene.objects.unlink(obj)   # Optimization: Unlink objects from scene for speed optimization
             else:
                 objsFin.add(k)
-                scene.objects.unlink(obj)  # Optimization: Unlink objects from scene for speed optimization
+                if qUnlinkOpt:
+                    scene.objects.unlink(obj)  # Optimization: Unlink objects from scene for speed optimization
                 continue
 
             # Update objs list with new object
             objsNew = updateObjList(scene, objs)
+            
+            # Remap pieces to their correct group dependencies
+            for objTemp in objsNew:
+                if objTemp.name not in grpsBak and obj.name in grpsBak:
+                    grpsBak[objTemp.name] = grpsBak[obj.name]
 
             # Set new object to active
             obj = objs[-1]
-            try: scene.objects.link(obj)   # Optimization: Relink objects to scene so we can work with it
-            except: pass
+            if qUnlinkOpt:
+                try: scene.objects.link(obj)   # Optimization: Relink objects to scene so we can work with it
+                except: pass
             bpy.context.scene.objects.active = obj
             me = obj.data
             
@@ -192,17 +219,24 @@ def searchAndSeparateMode4(scene, obj):
             # Leave edit mode
             try: bpy.ops.object.mode_set(mode='OBJECT')
             except: pass # continue
-            scene.objects.unlink(obj)   # Optimization: Unlink objects from scene for speed optimization
+            if qUnlinkOpt:
+                scene.objects.unlink(obj)   # Optimization: Unlink objects from scene for speed optimization
             
             # Update objs list with new objects
             objsNew = updateObjList(scene, objs)
+
+            # Remap pieces to their correct group dependencies
+            for objTemp in objsNew:
+                if objTemp.name not in grpsBak and obj.name in grpsBak:
+                    grpsBak[objTemp.name] = grpsBak[obj.name]
 
             # Reset object origins
             bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
             # Optimization: Unlink objects from scene for speed optimization
-            for objTemp in objsNew:
-                scene.objects.unlink(objTemp)
+            if qUnlinkOpt:
+                for objTemp in objsNew:
+                    scene.objects.unlink(objTemp)
 
             lenObjs = len(objs)
 
@@ -443,19 +477,7 @@ def searchAndSeparateMode1(scene, obj):
     # Delete empty object
     try: bpy.context.scene.objects.unlink(obj)
     except: pass
-    
-################################################################################
 
-def allSelectedObjects(scene):
-    
-    # create object list of selected objects
-    objs = []
-    for obj in bpy.data.objects:
-        if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(bpy.context.scene):
-            objs.append(obj)
-            scene.objects.unlink(obj)   # Optimization: Unlink objects from scene for speed optimization
-    return objs
-    
 ################################################################################
 
 if __name__ == "__main__":

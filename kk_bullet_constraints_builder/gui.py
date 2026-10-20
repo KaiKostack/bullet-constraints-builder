@@ -39,44 +39,8 @@ from global_vars import *      # Contains global variables
 
 ################################################################################
 
-def dpifac100():
-    prefs = bpy.context.user_preferences.system
-    if hasattr(prefs, 'pixel_size'):  # Python access to this was only added recently, assume non-retina display is used if using older blender
-        retinafac = bpy.context.user_preferences.system.pixel_size
-    else:
-        retinafac = 1
-    return bpy.context.user_preferences.system.dpi/(100/retinafac)
-   
-class bcb_report(bpy.types.Operator):
-    bl_idname = "bcb.report"
-    bl_label = "Info"
-    bl_description = "Report message operator"
-
-    message = bpy.props.StringProperty()
-    icon = bpy.props.StringProperty()
-    
-    def execute(self, context):
-        return {'FINISHED'}
-    
-    def invoke(self, context, event):
-        wm = context.window_manager
-        print(self.message)
-        # Calculate safe width in pixel from char count of the string
-        strSize = len(self.message)
-        # widthPx = (strSize*12+40) /dpifac100()  # Approx. width for capitals
-        widthPx = (strSize*8+30) /dpifac100()   # Approx. width for normal text
-        #return wm.invoke_props_dialog(self)
-        return wm.invoke_popup(self, width=widthPx, height=300)
-    
-    def draw(self, context):
-        row = self.layout.row()
-        row.label(text=self.message, icon=self.icon)
-        row.alert = True  # Red background
-
-########################################
-
-class bcb_add_preset(bpy.types.Menu):
-    bl_idname = "bcb.add_preset"
+class OBJECT_MT_bcb_add_preset(bpy.types.Menu):
+    bl_idname = "OBJECT_MT_bcb_add_preset"
     bl_label = "Available Presets"
     bl_description = "Adds a preset element group to list"
     def draw(self, context):
@@ -313,11 +277,11 @@ class bcb_panel_preprocessing_tools(bpy.types.Panel):
         row = col.row(align=1); split = row.split(percentage=.06, align=0)
         split.prop(props, "preprocTools_rps2", text="")
         box = split.box()
-        box.operator("bcb.preproc_tool_run_python_script", icon="DOT")
+        box.operator("bcb.preproc_tool_run_python_script_2", icon="DOT")
         row = box.row(align=1)
         split = row.split(percentage=.85, align=1)
         split.prop(props, "preprocTools_rps2_nam")
-        split.operator("bcb.tool_select_py_file", icon="FILESEL", text="").opNo = 1
+        split.operator("bcb.tool_select_py_file", icon="FILESEL", text="").opNo = 2
         
 ########################################
 
@@ -526,7 +490,7 @@ class bcb_panel_element_group_list(bpy.types.Panel):
         row = col3.split(align=1)
         row.operator("bcb.add", icon="ZOOMIN")
         row.operator("bcb.dup", icon="PASTEDOWN")
-        row.operator("bcb.del", icon="X")
+        row.operator("bcb.del", icon="ZOOMOUT")
         row.operator("bcb.reset", icon="CANCEL")
         row.operator("bcb.move_up", icon="TRIA_UP")
         row.operator("bcb.move_down", icon="TRIA_DOWN")
@@ -1063,4 +1027,4 @@ class bcb_panel_postprocessing_tools(bpy.types.Panel):
         row = box.row(align=1)
         split = row.split(percentage=.85, align=1)
         split.prop(props, "postprocTools_rps_nam")
-        split.operator("bcb.tool_select_py_file", icon="FILESEL", text="").opNo = 2
+        split.operator("bcb.tool_select_py_file", icon="FILESEL", text="").opNo = 3

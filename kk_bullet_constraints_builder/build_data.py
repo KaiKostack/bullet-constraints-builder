@@ -172,16 +172,26 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_detonPullBackDelay"] = props.detonPullBackDelay
     scene["bcb_prop_detonGroundReflect"] = props.detonGroundReflect
     
-    ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
-    elemGrps = global_vars.elemGrps
-    elemGrpsInverted = []
-    for i in range(len(presets[0])):
-        column = []
-        for j in range(len(elemGrps)):
-            column.append(elemGrps[j][i])
-        elemGrpsInverted.append(column)
-    scene["bcb_prop_elemGrps"] = elemGrpsInverted
-    
+    ### Modern Blender uses new and more robust method for storage
+    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+        import pickle, base64
+        print("Storing element groups as secure pickle string in scene...")
+        # We use protocol=2 for maximum compatibility across Python versions
+        # base64 turns the binary stream into a plain text string that Blender's ID-properties accept
+        serialized_matrix = base64.b64encode(pickle.dumps(global_vars.elemGrps, protocol=2)).decode('ascii')
+        scene["bcb_prop_elemGrps"] = serialized_matrix
+    ### Legacy Blender 2.79 matrix inversion and storage mechanism
+    else:
+        # Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
+        elemGrps = global_vars.elemGrps
+        elemGrpsInverted = []
+        for i in range(len(presets[0])):
+            column = []
+            for j in range(len(elemGrps)):
+                column.append(elemGrps[j][i])
+            elemGrpsInverted.append(column)
+        scene["bcb_prop_elemGrps"] = elemGrpsInverted
+
 ################################################################################   
 
 def getConfigDataFromScene(scene):
@@ -436,56 +446,71 @@ def getConfigDataFromScene(scene):
     ###### Update global vars from menu properties
     props.props_update_globals()
         
-    #if len(warning): return warning
-            
     ### Because ID properties doesn't support different var types per list I do the trick of inverting the 2-dimensional elemGrps array
     if "bcb_prop_elemGrps" in scene.keys():
-        try: elemGrpsProp = scene["bcb_prop_elemGrps"]
-        except: pass
-        elemGrpsInverted = []
-        grpPropCnt = len(elemGrpsProp[0])
-        for i in range(grpPropCnt):
-            column = []
-            for j in range(min(len(elemGrpsProp), len(presets[0]))):  # Use the smaller sized array in case some different BCB version is used to prevent error
-                if j != EGSidxAsst:
-                    # Check if stored types are identical then copy stored data, otherwise fall back to preset default data.
-                    # But do this only if one is a string type as numeric values can have different types, because they would convert like int to float.
-                    # Next line means: if not type(elemGrpsProp[j][i]) == type("") xor type(presets[i][j]) == type(""):
-                    if not bool(type(elemGrpsProp[j][i]) == type("")) != bool(type(presets[0][j]) == type("")):
-                          column.append(elemGrpsProp[j][i])
-                    else: column.append(presets[0][j])
+        raw_data = scene["bcb_prop_elemGrps"]
+
+        # Check if modern Blender version path is active
+        if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+            import pickle, base64
+            
+            # Backward compatibility: Check if data is stored as a string (new format)
+            if isinstance(raw_data, str):
+                print("Loading element groups from secure pickle string...")
+                try:
+                    global_vars.elemGrps = pickle.loads(base64.b64decode(raw_data.encode('ascii')))
+                    # Successfully loaded modern format, skip the legacy fallback path
+                    raw_data = None 
+                except Exception as e:
+                    print("BCB Error: Failed to deserialize matrix string:", e)
+            else:
+                print("Modern Blender detected, but found legacy data format. Falling back to recovery...")
+
+        # Legacy path: Runs on older Blender OR when modern Blender encounters old data
+        if raw_data is not None and not isinstance(raw_data, str):
+            try:
+                # Legacy Blender 2.79 inversion matrix restoration path
+                try: elemGrpsProp = scene["bcb_prop_elemGrps"]
+                except: pass
                 else:
-                    column.append(dict(elemGrpsProp[j][i]).copy())
-                    ### Check if formula assistant settings are complete and if not fill in missing vars from assistant defaults
-                    asst = column[-1]
-                    items = [item[0] for item in asst.items()]  # Make separate list of attribute names
-                    for asstDef in formulaAssistants:
-                        if asst['ID'] == asstDef['ID']:
-                            for item in asstDef.items():
-                                if item[0] not in items:
-                                    print("Warning: FA property '%s' missing, BCB scene settings are probably outdated." %item[0])
-                                    asst[item[0]] = item[1]
-                            break
-            missingColumns = len(presets[0]) -len(column)
-            if missingColumns:
-                print("Warning: elemGrp property missing, BCB scene settings are probably outdated.")
-                # Find default group or use first one
-                k = 0
-                for l in range(grpPropCnt):
-                    if elemGrpsProp[l][EGSidxName] == '': k = l
-                # Fill in missing data from preset default data
-                ofs = len(column)
-                for j in range(missingColumns):
-                    column.append(presets[0][ofs+j])
-            elemGrpsInverted.append(column)
-        global_vars.elemGrps = elemGrpsInverted
+                    elemGrpsInverted = []
+                    grpPropCnt = len(elemGrpsProp[0])
+                    for i in range(grpPropCnt):
+                        column = []
+                        for j in range(min(len(elemGrpsProp), len(presets[0]))):
+                            if j != EGSidxAsst:
+                                if not bool(type(elemGrpsProp[j][i]) == type("")) != bool(type(presets[0][j]) == type("")):
+                                      column.append(elemGrpsProp[j][i])
+                                else: column.append(presets[0][j])
+                            else:
+                                column.append(dict(elemGrpsProp[j][i]).copy())
+                                asst = column[-1]
+                                items = [item[0] for item in asst.items()]
+                                for asstDef in formulaAssistants:
+                                    if asst['ID'] == asstDef['ID']:
+                                        for item in asstDef.items():
+                                            if item[0] not in items:
+                                                asst[item[0]] = item[1]
+                                        break
+                        missingColumns = len(presets[0]) - len(column)
+                        if missingColumns:
+                            k = 0
+                            for l in range(grpPropCnt):
+                                if elemGrpsProp[l][EGSidxName] == '': k = l
+                            ofs = len(column)
+                            for j in range(missingColumns):
+                                column.append(presets[0][ofs+j])
+                        elemGrpsInverted.append(column)
+                    global_vars.elemGrps = elemGrpsInverted
+            except Exception as e:
+                print("BCB Error: Failed to restore legacy matrix structure:", e)
 
         if debug:
             elemGrps = global_vars.elemGrps
             print("LOADED:", len(elemGrps))
             for i in range(grpPropCnt):
-                print(i, elemGrps[i][0])
-                
+                print(i, elemGrps[i])
+
 ################################################################################   
 
 def storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, objsID, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, connectsTol, constsConnect):
@@ -675,13 +700,27 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
     try: connectsPairParent = scene["bcb_connectsPairParent"]
     except: connectsPairParent = []; print("Warning: bcb_connectsPairParent property not found, cleanup may be incomplete.")
 
-    ### Backup layer settings and activate all layers
+    ### Backup layer / collection settings and activate all layers
     layersBak = []
-    layersNew = []
-    for i in range(20):
-        layersBak.append(int(scene.layers[i]))
-        layersNew.append(1)
-    scene.layers = [bool(q) for q in layersNew]  # Convert array into boolean (required by layers)
+    collectionsBak = []  # Stores (LayerCollection_Pointer, original_exclude_value)
+    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+        # Modern Blender 2.80+ / 5+ Collection Logic
+        # We recursively traverse all layer collections using a flat while-loop to prevent stack overflow
+        layer_collections = [bpy.context.view_layer.layer_collection]
+        while layer_collections:
+            l_c = layer_collections.pop(0)
+            layer_collections.extend(l_c.children)
+            # Backup the original exclude status
+            collectionsBak.append((l_c, l_c.exclude))
+            # Force enable the collection so all elements are accessible for cleanup
+            l_c.exclude = False
+    else:
+        # Legacy Blender 2.79 Layer Logic
+        layersNew = []
+        for i in range(20):
+            layersBak.append(int(scene.layers[i]))
+            layersNew.append(1)
+        scene.layers = [bool(q) for q in layersNew]
     
     ###### Removing data from scene
     
@@ -771,14 +810,14 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
         
         print("Removing ID properties...")
     
-        ### Clear object properties
+        ### Clear object properties (Safe for modern Blender by casting keys to a static list)
         for obj in objs:
             if obj != None:
-                for key in obj.keys():
+                for key in list(obj.keys()):
                     if "bcb_" in key: del obj[key]
 
-        ### Remove ID property build data (leaves menu props in place)
-        for key in scene.keys():
+        ### Remove ID property build data from scene (Safe for modern Blender by casting keys to a static list)
+        for key in list(scene.keys()):
             if "bcb_" in key: del scene[key]
 
     ######
@@ -801,24 +840,32 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
     if props.automaticMode and props.saveBackups:
         ### Quick and dirty delete function (faster but can cause problems on immediate rebuilding, requires saving and reloading first)
         # Delete (unlink) modified elements from scene 
-        for parentObj in parentTmpObjs: scene.objects.unlink(parentObj)
+        for parentObj in parentTmpObjs:
+            try: scene.objects.unlink(parentObj)
+            except: pass
         # Delete (unlink) constraint empty objects from scene
-        for emptyObj in emptyObjs: scene.objects.unlink(emptyObj)
+        for emptyObj in emptyObjs:
+            try: scene.objects.unlink(emptyObj)
+            except: pass
         # Unlink 'RigidBodyConstraints' group from scene so that the unlinked empties have no more users and will be discarted on saving
         try: bpy.data.groups.remove(bpy.data.groups["RigidBodyConstraints"], do_unlink=True)
         except: pass
         # Save file
         bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend', compress=True)
-        if len(objs) +len(emptyObjs) < 4000:
+        if len(objs) +len(emptyObjs) < 4000 or (hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN):  # Modern Blender
             print("Bake blend saved. (You can terminate Blender now if you don't want to wait for")
             print("the slow Depsgraph to finish, just reloading the blend file can be faster.)") 
             ### Bring back unlinked objects for regular deletion now
             # Link modified elements back to scene
-            for parentObj in parentTmpObjs: scene.objects.link(parentObj)
+            for parentObj in parentTmpObjs:
+                try: scene.objects.link(parentObj)
+                except: pass
             # Link constraint empty objects back to scene
-            for emptyObj in emptyObjs: scene.objects.link(emptyObj)
+            for emptyObj in emptyObjs:
+                try: scene.objects.link(emptyObj)
+                except: pass
 
-    if len(objs) +len(emptyObjs) < 4000:
+    if len(objs) +len(emptyObjs) < 4000 or (hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN):  # Modern Blender
         ### Delete all selected objects
         bpy.ops.object.delete(use_global=True)
     else:
@@ -839,8 +886,17 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
         try: bpy.data.groups.remove(bpy.data.groups["RigidBodyConstraints"], do_unlink=True)
         except: pass
             
-    # Set layers as in original scene
-    scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
+    # Set layers / collections as in original scene
+    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+        # Modern Blender Collections visibility restoration
+        for layer_col, original_exclude in collectionsBak:
+            try:
+                layer_col.exclude = original_exclude
+            except:
+                pass  # Safe fallback if a collection was deleted during the clear process
+    else:
+        # Legacy Blender 2.79 Layers restoration
+        scene.layers = [bool(q) for q in layersBak]
 
     ### Revert selection back to original state and clear ID properties from objects
     for obj in objs:

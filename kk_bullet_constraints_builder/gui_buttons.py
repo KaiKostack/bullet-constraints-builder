@@ -70,7 +70,8 @@ class OBJECT_OT_bcb_get_config(bpy.types.Operator):
         if "bcb_prop_elemGrps" in scene.keys():
             ###### Get menu config data from scene
             warning = getConfigDataFromScene(scene)
-            if warning != None and len(warning): self.report({'ERROR'}, warning)  # Create popup message
+            if warning != None and len(warning):
+                showMessageBox(warning)  # Create popup message
             props.menu_gotConfig = 1
             ###### Get build data from scene
             #getBuildDataFromScene(scene)
@@ -108,10 +109,16 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
             scene.frame_current = scene.frame_start
             bpy.context.screen.scene = scene  # Hack to update scene completely (scene.update() is not enough causing the monitor not work correctly when invoking at a frame > 1)
         ### Free previous bake data
-        contextFix = bpy.context.copy()
         if scene.rigidbody_world != None:
-            contextFix['point_cache'] = scene.rigidbody_world.point_cache
-            bpy.ops.ptcache.free_bake(contextFix)
+            # Modern Blender context override method
+            if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+                with context.temp_override(point_cache=scene.rigidbody_world.point_cache):
+                    bpy.ops.ptcache.free_bake()
+            # Legacy Blender 2.79 method
+            else:
+                contextFix = bpy.context.copy()
+                contextFix['point_cache'] = scene.rigidbody_world.point_cache
+                bpy.ops.ptcache.free_bake(contextFix)
             # Invalidate point cache to enforce a full bake without using previous cache data
             for grp in bpy.data.groups:
                 if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
@@ -204,16 +211,22 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
             # Create popup message
-            self.report({'ERROR'}, "This feature requires a Blender version with Fracture Modifier. Visit kaikostack.com/fracture for the FM-enabled Blender version.")
+            showMessageBox("This feature requires a Blender version with Fracture Modifier. Visit kaikostack.com/fracture for the FM-enabled Blender version.")
         else:
             ###### Execute main building process from scratch
             scene = bpy.context.scene
             props = context.window_manager.bcb
             ### Free previous bake data
-            contextFix = bpy.context.copy()
             if scene.rigidbody_world != None:
-                contextFix['point_cache'] = scene.rigidbody_world.point_cache
-                bpy.ops.ptcache.free_bake(contextFix)
+                # Modern Blender context override method
+                if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+                    with context.temp_override(point_cache=scene.rigidbody_world.point_cache):
+                        bpy.ops.ptcache.free_bake()
+                # Legacy Blender 2.79 method
+                else:
+                    contextFix = bpy.context.copy()
+                    contextFix['point_cache'] = scene.rigidbody_world.point_cache
+                    bpy.ops.ptcache.free_bake(contextFix)
             else:  # Create new RB world
                 bpy.ops.rigidbody.world_add()
             for grp in bpy.data.groups:
@@ -277,8 +290,15 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         ### Free previous bake data
         contextFix = bpy.context.copy()
         if scene.rigidbody_world != None:
-            contextFix['point_cache'] = scene.rigidbody_world.point_cache
-            bpy.ops.ptcache.free_bake(contextFix)
+            # Modern Blender context override method
+            if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+                with context.temp_override(point_cache=scene.rigidbody_world.point_cache):
+                    bpy.ops.ptcache.free_bake()
+            # Legacy Blender 2.79 method
+            else:
+                contextFix = bpy.context.copy()
+                contextFix['point_cache'] = scene.rigidbody_world.point_cache
+                bpy.ops.ptcache.free_bake(contextFix)
             # Invalidate point cache to enforce a full bake without using previous cache data
             if "RigidBodyWorld" in bpy.data.groups:
                 try: obj = bpy.data.groups["RigidBodyWorld"].objects[0]
@@ -337,7 +357,7 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
         if len(elemGrps) < maxMenuElementGroupItems:
             if self.menuIdx < 0:
                 # Call menu
-                bpy.ops.wm.call_menu(name="bcb.add_preset")
+                bpy.ops.wm.call_menu(name="OBJECT_MT_bcb_add_preset")
             if self.menuIdx >= 0:
                 props = context.window_manager.bcb
                 # Update global vars (only for initializing on new scene)
@@ -350,7 +370,8 @@ class OBJECT_OT_bcb_add(bpy.types.Operator):
                 # Update menu related properties from global vars
                 props.props_update_menu()
                 self.menuIdx = -1
-        else: self.report({'ERROR'}, "Maximum allowed element group count reached.")  # Create popup message
+        else:
+            showMessageBox("Maximum allowed element group count reached.")  # Create popup message
         return{'FINISHED'} 
 
 ########################################
@@ -370,8 +391,8 @@ class OBJECT_OT_bcb_dup(bpy.types.Operator):
                 elemGrps[-1][EGSidxAsst] = elemGrps[-1][EGSidxAsst].copy()
                 # Update menu selection
                 props.menu_selectedElemGrp = len(elemGrps) -1
-            else: self.report({'ERROR'}, "Maximum allowed element group count reached.")  # Create popup message
-        else: self.report({'ERROR'}, "There is no element group to duplicate.")  # Create popup message
+            else: showMessageBox("Maximum allowed element group count reached.")  # Create popup message
+        else: showMessageBox("There is no element group to duplicate.")  # Create popup message
         # Update menu related properties from global vars
         props.props_update_menu()
         return{'FINISHED'} 
@@ -611,8 +632,7 @@ class OBJECT_OT_bcb_preprocess_do_all_steps_at_once(bpy.types.Operator):
             count = tool_removeIntersections(scene, mode=4)
             if count > 0:
                 # Throw warning
-                bpy.context.window_manager.bcb.message = "Warning: Some element intersections could not automatically be resolved, please review selected objects"
-                bpy.ops.bcb.report('INVOKE_DEFAULT')  # Create popup message box
+                showMessageBox("Warning: Some element intersections could not automatically be resolved. Please review selected objects")
         print('-- Time total: %0.2f s' %(time.time()-time_start))
         print()
 
@@ -663,7 +683,8 @@ class OBJECT_OT_bcb_tool_select_py_file(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.bcb
         if   self.opNo == 1: props.preprocTools_rps_nam = self.filepath
-        elif self.opNo == 2: props.postprocTools_rps_nam = self.filepath
+        elif self.opNo == 2: props.preprocTools_rps2_nam = self.filepath
+        elif self.opNo == 3: props.postprocTools_rps_nam = self.filepath
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -912,7 +933,7 @@ class OBJECT_OT_bcb_postproc_tool_export_force_history(bpy.types.Operator):
     bl_description = "Exports the force time history for a constraint into a .csv file"
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
-            self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit kaikostack.com/fracture for the FM-enabled Blender version.")  # Create popup message
+            showMessageBox("This feature requires a Blender version with Fracture Modifier. Visit kaikostack.com/fracture for the FM-enabled Blender version.")
         else:
             OBJECT_OT_bcb_bake.execute(self, context)
             props = context.window_manager.bcb
@@ -929,7 +950,7 @@ class OBJECT_OT_bcb_postproc_tool_visualize_forces(bpy.types.Operator):
     bl_description = "Visualizes forces for constraints as spheres to be created in the scene whereby each sphere's radius is normalized to the predefined maximum force. Accurate values can be found in each sphere's properties"
     def execute(self, context):
         if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
-            self.report({'ERROR'}, "This tool requires the Fracture Modifier which is not available in this Blender version. Visit kaikostack.com/fracture for the FM-enabled Blender version.")  # Create popup message
+            showMessageBox("This feature requires a Blender version with Fracture Modifier. Visit kaikostack.com/fracture for the FM-enabled Blender version.")
         else:
             OBJECT_OT_bcb_bake.execute(self, context)
             props = context.window_manager.bcb

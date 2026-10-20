@@ -1,5 +1,5 @@
 ###################################################
-# Select intersecting objects v1.1 by Kai Kostack #
+# Select Intersecting Objects v1.2 by Kai Kostack #
 ###################################################
 # This script detects and selects objects intersecting with other objects
 # by a certain amount of volume based on boundary boxes (not actual geometry).
@@ -72,6 +72,11 @@ def run(source=None, parameters=None):
     random.seed(0)
     bpy.context.tool_settings.mesh_select_mode = True, False, False 
     scene = bpy.context.scene
+
+    # Blender version handling
+    if bpy.app.version <= (2, 79, 0) or hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'): version_carve = 1
+    else:                                                                                 version_carve = 0
+
     if mode == 1:
         
         objs = []
@@ -139,8 +144,9 @@ def run(source=None, parameters=None):
                 bpy.context.scene.objects.active.modifiers.new(name="Boolean_Intersect", type='BOOLEAN')
                 mod = bpy.context.scene.objects.active.modifiers["Boolean_Intersect"]
                 mod.operation = 'DIFFERENCE'
-                try: mod.solver = 'CARVE'
-                except: pass
+                if version_carve:
+                    try: mod.solver = 'CARVE'
+                    except: pass
                 mod.object = objB
                 # Apply modifier
                 try: bpy.ops.object.modifier_apply(apply_as='DATA', modifier=mod.name)

@@ -53,7 +53,7 @@ def initGeneralRigidBodyWorldSettings(scene):
         if multiple > 0: fps = props.stepsPerSecond /multiple
         else:            fps = props.stepsPerSecond
         if fps %int(fps) == 0:
-            scene.render.fps = fps
+            scene.render.fps = int(fps)
             scene.render.fps_base = 1
             print("New Frame Rate set to:", scene.render.fps)
         else:
@@ -65,11 +65,15 @@ def initGeneralRigidBodyWorldSettings(scene):
                 fps = props.stepsPerSecond /int(props.stepsPerSecond /scene.render.fps)
                 if fps %int(fps) == 0:
                     print("New Frame Rate set to:", scene.render.fps)
-                    scene.render.fps = fps
+                    scene.render.fps = int(fps)
                     scene.render.fps_base = 1
                 
-    # Set Steps Per Second for rigid body simulation
-    scene.rigidbody_world.steps_per_second = props.stepsPerSecond
+    # Set Steps / Substeps Per Second for rigid body simulation safely across versions
+    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+        scene.rigidbody_world.substeps_per_frame = int(props.stepsPerSecond / scene.render.fps)
+    else:  # Legacy Blender 2.79 properties
+        scene.rigidbody_world.steps_per_second = props.stepsPerSecond
+    # Set constraint solver iterations
     scene.rigidbody_world.solver_iterations = props.solverIterations
     # Set the length of the point cache to match the scene length
     scene.rigidbody_world.point_cache.frame_start = scene.frame_start
@@ -1201,12 +1205,18 @@ def deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsG
 
 ################################################################################   
 
-def deleteConnectionsWithReferences(objs, emptyObjs, connectsPair, connectsGeo, connectsLoc):
+def deleteConnectionsWithReferences(objs, connectsPair, connectsGeo, connectsLoc):
     
     ### Delete connections with references from predefined constraints
     if debug: print("Deleting connections with predefined constraints...")
 
     props = bpy.context.window_manager.bcb    
+
+    # Find empty objects with constraints in selection
+    try: emptyObjs = bpy.data.groups["RigidBodyConstraints"].objects
+    except: emptyObjs = []
+    emptyObjs = [obj for obj in emptyObjs if obj.type == 'EMPTY' and not obj.hide and obj.is_visible(bpy.context.scene) and obj.rigid_body_constraint != None]
+
     connectsPairTmp = []
     connectsGeoTmp = []
     connectsLocTmp = []
@@ -1443,16 +1453,13 @@ def backupLayerSettingsAndActivateAllLayers(scene):
        
     # Return old layers state
     return layersBak
-    
+
 ################################################################################   
 
 def createEmptyObjs(scene, constCnt):
     
     ### Create empty objects
     print("Creating empty objects... (%d)" %constCnt)
-
-    # Use second scene optimization (enabling this is not recommended, as there are limitations in Blender related to RBs on multiple scenes)
-    useSecondScene = 0
     
     ### Create first object
     objConst = bpy.data.objects.new('Constraint', None)
@@ -1461,116 +1468,53 @@ def createEmptyObjs(scene, constCnt):
     bpy.context.scene.objects.active = objConst
     bpy.ops.rigidbody.constraint_add()
 
-    if useSecondScene:
-        constCntPerScene = 1024
-        scenesTemp = []
-    else:
-        constCntPerScene = 0
+    ### Generate optimized duplication plan
+    # Plan backwards:
+    # Every step can at maximum double the amount of objects.
+    # Therefore the previous state is ceil(current / 2).
+    states = [constCnt]
+    current = constCnt
+
+    while current > 1:
+        current = int(math.ceil(current / 2.0))
+        states.append(current)
+
+    states.reverse()
+
+    duplicatePlan = []
+    for i in range(len(states)-1):
+        duplicatePlan.append(states[i+1] - states[i])
+
+
     emptyObjsGlobal = [objConst]
-    # Repeat until desired object count is reached
-    while len(emptyObjsGlobal) < constCnt:
-        
-        if useSecondScene:
-            ### Create a second scene to temporarily move objects to, to avoid depsgraph update overhead (optimization)
-            sceneTemp = bpy.data.scenes.new("BCB Temp Scene")
-            scenesTemp.append(sceneTemp)
-            # Set layers to same state as original scene
-            sceneTemp.layers = scene.layers
-            # Switch to original scene (shouldn't be necessary but is required for error free Bullet simulation on later scene switching for some strange reason)
-            bpy.context.screen.scene = scene
-            # Link cameras because in second scene is none and when coming back camera view will losing focus
-            objCameras = []
-            for objTemp in scene.objects:
-                if objTemp.type == 'CAMERA':
-                    sceneTemp.objects.link(objTemp)
-                    objCameras.append(objTemp)
-            # Switch to new scene
-            bpy.context.screen.scene = sceneTemp
-            # If using two scenes make sure both are using the same RigidBodyWorld and RigidBodyConstraints groups
-            if sceneTemp.rigidbody_world == None:
-                bpy.ops.rigidbody.world_add()
-            for grp in bpy.data.groups:
-                if "RigidBodyWorld" == grp.name and not grp.is_library_indirect:
-                    bpy.context.scene.rigidbody_world.group = grp; break
-            for grp in bpy.data.groups:
-                if "RigidBodyConstraints" == grp.name and not grp.is_library_indirect:
-                    bpy.context.scene.rigidbody_world.constraints = grp; break
-            # Link first empty into new scene
-            bpy.context.scene.objects.link(objConst)
-            
-        ### Duplicate empties as long as we got the desired count   
-        emptyObjs = [objConst]
-        while len(emptyObjs) < (constCnt -(len(emptyObjsGlobal) -1)) and (constCntPerScene == 0 or len(emptyObjs) <= constCntPerScene):
-            if constCntPerScene != 0:
-                sys.stdout.write("%d " %len(emptyObjs))
-            else:
-                if len(emptyObjs) <= 1024: sys.stdout.write("%d " %len(emptyObjs))
-                else:                      sys.stdout.write("\r%d - " %len(emptyObjs))
-            # Update progress bar
-            bpy.context.window_manager.progress_update(len(emptyObjsGlobal) /constCnt)
-            
-            # Deselect all objects
-            bpy.ops.object.select_all(action='DESELECT')
-            # Select empties already in list
-            c = 0
-            for obj in emptyObjs:
-                if c < (constCnt -(len(emptyObjsGlobal) -1)) -len(emptyObjs):
-                    obj.select = 1
-                    c += 1
-                else: break
-            # Duplicate them
-            bpy.ops.object.duplicate(linked=False)
-            # Add duplicates to list again
-            for obj in scene.objects:
-                if obj.select and obj.is_visible(scene):
-                    if obj.type == 'EMPTY':
-                        emptyObjs.append(obj)
-         
-        emptyObjsGlobal.extend(emptyObjs[1:])
-        sys.stdout.write("\r%d - " %len(emptyObjsGlobal))
+
+    print("Optimized duplicate plan:")
+    print(duplicatePlan)
+
+    ### Execute duplication plan
+    for dupCount in duplicatePlan:
+        # Update progress bar
+        bpy.context.window_manager.progress_update(len(emptyObjsGlobal) / float(constCnt))
+
+        ### Select exactly the required amount
+        bpy.ops.object.select_all(action='DESELECT')
+
+        # Safety check
+        dupCount = min(dupCount, len(emptyObjsGlobal))
+        for obj in emptyObjsGlobal[:dupCount]: obj.select = 1
+
+        ### Duplicate
+        bpy.ops.object.duplicate(linked=True)
+
+        ### Add duplicates
+        newObjects = [obj for obj in bpy.context.selected_objects if obj.type == 'EMPTY' and obj.is_visible(scene)]
+
+        emptyObjsGlobal.extend(newObjects)
+        sys.stdout.write("\r%d / %d" %(len(emptyObjsGlobal), constCnt))
+    print()
         
     emptyObjs = emptyObjsGlobal
-
-    if useSecondScene:
-        ### Link new object back into original scene
-        for scn in scenesTemp:
-            # Switch through temp scenes
-            bpy.context.screen.scene = scn
-            # Select all objects
-            bpy.ops.object.select_all(action='SELECT')
-            # Link objects to original scene
-            bpy.ops.object.make_links_scene(scene=scene.name)
-            # Remove constraint data (otherwise it would cause undesired side effects later in the simulation)
-            bpy.ops.rigidbody.constraints_remove()
-            # Delete objects from temp scene (required to get rid of the duplicate rigid body world data, which later would have influence on the simulation)
-            bpy.ops.object.delete(use_global=False)
-
-        # Switch back to original scene
-        bpy.context.screen.scene = scene
-        # Delete second scene
-        for scn in scenesTemp:
-            try:    bpy.data.scenes.remove(scn, do_unlink=1)
-            except: bpy.data.scenes.remove(scn)
-        print()
-
-        # Turn empties into constraints (extremely slow but there is no faster way when using temp scenes)
-        print("Turning empties into constraints...")
-        for i in range(len(emptyObjs)):
-            sys.stdout.write("\r%d" %i)
-            obj = emptyObjs[i]
-            bpy.context.scene.objects.active = obj
-            bpy.ops.rigidbody.constraint_add()
-    print()
     
-#    ### Sort empty objects by database order (old slower code)
-#    objsSorted = []
-#    #for objDB in bpy.data.objects:  # Sort by bpy.data order
-#    for objDB in bpy.data.groups["RigidBodyConstraints"].objects:  # Sort by RigidBodyConstraints group order
-#        for obj in emptyObjs:
-#            if obj.name == objDB.name:
-#                objsSorted.append(obj)
-#                del emptyObjs[emptyObjs.index(obj)]
-#                break
     ### Sort empty objects by database order
     objsSource = emptyObjs
     objsDB = bpy.data.groups["RigidBodyConstraints"].objects
@@ -1585,14 +1529,18 @@ def createEmptyObjs(scene, constCnt):
     objsSortedFiltered = []
     for obj in objsSorted:
         if obj != None: objsSortedFiltered.append(obj)
-#    print("EMPTIES (original, DB):")
-#    for i in range(len(objsSource)):
-#        obj = objsSource[i]
-#        objSorted = objsSortedFiltered[i]
-#        print(obj.name, objSorted.name)
     emptyObjs = objsSortedFiltered
+
+    # Create group and link selection to it
+    for obj in emptyObjs:
+        if not obj.select: obj.select = 1
+    grpNewName = grpNameBuilding +"_Constraints"
+    if grpNewName not in bpy.data.groups:
+        bpy.ops.group.create(name=grpNewName)
+    # Hide selection
+    bpy.ops.object.hide_view_set(unselected=False)
     
-    return emptyObjs        
+    return emptyObjs
 
 ################################################################################   
 
@@ -1892,14 +1840,16 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                                     objsScale.append(scale)
 
         ### Calculating and applying material masses based on volume
-        materialPreset = elemGrp[EGSidxMatP]
-        materialDensity = elemGrp[EGSidxDens]
-        if not materialDensity:
-            if materialPreset != "":
-                try: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
-                except: print("Warning: Density of 0 set and material preset not found for '%s', can't compute mass and leaving it as is." %elemGrp[EGSidxName])
-            else: print("Warning: Density of 0 set and no material preset defined for '%s', can't compute mass and leaving it as is." %elemGrp[EGSidxName])
-        else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
+        if len(objsSelected):
+            bpy.context.scene.objects.active = objsSelected[0]
+            materialPreset = elemGrp[EGSidxMatP]
+            materialDensity = elemGrp[EGSidxDens]
+            if not materialDensity:
+                if materialPreset != "":
+                    try: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
+                    except: print("Warning: Density of 0 set and material preset not found for '%s', can't compute mass and leaving it as is." %elemGrp[EGSidxName])
+                else: print("Warning: Density of 0 set and no material preset defined for '%s', can't compute mass and leaving it as is." %elemGrp[EGSidxName])
+            else: bpy.ops.rigidbody.mass_calculate(material="Custom", density=materialDensity)
 
         ### Calculating and applying material masses based on surface area * thickness
         if (props.surfaceForced and props.surfaceThickness) or (props.surfaceThickness and len(objsNonMan)):
@@ -2156,6 +2106,12 @@ def generateDetonator(objs, connectsPair, objsEGrp):
     random.seed(0)
 
     for detonatorObj in detonatorObjs:
+        ### Build kd-tree for object locations
+        kdObjs = mathutils.kdtree.KDTree(len(objs))
+        for j, ob in enumerate(objs):
+            kdObjs.insert(ob.location, j)
+        kdObjs.balance()
+
         objsDetonRatio = []
         objsCoLen = [0] *objsCnt
         objsCoIdxs = [[]] *objsCnt
@@ -2172,11 +2128,6 @@ def generateDetonator(objs, connectsPair, objsEGrp):
 
                 qRayCast = 1
                 if raySample == 0:
-                    ### Build kd-tree for object locations
-                    kdObjs = mathutils.kdtree.KDTree(objsCnt)
-                    for j, ob in enumerate(objs):
-                        kdObjs.insert(ob.location, j)
-                    kdObjs.balance()
                     ### Find closest objects via kd-tree
                     co_find = obj.location
                     aIndex = []; aCo = []  #; aDist = []

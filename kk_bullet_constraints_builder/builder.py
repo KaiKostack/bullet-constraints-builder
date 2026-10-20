@@ -92,7 +92,7 @@ def build():
                     ###### Delete connections with zero contact area
                     connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithZeroContactArea(objs, objsEGrp, connectsPair, connectsGeo, connectsLoc)
                     ###### Delete connections with references from predefined constraints
-                    connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithReferences(objs, emptyObjs, connectsPair, connectsGeo, connectsLoc)
+                    connectsPair, connectsGeo, connectsLoc = deleteConnectionsWithReferences(objs, connectsPair, connectsGeo, connectsLoc)
                     ###### Create connection data
                     connectsConsts, constsConnect = createConnectionData(objs, objsEGrp, connectsPair, connectsLoc, connectsGeo)
                 
@@ -112,7 +112,8 @@ def build():
                         ###### Create actual parents for too small elements
                         if props.minimumElementSize: makeParentsForTooSmallElementsReal(objs, connectsPairParent)
                         ###### Find and activate first empty layer
-                        layersBak = backupLayerSettingsAndActivateNextEmptyLayer(scene)
+                        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+                            layersBak = backupLayerSettingsAndActivateNextEmptyLayer(scene)
                         ###### Create empty objects (without any data)
                         if not props.asciiExport and not props.rebarMesh:
                             emptyObjs = createEmptyObjs(scene, len(constsConnect))
@@ -121,8 +122,9 @@ def build():
                         ###### Bundling close empties into clusters, merge locations and count connections per cluster
                         if props.clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
                         # Restore old layers state
-                        scene.update()  # Required to update empty locations before layer switching
-                        scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
+                        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+                            scene.update()  # Required to update empty locations before layer switching
+                            scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
                         ###### Store build data in scene
                         #if not props.asciiExport:  # Commented out b/c: Postprocessing Tools need some data so we keep it also for FM export, object references are converted to names
                         storeBuildDataInScene(scene, objs, objsEGrp, emptyObjs, childObjs, objsID, connectsPair, connectsPairParent, connectsLoc, connectsGeo, connectsConsts, None, constsConnect)
@@ -173,15 +175,17 @@ def build():
                 ###### Create detonator force fields and data
                 connectsBtMul = generateDetonator(objs, connectsPair, objsEGrp)
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
-                if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
+                if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+                    if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
                 connectsTol, exData = setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect, connectsBtMul)
                 ###### Store new build data in scene
                 storeBuildDataInScene(scene, None, None, emptyObjs, None, None, None, None, None, None, None, connectsTol, None)
                 ### Restore old layers state
-                if not props.asciiExport:
-                    scene.update()  # Required to update empty locations before layer switching
-                    scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
+                if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+                    if not props.asciiExport:
+                        scene.update()  # Required to update empty locations before layer switching
+                        scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
                 ###### Exporting data into internal ASCII text file
                 if props.asciiExport and exData != None: exportDataToText(exData)
             

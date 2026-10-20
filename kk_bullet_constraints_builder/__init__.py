@@ -8,7 +8,7 @@
 # Support Search and Rescue (USaR) Teams"
 # Versions 1 & 2 were developed at the Laurea University of Applied Sciences,
 # Finland. Later versions are independently developed.
-# Copyright (C) 2015-2018 Kai Kostack
+# Copyright (C) 2015-2026 Kai Kostack
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -30,15 +30,144 @@
 
 ################################################################################
 
-import bpy, sys, os, platform, mathutils, time, copy, math, pickle, base64, zlib, random, imp
+import bpy, sys, os, platform, mathutils, time, copy, math, pickle, base64, zlib, random
 from mathutils import Vector
 #import os
 #os.system("cls")
+
+bpy.IS_MODERN = bpy.app.version >= (2, 80, 0)
 
 ########################################
 
 qSymPy = 0
 
+if hasattr(bpy.app, "binary_path_python"):
+    # Blender 2.79 - 2.91
+    python_exe = bpy.app.binary_path_python
+else:
+    # Blender 2.92+
+    python_exe = sys.prefix + "/bin/python.exe"
+    
+    ### Load modules from textblocks (for debugging purposes)
+    
+    # ##### HYBRID TWO-PASS IN-PLACE LOADER ARCHITECTURE #####
+    # Circular wildcard imports ('from module import *') can leave modules with
+    # incomplete namespaces when two modules depend on each other during import.
+    # Since wildcard imports only copy the names available at execution time,
+    # symbols defined later remain unavailable and may cause persistent NameErrors.
+    # To avoid this, the loader performs a clean multi-pass initialization:
+    #
+    # 1. Register lightweight shell modules with valid ModuleSpec / __loader__
+    #    metadata so all modules are immediately discoverable by Python's import
+    #    system.
+    #
+    # 2. Compile each module inside its own persistent module dictionary.
+    #    Modules that still have unresolved dependencies are deferred to a later
+    #    pass instead of leaving partially initialized module state behind.
+    #
+    # 3. Pass 2 performs a full in-place re-execution inside the exact same module
+    #    dictionaries. This re-evaluates wildcard imports in the fully initialized
+    #    module graph while ensuring functions reference the final persistent module
+    #    namespaces, keeping Blender operator callbacks fully synchronized.
+
+    import types, builtins, importlib.machinery
+    
+    # Safely wrap the entire memory loader block to prevent crashes in _RestrictData context during add-on install
+    try:
+        # PHASE 1: Scan and Discover Internal Text Blocks
+        text_blocks = {}
+        sources = {}
+        # Get the name of the currently executing script to avoid self-import loops
+        current_script = bpy.context.space_data.text.name if hasattr(bpy, "context") and hasattr(bpy.context, "space_data") and bpy.context.space_data and bpy.context.space_data.text else None
+
+        for t in bpy.data.texts:
+            if t.name.endswith(".py") and t.name != current_script:
+                mod_name = t.name[:-3]
+                text_blocks[mod_name] = t
+                
+                # Read clean source text strings
+                source = t.as_string() if hasattr(t, "as_string") else t.as_text()
+                if source.startswith("\ufeff"):
+                    source = source.lstrip("\ufeff")
+                sources[mod_name] = source
+
+        # PHASE 2: Compliant Single-Dictionary Import Simulator
+        compile_queue = list(text_blocks.keys())
+        successful_modules = set()
+
+        dummy_loader = importlib.machinery.ExtensionFileLoader("bcb_stub", "<blender_memory>")
+
+        # Step 1: Pre-register persistent modules and lock down their dictionary identities forever
+        for mod_name in compile_queue:
+            shell = types.ModuleType(mod_name)
+            shell.__file__ = "<blender_text_block_{0}.py>".format(mod_name)
+            shell.__package__ = ""
+            shell.__builtins__ = builtins.__dict__
+            shell.__spec__ = importlib.machinery.ModuleSpec(name=mod_name, loader=dummy_loader, origin=shell.__file__)
+            shell.__loader__ = dummy_loader
+            
+            sys.modules[mod_name] = shell
+
+        # Step 2: Atomic compilation loops directly in the persistent module dictionary
+        compiled_in_last_pass = True
+        while compile_queue and compiled_in_last_pass:
+            compiled_in_last_pass = False
+            next_queue = []
+            
+            for mod_name in compile_queue:
+                mod = sys.modules[mod_name]
+                
+                # ChatGPTs Fix: Preserve core metadata but execute directly inside the final mod.__dict__
+                keep = {
+                    "__name__": mod.__name__,
+                    "__file__": mod.__file__,
+                    "__package__": mod.__package__,
+                    "__spec__": mod.__spec__,
+                    "__loader__": mod.__loader__,
+                    "__builtins__": builtins.__dict__,
+                }
+                
+                # Clear previous partial bindings from earlier failed passes
+                mod.__dict__.clear()
+                mod.__dict__.update(keep)
+                
+                try:
+                    exec(sources[mod_name], mod.__dict__)
+                    compiled_in_last_pass = True
+                    successful_modules.add(mod_name)
+                except (NameError, ImportError):
+                    # Incomplete dependency tree: re-queue for the next round-robin pass
+                    next_queue.append(mod_name)
+                except Exception as e:
+                    print("Permanent Compilation Error in {0}.py: {1}".format(mod_name, e))
+                    
+            compile_queue = next_queue
+
+        # Step 3: Pass 2 - RE-EXECUTION inside the EXACT SAME dictionary IDs
+        # Overwrites functions in-place to perfectly resolve late 'from ... import *' statements
+        print("BCB Loader: Performing final second-pass execution inside locked dictionary identities...")
+        for mod_name in list(successful_modules):
+            mod = sys.modules[mod_name]
+            try:
+                exec(sources[mod_name], mod.__dict__)
+            except Exception as e:
+                pass
+
+        # PHASE 3: Clean Global Namespace Export
+        for mod_name in successful_modules:
+            globals()[mod_name] = sys.modules[mod_name]
+            
+            for var_name, var_val in sys.modules[mod_name].__dict__.items():
+                if not var_name.startswith("__") and var_name not in ("run", "main"):
+                    if var_name in globals() and callable(globals()[var_name]) and callable(var_val):
+                        continue
+                    globals()[var_name] = var_val
+
+    except AttributeError:
+        # Catch restricted namespace context during addon activation, allowing fallback to standard disk-based imports
+        #print("BCB Loader: Data context restricted. Skipping text blocks, loading from disk.")
+        pass
+            
 ###### SymPy detection and import code
 from pkgutil import iter_modules
 def module_exists(module_name):
@@ -95,7 +224,7 @@ else:
     ### If not found attempt using pip to automatically install SymPy module in Blender
     import subprocess, bpy
     def do(cmd, *arg):
-        list = [bpy.app.binary_path_python, '-m', cmd]
+        list = [python_exe, '-m', cmd]
         list.extend(arg)
         command = (list)       
         try: p = subprocess.Popen(command, stdout=subprocess.PIPE, bufsize=1)
@@ -113,10 +242,10 @@ else:
 ### Ultimate attempt to import SymPy
 if module_exists("sympy"):
     import sympy
-    print("SymPy module found.")
+    print("BCB: SymPy module found.")
     qSymPy = 1
 else:
-    print("No SymPy module found, continuing without formula simplification feature...")
+    print("BCB: No SymPy module found, continuing without formula simplification feature.")
 
 ########################################
 
@@ -178,24 +307,13 @@ bl_info = {
 ################################################################################
 
 classes = [ \
+    # 1. PROPERTIES FIRST
     bcb_props,
     bcb_asst_con_rei_beam_props,
     bcb_asst_con_rei_wall_props,
     
-    bcb_report,
-    bcb_add_preset,
-    
-    bcb_panel_preprocessing_tools,
-    bcb_panel_execute,
-    bcb_panel_global_settings,
-    bcb_panel_advanced_global_settings,
-    bcb_panel_triggers,
-    bcb_panel_element_group_list,
-    bcb_panel_element_group_selector,
-    bcb_panel_formula_assistant,
-    bcb_panel_element_group_settings,
-    bcb_panel_advanced_element_group_settings,
-    bcb_panel_postprocessing_tools,
+    # 2. OPERATORS & MENUS NEXT
+    OBJECT_MT_bcb_add_preset,
     
     OBJECT_OT_bcb_set_config,
     OBJECT_OT_bcb_get_config,
@@ -248,19 +366,67 @@ classes = [ \
     OBJECT_OT_bcb_postproc_tool_export_force_history,
     OBJECT_OT_bcb_postproc_tool_visualize_forces,
     OBJECT_OT_bcb_postproc_tool_detect_cavities,
-    OBJECT_OT_bcb_postproc_tool_run_python_script
+    OBJECT_OT_bcb_postproc_tool_run_python_script,
+    
+    # 3. PANELS LAST (They depend on the properties above)
+    bcb_panel_preprocessing_tools,
+    bcb_panel_execute,
+    bcb_panel_global_settings,
+    bcb_panel_advanced_global_settings,
+    bcb_panel_triggers,
+    bcb_panel_element_group_list,
+    bcb_panel_element_group_selector,
+    bcb_panel_formula_assistant,
+    bcb_panel_element_group_settings,
+    bcb_panel_advanced_element_group_settings,
+    bcb_panel_postprocessing_tools
     ]
 
 ################################################################################
 
 def register():
-    for c in classes:
-        bpy.utils.register_class(c)
-    bpy.types.WindowManager.bcb = bpy.props.PointerProperty(type=bcb_props)
-    bpy.types.WindowManager.bcb_asst_con_rei_beam = bpy.props.PointerProperty(type=bcb_asst_con_rei_beam_props)
-    bpy.types.WindowManager.bcb_asst_con_rei_wall = bpy.props.PointerProperty(type=bcb_asst_con_rei_wall_props)
-    
-           
+
+    # 1. Apply the Property Patch only if running on modern Blender
+    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+        for cls in classes:
+            if cls.__name__ in ("bcb_props", "bcb_asst_con_rei_beam_props", "bcb_asst_con_rei_wall_props"):
+                if not hasattr(cls, "__annotations__"):
+                    cls.__annotations__ = {}
+                
+                # Scan class memory for dynamic properties generated by exec() loops
+                for attr_name in list(cls.__dict__.keys()):
+                    attr_val = cls.__dict__[attr_name]
+                    attr_type_name = type(attr_val).__name__
+                    
+                    # Intercept unresolved 2.79 property remnants or dynamic loop attributes
+                    if attr_type_name == '_PropertyDeferred' or attr_name.startswith("elemGrp_") or attr_name == "assistant_menu":
+                        cls.__annotations__[attr_name] = attr_val
+                        delattr(cls, attr_name)
+
+    # 2. Universal class registration loop (Safe for Python 3.5 up to 3.11+)
+    for cls in classes:
+        try:
+            bpy.utils.register_class(cls)
+            #print("   -> Registered: {} successfully.".format(cls.__name__))
+        except Exception as e:
+            pass
+            #print("   FAILED to register: {}. Error: {}".format(cls.__name__, e))
+            
+    # 3. Securely bind pointer property groups to the WindowManager
+    try:
+        bpy.types.WindowManager.bcb = bpy.props.PointerProperty(type=bcb_props)
+        bpy.types.WindowManager.bcb_asst_con_rei_beam = bpy.props.PointerProperty(type=bcb_asst_con_rei_beam_props)
+        bpy.types.WindowManager.bcb_asst_con_rei_wall = bpy.props.PointerProperty(type=bcb_asst_con_rei_wall_props)
+        
+        # Accessing any property triggers Blender to instantiate the real data block
+        wm = bpy.context.window_manager
+        if hasattr(wm, "bcb") and wm.bcb is not None:
+            _ = wm.bcb.name if hasattr(wm.bcb, "name") else None
+            
+    except Exception as e:
+        print("BCB: Failed to map memory layout to database: {}".format(e))
+
+
 def unregister():
     for c in classes:
         try: bpy.utils.unregister_class(c) 
@@ -269,8 +435,10 @@ def unregister():
     del bpy.types.WindowManager.bcb_asst_con_rei_beam
     del bpy.types.WindowManager.bcb_asst_con_rei_wall
 
- 
-if __name__ == "__main__":
-    try: unregister()
-    except: pass
-    register()
+
+# Instead of if __name__ == "__main__", we force execution. 
+# To prevent double registration crashes during Alt+P development, we safely unregister first.
+try: unregister()
+except: pass
+register()
+print("BCB: Initialization completed.")

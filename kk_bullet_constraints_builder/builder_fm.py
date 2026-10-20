@@ -126,15 +126,16 @@ def build_fm(use_handler=0):
         #bpy.context.area.type = areaType_bak
 
     ### Create object to use the Fracture Modifier on
-    bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), rotation=(0, 0, 0), layers=scene.layers)
+    bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), rotation=(0, 0, 0))
     ob = bpy.context.scene.objects.active
     #ob.data.use_auto_smooth = True
     ob.name = asciiExportName
     ob.data.name = asciiExportName
     ob.show_transparent = True
 
-    layersBak = [int(q) for q in scene.layers]   # Backup scene layer settings
-    scene.layers = [True for q in scene.layers]  # Activate all scene layers
+    if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+        layersBak = [int(q) for q in scene.layers]   # Backup scene layer settings
+        scene.layers = [True for q in scene.layers]  # Activate all scene layers
 
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
@@ -173,8 +174,9 @@ def build_fm(use_handler=0):
             scene.update()  # Required to make RBs actually not participating in simulation anymore
 
         # Move to last layer
-        for obj in objs: obj.select = 1
-        bpy.ops.object.move_to_layer(layers=(False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True))
+        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+            for obj in objs: obj.select = 1
+            bpy.ops.object.move_to_layer(layers=(False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True))
 
     # Add Fracture Modifier
     bpy.ops.object.modifier_add(type='FRACTURE')
@@ -282,8 +284,10 @@ def build_fm(use_handler=0):
         objParent.select = 0
         bpy.context.scene.objects.active = ob
 
-    scene.layers = [bool(q) for q in layersBak]  # Revert scene layer settings from backup
-
+    # Revert scene layer settings from backup
+    if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+        scene.layers = [bool(q) for q in layersBak]
+        
     print()
     print('-- Time total: %0.2f s' %(time.time()-time_start))
     print('Done.')

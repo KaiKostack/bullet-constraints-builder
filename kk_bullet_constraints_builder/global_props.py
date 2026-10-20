@@ -38,6 +38,27 @@ from global_vars import *      # Contains global variables
 
 ################################################################################
 
+def showMessageBox(message, title="", icon="ERROR"):
+    """Opens a native, multiline popup box that works perfectly in 2.79 and 5+ without any operators."""
+    def draw_popup(self, context):
+        # Split long text by period to prevent truncation ("...") in all Blender versions
+        sentences = [s.strip() for s in message.split(". ") if s.strip()]
+        for idx, sentence in enumerate(sentences):
+            if not sentence: continue
+            line_text = sentence if sentence.endswith(".") else sentence + "."
+            
+            # Use the icon for the first line, and indent subsequent lines cleanly
+            if idx == 0:
+                self.layout.label(text=line_text, icon=icon)
+            else:
+                # 'BLANK1' for 2.79, 'NONE' for modern Blender (handles gracefully)
+                is_modern = getattr(bpy, "IS_MODERN", False)
+                self.layout.label(text=line_text, icon="NONE" if is_modern else "BLANK1")
+
+    bpy.context.window_manager.popup_menu(draw_popup, title=title, icon=icon)
+
+################################################################################
+
 def updGlob(self, context):
 
     props = context.window_manager.bcb
@@ -398,8 +419,7 @@ class bcb_props(bpy.types.PropertyGroup):
 
             if qFMonlySettingModified:
                 if not hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE'):
-                    bpy.ops.bcb.report('INVOKE_DEFAULT', message="This feature requires a Blender version with Fracture Modifier. Visit kaikostack.com/fracture for the FM-enabled Blender version.", icon="ERROR") 
-                        
+                    showMessageBox("This feature requires a Blender version with Fracture Modifier. Visit kaikostack.com/fracture for the FM-enabled Blender version.")
             ### If different formula assistant ID from that stored in element group then update with defaults
             i = self.menu_selectedElemGrp
             if self.assistant_menu != elemGrps[i][EGSidxAsst]['ID']:

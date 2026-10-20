@@ -1,5 +1,5 @@
 ################################################
-# Efficient Separate Loose v1.5 by Kai Kostack #
+# Efficient Separate Loose v1.6 by Kai Kostack #
 ################################################
 
 # ##### BEGIN GPL LICENSE BLOCK #####
@@ -31,6 +31,7 @@ def run():
                            # 1 = Halving based on element order (together with element sort operator this is more flexible than mode 2)
                            # 2 = Halving based on axis based space (Z)
     qUVislands = 0         # If enabled UV islands will be used instead of mesh islands (overrides elementBase and separationMode)
+    qUnlinkOpt = 1         # Use unlink optimization for object processing, improves performance only for huge amounts of objects in scene
 
     qSilentVerbose = 1     # Reduces text output to a minimum
     
@@ -50,23 +51,30 @@ def run():
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
     
+    # Dictionary to backup group/collection relationships for all involved objects (required for modern Blender)
+    # Key: object name, Value: list of groups/collections
+    grpsBak = {}
+
     # Create object list of selected objects
     # (Because we add more objects with following function we need a separate list.)
     objs = []
     for obj in scene.objects:
         if obj.select and obj.type == 'MESH' and not obj.hide and obj.is_visible(scene):
             objs.append(obj)
-            scene.objects.unlink(obj)   # Unlinking optimization: Unlink objects from scene for speed optimization
+            grpsBak[obj.name] = [grp for grp in bpy.data.groups if obj.name in grp.objects]  # Backup groups
+            if qUnlinkOpt:
+                scene.objects.unlink(obj)   # Unlinking optimization: Unlink objects from scene for speed optimization
     
     # Main separation loop
-    objsNew = []    # Unlinking optimization
+    objsNew = []
     count = len(objs)
     while len(objs) > 0:
         # Deselect all objects
         bpy.ops.object.select_all(action='DESELECT')
         
         obj = objs[0]
-        scene.objects.link(obj)   # Unlinking optimization: Relink objects to scene so we can work with it
+        if qUnlinkOpt:
+            scene.objects.link(obj)   # Unlinking optimization: Relink objects to scene so we can work with it
         bpy.context.scene.objects.active = obj
         me = obj.data
         vertLen = len(me.vertices)
@@ -178,20 +186,31 @@ def run():
         try: bpy.ops.object.mode_set(mode='OBJECT')
         except: pass # continue
         
-        # Unlinking optimization: Append new objects to objsNew list so we can relink them back to scene after we finished, until then unlink them as well
+        # Append new objects to objsNew list so we can reselect them after we finished
         for objN in scene.objects:
             if objN.select and objN.type == 'MESH' and not objN.hide and objN.is_visible(scene):
-                scene.objects.unlink(objN)   # Temporarily unlink again
                 if objN not in objsNew: objsNew.append(objN)
+                # Inherit correct group dependencies
+                if objN.name not in grpsBak and obj.name in grpsBak:
+                    grpsBak[objN.name] = grpsBak[obj.name]
+                if qUnlinkOpt:
+                    scene.objects.unlink(objN)   # Unlinking optimization: Temporarily unlink again
         
         if not qSilentVerbose: print('Current database object count:', len(bpy.data.objects))
 
     if qSilentVerbose: print()
                                                  
-    # Unlinking optimization: Relink all objects back to scene
+    # Select all objects and safely restore group structures
     for objN in objsNew:
-        scene.objects.link(objN)
-        
+        if qUnlinkOpt:
+            scene.objects.link(objN)  # Unlinking optimization: Relink all objects
+        if not objN.select: objN.select = 1
+        # Remap pieces to their correct group dependencies
+        if objN.name in grpsBak:
+            for grp in grpsBak[objN.name]:
+                if objN.name not in grp.objects:
+                    grp.objects.link(objN)
+
     print('Original mesh objects split:', count)
     print('Done. -- Time: %0.2f s' %(time.time()-time_start))
                  

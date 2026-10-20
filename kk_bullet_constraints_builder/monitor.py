@@ -31,6 +31,7 @@
 ################################################################################
 
 import bpy, sys, time, os, math
+from mathutils import Vector
 import global_vars
 
 ### Import submodules
@@ -108,9 +109,9 @@ def monitor_eventHandler(scene):
                     ### Decrease precision for solver at extreme scale differences towards high-speed,
                     ### as high step and iteration rates on multi-constraint connections make simulation more instable
                     ratio = scene.rigidbody_world.time_scale /props.timeScalePeriodValue
-                    if ratio >= 50: scene.rigidbody_world.solver_iterations /= 10
-                    if ratio >= 500: scene.rigidbody_world.solver_iterations /= 10
-                    if ratio >= 5000: scene.rigidbody_world.solver_iterations /= 10
+                    if ratio >= 50: scene.rigidbody_world.solver_iterations //= 10
+                    if ratio >= 500: scene.rigidbody_world.solver_iterations //= 10
+                    if ratio >= 5000: scene.rigidbody_world.solver_iterations //= 10
                     ### Set new time scale
                     scene.rigidbody_world.time_scale = props.timeScalePeriodValue
                     ###### Execute update of all existing constraints with new time scale
@@ -169,11 +170,23 @@ def monitor_eventHandler(scene):
                     ###### Execute update of all existing constraints with new time scale
                     build()
                     ### Move detonator force fields to other layer to deactivate influence (Todo: Detonator not yet part of BCB)
-                    if "Detonator" in bpy.data.groups:
-                        for obj in bpy.data.groups["Detonator"].objects:
-                            obj["Layers_BCB"] = obj.layers
-                            obj.layers = [False,False,False,False,False, False,False,False,False,False, False,False,False,False,False, False,False,False,False,True]
-     
+                    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+                        # Modern Blender Collection and Viewport Visibility Logic
+                        # In Blender 2.80+ groups became collections
+                        detonator_coll = bpy.data.collections.get("Detonator")
+                        if detonator_coll:
+                            for obj in detonator_coll.objects:
+                                # Backup the original viewport visibility status
+                                obj["Hide_Viewport_BCB"] = obj.hide_viewport
+                                # Hide the object in the viewport instead of moving it to layer 20
+                                obj.hide_viewport = True
+                    else:
+                        # Legacy Blender 2.79 Group and Layer Logic
+                        if "Detonator" in bpy.data.groups:
+                            for obj in bpy.data.groups["Detonator"].objects:
+                                obj["Layers_BCB"] = obj.layers
+                                obj.layers = [False]*19 + [True]
+                 
             ### Convert springs to fixed constraints on time scale change (workaround for extreme time scale changes when springs tend to liquify)
             if "bcb_ext_fixSprings" in scene.keys():  # Option for external scripts to be set
                 if props.timeScalePeriod and scene.frame_current == scene.frame_start +props.timeScalePeriod:
@@ -323,18 +336,36 @@ def monitor_stop_eventHandler(scene):
         try: bpy.app.handlers.frame_change_pre.remove(monitor_stop_eventHandler)
         except: pass
         else: print("Removed event handler: monitor_stop_eventHandler")
-        # Convert animation point cache to fixed bake data 
-        contextFix = bpy.context.copy()
-        contextFix['point_cache'] = scene.rigidbody_world.point_cache
-        bpy.ops.ptcache.bake_from_cache(contextFix)
-        # Convert dynamic paint caches to fixed bake data 
-        contextFix = bpy.context.copy()
+
+        # Convert animation point cache to fixed bake data
+        if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+            with bpy.context.temp_override(point_cache=scene.rigidbody_world.point_cache):
+                bpy.ops.ptcache.bake_from_cache()
+        # Legacy Blender 2.79 method
+        else:
+            contextFix = bpy.context.copy()
+            contextFix['point_cache'] = scene.rigidbody_world.point_cache
+            bpy.ops.ptcache.bake_from_cache(contextFix)
+
+        # Convert dynamic paint caches to fixed bake data
         for obj in scene.objects:
             for mod in obj.modifiers:
-                if mod.type=='DYNAMIC_PAINT' and mod.canvas_settings != None:
+                if mod.type == 'DYNAMIC_PAINT' and mod.canvas_settings != None:
                     for canvas_surface in mod.canvas_settings.canvas_surfaces:
-                        contextFix['active_object'] = obj; contextFix['point_cache'] = canvas_surface.point_cache
-                        bpy.ops.ptcache.bake_from_cache(contextFix)
+                        # Modern Blender method
+                        if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+                            with bpy.context.temp_override(
+                                active_object=obj,
+                                point_cache=canvas_surface.point_cache
+                            ):
+                                bpy.ops.ptcache.bake_from_cache()
+                        # Legacy Blender 2.79 method
+                        else:
+                            contextFix = bpy.context.copy()
+                            contextFix['active_object'] = obj
+                            contextFix['point_cache'] = canvas_surface.point_cache
+                            bpy.ops.ptcache.bake_from_cache(contextFix)
+                            
         # When Fracture Modifier is in use
         if hasattr(bpy.types.DATA_PT_modifiers, 'FRACTURE') and asciiExportName in scene.objects:
             try: objFM = scene.objects[asciiExportName]
@@ -492,6 +523,20 @@ def monitor_initBuffers(scene):
         
 ################################################################################
 
+def getAppliedImpulse(constraint):
+    """
+    Safely retrieves the applied impulse from a rigid body constraint.
+    Returns the real physics data on the FM branch and a fallback on vanilla Blender.
+    """
+    # Original Fracture Modifier branch behavior
+    try:
+        return constraint.appliedImpulse()
+    except AttributeError:
+        # Fallback will effectively disable Mohr-Coulomb
+        return 0.0
+
+################################################################################
+
 def monitor_checkForChange(scene):
 
     if debug: print("Calling checkForChange")
@@ -500,8 +545,11 @@ def monitor_checkForChange(scene):
     connects = bpy.app.driver_namespace["bcb_monitor"]
     try:    progrWeakVar = 1 -bpy.app.driver_namespace["bcb_progrWeakTmp"]
     except: progrWeakVar = 1
-    rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
+    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+        rbw_steps_per_second = int(scene.rigidbody_world.substeps_per_frame * scene.render.fps)
+    else:  # Legacy Blender 2.79 property path
+        rbw_steps_per_second = scene.rigidbody_world.steps_per_second
 
     # Diagnostic verbose
     if props.submenu_assistant_advanced:
@@ -529,7 +577,7 @@ def monitor_checkForChange(scene):
                         # Compressive constraints
                         if con.type != 'GENERIC' \
                         or con.use_limit_lin_x:
-                            forceCon = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                            forceCon = abs(getAppliedImpulse(con)) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
                             force += forceCon
                     # Summarize forces and add them to the forces list, also counting the number of connections
                     objA = connect[0][0]
@@ -570,10 +618,10 @@ def monitor_checkForChange(scene):
                 else: distDif = 1
 
                 # Calculate angle between two elements
-                vecA = Vector((0,0,1)); vecB = Vector((0,0,1))
-                vecA.rotate(objA.matrix_world.to_quaternion())  # Rotate Z vector according to object orientation
-                vecB.rotate(objB.matrix_world.to_quaternion())
-                anglDif = abs(anglOrig -vecA.angle(vecB))
+                quatA = objA.matrix_world.to_quaternion().normalized()
+                quatB = objB.matrix_world.to_quaternion().normalized()
+                anglNow = quatA.rotation_difference(quatB).angle
+                anglDif = abs(anglOrig - anglNow)
 
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
                 if (tolDist != -1 and distDif > tolDist +(anglDif /pi)) \
@@ -620,7 +668,7 @@ def monitor_checkForChange(scene):
                             # Compressive constraints
                             if con.type != 'GENERIC' \
                             or con.use_limit_lin_x:
-                                forceCon = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                                forceCon = abs(getAppliedImpulse(con)) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
                                 force += forceCon
                         ### Get forces from the force list for both connected elements and divide it by the number of connections
                         forceA = objsForces[objA] /objsConstCnts[objA]
@@ -664,9 +712,10 @@ def monitor_checkForChange(scene):
                 else: distDif = 1
 
                 # Calculate angle between two elements
-                quatA = objA.matrix_world.to_quaternion()
-                quatB = objB.matrix_world.to_quaternion()
-                anglDif = math.asin(math.sin( abs(anglOrig -quatA.rotation_difference(quatB).angle) /2))   # The construct "asin(sin(x))" is a triangle function to achieve a seamless rotation loop from input
+                quatA = objA.matrix_world.to_quaternion().normalized()
+                quatB = objB.matrix_world.to_quaternion().normalized()
+                anglNow = quatA.rotation_difference(quatB).angle
+                anglDif = abs(anglOrig - anglNow)
 
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
                 if (tolDist != -1 and distDif > tolDist +(anglDif /pi)) \
@@ -693,7 +742,7 @@ def monitor_checkForChange(scene):
         print("Individual constraints broken - C: %d, T: %d, S: %d, B: %d" %(brokenC, brokenT, brokenS, brokenB))
 
     return cntB
-                
+
 ################################################################################
 
 def monitor_initBuffers_fm(scene):
@@ -824,8 +873,11 @@ def monitor_checkForChange_fm(scene):
     connects = bpy.app.driver_namespace["bcb_monitor"]
     try:    progrWeakVar = 1 -bpy.app.driver_namespace["bcb_progrWeakTmp"]
     except: progrWeakVar = 1
-    rbw_steps_per_second = scene.rigidbody_world.steps_per_second
     rbw_time_scale = scene.rigidbody_world.time_scale
+    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+        rbw_steps_per_second = int(scene.rigidbody_world.substeps_per_frame * scene.render.fps)
+    else:  # Legacy Blender 2.79 property path
+        rbw_steps_per_second = scene.rigidbody_world.steps_per_second
 
     # Get Fracture Modifier
     try: ob = scene.objects[asciiExportName]
@@ -865,7 +917,7 @@ def monitor_checkForChange_fm(scene):
                         # Compressive constraints
                         if con.type != 'GENERIC' \
                         or con.use_limit_lin_x:
-                            forceCon = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                            forceCon = abs(getAppliedImpulse(con)) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
                             force += forceCon
                     # Summarize forces and add them to the forces list, also counting the number of connections
                     objA = connect[0][0]
@@ -912,7 +964,7 @@ def monitor_checkForChange_fm(scene):
                         # Compressive constraints
                         if con.type != 'GENERIC' \
                         or con.use_limit_lin_x:
-                            forceCon = abs(con.appliedImpulse()) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
+                            forceCon = abs(getAppliedImpulse(con)) *rbw_steps_per_second /rbw_time_scale  # Conversion from impulses to forces
                             force += forceCon
                     ### Get forces from the force list for both connected elements and divide it by the number of connections
                     forceA = objsForces[objA] /objsConstCnts[objA]
@@ -2007,13 +2059,22 @@ def monitor_freeBuffers_both(scene):
                 del bpy.app.driver_namespace["bcb_monitor_originalTimeScale"]
                 del bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
 
-        ### Move detonator force fields back to original layer(s) (Todo: Detonator not yet part of BCB)
-        if "Detonator" in bpy.data.groups:
-            for obj in bpy.data.groups["Detonator"].objects:
-                if "Layers_BCB" in obj.keys():
-                    layers = obj["Layers_BCB"]
-                    obj.layers = [bool(i) for i in layers]  # Properties are automatically converted from original bool to int but .layers only accepts bool *shaking head*
-                    del obj["Layers_BCB"]
+        ### Move detonator force fields back to original layer(s)
+        if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+            # Modern Blender Viewport Visibility restoration
+            detonator_coll = bpy.data.collections.get("Detonator")
+            if detonator_coll:
+                for obj in detonator_coll.objects:
+                    if "Hide_Viewport_BCB" in obj.keys():
+                        obj.hide_viewport = obj["Hide_Viewport_BCB"]
+                        del obj["Hide_Viewport_BCB"]
+        else:
+            # Legacy Blender 2.79 Layers restoration
+            if "Detonator" in bpy.data.groups:
+                for obj in bpy.data.groups["Detonator"].objects:
+                    if "Layers_BCB" in obj.keys():
+                        obj.layers = obj["Layers_BCB"]
+                        del obj["Layers_BCB"]
 
         # Clear monitor properties
         del bpy.app.driver_namespace["bcb_monitor"]

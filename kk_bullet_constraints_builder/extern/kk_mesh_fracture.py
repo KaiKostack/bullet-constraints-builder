@@ -1,5 +1,5 @@
 ######################################
-# Mesh Fracture v1.74 by Kai Kostack #
+# Mesh Fracture v1.75 by Kai Kostack #
 ######################################
 
 # ##### BEGIN GPL LICENSE BLOCK #####
@@ -88,8 +88,6 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
     pi = 3.1415927
     pi2 = pi /2
 
-    print("\nStarting splitting process...")
-
     scene = bpy.context.scene
     bpy.context.tool_settings.mesh_select_mode = False, True, False
     #random.seed(0)
@@ -138,6 +136,13 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
         else:
             objs = objsSource
 
+    # Dictionary to backup group/collection relationships for all involved objects (required for modern Blender)
+    # Key: object name, Value: list of groups/collections
+    grpsBak = {}
+    # Backup groups
+    for obj in objs:
+        grpsBak[obj.name] = [grp for grp in bpy.data.groups if obj.name in grp.objects]
+            
     # Deselect all objects
     bpy.ops.object.select_all(action='DESELECT')
 
@@ -170,8 +175,9 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
     if qSecondScnOpt:
         ### Create new scene for faster object creation
         # Store layer settings
-        layers = []
-        for i in range(20): layers.append(int(scene.layers[i]))
+        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:  # Modern Blender API change
+            layers = []
+            for i in range(20): layers.append(int(scene.layers[i]))
         ### Create new scene if not already existing (see Dynamic Fracture)
         qExists = 0
         for scn in bpy.data.scenes:
@@ -186,7 +192,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
             if objTemp.type == 'CAMERA':
                 sceneCreate.objects.link(objTemp)
         # Set layers as in original scene
-        for i in range(20): sceneCreate.layers[i] = layers[i]
+        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:  # Modern Blender API change
+            for i in range(20): sceneCreate.layers[i] = layers[i]
         # Switch to new scene
         bpy.context.screen.scene = sceneCreate
                        
@@ -365,7 +372,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             boolErrorCount += 1
                             # Delete object from database for new retry
                             bpy.data.meshes.remove(objCdup.data, do_unlink=1)
-                            bpy.data.objects.remove(objCdup, do_unlink=1)
+                            try: bpy.data.objects.remove(objCdup, do_unlink=1)
+                            except: pass
                             # Clear modifier from original object after that
                             obj.modifiers.clear()
                             continue
@@ -376,7 +384,7 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         objA.rotation_euler = obj.rotation_euler.copy()
                         # Copy ID properties
                         for key in obj.keys(): objA[key] = obj[key]
-                        
+                       
                         ### Prepare second object
                         if qDebugVerbose: print("## MF: Prepare second object")
                         ### Inverted normals of the cutter plane
@@ -409,9 +417,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             boolErrorCount += 1
                             # Delete objects from database for new retry
                             bpy.data.meshes.remove(objA.data, do_unlink=1)
-                            bpy.data.objects.remove(objA, do_unlink=1)
+                            try: bpy.data.objects.remove(objA, do_unlink=1)
+                            except: pass
                             bpy.data.meshes.remove(objCdup.data, do_unlink=1)
-                            bpy.data.objects.remove(objCdup, do_unlink=1)
+                            try: bpy.data.objects.remove(objCdup, do_unlink=1)
+                            except: pass
                             continue
                         objB = bpy.data.objects.new(obj.name, meB)
                         bpy.context.scene.objects.link(objB)
@@ -420,6 +430,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         objB.rotation_euler = obj.rotation_euler.copy()
                         # Copy ID properties
                         for key in obj.keys(): objB[key] = obj[key]
+
+                        # Preserve group membership for future shards
+                        if obj.name in grpsBak:
+                            grpsBak[objA.name] = grpsBak[obj.name]
+                            grpsBak[objB.name] = grpsBak[obj.name]
 
                         ### Check mesh results for sanity (evaluation)
                         if qDebugVerbose: print("## MF: Check mesh results for sanity (evaluation)")
@@ -432,11 +447,14 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             boolErrorCount += 1
                             # Delete objects from database for new retry
                             bpy.data.meshes.remove(objA.data, do_unlink=1)
-                            bpy.data.objects.remove(objA, do_unlink=1)
+                            try: bpy.data.objects.remove(objA, do_unlink=1)
+                            except: pass
                             bpy.data.meshes.remove(objB.data, do_unlink=1)
-                            bpy.data.objects.remove(objB, do_unlink=1)
+                            try: bpy.data.objects.remove(objB, do_unlink=1)
+                            except: pass
                             bpy.data.meshes.remove(objCdup.data, do_unlink=1)
-                            bpy.data.objects.remove(objCdup, do_unlink=1)
+                            try: bpy.data.objects.remove(objCdup, do_unlink=1)
+                            except: pass
                             continue
                         
                         ### After successful boolean operation
@@ -465,12 +483,13 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             objA.select = 0; objB.select = 0
 
                         ### Link new objects to every group the original is linked to
-                        for grp in bpy.data.groups:
-                            for objG in grp.objects:
-                                if objG.name == obj.name:
+                        if obj.name in grpsBak:
+                            for grp in grpsBak[obj.name]:
+                                if objA.name not in grp.objects:
                                     grp.objects.link(objA)
+                                if objB.name not in grp.objects:
                                     grp.objects.link(objB)
-                        
+                                                            
                         if qDynSecondScnOpt:
                             ### Dynamic Fracture: If using two scenes remove objects in original scene first otherwise Blender will crash due to "access violation"
                             if grpRBWorld != None:
@@ -488,7 +507,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             
                         ### Delete cutter object from database
                         bpy.data.meshes.remove(objCdup.data, do_unlink=1)
-                        bpy.data.objects.remove(objCdup, do_unlink=1)
+                        try: bpy.data.objects.remove(objCdup, do_unlink=1)
+                        except: pass
                         
                         if grpRBWorld != None:
                             ### Copy rigid body data to new object (if enabled)
@@ -504,7 +524,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         if qDebugVerbose: print("## MF: Delete source object from database")
                         objsRemoveIdx.append(objsHistory.index(obj))
                         bpy.data.meshes.remove(obj.data, do_unlink=1)
-                        bpy.data.objects.remove(obj, do_unlink=1)
+                        try: bpy.data.objects.remove(obj, do_unlink=1)
+                        except: pass
                                                     
                         ### Add new objects to the list
                         objectCount -= 1   # Remove original object
@@ -669,7 +690,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             boolErrorCount += 1
                             # Delete object from database for new retry
                             bpy.data.meshes.remove(objA.data, do_unlink=1)
-                            bpy.data.objects.remove(objA, do_unlink=1)
+                            try: bpy.data.objects.remove(objA, do_unlink=1)
+                            except: pass
                             continue
                         objB = bpy.data.objects.new(obj.name, meB)
                         bpy.context.scene.objects.link(objB)
@@ -679,6 +701,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         # Copy ID properties
                         for key in obj.keys(): objB[key] = obj[key]
                                                                 
+                        # Preserve group membership for future shards
+                        if obj.name in grpsBak:
+                            grpsBak[objA.name] = grpsBak[obj.name]
+                            grpsBak[objB.name] = grpsBak[obj.name]
+
                         ### Check mesh results for sanity (preparation)
                         if qDebugVerbose: print("## MF: Check mesh results for sanity (preparation)")
                         ### Check for non-manifolds on both new meshes
@@ -741,9 +768,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             boolErrorCount += 1
                             # Delete both objects from database for new retry
                             bpy.data.meshes.remove(objA.data, do_unlink=1)
-                            bpy.data.objects.remove(objA, do_unlink=1)
+                            try: bpy.data.objects.remove(objA, do_unlink=1)
+                            except: pass
                             bpy.data.meshes.remove(objB.data, do_unlink=1)
-                            bpy.data.objects.remove(objB, do_unlink=1)
+                            try: bpy.data.objects.remove(objB, do_unlink=1)
+                            except: pass
                             continue
                         
                         ### After successful boolean operation
@@ -772,10 +801,11 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                             objA.select = 0; objB.select = 0
 
                         ### Link new objects to every group the original is linked to
-                        for grp in bpy.data.groups:
-                            for objG in grp.objects:
-                                if objG.name == obj.name:
+                        if obj.name in grpsBak:
+                            for grp in grpsBak[obj.name]:
+                                if objA.name not in grp.objects:
                                     grp.objects.link(objA)
+                                if objB.name not in grp.objects:
                                     grp.objects.link(objB)
                         
                         if qDynSecondScnOpt:
@@ -807,7 +837,8 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
                         if qDebugVerbose: print("## MF: Delete source object from database")
                         objsRemoveIdx.append(objsHistory.index(obj))
                         bpy.data.meshes.remove(obj.data, do_unlink=1)
-                        bpy.data.objects.remove(obj, do_unlink=1)
+                        try: bpy.data.objects.remove(obj, do_unlink=1)
+                        except: pass
                         
                         ### Add new objects to the list
                         objectCount -= 1   # Remove original object
@@ -878,12 +909,16 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
         objCS.rotation_euler = rotCold
     
     ### Calculate new masses for new objects in case rigid body simulation is enabled
+    # Filter list to only contain valid, non-None objects with rigid body settings
     if grpRBWorld != None:
-        for obj in objsNew:
-            if obj.rigid_body != None:
-                obj.select = 1
-        if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
-        else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
+        objsNewExisting = [obj for obj in objsNew if obj is not None and getattr(obj, "rigid_body", None) is not None]
+        if len(objsNewExisting):
+            for obj in objsNewExisting:
+                if obj.rigid_body != None:
+                    obj.select = 1
+            bpy.context.scene.objects.active = objsNewExisting[0]
+            if not materialDensity: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
+            else: bpy.ops.rigidbody.mass_calculate(material=materialPreset, density=materialDensity)
     # Select all objects in fracture history
     for obj in objsNew:
         try: obj.select = 1
