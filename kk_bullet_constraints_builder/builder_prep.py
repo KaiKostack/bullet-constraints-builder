@@ -69,7 +69,7 @@ def initGeneralRigidBodyWorldSettings(scene):
                     scene.render.fps_base = 1
                 
     # Set Steps / Substeps Per Second for rigid body simulation safely across versions
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+    if bpy.IS_MODERN:  # Modern Blender
         scene.rigidbody_world.substeps_per_frame = int(props.stepsPerSecond / scene.render.fps)
     else:  # Legacy Blender 2.79 properties
         scene.rigidbody_world.steps_per_second = props.stepsPerSecond
@@ -1536,7 +1536,16 @@ def createEmptyObjs(scene, constCnt):
         if not obj.select: obj.select = 1
     grpNewName = grpNameBuilding +"_Constraints"
     if grpNewName not in bpy.data.groups:
-        bpy.ops.group.create(name=grpNewName)
+        grp = bpy.ops.group.create(name=grpNewName)
+    # Make the group/collection visible in the Outliner for modern Blender
+    if bpy.IS_MODERN:
+        try: bpy.context.scene.collection.children.link(grp)
+        except: pass
+        # Remove objects from the scene's master collection
+        for obj in emptyObjs:
+            try: bpy.context.scene.collection.objects.unlink(obj)
+            except: pass
+
     # Hide selection
     bpy.ops.object.hide_view_set(unselected=False)
     

@@ -132,7 +132,7 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
     scene = bpy.context.scene
     elemGrps = global_vars.elemGrps
     rbw_time_scale = scene.rigidbody_world.time_scale
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+    if bpy.IS_MODERN:  # Modern Blender
         rbw_steps_per_second = int(scene.rigidbody_world.substeps_per_frame * scene.render.fps)
     else:  # Legacy Blender 2.79 property path
         rbw_steps_per_second = scene.rigidbody_world.steps_per_second

@@ -74,8 +74,10 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
         crackOrigin = None
     
     ### Corrections
-    if objsSource != None: qSecondScnOpt = 0
     if qUseHalving: bisectErrorRetryLimit = 1
+    if objsSource != None: qSecondScnOpt = 0
+    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+        qSecondScnOpt = 0
     
     ### Constants
     pi = 3.1415927
@@ -157,7 +159,7 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
     if qSecondScnOpt:
         ### Create new scene for faster object creation
         # Store layer settings
-        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:  # Modern Blender API change
+        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:  # Legacy Blender 2.79
             layers = []
             for i in range(20): layers.append(int(scene.layers[i]))
         ### Create new scene if not already existing (see Dynamic Fracture)
@@ -174,7 +176,7 @@ def run(sceneOriginal, objsSource, crackOrigin, qDynSecondScnOpt):
             if objTemp.type == 'CAMERA':
                 sceneCreate.objects.link(objTemp)
         # Set layers as in original scene
-        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:  # Modern Blender API change
+        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:  # Legacy Blender 2.79
             for i in range(20): sceneCreate.layers[i] = layers[i]
         # Switch to new scene
         bpy.context.screen.scene = sceneCreate

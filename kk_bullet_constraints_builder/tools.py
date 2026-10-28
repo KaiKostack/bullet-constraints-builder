@@ -513,13 +513,16 @@ def tool_remesh(scene):
         for obj in selectionBak: obj.select = 1
         return
 
-    for obj in objs:
-        scene.objects.unlink(obj)   # Unlinking optimization: Unlink objects from scene for speed optimization
+    # Unlinking optimization: Unlink objects from scene for speed optimization
+    if not bpy.IS_MODERN:  # Legacy Blender 2.79
+        for obj in objs:
+            scene.objects.unlink(obj)
 
     count = 0
     for obj in objs:
         sys.stdout.write('\r' +"%d %s... " %(count, obj.name))
-        scene.objects.link(obj)   # Unlinking optimization: Relink objects to scene so we can work with it
+        if not bpy.IS_MODERN:  # Legacy Blender 2.79
+            scene.objects.link(obj)   # Unlinking optimization: Relink objects to scene so we can work with it
         bpy.context.scene.objects.active = obj
         try: bpy.ops.object.mode_set(mode='EDIT')
         except: pass
@@ -529,13 +532,15 @@ def tool_remesh(scene):
         except: pass
         try: bpy.ops.object.mode_set(mode='OBJECT') 
         except: pass
-        scene.objects.unlink(obj)   # Unlinking optimization: Unlink object again
+        if not bpy.IS_MODERN:  # Legacy Blender 2.79
+            scene.objects.unlink(obj)   # Unlinking optimization: Unlink object again
         count += 1
     print('\r                                                                                ')
 
     # Unlinking optimization: Relink all objects back to scene
-    for obj in objs:
-        scene.objects.link(obj)
+    if not bpy.IS_MODERN:  # Legacy Blender 2.79
+        for obj in objs:
+            scene.objects.link(obj)
     
     # Revert to start selection
     for obj in selectionBak: obj.select = 1
@@ -1281,11 +1286,20 @@ def tool_fixFoundation(scene):
         ### Create a new group for the foundation object if not already existing
         grpName = foundationName
         try: grp = bpy.data.groups[grpName]
-        except: grp = bpy.data.groups.new(grpName)
+        except: grp = bpy.data.groups.new(grpName)            
         try: grp.objects.link(obj)
         except: pass
         try: grp.objects.link(obj2)
         except: pass
+        # Make the group/collection visible in the Outliner for modern Blender
+        if bpy.IS_MODERN:
+            try: bpy.context.scene.collection.children.link(grp)
+            except: pass
+            # Remove objects from the scene's master collection
+            try: bpy.context.scene.collection.objects.unlink(obj)
+            except: pass
+            try: bpy.context.scene.collection.objects.unlink(obj2)
+            except: pass
 
         ### Create also element group from data and use passive preset for it
         createElementGroup(grpName, presetNo=1)
@@ -1378,7 +1392,9 @@ def tool_groundMotion(scene):
     print("\nApplying ground motion...")
 
     props = bpy.context.window_manager.bcb
-    q = 0
+
+    qAnimated = props.preprocTools_gnd_nac or len(props.preprocTools_gnd_obm) > 0
+    
     if len(props.preprocTools_gnd_obj) == 0:
         print("No ground object name defined in user interface.")
         return
@@ -1386,10 +1402,15 @@ def tool_groundMotion(scene):
         objGnd = scene.objects[props.preprocTools_gnd_obj]
         qCreateGroundObj = 0
     else: qCreateGroundObj = 1
-    if props.preprocTools_gnd_obm in scene.objects:
-        objMot = scene.objects[props.preprocTools_gnd_obm]
-    else: objMot = None
-        
+    if qAnimated:
+        if len(props.preprocTools_gnd_obm) == 0:
+            print("No motion data object name defined in user interface.")
+            return
+        if props.preprocTools_gnd_obm in scene.objects:
+            objMot = scene.objects[props.preprocTools_gnd_obm]
+            qCreateMotionObj = 0
+        else: qCreateMotionObj = 1
+
     # Leave edit mode to make sure next operator works in object mode
     try: bpy.ops.object.mode_set(mode='OBJECT') 
     except: pass
@@ -1458,10 +1479,19 @@ def tool_groundMotion(scene):
         me.from_pydata(verts, [], faces)
         # Set ground to the height of the lowest active rigid body
         objGnd.location[2] = height
-
     elif qCreateGroundObj and qAllSelectedSkipped:
         print("All selected objects are part of '%s' -> no ground object will be created." % grpName)
         objGnd = None
+
+    if qAnimated:
+        if qCreateMotionObj and not qAllSelectedSkipped:
+            print("Motion data object not found, creating new one...")
+            ### Create motion data object
+            objMot = bpy.data.objects.new(props.preprocTools_gnd_obm, None)
+            bpy.context.scene.objects.link(objMot)
+        elif qCreateMotionObj and qAllSelectedSkipped:
+            print("All selected objects are part of '%s' -> no motion data object will be created." % grpName)
+            objMot = None
 
     ###### Parenting to ground object
     
@@ -1485,12 +1515,13 @@ def tool_groundMotion(scene):
         if len(objs) == 0:
             print("No passive rigid body elements selected, nothing attached to the ground.")
         else:
-            # Select passive mesh objects
-            for obj in objs: obj.select = 1
+            if qAnimated and objMot != None:
+                # Select passive mesh objects
+                for obj in objs: obj.select = 1
 
-            ### Make object parent for selected objects
-            bpy.context.scene.objects.active = objGnd  # Parent
-            bpy.ops.object.parent_set(type='OBJECT', keep_transform=False)
+                ### Make object parent for selected objects
+                bpy.context.scene.objects.active = objMot  # Parent
+                bpy.ops.object.parent_set(type='OBJECT', keep_transform=False)
             
             # Enable animated flag for all passive rigid bodies so that Bullet takes their motion into account
             for obj in objs: obj.rigid_body.kinematic = True
@@ -1516,7 +1547,7 @@ def tool_groundMotion(scene):
                     
         ###### Parenting ground object to motion object
 
-        if objMot != None:
+        if qAnimated and objMot != None:
             # Deselect all objects.
             bpy.ops.object.select_all(action='DESELECT')
             
@@ -1856,7 +1887,7 @@ def tool_exportForceHistory_eventHandler(scene):
 
     props = bpy.context.window_manager.bcb
     rbw_time_scale = scene.rigidbody_world.time_scale
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+    if bpy.IS_MODERN:  # Modern Blender
         rbw_steps_per_second = int(scene.rigidbody_world.substeps_per_frame * scene.render.fps)
     else:  # Legacy Blender 2.79 property path
         rbw_steps_per_second = scene.rigidbody_world.steps_per_second
@@ -1970,7 +2001,7 @@ def tool_exportForceHistory(scene):
 
     ### Free previous bake data
     # Modern Blender context override method
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+    if bpy.IS_MODERN:
         with context.temp_override(point_cache=scene.rigidbody_world.point_cache):
             bpy.ops.ptcache.free_bake()
     # Legacy Blender 2.79 method
@@ -2076,7 +2107,7 @@ def tool_forcesVisualization_eventHandler(scene):
     elemGrps = global_vars.elemGrps
 
     rbw_time_scale = scene.rigidbody_world.time_scale
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+    if bpy.IS_MODERN:  # Modern Blender
         rbw_steps_per_second = int(scene.rigidbody_world.substeps_per_frame * scene.render.fps)
     else:  # Legacy Blender 2.79 property path
         rbw_steps_per_second = scene.rigidbody_world.steps_per_second
@@ -2518,7 +2549,7 @@ def tool_forcesVisualization(scene):
 
     ### Free previous bake data
     # Modern Blender context override method
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+    if bpy.IS_MODERN:
         with context.temp_override(point_cache=scene.rigidbody_world.point_cache):
             bpy.ops.ptcache.free_bake()
     # Legacy Blender 2.79 method
@@ -2599,7 +2630,7 @@ def tool_cavityDetection(scene):
 
     ### Since we have modified the Rigid Body World, we must lock the cache again into a bake
     # Modern Blender context override method
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+    if bpy.IS_MODERN:
         with bpy.context.temp_override(point_cache=scene.rigidbody_world.point_cache):
             bpy.ops.ptcache.bake_from_cache()
     # Legacy Blender 2.79 method

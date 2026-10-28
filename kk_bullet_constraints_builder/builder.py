@@ -112,7 +112,7 @@ def build():
                         ###### Create actual parents for too small elements
                         if props.minimumElementSize: makeParentsForTooSmallElementsReal(objs, connectsPairParent)
                         ###### Find and activate first empty layer
-                        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+                        if not bpy.IS_MODERN:
                             layersBak = backupLayerSettingsAndActivateNextEmptyLayer(scene)
                         ###### Create empty objects (without any data)
                         if not props.asciiExport and not props.rebarMesh:
@@ -122,7 +122,7 @@ def build():
                         ###### Bundling close empties into clusters, merge locations and count connections per cluster
                         if props.clusterRadius > 0: bundlingEmptyObjsToClusters(connectsLoc, connectsConsts)
                         # Restore old layers state
-                        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+                        if not bpy.IS_MODERN:
                             scene.update()  # Required to update empty locations before layer switching
                             scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)
                         ###### Store build data in scene
@@ -175,14 +175,14 @@ def build():
                 ###### Create detonator force fields and data
                 connectsBtMul = generateDetonator(objs, connectsPair, objsEGrp)
                 ###### Find and activate first layer with constraint empty object (required to set constraint locations in setConstraintSettings())
-                if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+                if not bpy.IS_MODERN:
                     if not props.asciiExport: layersBak = backupLayerSettingsAndActivateNextLayerWithObj(scene, emptyObjs[0])
                 ###### Set constraint settings
                 connectsTol, exData = setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, connectsLoc, connectsGeo, connectsConsts, constsConnect, connectsBtMul)
                 ###### Store new build data in scene
                 storeBuildDataInScene(scene, None, None, emptyObjs, None, None, None, None, None, None, None, connectsTol, None)
                 ### Restore old layers state
-                if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+                if not bpy.IS_MODERN:
                     if not props.asciiExport:
                         scene.update()  # Required to update empty locations before layer switching
                         scene.layers = [bool(q) for q in layersBak]  # Convert array into boolean (required by layers)

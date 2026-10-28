@@ -170,7 +170,7 @@ def monitor_eventHandler(scene):
                     ###### Execute update of all existing constraints with new time scale
                     build()
                     ### Move detonator force fields to other layer to deactivate influence (Todo: Detonator not yet part of BCB)
-                    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+                    if bpy.IS_MODERN:
                         # Modern Blender Collection and Viewport Visibility Logic
                         # In Blender 2.80+ groups became collections
                         detonator_coll = bpy.data.collections.get("Detonator")
@@ -338,7 +338,7 @@ def monitor_stop_eventHandler(scene):
         else: print("Removed event handler: monitor_stop_eventHandler")
 
         # Convert animation point cache to fixed bake data
-        if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+        if bpy.IS_MODERN:
             with bpy.context.temp_override(point_cache=scene.rigidbody_world.point_cache):
                 bpy.ops.ptcache.bake_from_cache()
         # Legacy Blender 2.79 method
@@ -353,7 +353,7 @@ def monitor_stop_eventHandler(scene):
                 if mod.type == 'DYNAMIC_PAINT' and mod.canvas_settings != None:
                     for canvas_surface in mod.canvas_settings.canvas_surfaces:
                         # Modern Blender method
-                        if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+                        if bpy.IS_MODERN:
                             with bpy.context.temp_override(
                                 active_object=obj,
                                 point_cache=canvas_surface.point_cache
@@ -481,7 +481,7 @@ def monitor_initBuffers(scene):
             # Calculate angle between two elements
             quat0 = objA.matrix_world.to_quaternion()
             quat1 = objB.matrix_world.to_quaternion()
-            angl = quat0.rotation_difference(quat1).angle
+            angl = quat0.rotation_difference(quat1)
             consts = []
             constsEnabled = []
             constsUseBrk = []
@@ -546,7 +546,7 @@ def monitor_checkForChange(scene):
     try:    progrWeakVar = 1 -bpy.app.driver_namespace["bcb_progrWeakTmp"]
     except: progrWeakVar = 1
     rbw_time_scale = scene.rigidbody_world.time_scale
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+    if bpy.IS_MODERN:  # Modern Blender
         rbw_steps_per_second = int(scene.rigidbody_world.substeps_per_frame * scene.render.fps)
     else:  # Legacy Blender 2.79 property path
         rbw_steps_per_second = scene.rigidbody_world.steps_per_second
@@ -618,10 +618,12 @@ def monitor_checkForChange(scene):
                 else: distDif = 1
 
                 # Calculate angle between two elements
-                quatA = objA.matrix_world.to_quaternion().normalized()
-                quatB = objB.matrix_world.to_quaternion().normalized()
-                anglNow = quatA.rotation_difference(quatB).angle
-                anglDif = abs(anglOrig - anglNow)
+                quatA = objA.matrix_world.to_quaternion()
+                quatB = objB.matrix_world.to_quaternion()
+                quatNow = quatA.rotation_difference(quatB)
+                dot = abs(anglOrig.dot(quatNow))
+                dot = min(1.0, max(-1.0, dot))
+                anglDif = 2.0 * math.acos(dot)
 
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
                 if (tolDist != -1 and distDif > tolDist +(anglDif /pi)) \
@@ -712,10 +714,12 @@ def monitor_checkForChange(scene):
                 else: distDif = 1
 
                 # Calculate angle between two elements
-                quatA = objA.matrix_world.to_quaternion().normalized()
-                quatB = objB.matrix_world.to_quaternion().normalized()
-                anglNow = quatA.rotation_difference(quatB).angle
-                anglDif = abs(anglOrig - anglNow)
+                quatA = objA.matrix_world.to_quaternion()
+                quatB = objB.matrix_world.to_quaternion()
+                quatNow = quatA.rotation_difference(quatB)
+                dot = abs(anglOrig.dot(quatNow))
+                dot = min(1.0, max(-1.0, dot))
+                anglDif = 2.0 * math.acos(dot)
 
                 # If change in relative distance is larger than tolerance plus change in angle (angle is involved here to allow for bending and buckling)
                 if (tolDist != -1 and distDif > tolDist +(anglDif /pi)) \
@@ -874,7 +878,7 @@ def monitor_checkForChange_fm(scene):
     try:    progrWeakVar = 1 -bpy.app.driver_namespace["bcb_progrWeakTmp"]
     except: progrWeakVar = 1
     rbw_time_scale = scene.rigidbody_world.time_scale
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+    if bpy.IS_MODERN:  # Modern Blender
         rbw_steps_per_second = int(scene.rigidbody_world.substeps_per_frame * scene.render.fps)
     else:  # Legacy Blender 2.79 property path
         rbw_steps_per_second = scene.rigidbody_world.steps_per_second
@@ -2060,7 +2064,7 @@ def monitor_freeBuffers_both(scene):
                 del bpy.app.driver_namespace["bcb_monitor_originalSolverIterations"]
 
         ### Move detonator force fields back to original layer(s)
-        if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+        if bpy.IS_MODERN:
             # Modern Blender Viewport Visibility restoration
             detonator_coll = bpy.data.collections.get("Detonator")
             if detonator_coll:

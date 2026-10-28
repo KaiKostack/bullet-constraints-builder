@@ -59,6 +59,10 @@ def run(source=None, parameters=None):
     #qSetWireView = 0                # Enables wire display mode for created meshes
     qSilentVerbose = 0               # Reduces text output to a minimum
 
+    ### Corrections
+    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+        qUnlinkOpt = 0
+
     ### Custom BCB parameter handling
     if source == 'BCB_Discretize':
         cellSize = parameters[0]
@@ -704,10 +708,16 @@ def run(source=None, parameters=None):
 def copyCustomData(obj, objSrc):
 
     ### Link new object to every group the original is linked to
+    qHasGroup = False
     for grp in bpy.data.groups:
         if objSrc.name in grp.objects:
+            qHasGroup = True
             try:    grp.objects.link(obj)
             except: pass
+    # Remove object from the scene's master collection for modern Blender
+    if bpy.IS_MODERN and qHasGroup:
+        try: bpy.context.scene.collection.objects.unlink(obj)
+        except: pass
             
     ### Copy materials    
     bpy.context.scene.objects.active = obj

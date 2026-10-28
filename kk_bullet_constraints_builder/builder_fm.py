@@ -133,7 +133,7 @@ def build_fm(use_handler=0):
     ob.data.name = asciiExportName
     ob.show_transparent = True
 
-    if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+    if not bpy.IS_MODERN:
         layersBak = [int(q) for q in scene.layers]   # Backup scene layer settings
         scene.layers = [True for q in scene.layers]  # Activate all scene layers
 
@@ -174,7 +174,7 @@ def build_fm(use_handler=0):
             scene.update()  # Required to make RBs actually not participating in simulation anymore
 
         # Move to last layer
-        if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+        if not bpy.IS_MODERN:
             for obj in objs: obj.select = 1
             bpy.ops.object.move_to_layer(layers=(False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True))
 
@@ -285,7 +285,7 @@ def build_fm(use_handler=0):
         bpy.context.scene.objects.active = ob
 
     # Revert scene layer settings from backup
-    if not hasattr(bpy, "IS_MODERN") or not bpy.IS_MODERN:
+    if not bpy.IS_MODERN:
         scene.layers = [bool(q) for q in layersBak]
         
     print()

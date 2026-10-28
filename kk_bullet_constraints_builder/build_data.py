@@ -173,7 +173,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_detonGroundReflect"] = props.detonGroundReflect
     
     ### Modern Blender uses new and more robust method for storage
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+    if bpy.IS_MODERN:
         import pickle, base64
         print("Storing element groups as secure pickle string in scene...")
         # We use protocol=2 for maximum compatibility across Python versions
@@ -451,7 +451,7 @@ def getConfigDataFromScene(scene):
         raw_data = scene["bcb_prop_elemGrps"]
 
         # Check if modern Blender version path is active
-        if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+        if bpy.IS_MODERN:
             import pickle, base64
             
             # Backward compatibility: Check if data is stored as a string (new format)
@@ -703,7 +703,7 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
     ### Backup layer / collection settings and activate all layers
     layersBak = []
     collectionsBak = []  # Stores (LayerCollection_Pointer, original_exclude_value)
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+    if bpy.IS_MODERN:
         # Modern Blender 2.80+ / 5+ Collection Logic
         # We recursively traverse all layer collections using a flat while-loop to prevent stack overflow
         layer_collections = [bpy.context.view_layer.layer_collection]
@@ -852,7 +852,7 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
         except: pass
         # Save file
         bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath.split('_bake.blend')[0].split('.blend')[0] +'_bake.blend', compress=True)
-        if len(objs) +len(emptyObjs) < 4000 or (hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN):  # Modern Blender
+        if len(objs) +len(emptyObjs) < 4000 or bpy.IS_MODERN:  # Modern Blender
             print("Bake blend saved. (You can terminate Blender now if you don't want to wait for")
             print("the slow Depsgraph to finish, just reloading the blend file can be faster.)") 
             ### Bring back unlinked objects for regular deletion now
@@ -865,7 +865,7 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
                 try: scene.objects.link(emptyObj)
                 except: pass
 
-    if len(objs) +len(emptyObjs) < 4000 or (hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN):  # Modern Blender
+    if len(objs) +len(emptyObjs) < 4000 or bpy.IS_MODERN:  # Modern Blender
         ### Delete all selected objects
         bpy.ops.object.delete(use_global=True)
     else:
@@ -887,7 +887,7 @@ def clearAllDataFromScene(scene, qKeepBuildData=0):
         except: pass
             
     # Set layers / collections as in original scene
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+    if bpy.IS_MODERN:
         # Modern Blender Collections visibility restoration
         for layer_col, original_exclude in collectionsBak:
             try:

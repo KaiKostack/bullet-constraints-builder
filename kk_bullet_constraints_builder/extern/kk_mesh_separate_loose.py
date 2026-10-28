@@ -35,9 +35,11 @@ def run():
 
     qSilentVerbose = 1     # Reduces text output to a minimum
     
-    ### Fixes
+    ### Corrections
     if qUVislands: elementBase = 1  # This is required because a vertex can share multiple UV islands so we still would get multiple UV islands per separated mesh
-    
+    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+       qUnlinkOpt = 0
+        
     ###
     
     print("\nStarting separate loose...")

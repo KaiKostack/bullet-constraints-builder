@@ -387,7 +387,7 @@ classes = [ \
 def register():
 
     # 1. Apply the Property Patch only if running on modern Blender
-    if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+    if bpy.IS_MODERN:
         for cls in classes:
             if cls.__name__ in ("bcb_props", "bcb_asst_con_rei_beam_props", "bcb_asst_con_rei_wall_props"):
                 if not hasattr(cls, "__annotations__"):

@@ -111,7 +111,7 @@ class OBJECT_OT_bcb_build(bpy.types.Operator):
         ### Free previous bake data
         if scene.rigidbody_world != None:
             # Modern Blender context override method
-            if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+            if bpy.IS_MODERN:
                 with context.temp_override(point_cache=scene.rigidbody_world.point_cache):
                     bpy.ops.ptcache.free_bake()
             # Legacy Blender 2.79 method
@@ -219,7 +219,7 @@ class OBJECT_OT_bcb_export_ascii_fm(bpy.types.Operator):
             ### Free previous bake data
             if scene.rigidbody_world != None:
                 # Modern Blender context override method
-                if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+                if bpy.IS_MODERN:
                     with context.temp_override(point_cache=scene.rigidbody_world.point_cache):
                         bpy.ops.ptcache.free_bake()
                 # Legacy Blender 2.79 method
@@ -291,7 +291,7 @@ class OBJECT_OT_bcb_bake(bpy.types.Operator):
         contextFix = bpy.context.copy()
         if scene.rigidbody_world != None:
             # Modern Blender context override method
-            if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:
+            if bpy.IS_MODERN:
                 with context.temp_override(point_cache=scene.rigidbody_world.point_cache):
                     bpy.ops.ptcache.free_bake()
             # Legacy Blender 2.79 method

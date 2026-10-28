@@ -22,6 +22,9 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+import bpy, sys, random, time
+from mathutils import *
+
 ### Vars
 searchMode = 4          # 1 = Completely randomized search but keep islands intact, works also on point clouds
                         # 2 = Improved island search using boundary boxes (faces only)
@@ -32,10 +35,9 @@ randomSizeFactor = 0    # How much size randomization should be used [0..1]
 qSilentVerbose = 0      # Reduces text output to a minimum
 qUnlinkOpt = 1          # Use unlink optimization for object processing, improves performance only for huge amounts of objects in scene
 
-################################################################################
-
-import bpy, sys, random, time
-from mathutils import *
+### Corrections
+if hasattr(bpy, "IS_MODERN") and bpy.IS_MODERN:  # Modern Blender
+    qUnlinkOpt = 0
 
 ################################################################################
 
