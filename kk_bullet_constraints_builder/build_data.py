@@ -162,6 +162,7 @@ def storeConfigDataInScene(scene):
     scene["bcb_prop_dampRegLin"] = props.dampRegLin
     scene["bcb_prop_dampRegAng"] = props.dampRegAng
     scene["bcb_prop_detonatorObj"] = props.detonatorObj
+    scene["bcb_prop_detonatorObjAdv"] = props.detonatorObjAdv
     scene["bcb_prop_detonatorMul"] = props.detonatorMul
     scene["bcb_prop_detonatorMax"] = props.detonatorMax
     scene["bcb_prop_detonAdvanced"] = props.detonAdvanced
@@ -422,6 +423,11 @@ def getConfigDataFromScene(scene):
         props.dampRegAng = scene["bcb_prop_dampRegAng"]
     if "bcb_prop_detonatorObj" in scene.keys():
         props.detonatorObj = scene["bcb_prop_detonatorObj"]
+    if "bcb_prop_detonatorObjAdv" in scene.keys():
+        props.detonatorObjAdv = scene["bcb_prop_detonatorObjAdv"]
+    elif "bcb_prop_detonatorObj" in scene.keys():
+        # Older scenes used the same name substring for both detonator modes.
+        props.detonatorObjAdv = props.detonatorObj
     if "bcb_prop_detonatorMul" in scene.keys():
         props.detonatorMul = scene["bcb_prop_detonatorMul"]
     if "bcb_prop_detonatorMax" in scene.keys():

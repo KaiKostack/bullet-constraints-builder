@@ -167,6 +167,9 @@ def setConstraintSettings(objs, objsEGrp, emptyObjs, objsID, connectsPair, conne
     if len(props.detonatorObj):
         for obj in scene.objects:
             if props.detonatorObj in obj.name and "_Push" not in obj.name and "_Pull" not in obj.name:
+                # Keep Advanced Detonator objects out of the simple gradient when the name filters differ.
+                if props.detonAdvanced and len(props.detonatorObjAdv) and props.detonatorObjAdv != props.detonatorObj and props.detonatorObjAdv in obj.name:
+                    continue
                 detonatorObjs.append(obj)
     if len(detonatorObjs): print("Detonator object(s) found:", len(detonatorObjs))
 

@@ -442,6 +442,8 @@ class bcb_panel_triggers(bpy.types.Panel):
         row.prop(props, "detonAdvanced")
         if props.detonAdvanced and props.timeScalePeriod == 0:
             row = col.row(align=1); row.label(text="Warning: Time Scale Period > 0 required!")
+        row = col.row(align=1); row.prop(props, "detonatorObjAdv")
+        if not props.detonAdvanced: row.enabled = 0
         
         row = col.row(align=1)
         if not props.detonAdvanced: row.enabled = 0

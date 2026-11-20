@@ -2045,9 +2045,9 @@ def generateDetonator(objs, connectsPair, objsEGrp):
     ### Get detonator objects
     detonatorObjs = []
     if props.detonAdvanced:
-        if len(props.detonatorObj):
+        if len(props.detonatorObjAdv):
             for obj in scene.objects:
-                if props.detonatorObj in obj.name and "_Push" not in obj.name and "_Pull" not in obj.name:
+                if props.detonatorObjAdv in obj.name and "_Push" not in obj.name and "_Pull" not in obj.name:
                     detonatorObjs.append(obj)
     if len(detonatorObjs) == 0:
         if props.detonAdvanced:
