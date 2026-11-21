@@ -229,10 +229,7 @@ def importConfigData(scene):
         props.detonatorMul = configData[i]; i += 1
         props.detonatorMax = configData[i]; i += 1
         props.detonAdvanced = configData[i]; i += 1
-        if len(configData) > i + 1:
-            props.detonatorObjAdv = configData[i + 1]
-        else:  # Backward compatibility with config files exported before the Advanced Detonator name existed.
-            props.detonatorObjAdv = props.detonatorObj
+        props.detonatorObjAdv = configData[i]; i += 1
         props.detonRayDist = configData[i]; i += 1
         props.detonDeflection = configData[i]; i += 1
         props.detonExplosiveMass = configData[i]; i += 1
