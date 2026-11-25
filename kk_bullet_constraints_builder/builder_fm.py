@@ -128,6 +128,7 @@ def build_fm(use_handler=0):
     ### Create object to use the Fracture Modifier on
     bpy.ops.mesh.primitive_ico_sphere_add(size=1, view_align=False, enter_editmode=False, location=(0, 0, 0), rotation=(0, 0, 0))
     ob = bpy.context.scene.objects.active
+    ob.layers = scene.layers
     #ob.data.use_auto_smooth = True
     ob.name = asciiExportName
     ob.data.name = asciiExportName

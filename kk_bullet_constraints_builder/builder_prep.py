@@ -913,7 +913,7 @@ def calculateContactAreaBasedOnBoundaryBoxesForPair(objA, objB, sDistFallb, qNon
                 
         ### Or calculate contact area based on predefined custom thickness
         if qNonManifold:
-            if props.surfaceForced:
+            if props.surfaceThickness:
                 geoContactAreaB = (overlapX +overlapY +overlapZ) *props.surfaceThickness
             elif not sDistFallb:
                 geoContactAreaB = 0
@@ -1817,7 +1817,8 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
     objsTotal = []; objsScale = []
     for j in range(len(elemGrps)):
         elemGrp = elemGrps[j]
-        
+        materialDensity = elemGrp[EGSidxDens]
+                                
         # Deselect all objects
         bpy.ops.object.select_all(action='DESELECT')
         
@@ -1829,7 +1830,6 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
                     CT = elemGrps[j][EGSidxCTyp]
                     if CT == 0:
                         # The foundation buffer objects need a large mass so they won't pushed away
-                        materialDensity = elemGrp[EGSidxDens]
                         if materialDensity > 1: obj.rigid_body.mass = materialDensity
                         else: obj.rigid_body.mass = 1000  # Backward compatibility for older settings
                     else:
@@ -1852,7 +1852,6 @@ def calculateMass(scene, objs, objsEGrp, childObjs):
         if len(objsSelected):
             bpy.context.scene.objects.active = objsSelected[0]
             materialPreset = elemGrp[EGSidxMatP]
-            materialDensity = elemGrp[EGSidxDens]
             if not materialDensity:
                 if materialPreset != "":
                     try: bpy.ops.rigidbody.mass_calculate(material=materialPreset)
@@ -2097,6 +2096,7 @@ def generateDetonator(objs, connectsPair, objsEGrp):
     print("  Density: %0.3f kg/m^3" %elemDensity)                    # Not used
 
     ###### Detect the confined/open space ratio at each element using ray casting
+    objsCnt = len(objs)
     print("Searching confined spaces for detonation simulation... (%d)" %objsCnt)
 
     ### Vars

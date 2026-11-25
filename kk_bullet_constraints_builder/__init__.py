@@ -259,23 +259,6 @@ subdir = os.path.join(basedir, "extern")
 if subdir not in sys.path: sys.path.append(subdir)
 #print("BASEDIR:", basedir)
 
-### Force all modules to reload (doesn't work as expected as UI elements aren't updated, you have to restart Blender)
-#if "bcb_init_modules" in bpy.app.driver_namespace.keys():
-#    # Second or subsequent run: remove all but initially loaded modules
-#    del_modules = []
-#    for m in sys.modules.keys():
-#        if m not in bpy.app.driver_namespace["bcb_init_modules"]:
-#            del_modules.append(m)
-#    for m in del_modules:
-#        del sys.modules[m]
-#        #imp.reload(sys.modules[m])
-#else:
-#    # First run: find out which modules were initially loaded
-#    init_modules = []
-#    for m in sys.modules.keys():
-#        init_modules.append(m)
-#    bpy.app.driver_namespace["bcb_init_modules"] = init_modules     
-    
 ### Import submodules
 from build_data import *       # Contains build data access functions
 from builder import *          # Contains constraints builder function
@@ -291,6 +274,10 @@ from gui import *              # Contains graphical user interface layout class
 from gui_buttons import *      # Contains graphical user interface button classes
 from monitor import *          # Contains baking monitor event handler
 from tools import *            # Contains smaller independently working tools
+
+import formula
+formula.qSymPy = qSymPy
+if qSymPy: formula.sympy = sympy
 
 ########################################
 
